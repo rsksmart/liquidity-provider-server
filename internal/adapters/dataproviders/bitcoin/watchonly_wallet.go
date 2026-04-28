@@ -66,6 +66,10 @@ func (wallet *WatchOnlyWallet) SendWithOpReturn(address string, value *entities.
 	return blockchain.BitcoinTransactionResult{}, errors.New("cannot send from a watch-only wallet")
 }
 
+func (wallet *WatchOnlyWallet) CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error) {
+	return nil, errors.New("cannot create transactions from a watch-only wallet")
+}
+
 func (wallet *WatchOnlyWallet) ImportAddress(address string) error {
 	_, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
 	if err != nil {

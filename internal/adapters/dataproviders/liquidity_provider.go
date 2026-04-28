@@ -1,7 +1,6 @@
 package dataproviders
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -56,17 +55,41 @@ func (lp *LocalLiquidityProvider) BtcAddress() string {
 	return lp.btc.Address()
 }
 
-func (lp *LocalLiquidityProvider) SignQuote(quoteHash string) (string, error) {
-	var buf bytes.Buffer
-
-	hash, err := hex.DecodeString(quoteHash)
+func (lp *LocalLiquidityProvider) SignPeginQuote(ctx context.Context, quoteHash string) (string, error) {
+	var peginQuote *quote.PeginQuote
+	var err error
+	if peginQuote, err = lp.peginRepository.GetQuote(ctx, quoteHash); err != nil {
+		return "", err
+	} else if peginQuote == nil {
+		return "", usecases.QuoteNotFoundError
+	}
+	hash, err := lp.contracts.PegIn.HashPeginQuoteEIP712(*peginQuote)
 	if err != nil {
 		return "", err
 	}
 
-	buf.WriteString(usecases.EthereumSignedMessagePrefix)
-	buf.Write(hash)
-	signatureBytes, err := lp.signer.SignBytes(crypto.Keccak256(buf.Bytes()))
+	signatureBytes, err := lp.signer.SignBytes(hash[:])
+	if err != nil {
+		return "", err
+	}
+	signatureBytes[len(signatureBytes)-1] += 27 // v must be 27 or 28
+	return hex.EncodeToString(signatureBytes), nil
+}
+
+func (lp *LocalLiquidityProvider) SignPegoutQuote(ctx context.Context, quoteHash string) (string, error) {
+	var pegoutQuote *quote.PegoutQuote
+	var err error
+	if pegoutQuote, err = lp.pegoutRepository.GetQuote(ctx, quoteHash); err != nil {
+		return "", err
+	} else if pegoutQuote == nil {
+		return "", usecases.QuoteNotFoundError
+	}
+	hash, err := lp.contracts.PegOut.HashPegoutQuoteEIP712(*pegoutQuote)
+	if err != nil {
+		return "", err
+	}
+
+	signatureBytes, err := lp.signer.SignBytes(hash[:])
 	if err != nil {
 		return "", err
 	}
@@ -140,7 +163,7 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 	if err != nil {
 		return nil, err
 	}
-	lpLbcBalance, err := lp.contracts.Lbc.GetBalance(lp.RskAddress())
+	lpLbcBalance, err := lp.contracts.PegIn.GetBalance(lp.RskAddress())
 	if err != nil {
 		return nil, err
 	}

@@ -5,12 +5,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"golang.org/x/term"
 )
 
@@ -40,21 +40,21 @@ func main() {
 	}
 
 	ctx := context.Background()
-	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
+	collateralManagement, err := scripts.CreateCollateralManagementContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error accessing Liquidity Bridge Contract", err)
 	}
 
 	if scriptInput.Resign {
-		if err = ExecuteResign(lbc); err != nil {
+		if err = ExecuteResign(collateralManagement); err != nil {
 			scripts.ExitWithError(errorCode, "Error executing resign", err)
 		}
 		fmt.Println("Resign executed successfully.")
 		return
 	}
 
-	if err = ExecuteWithdrawCollateral(lbc); err != nil {
-		if errors.Is(err, usecases.ProviderNotResignedError) {
+	if err = ExecuteWithdrawCollateral(collateralManagement); err != nil {
+		if errors.Is(err, liquidity_provider.ProviderNotResignedError) {
 			scripts.ExitWithError(errorCode, "Withdraw collateral rejected", err)
 		}
 		scripts.ExitWithError(errorCode, "Error executing withdraw collateral", err)

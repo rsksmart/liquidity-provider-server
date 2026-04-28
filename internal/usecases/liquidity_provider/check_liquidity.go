@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -16,7 +17,6 @@ type OperationType string
 const (
 	PeginOperation  OperationType = "PegIn"
 	PegoutOperation OperationType = "PegOut"
-	MessageSubject  string        = "%s: Out of liquidity"
 	MessageBody     string        = "You are out of liquidity to perform a %s. Please, do a deposit"
 )
 
@@ -24,7 +24,7 @@ type CheckLiquidityUseCase struct {
 	peginProvider  liquidity_provider.PeginLiquidityProvider
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider
 	contracts      blockchain.RskContracts
-	alertSender    entities.AlertSender
+	alertSender    alerts.AlertSender
 	recipient      string
 }
 
@@ -32,7 +32,7 @@ func NewCheckLiquidityUseCase(
 	peginProvider liquidity_provider.PeginLiquidityProvider,
 	pegoutProvider liquidity_provider.PegoutLiquidityProvider,
 	contracts blockchain.RskContracts,
-	alertSender entities.AlertSender,
+	alertSender alerts.AlertSender,
 	recipient string,
 ) *CheckLiquidityUseCase {
 	return &CheckLiquidityUseCase{
@@ -54,7 +54,7 @@ func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
 	if errors.Is(err, usecases.NoLiquidityError) {
 		if err = useCase.alertSender.SendAlert(
 			ctx,
-			fmt.Sprintf(MessageSubject, PeginOperation),
+			alerts.AlertSubjectPeginOutOfLiquidity,
 			fmt.Sprintf(MessageBody, PeginOperation),
 			[]string{useCase.recipient},
 		); err != nil {
@@ -68,7 +68,7 @@ func (useCase *CheckLiquidityUseCase) Run(ctx context.Context) error {
 	if errors.Is(err, usecases.NoLiquidityError) {
 		if err = useCase.alertSender.SendAlert(
 			ctx,
-			fmt.Sprintf(MessageSubject, PegoutOperation),
+			alerts.AlertSubjectPegoutOutOfLiquidity,
 			fmt.Sprintf(MessageBody, PegoutOperation),
 			[]string{useCase.recipient},
 		); err != nil {

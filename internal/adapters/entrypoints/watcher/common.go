@@ -2,8 +2,9 @@ package watcher
 
 import (
 	"context"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 // Watchers intervals
@@ -19,6 +20,7 @@ const (
 	bitcoinEclipseCheckInterval      = 5 * time.Minute
 	rskEclipseCheckInterval          = 15 * time.Second
 	btcReleaseCheckInterval          = 3 * time.Minute
+	assetMetricsUpdateInterval       = 1 * time.Minute
 )
 
 type Watcher interface {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -119,7 +120,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerValidationErrors(t *testing.T) {
 	})
 }
 
-// nolint:funlen
+// nolint:funlen,maintidx
 func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 	t.Run("should return 400 on invalid quote hash format", func(t *testing.T) {
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
@@ -354,6 +355,36 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, errorResponse, "message")
 		assert.Equal(t, "unknown error", errorResponse["message"])
+	})
+	t.Run("should return 503 if contract is paused", func(t *testing.T) {
+		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+		signature := "validSignature123"
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
+			QuoteHash: quoteHash,
+			Signature: signature,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
+		mockUseCase.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).Return(quote.AcceptedQuote{}, blockchain.ContractPausedError)
+
+		handlerFunc := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
+		handlerFunc(recorder, request)
+
+		assert.Equal(t, http.StatusServiceUnavailable, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Equal(t, "protocol is paused", errorResponse["message"])
 	})
 }
 

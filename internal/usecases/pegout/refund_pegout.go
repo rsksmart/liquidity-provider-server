@@ -46,6 +46,10 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 	var pegoutQuote *quote.PegoutQuote
 	var err error
 
+	if err = usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	}
+
 	if retainedQuote.State != quote.PegoutStateSendPegoutSucceeded {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.WrongStateError, true)
 	}
@@ -133,7 +137,7 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 	var newState quote.PegoutState
 	var err, updateError error
 
-	receipt, err := useCase.contracts.Lbc.RefundPegout(txConfig, params)
+	receipt, err := useCase.contracts.PegOut.RefundPegout(txConfig, params)
 	if errors.Is(err, blockchain.WaitingForBridgeError) {
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {

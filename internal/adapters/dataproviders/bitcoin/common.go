@@ -18,6 +18,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 	"math/big"
+	"slices"
 )
 
 const (
@@ -30,10 +31,28 @@ func DecodeAddress(address string) ([]byte, error) {
 	if blockchain.IsBtcP2PKHAddress(address) || blockchain.IsBtcP2SHAddress(address) {
 		return DecodeAddressBase58(address, true)
 	} else if blockchain.IsBtcP2WPKHAddress(address) || blockchain.IsBtcP2WSHAddress(address) || blockchain.IsBtcP2TRAddress(address) {
-		_, data, err := bech32.Decode(address) // this function decodes both bech32 and bech32m
-		return data, err
+		return decodeAddressBech32(address)
 	}
 	return nil, blockchain.BtcAddressNotSupportedError
+}
+
+// decodeAddressBech32 this function decodes both bech32 and bech32m
+func decodeAddressBech32(address string) ([]byte, error) {
+	const (
+		wordSize = 5
+		byteSize = 8
+	)
+	_, data, err := bech32.Decode(address)
+	if err != nil {
+		return nil, err
+	} else if len(data) < 1 {
+		return nil, errors.New("invalid bech32 address data")
+	}
+	converted, err := bech32.ConvertBits(data[1:], wordSize, byteSize, false)
+	if err != nil {
+		return nil, err
+	}
+	return slices.Insert(converted, 0, data[0]), nil
 }
 
 func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {

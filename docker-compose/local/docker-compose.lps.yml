@@ -8,6 +8,8 @@ services:
         UID: "${LPS_UID}"
         COMMIT_HASH: "${COMMIT_HASH}"
         COMMIT_TAG: "${COMMIT_TAG}"
+        TARGETARCH: "${LPS_DOCKER_ARCH}"
+        USE_PREBUILT: "${LPS_USE_PREBUILT:-source}"
     image: lps:latest
     container_name: lps01
     environment:
@@ -22,13 +24,15 @@ services:
       - MONGODB_PORT
       - RSK_ENDPOINT
       - CHAIN_ID
-      - LBC_ADDR
+      - PEGIN_CONTRACT_ADDRESS
+      - PEGOUT_CONTRACT_ADDRESS
+      - COLLATERAL_MANAGEMENT_ADDRESS
+      - DISCOVERY_ADDRESS
       - RSK_BRIDGE_ADDR
       - RSK_REQUIRED_BRIDGE_CONFIRMATIONS
       - ERP_KEYS
       - USE_SEGWIT_FEDERATION
       - ACCOUNT_NUM
-      - DAO_FEE_COLLECTOR_ADDRESS
       - KEY_SECRET
       - PASSWORD_SECRET
       - BTC_NETWORK
@@ -57,6 +61,7 @@ services:
       - ENABLE_SECURITY_HEADERS
       - WALLET
       - SECRET_SRC
+      - ALLOWED_ORIGINS
       - KEYSTORE_FILE
       - KEYSTORE_PWD
       - BOOTSTRAP_TIMEOUT

@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -98,31 +98,31 @@ func TestParseResignUtilsInput(t *testing.T) {
 }
 
 func TestExecuteResign(t *testing.T) {
-	lbc := new(mocks.LiquidityBridgeContractMock)
-	lbc.On("ProviderResign").Return(nil).Once()
+	collateral := new(mocks.CollateralManagementContractMock)
+	collateral.On("ProviderResign").Return(nil).Once()
 
-	err := ExecuteResign(lbc)
+	err := ExecuteResign(collateral)
 	require.NoError(t, err)
-	lbc.AssertExpectations(t)
+	collateral.AssertExpectations(t)
 }
 
 func TestExecuteWithdrawCollateral(t *testing.T) {
 	t.Run("should execute withdraw collateral", func(t *testing.T) {
-		lbc := new(mocks.LiquidityBridgeContractMock)
-		lbc.On("WithdrawCollateral").Return(nil).Once()
+		collateral := new(mocks.CollateralManagementContractMock)
+		collateral.On("WithdrawCollateral").Return(nil).Once()
 
-		err := ExecuteWithdrawCollateral(lbc)
+		err := ExecuteWithdrawCollateral(collateral)
 		require.NoError(t, err)
-		lbc.AssertExpectations(t)
+		collateral.AssertExpectations(t)
 	})
 
 	t.Run("should return provider not resigned error", func(t *testing.T) {
-		lbc := new(mocks.LiquidityBridgeContractMock)
-		lbc.On("WithdrawCollateral").Return(usecases.ProviderNotResignedError).Once()
+		collateral := new(mocks.CollateralManagementContractMock)
+		collateral.On("WithdrawCollateral").Return(liquidity_provider.ProviderNotResignedError).Once()
 
-		err := ExecuteWithdrawCollateral(lbc)
+		err := ExecuteWithdrawCollateral(collateral)
 		require.Error(t, err)
-		require.ErrorIs(t, err, usecases.ProviderNotResignedError)
-		lbc.AssertExpectations(t)
+		require.ErrorIs(t, err, liquidity_provider.ProviderNotResignedError)
+		collateral.AssertExpectations(t)
 	})
 }

@@ -12,28 +12,28 @@ import (
 )
 
 func TestGetCollateralUseCase_Run(t *testing.T) {
-	lbc := new(mocks.LiquidityBridgeContractMock)
+	collateral := new(mocks.CollateralManagementContractMock)
 	lp := new(mocks.ProviderMock)
 	value := entities.NewWei(1000)
 	lp.On("RskAddress").Return("rskAddress")
-	lbc.On("GetCollateral", "rskAddress").Return(value, nil)
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	collateral.On("GetCollateral", "rskAddress").Return(value, nil)
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := pegin.NewGetCollateralUseCase(contracts, lp)
 	result, err := useCase.Run()
-	lbc.AssertExpectations(t)
+	collateral.AssertExpectations(t)
 	require.NoError(t, err)
 	assert.Equal(t, value, result)
 }
 
 func TestGetCollateralUseCase_Run_Error(t *testing.T) {
-	lbc := new(mocks.LiquidityBridgeContractMock)
+	collateral := new(mocks.CollateralManagementContractMock)
 	lp := new(mocks.ProviderMock)
 	lp.On("RskAddress").Return("rskAddress")
-	lbc.On("GetCollateral", "rskAddress").Return(entities.NewWei(0), assert.AnError)
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	collateral.On("GetCollateral", "rskAddress").Return(entities.NewWei(0), assert.AnError)
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := pegin.NewGetCollateralUseCase(contracts, lp)
 	result, err := useCase.Run()
-	lbc.AssertExpectations(t)
+	collateral.AssertExpectations(t)
 	require.Error(t, err)
 	assert.Nil(t, result)
 }

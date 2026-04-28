@@ -13,7 +13,7 @@ import (
 )
 
 func TestGetProvidersUseCase_Run(t *testing.T) {
-	lbc := &mocks.LiquidityBridgeContractMock{}
+	discovery := &mocks.DiscoveryContractMock{}
 
 	provider := lpEntity.RegisteredLiquidityProvider{
 		Id:           1,
@@ -21,32 +21,32 @@ func TestGetProvidersUseCase_Run(t *testing.T) {
 		Name:         "one",
 		ApiBaseUrl:   "api1.com",
 		Status:       true,
-		ProviderType: "both",
+		ProviderType: lpEntity.FullProvider,
 	}
-	lbc.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{provider}, nil).Once()
+	discovery.On("GetProviders").Return([]lpEntity.RegisteredLiquidityProvider{provider}, nil).Once()
 
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	contracts := blockchain.RskContracts{Discovery: discovery}
 	useCase := liquidity_provider.NewGetProvidersUseCase(contracts)
 	result, err := useCase.Run()
 
-	lbc.AssertExpectations(t)
+	discovery.AssertExpectations(t)
 	require.NoError(t, err)
 	assert.Equal(t, []lpEntity.RegisteredLiquidityProvider{provider}, result)
 }
 
 func TestGetProvidersUseCase_Run_Fail(t *testing.T) {
-	lbc := &mocks.LiquidityBridgeContractMock{}
+	discovery := &mocks.DiscoveryContractMock{}
 
-	lbc.On("GetProviders").Return(
+	discovery.On("GetProviders").Return(
 		[]lpEntity.RegisteredLiquidityProvider{},
 		errors.New("some error"),
 	).Once()
 
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	contracts := blockchain.RskContracts{Discovery: discovery}
 	useCase := liquidity_provider.NewGetProvidersUseCase(contracts)
 	result, err := useCase.Run()
 
-	lbc.AssertExpectations(t)
+	discovery.AssertExpectations(t)
 	require.Error(t, err)
 	assert.Equal(t, []lpEntity.RegisteredLiquidityProvider{}, result)
 }

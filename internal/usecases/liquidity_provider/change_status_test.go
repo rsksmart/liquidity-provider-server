@@ -15,39 +15,39 @@ import (
 
 func TestChangeStatusUseCase_Run(t *testing.T) {
 	const address = "0x02"
-	lbc := &mocks.LiquidityBridgeContractMock{}
-	lbc.On("GetProvider", address).Return(lp.RegisteredLiquidityProvider{Id: 2, Address: address}, nil).Once()
-	lbc.On("SetProviderStatus", uint64(2), false).Return(nil).Once()
+	discovery := &mocks.DiscoveryContractMock{}
+	discovery.On("GetProvider", address).Return(lp.RegisteredLiquidityProvider{Id: 2, Address: address}, nil).Once()
+	discovery.On("SetProviderStatus", uint64(2), false).Return(nil).Once()
 
 	provider := &mocks.ProviderMock{}
 	provider.On("RskAddress").Return(address)
 
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	contracts := blockchain.RskContracts{Discovery: discovery}
 	err := liquidity_provider.NewChangeStatusUseCase(contracts, provider).Run(false)
 
-	lbc.AssertExpectations(t)
+	discovery.AssertExpectations(t)
 	require.NoError(t, err)
 }
 
 func TestChangeStatusUseCase_Run_Fail(t *testing.T) {
 	const address = "0x01"
-	lbc := &mocks.LiquidityBridgeContractMock{}
+	discovery := &mocks.DiscoveryContractMock{}
 	provider := &mocks.ProviderMock{}
 
 	provider.On("RskAddress").Return(address).Once()
-	lbc.On("GetProvider", address).Return(
+	discovery.On("GetProvider", address).Return(
 		lp.RegisteredLiquidityProvider{},
 		assert.AnError,
 	).Once()
-	contracts := blockchain.RskContracts{Lbc: lbc}
+	contracts := blockchain.RskContracts{Discovery: discovery}
 	err := liquidity_provider.NewChangeStatusUseCase(contracts, provider).Run(false)
-	lbc.AssertExpectations(t)
+	discovery.AssertExpectations(t)
 	require.Error(t, err)
 
-	lbc.On("GetProvider", address).Return(lp.RegisteredLiquidityProvider{Id: 1, Address: address}, nil).Once()
+	discovery.On("GetProvider", address).Return(lp.RegisteredLiquidityProvider{Id: 1, Address: address}, nil).Once()
 	provider.On("RskAddress").Return(address)
-	lbc.On("SetProviderStatus", mock.Anything, mock.Anything).Return(errors.New("some error")).Once()
+	discovery.On("SetProviderStatus", mock.Anything, mock.Anything).Return(errors.New("some error")).Once()
 	err = liquidity_provider.NewChangeStatusUseCase(contracts, provider).Run(false)
-	lbc.AssertExpectations(t)
+	discovery.AssertExpectations(t)
 	require.Error(t, err)
 }

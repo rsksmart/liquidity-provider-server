@@ -19,12 +19,12 @@ func (useCase *ChangeStatusUseCase) Run(newStatus bool) error {
 	var err error
 	var registeredProvider liquidity_provider.RegisteredLiquidityProvider
 
-	registeredProvider, err = useCase.contracts.Lbc.GetProvider(useCase.provider.RskAddress())
+	registeredProvider, err = useCase.contracts.Discovery.GetProvider(useCase.provider.RskAddress())
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.ChangeProviderStatusId, err)
 	}
 
-	if err = useCase.contracts.Lbc.SetProviderStatus(registeredProvider.Id, newStatus); err != nil {
+	if err = useCase.contracts.Discovery.SetProviderStatus(registeredProvider.Id, newStatus); err != nil {
 		return usecases.WrapUseCaseError(usecases.ChangeProviderStatusId, err)
 	}
 	return nil

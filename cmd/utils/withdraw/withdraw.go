@@ -51,12 +51,12 @@ func main() {
 		scripts.ExitWithError(errorCode, "Error accessing wallet", err)
 	}
 
-	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
+	peginContract, err := scripts.CreatePeginContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error accessing Liquidity Bridge Contract", err)
 	}
 
-	if err = ExecuteWithdraw(lbc, rskWallet.Address().String(), scriptInput.All, scriptInput.Amount); err != nil {
+	if err = ExecuteWithdraw(peginContract, rskWallet.Address().String(), scriptInput.All, scriptInput.Amount); err != nil {
 		scripts.ExitWithError(errorCode, "Error executing withdraw", err)
 	}
 

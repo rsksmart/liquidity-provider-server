@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"syscall"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
@@ -17,8 +20,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"syscall"
 )
 
 type Application struct {
@@ -126,7 +127,7 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 	app.addRunningService(app.btcRegistry.MonitoringWallet)
 	app.addRunningService(app.messagingRegistry.EventBus)
 
-	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType)
+	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType())
 	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(registerParams)
 	if errors.Is(err, usecases.AlreadyRegisteredError) {
 		log.Info("Provider already registered")
@@ -171,6 +172,8 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.PenalizationAlertWatcher,
 		app.watcherRegistry.PegoutBridgeWatcher,
 		app.watcherRegistry.BtcReleaseWatcher,
+		app.watcherRegistry.QuoteMetricsWatcher,
+		app.watcherRegistry.AssetReportWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {

@@ -25,12 +25,15 @@ var (
 	rskAddressRegex       = regexp.MustCompile("^0x[a-fA-F0-9]{40}$")
 	WaitingForBridgeError = errors.New("waiting for rootstock bridge")
 	InvalidAddressError   = errors.New("invalid rootstock address")
+	ContractPausedError   = errors.New("contract is paused")
 )
 
 type RskContracts struct {
-	Bridge       rootstock.Bridge
-	Lbc          LiquidityBridgeContract
-	FeeCollector FeeCollector
+	Bridge               rootstock.Bridge
+	PegIn                PeginContract
+	PegOut               PegoutContract
+	CollateralManagement CollateralManagementContract
+	Discovery            DiscoveryContract
 }
 
 func DecodeStringTrimPrefix(hexString string) ([]byte, error) {
@@ -99,6 +102,7 @@ type RootstockRpcServer interface {
 	GetBalance(ctx context.Context, address string) (*entities.Wei, error)
 	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
 	GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (BlockInfo, error)
+	ChainId(ctx context.Context) (uint64, error)
 }
 
 type RootstockWallet interface {

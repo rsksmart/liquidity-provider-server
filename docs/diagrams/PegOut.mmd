@@ -6,7 +6,6 @@ sequenceDiagram
     participant btcWallet as Bitcoin Wallet
     participant btc as Bitcoin Network
     participant rsk as Rootstock Network
-    participant feeCollector as DAO Fee Collector
     participant bridge as Rootstock Bridge
 
     activate usr
@@ -21,14 +20,6 @@ sequenceDiagram
     cli->>+lps: getPegoutQuote(quoteRequest)
     lps->>+btcWallet: estimateFees(destinationAddress, quoteValue)
     btcWallet-->>-lps: feeEstimation
-    lps->>+feeCollector: getFeePercentage()
-    feeCollector-->>-lps: feePercentage
-    alt is not zero
-        Note right of lps: The gas price is to estimate the cost of the tx to the fee collector
-        lps->>+rsk: gasPrice()
-        rsk-->>-lps: gasPrice
-        lps->>lps: Add product fee
-    end
 
     lps->>+lbc: hashPegoutQuote(quote)
     lbc-->>-lps: quoteHash

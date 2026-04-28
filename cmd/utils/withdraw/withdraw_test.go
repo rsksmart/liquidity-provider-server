@@ -113,51 +113,51 @@ func TestExecuteWithdraw(t *testing.T) {
 	address := "0x1234567890123456789012345678901234567890"
 
 	t.Run("should withdraw all funds when --all flag is used", func(t *testing.T) {
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 		balance := entities.NewWei(1000000000000000000)
-		lbc.On("GetBalance", address).Return(balance, nil).Once()
-		lbc.On("Withdraw", balance).Return(nil).Once()
+		peginContract.On("GetBalance", address).Return(balance, nil).Once()
+		peginContract.On("Withdraw", balance).Return(nil).Once()
 
-		err := ExecuteWithdraw(lbc, address, true, "")
+		err := ExecuteWithdraw(peginContract, address, true, "")
 		require.NoError(t, err)
-		lbc.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 
 	t.Run("should withdraw specific amount when --amount flag is used", func(t *testing.T) {
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 		amount := entities.NewWei(500000000000000000)
-		lbc.On("Withdraw", amount).Return(nil).Once()
+		peginContract.On("Withdraw", amount).Return(nil).Once()
 
-		err := ExecuteWithdraw(lbc, address, false, "500000000000000000")
+		err := ExecuteWithdraw(peginContract, address, false, "500000000000000000")
 		require.NoError(t, err)
-		lbc.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 
 	t.Run("should fail when GetBalance fails", func(t *testing.T) {
-		lbc := new(mocks.LiquidityBridgeContractMock)
-		lbc.On("GetBalance", address).Return(nil, assert.AnError).Once()
+		peginContract := new(mocks.PeginContractMock)
+		peginContract.On("GetBalance", address).Return(nil, assert.AnError).Once()
 
-		err := ExecuteWithdraw(lbc, address, true, "")
+		err := ExecuteWithdraw(peginContract, address, true, "")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get balance")
-		lbc.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 
 	t.Run("should fail when amount is invalid", func(t *testing.T) {
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 
-		err := ExecuteWithdraw(lbc, address, false, "invalid")
+		err := ExecuteWithdraw(peginContract, address, false, "invalid")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid amount format")
 	})
 
 	t.Run("should fail when Withdraw fails", func(t *testing.T) {
-		lbc := new(mocks.LiquidityBridgeContractMock)
+		peginContract := new(mocks.PeginContractMock)
 		amount := entities.NewWei(500000000000000000)
-		lbc.On("Withdraw", amount).Return(assert.AnError).Once()
+		peginContract.On("Withdraw", amount).Return(assert.AnError).Once()
 
-		err := ExecuteWithdraw(lbc, address, false, "500000000000000000")
+		err := ExecuteWithdraw(peginContract, address, false, "500000000000000000")
 		require.Error(t, err)
-		lbc.AssertExpectations(t)
+		peginContract.AssertExpectations(t)
 	})
 }

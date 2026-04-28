@@ -1,8 +1,9 @@
 package registry
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"sync"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
@@ -104,7 +105,6 @@ func NewUseCaseRegistry(
 			databaseRegistry.PeginRepository,
 			liquidityProvider,
 			liquidityProvider,
-			env.Rsk.FeeCollectorAddress,
 		),
 		registerProviderUseCase: liquidity_provider.NewRegistrationUseCase(
 			rskRegistry.Contracts,
@@ -173,7 +173,6 @@ func NewUseCaseRegistry(
 			liquidityProvider,
 			liquidityProvider,
 			btcRegistry.PaymentWallet,
-			env.Rsk.FeeCollectorAddress,
 		),
 		acceptPegoutQuoteUseCase: pegout.NewAcceptQuoteUseCase(
 			databaseRegistry.PegoutRepository,
@@ -342,13 +341,11 @@ func NewUseCaseRegistry(
 			messaging.Rpc,
 			btcRegistry.PaymentWallet,
 			utils.Scale,
-			env.Rsk.FeeCollectorAddress,
 		),
 		recommendedPeginUseCase: pegin.NewRecommendedPeginUseCase(
 			liquidityProvider,
 			rskRegistry.Contracts,
 			messaging.Rpc,
-			env.Rsk.FeeCollectorAddress,
 			utils.Scale,
 		),
 	}

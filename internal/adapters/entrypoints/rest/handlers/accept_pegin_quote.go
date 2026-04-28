@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -49,6 +50,10 @@ func NewAcceptPeginQuoteHandler(useCase AcceptQuoteUseCase) http.HandlerFunc {
 		} else if errors.Is(err, usecases.NoLiquidityError) {
 			jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
 			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+			return
+		} else if errors.Is(err, blockchain.ContractPausedError) {
+			jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
 			return
 		} else if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)

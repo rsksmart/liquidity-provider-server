@@ -18,11 +18,11 @@ import (
 func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 	const testUrl = "http://localhost:8080"
 	t.Run("Return correct data when not logged in and credentials not set", func(t *testing.T) {
-		lbcMock := &mocks.LiquidityBridgeContractMock{}
+		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(nil, nil).Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Lbc: lbcMock}, testUrl)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
 		result, err := useCase.Run(context.Background(), false)
 		require.NoError(t, err)
 		assert.Equal(t, liquidity_provider.ManagementLoginTemplate, result.Name)
@@ -34,14 +34,14 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		assert.Empty(t, result.Data.RskAddress)
 		lpRepository.AssertExpectations(t)
 		lpMock.AssertExpectations(t)
-		lbcMock.AssertNotCalled(t, "GetProvider")
+		discovery.AssertNotCalled(t, "GetProvider")
 	})
 	t.Run("Return correct data when not logged in and credentials set", func(t *testing.T) {
-		lbcMock := &mocks.LiquidityBridgeContractMock{}
+		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(storedCredentials, nil).Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Lbc: lbcMock}, testUrl)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
 		result, err := useCase.Run(context.Background(), false)
 		require.NoError(t, err)
 		assert.Equal(t, liquidity_provider.ManagementLoginTemplate, result.Name)
@@ -53,14 +53,14 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		assert.Empty(t, result.Data.RskAddress)
 		lpRepository.AssertExpectations(t)
 		lpMock.AssertExpectations(t)
-		lbcMock.AssertNotCalled(t, "GetProvider")
+		discovery.AssertNotCalled(t, "GetProvider")
 	})
 	t.Run("Return correct data when logged in", func(t *testing.T) {
 		const (
 			btcAddress = test.AnyAddress
 			rskAddress = test.AnyHash
 		)
-		lbcMock := &mocks.LiquidityBridgeContractMock{}
+		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		fullConfig := liquidity_provider.FullConfiguration{
@@ -76,13 +76,13 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 			Status:       true,
 			ProviderType: lp.FullProvider,
 		}
-		lbcMock.On("GetProvider", rskAddress).Return(lpInfo, nil)
+		discovery.On("GetProvider", rskAddress).Return(lpInfo, nil)
 		lpMock.On("GeneralConfiguration", test.AnyCtx).Return(fullConfig.General).Once()
 		lpMock.On("PeginConfiguration", test.AnyCtx).Return(fullConfig.Pegin).Once()
 		lpMock.On("PegoutConfiguration", test.AnyCtx).Return(fullConfig.Pegout).Once()
 		lpMock.On("BtcAddress").Return(btcAddress).Once()
 		lpMock.On("RskAddress").Return(rskAddress).Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Lbc: lbcMock}, testUrl)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
 		result, err := useCase.Run(context.Background(), true)
 		require.NoError(t, err)
 		assert.Equal(t, liquidity_provider.ManagementUiTemplate, result.Name)
@@ -94,20 +94,20 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 		assert.Equal(t, rskAddress, result.Data.RskAddress)
 		lpRepository.AssertExpectations(t)
 		lpMock.AssertExpectations(t)
-		lbcMock.AssertExpectations(t)
+		discovery.AssertExpectations(t)
 	})
 	t.Run("Return error when repository fails", func(t *testing.T) {
-		lbcMock := &mocks.LiquidityBridgeContractMock{}
+		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		lpRepository.On("GetCredentials", test.AnyCtx).Return(nil, assert.AnError).Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Lbc: lbcMock}, testUrl)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
 		result, err := useCase.Run(context.Background(), false)
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
 	t.Run("Return error when provider doesn't exists", func(t *testing.T) {
-		lbcMock := &mocks.LiquidityBridgeContractMock{}
+		discovery := &mocks.DiscoveryContractMock{}
 		lpMock := &mocks.ProviderMock{}
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		fullConfig := liquidity_provider.FullConfiguration{
@@ -115,17 +115,17 @@ func TestGetManagementUiDataUseCase_Run(t *testing.T) {
 			Pegin:   lp.DefaultPeginConfiguration(),
 			Pegout:  lp.DefaultPegoutConfiguration(),
 		}
-		lbcMock.On("GetProvider", mock.Anything).Return(lp.RegisteredLiquidityProvider{}, assert.AnError).Once()
+		discovery.On("GetProvider", mock.Anything).Return(lp.RegisteredLiquidityProvider{}, assert.AnError).Once()
 		lpMock.On("GeneralConfiguration", test.AnyCtx).Return(fullConfig.General).Once()
 		lpMock.On("PeginConfiguration", test.AnyCtx).Return(fullConfig.Pegin).Once()
 		lpMock.On("PegoutConfiguration", test.AnyCtx).Return(fullConfig.Pegout).Once()
 		lpMock.On("RskAddress").Return("nonExistingAddress").Once()
-		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Lbc: lbcMock}, testUrl)
+		useCase := liquidity_provider.NewGetManagementUiDataUseCase(lpRepository, lpMock, lpMock, lpMock, blockchain.RskContracts{Discovery: discovery}, testUrl)
 		result, err := useCase.Run(context.Background(), true)
 		require.Error(t, err)
 		assert.Empty(t, result)
 		lpRepository.AssertExpectations(t)
 		lpMock.AssertExpectations(t)
-		lbcMock.AssertExpectations(t)
+		discovery.AssertExpectations(t)
 	})
 }

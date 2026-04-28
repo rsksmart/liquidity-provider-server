@@ -14,6 +14,7 @@ type ApplicationTickers struct {
 	BitcoinEclipseCheckTicker      utils.Ticker
 	RskEclipseCheckTicker          utils.Ticker
 	BtcReleaseCheckTicker          utils.Ticker
+	AssetReportTicker              utils.Ticker
 }
 
 func NewApplicationTickers() *ApplicationTickers {
@@ -29,5 +30,6 @@ func NewApplicationTickers() *ApplicationTickers {
 		BitcoinEclipseCheckTicker:      utils.NewTickerWrapper(bitcoinEclipseCheckInterval),
 		RskEclipseCheckTicker:          utils.NewTickerWrapper(rskEclipseCheckInterval),
 		BtcReleaseCheckTicker:          utils.NewTickerWrapper(btcReleaseCheckInterval),
+		AssetReportTicker:              utils.NewTickerWrapper(assetMetricsUpdateInterval),
 	}
 }

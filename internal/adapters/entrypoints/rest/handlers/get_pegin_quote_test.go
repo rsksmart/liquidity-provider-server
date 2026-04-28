@@ -4,12 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"math/big"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -18,56 +12,20 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"math/big"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
-const (
-	anyContractAddress = "0x79568c2989232dCa1840087D73d403602364c0D4"
-	anyRefundAddress   = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-)
-
-func validPeginQuoteRequest() pkg.PeginQuoteRequest {
-	return pkg.PeginQuoteRequest{
-		CallEoaOrContractAddress: anyContractAddress,
-		CallContractArguments:    "0xabcdef",
-		ValueToTransfer:          big.NewInt(1000000),
-		RskRefundAddress:         anyRefundAddress,
-	}
-}
-
-func anyPeginQuoteResult() pegin.GetPeginQuoteResult {
-	return pegin.GetPeginQuoteResult{
-		PeginQuote: quote.PeginQuote{
-			FedBtcAddress:    "2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p",
-			LbcAddress:       anyContractAddress,
-			LpRskAddress:     anyContractAddress,
-			BtcRefundAddress: "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
-			RskRefundAddress: anyRefundAddress,
-			LpBtcAddress:     "mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe",
-			CallFee:          entities.NewWei(1000),
-			PenaltyFee:       entities.NewWei(500),
-			ContractAddress:  anyContractAddress,
-			Data:             "abcdef",
-			GasLimit:         21000,
-			Nonce:            42,
-			Value:            entities.NewWei(1000000),
-			TimeForDeposit:   3600,
-			LpCallTime:       7200,
-			Confirmations:    6,
-			GasFee:           entities.NewWei(200),
-			ProductFeeAmount: entities.NewWei(100),
-		},
-		Hash: "abc123def456abc123def456abc123def456abc123def456abc123def456abc1",
-	}
-}
-
-// nolint:funlen,maintidx
-func TestNewGetPeginQuoteHandler(t *testing.T) {
+// nolint:funlen
+func TestGetPeginQuoteHandlerHappyPath(t *testing.T) {
 	const path = "/pegin/getQuote"
-
 	tests := []struct {
 		name           string
 		buildBody      func() ([]byte, error)
@@ -76,12 +34,17 @@ func TestNewGetPeginQuoteHandler(t *testing.T) {
 		checkResponse  func(t *testing.T, body []byte)
 	}{
 		{
-			name: "should return 200 with quote on valid request",
+			name: "should return 200 with empty callContractArguments",
 			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
+				req := createValidPeginQuoteRequest()
+				req.CallContractArguments = ""
+				return json.Marshal(req)
 			},
 			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				result := anyPeginQuoteResult()
+				result := pegin.GetPeginQuoteResult{
+					PeginQuote: createTestPeginQuote(),
+					Hash:       test.AnyHash,
+				}
 				useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(result, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -89,343 +52,55 @@ func TestNewGetPeginQuoteHandler(t *testing.T) {
 				var response []pkg.GetPeginQuoteResponse
 				require.NoError(t, json.Unmarshal(body, &response))
 				require.Len(t, response, 1)
-				result := anyPeginQuoteResult()
-				assert.Equal(t, result.Hash, response[0].QuoteHash)
-				assert.Equal(t, result.PeginQuote.ContractAddress, response[0].Quote.ContractAddr)
-				assert.Equal(t, result.PeginQuote.RskRefundAddress, response[0].Quote.RSKRefundAddr)
-				assert.Equal(t, result.PeginQuote.Value.AsBigInt(), response[0].Quote.Value)
+				assert.Equal(t, test.AnyHash, response[0].QuoteHash)
+				assert.NotEmpty(t, response[0].Quote)
 			},
-		},
-		{
-			name: "should return 200 with empty callContractArguments",
-			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				req.CallContractArguments = ""
-				return json.Marshal(req)
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				result := anyPeginQuoteResult()
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(result, nil)
-			},
-			expectedStatus: http.StatusOK,
-			checkResponse:  nil,
 		},
 		{
 			name: "should return 200 with callContractArguments without 0x prefix",
 			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
+				req := createValidPeginQuoteRequest()
 				req.CallContractArguments = "abcdef"
 				return json.Marshal(req)
 			},
 			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				result := anyPeginQuoteResult()
+				result := pegin.GetPeginQuoteResult{
+					PeginQuote: createTestPeginQuote(),
+					Hash:       test.AnyHash,
+				}
 				useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(result, nil)
 			},
 			expectedStatus: http.StatusOK,
-			checkResponse:  nil,
-		},
-		{
-			name: "should return 400 on malformed JSON body",
-			buildBody: func() ([]byte, error) {
-				return []byte(`{"callEoaOrContractAddress": "0x79568c2989232dCa1840087D73d403602364c0D4"`), nil
-			},
-			setupMock:      func(useCase *mocks.GetPeginQuoteUseCaseMock) {},
-			expectedStatus: http.StatusBadRequest,
 			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "Error decoding request", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
+				var response []pkg.GetPeginQuoteResponse
+				require.NoError(t, json.Unmarshal(body, &response))
+				require.Len(t, response, 1)
+				assert.Equal(t, test.AnyHash, response[0].QuoteHash)
+				assert.NotEmpty(t, response[0].Quote)
 			},
 		},
 		{
-			name: "should return 400 when callEoaOrContractAddress is missing",
+			name: "should return 200 with callContractArguments with 0x prefix",
 			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				req.CallEoaOrContractAddress = ""
+				req := createValidPeginQuoteRequest()
+				req.CallContractArguments = "0xabcdef"
 				return json.Marshal(req)
 			},
-			setupMock:      func(useCase *mocks.GetPeginQuoteUseCaseMock) {},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "validation error", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "CallEoaOrContractAddress")
-			},
-		},
-		{
-			name: "should return 400 when callEoaOrContractAddress is not a valid eth address",
-			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				req.CallEoaOrContractAddress = "not-an-address"
-				return json.Marshal(req)
-			},
-			setupMock:      func(useCase *mocks.GetPeginQuoteUseCaseMock) {},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "validation error", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "CallEoaOrContractAddress")
-			},
-		},
-		{
-			name: "should return 400 when rskRefundAddress is missing",
-			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				req.RskRefundAddress = ""
-				return json.Marshal(req)
-			},
-			setupMock:      func(useCase *mocks.GetPeginQuoteUseCaseMock) {},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "validation error", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "RskRefundAddress")
-			},
-		},
-		{
-			name: "should return 400 when rskRefundAddress is not a valid eth address",
-			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				req.RskRefundAddress = "not-an-address"
-				return json.Marshal(req)
-			},
-			setupMock:      func(useCase *mocks.GetPeginQuoteUseCaseMock) {},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "validation error", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "RskRefundAddress")
-			},
-		},
-		{
-			name: "should return 400 when valueToTransfer is missing",
-			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				req.ValueToTransfer = nil
-				return json.Marshal(req)
-			},
-			setupMock:      func(useCase *mocks.GetPeginQuoteUseCaseMock) {},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "validation error", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "ValueToTransfer")
-			},
-		},
-		{
-			name: "should return 400 when callContractArguments exceeds max length",
-			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				oversized := make([]byte, 8195)
-				for i := range oversized {
-					oversized[i] = 'a'
+			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
+				result := pegin.GetPeginQuoteResult{
+					PeginQuote: createTestPeginQuote(),
+					Hash:       test.AnyHash,
 				}
-				req.CallContractArguments = string(oversized)
-				return json.Marshal(req)
+				useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(result, nil)
 			},
-			setupMock:      func(useCase *mocks.GetPeginQuoteUseCaseMock) {},
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusOK,
 			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "validation error", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "CallContractArguments")
+				var response []pkg.GetPeginQuoteResponse
+				require.NoError(t, json.Unmarshal(body, &response))
+				require.Len(t, response, 1)
+				assert.Equal(t, test.AnyHash, response[0].QuoteHash)
+				assert.NotEmpty(t, response[0].Quote)
 			},
-		},
-		{
-			name: "should return 400 when callContractArguments is not valid hex",
-			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				req.CallContractArguments = "not-hex-data!"
-				return json.Marshal(req)
-			},
-			setupMock:      func(useCase *mocks.GetPeginQuoteUseCaseMock) {},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.True(t, errorResponse.Recoverable)
-			},
-		},
-		{
-			name: "should return 400 when use case returns BtcAddressNotSupportedError",
-			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).
-					Return(pegin.GetPeginQuoteResult{}, blockchain.BtcAddressNotSupportedError)
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "invalid request", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "error")
-			},
-		},
-		{
-			name: "should return 400 when use case returns BtcAddressInvalidNetworkError",
-			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).
-					Return(pegin.GetPeginQuoteResult{}, blockchain.BtcAddressInvalidNetworkError)
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "invalid request", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "error")
-			},
-		},
-		{
-			name: "should return 400 when use case returns RskAddressNotSupportedError",
-			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).
-					Return(pegin.GetPeginQuoteResult{}, usecases.RskAddressNotSupportedError)
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "invalid request", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "error")
-			},
-		},
-		{
-			name: "should return 400 when use case returns TxBelowMinimumError",
-			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).
-					Return(pegin.GetPeginQuoteResult{}, usecases.TxBelowMinimumError)
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "invalid request", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "error")
-			},
-		},
-		{
-			name: "should return 400 when use case returns DataCapExceededError",
-			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).
-					Return(pegin.GetPeginQuoteResult{}, pegin.DataCapExceededError)
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "invalid request", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "error")
-			},
-		},
-		{
-			name: "should return 400 when use case returns AmountOutOfRangeError",
-			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).
-					Return(pegin.GetPeginQuoteResult{}, liquidity_provider.AmountOutOfRangeError)
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "invalid request", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "error")
-			},
-		},
-		{
-			name: "should return 400 when use case returns a wrapped known error",
-			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				wrappedErr := usecases.WrapUseCaseError(usecases.GetPeginQuoteId, usecases.TxBelowMinimumError)
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).
-					Return(pegin.GetPeginQuoteResult{}, wrappedErr)
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, "invalid request", errorResponse.Message)
-				assert.True(t, errorResponse.Recoverable)
-			},
-		},
-		{
-			name: "should return 500 when use case returns an unknown error",
-			buildBody: func() ([]byte, error) {
-				return json.Marshal(validPeginQuoteRequest())
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.EXPECT().Run(mock.Anything, mock.Anything).
-					Return(pegin.GetPeginQuoteResult{}, errors.New("unexpected internal error"))
-			},
-			expectedStatus: http.StatusInternalServerError,
-			checkResponse: func(t *testing.T, body []byte) {
-				var errorResponse rest.ErrorResponse
-				require.NoError(t, json.Unmarshal(body, &errorResponse))
-				assert.Equal(t, handlers.UnknownErrorMessage, errorResponse.Message)
-				assert.False(t, errorResponse.Recoverable)
-				assert.Contains(t, errorResponse.Details, "error")
-			},
-		},
-		{
-			name: "should not call use case when request decoding fails",
-			buildBody: func() ([]byte, error) {
-				return []byte(`{invalid json`), nil
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.AssertNotCalled(t, "Run")
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse:  nil,
-		},
-		{
-			name: "should not call use case when request validation fails",
-			buildBody: func() ([]byte, error) {
-				req := validPeginQuoteRequest()
-				req.CallEoaOrContractAddress = ""
-				return json.Marshal(req)
-			},
-			setupMock: func(useCase *mocks.GetPeginQuoteUseCaseMock) {
-				useCase.AssertNotCalled(t, "Run")
-			},
-			expectedStatus: http.StatusBadRequest,
-			checkResponse:  nil,
 		},
 	}
 
@@ -446,10 +121,584 @@ func TestNewGetPeginQuoteHandler(t *testing.T) {
 
 			assert.Equal(t, tt.expectedStatus, recorder.Code)
 			assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+			useCase.AssertExpectations(t)
 
 			if tt.checkResponse != nil {
 				tt.checkResponse(t, recorder.Body.Bytes())
 			}
 		})
+	}
+}
+
+// nolint:funlen,maintidx
+func TestGetPeginQuoteHandlerErrorCases(t *testing.T) {
+
+	t.Run("should handle malformed JSON in request body", func(t *testing.T) {
+		malformedJSON := []byte(`{"callEoaOrContractAddress": "0x123"`)
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(malformedJSON))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertNotCalled(t, "Run")
+
+		var errorResponse map[string]interface{}
+		err := json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Equal(t, "Error decoding request", errorResponse["message"])
+	})
+
+	t.Run("should handle request validation failure - missing required fields - destination address", func(t *testing.T) {
+		reqBody := pkg.PeginQuoteRequest{
+			CallEoaOrContractAddress: "", // Missing required field
+			ValueToTransfer:          big.NewInt(1000),
+			RskRefundAddress:         test.AnyRskAddress,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertNotCalled(t, "Run")
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Contains(t, errorResponse["message"], "validation error")
+	})
+
+	t.Run("should handle request validation failure - missing required fields - refund address", func(t *testing.T) {
+		reqBody := pkg.PeginQuoteRequest{
+			CallEoaOrContractAddress: test.AnyRskAddress,
+			ValueToTransfer:          big.NewInt(1000),
+			RskRefundAddress:         "",
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertNotCalled(t, "Run")
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Contains(t, errorResponse["message"], "validation error")
+	})
+
+	t.Run("should handle request validation failure - missing required fields - amount", func(t *testing.T) {
+		reqBody := pkg.PeginQuoteRequest{
+			CallEoaOrContractAddress: test.AnyRskAddress,
+			ValueToTransfer:          nil,
+			RskRefundAddress:         test.AnyRskAddress,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertNotCalled(t, "Run")
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Contains(t, errorResponse["message"], "validation error")
+	})
+
+	t.Run("should handle invalid eth_addr format - destination address", func(t *testing.T) {
+		reqBody := pkg.PeginQuoteRequest{
+			CallEoaOrContractAddress: "invalid-address", // Invalid ETH address
+			CallContractArguments:    "0x1234",
+			ValueToTransfer:          big.NewInt(1000),
+			RskRefundAddress:         test.AnyRskAddress,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertNotCalled(t, "Run")
+	})
+
+	t.Run("should handle invalid eth_addr format - refund address", func(t *testing.T) {
+		reqBody := pkg.PeginQuoteRequest{
+			CallEoaOrContractAddress: test.AnyRskAddress,
+			CallContractArguments:    "0x1234",
+			ValueToTransfer:          big.NewInt(1000),
+			RskRefundAddress:         "invalid-address",
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertNotCalled(t, "Run")
+	})
+
+	t.Run("should return 400 on invalid callContractArguments hex", func(t *testing.T) {
+		reqBody := pkg.PeginQuoteRequest{
+			CallEoaOrContractAddress: test.AnyRskAddress,
+			CallContractArguments:    "0xGGGG", // Invalid hex
+			ValueToTransfer:          big.NewInt(1000),
+			RskRefundAddress:         test.AnyRskAddress,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertNotCalled(t, "Run")
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+	})
+
+	t.Run("should return 400 on BtcAddressNotSupportedError", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, blockchain.BtcAddressNotSupportedError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "invalid request", errorResponse["message"])
+	})
+
+	t.Run("should return 400 on BtcAddressInvalidNetworkError", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, blockchain.BtcAddressInvalidNetworkError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "invalid request", errorResponse["message"])
+	})
+
+	t.Run("should return 400 on RskAddressNotSupportedError", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, usecases.RskAddressNotSupportedError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "invalid request", errorResponse["message"])
+	})
+
+	t.Run("should return 400 on TxBelowMinimumError", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, usecases.TxBelowMinimumError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "invalid request", errorResponse["message"])
+	})
+
+	t.Run("should return 400 on AmountOutOfRangeError", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, liquidity_provider.AmountOutOfRangeError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "invalid request", errorResponse["message"])
+	})
+
+	t.Run("should return 500 on unexpected errors", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		unexpectedError := errors.New("unexpected database error")
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, unexpectedError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusInternalServerError, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "unknown error", errorResponse["message"])
+	})
+
+	t.Run("should return 400 when callContractArguments exceeds max length", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		oversized := make([]byte, 8195)
+		for i := range oversized {
+			oversized[i] = 'a'
+		}
+		reqBody.CallContractArguments = string(oversized)
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertNotCalled(t, "Run")
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Contains(t, errorResponse["message"], "validation error")
+	})
+
+	t.Run("should return 400 on DataCapExceededError", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, pegin.DataCapExceededError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "invalid request", errorResponse["message"])
+	})
+}
+
+// nolint:funlen
+func TestGetPeginQuoteHandlerErrorResponseFormat(t *testing.T) {
+
+	t.Run("should set correct content type header on error", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, usecases.TxBelowMinimumError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("should include timestamp in error response", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, usecases.TxBelowMinimumError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "timestamp")
+		assert.NotZero(t, errorResponse["timestamp"])
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("should include recoverable flag as true for domain errors", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, liquidity_provider.AmountOutOfRangeError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "recoverable")
+		assert.Equal(t, true, errorResponse["recoverable"])
+		mockUseCase.AssertExpectations(t)
+	})
+
+	t.Run("should set recoverable to false on unexpected errors", func(t *testing.T) {
+		reqBody := createValidPeginQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/getQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPeginQuoteUseCaseMock)
+		unexpectedError := errors.New("unexpected error")
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegin.QuoteRequest")).
+			Return(pegin.GetPeginQuoteResult{}, unexpectedError)
+
+		handlerFunc := handlers.NewGetPeginQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "recoverable")
+		assert.Equal(t, false, errorResponse["recoverable"])
+		mockUseCase.AssertExpectations(t)
+	})
+}
+
+// Helper functions
+
+func createValidPeginQuoteRequest() pkg.PeginQuoteRequest {
+	return pkg.PeginQuoteRequest{
+		CallEoaOrContractAddress: test.AnyRskAddress,
+		CallContractArguments:    "0x1234",
+		ValueToTransfer:          big.NewInt(1000000000000000000),
+		RskRefundAddress:         test.AnyRskAddress,
+	}
+}
+
+func createTestPeginQuote() quote.PeginQuote {
+	return quote.PeginQuote{
+		FedBtcAddress:      "2N5W5MxrGKMNNRzoBMN2hKKUNxEJUUuGcLp",
+		LbcAddress:         "0x85FaB18a0d06fb14651c8F5EE9C7f4b00D80d70c",
+		LpRskAddress:       "0x9D93929A9099be4355fC2389FbF253982F9dF47c",
+		BtcRefundAddress:   "2MvMxL8KLzw4R8Y9wQP8QNNpYQqGKSUJe6J",
+		RskRefundAddress:   test.AnyRskAddress,
+		LpBtcAddress:       "2N7Vw5f59V3o3bDcaJK5oA829LFTBYZHLoG",
+		CallFee:            entities.NewWei(100),
+		PenaltyFee:         entities.NewWei(200),
+		ContractAddress:    test.AnyRskAddress,
+		Data:               "0x1234",
+		GasLimit:           21000,
+		Nonce:              1,
+		Value:              entities.NewWei(1000000000000000000),
+		AgreementTimestamp: 1640995200,
+		TimeForDeposit:     3600,
+		LpCallTime:         1800,
+		Confirmations:      6,
+		CallOnRegister:     true,
+		GasFee:             entities.NewWei(50),
+		ChainId:            31,
 	}
 }

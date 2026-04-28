@@ -89,12 +89,12 @@ func main() {
 		scripts.ExitWithError(errorCode, "Error connecting to BTC node", err)
 	}
 
-	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
+	peginContract, err := scripts.CreatePeginContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error accessing the Liquidity Bridge Contract", err)
 	}
 
-	receipt, err := ExecuteRegisterPegIn(bitcoin.NewBitcoindRpc(btcClient), lbc, parsedInput)
+	receipt, err := ExecuteRegisterPegIn(bitcoin.NewBitcoindRpc(btcClient), peginContract, parsedInput)
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error executing register PegIn", err)
 	}
@@ -151,7 +151,7 @@ func ParseRegisterPegInScriptInput(parse scripts.ParseFunc, scriptInput *Registe
 
 func ExecuteRegisterPegIn(
 	btcRpc blockchain.BitcoinNetwork,
-	lbc blockchain.LiquidityBridgeContract,
+	peginContract blockchain.PeginContract,
 	parsedInput ParsedRegisterPegInInput,
 ) (blockchain.TransactionReceipt, error) {
 	var pmt, rawTx []byte
@@ -168,7 +168,7 @@ func ExecuteRegisterPegIn(
 		return blockchain.TransactionReceipt{}, err
 	}
 
-	return lbc.RegisterPegin(blockchain.RegisterPeginParams{
+	return peginContract.RegisterPegin(blockchain.RegisterPeginParams{
 		QuoteSignature:        parsedInput.Signature,
 		BitcoinRawTransaction: rawTx,
 		PartialMerkleTree:     pmt,
