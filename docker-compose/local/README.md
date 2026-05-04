@@ -5,6 +5,8 @@ The provided docker-compose files can be used to quickly spin up an environment 
 
 * Use scripts located in the `local` directory while being inside that directory. Using them from other directories might cause issues with the relative paths defined in the different compose files.
 * Create an env file and export it as an environment variable `export ENV_FILE=regtest`. If you don't want to create it, the script will use by default the `sample-config.env` file located at the root directory.
+* The local contract deployer pulls a prebuilt LBC image from GHCR using `LBC_IMAGE` from your env file. Keep this value pinned to an immutable digest (`ghcr.io/rsksmart/liquidity-bridge-contract@sha256:...`).
+* If your environment is not already authenticated to GHCR, run `docker login ghcr.io` before starting the stack.
 * Run the following command to create the environment:
 ```bash
     ./lps-local.sh

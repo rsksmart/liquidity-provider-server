@@ -1,11 +1,7 @@
 services:
   lbc-deployer:
-    build:
-      context: ./lbc-deployer
-      args:
-        LBC_COMMIT: "${LBC_COMMIT}"
-    image: lbc-deployer:latest
-    pull_policy: build
+    image: "${LBC_IMAGE}"
+    pull_policy: always
     volumes:
       - ./lbc-deployer/scripts:/scripts
       - ./${ENV_FILE}:/${ENV_FILE}
