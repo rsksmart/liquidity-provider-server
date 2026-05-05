@@ -148,7 +148,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	trustedAccountHash := hex.EncodeToString(crypto.Keccak256(trustedAccountBytes))
 
 	accountSignature := "d1a9fe0de659875bc75252e6f5a73529ed6a5d88c9d97853ebf2ccc6e3080ecc423eee543470a80d373f1abb3a4f746264b47dda53252ddfc5d65989c1af34401c"
-	trustedAccountRepository.On("GetTrustedAccount", mock.Anything, ownerAccountAddress).Return(&entities.Signed[liquidity_provider.TrustedAccountDetails]{
+	trustedAccountRepository.On("GetTrustedAccount", mock.Anything, strings.ToLower(ownerAccountAddress)).Return(&entities.Signed[liquidity_provider.TrustedAccountDetails]{
 		Value:     trustedAccountDetails,
 		Signature: accountSignature,
 		Hash:      trustedAccountHash,

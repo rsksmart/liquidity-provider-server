@@ -24,7 +24,11 @@ func NewDeleteTrustedAccountHandler(useCase *lpuc.DeleteTrustedAccountUseCase) h
 			return
 		}
 		err = useCase.Run(req.Context(), address)
-		if errors.Is(err, lp.TrustedAccountNotFoundError) {
+		if errors.Is(err, lp.InvalidTrustedAccountAddressError) {
+			jsonErr := rest.NewErrorResponseWithDetails(lp.InvalidTrustedAccountAddressError.Error(), rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		} else if errors.Is(err, lp.TrustedAccountNotFoundError) {
 			jsonErr := rest.NewErrorResponse(err.Error(), true)
 			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
 			return
