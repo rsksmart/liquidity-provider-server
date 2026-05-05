@@ -124,7 +124,7 @@ func TestGetTrustedAccountUseCase_Run(t *testing.T) {
 		result, err := useCase.Run(context.Background(), "invalid")
 		require.Error(t, err)
 		assert.Nil(t, result)
-		assert.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
+		require.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
 		repo.AssertNotCalled(t, "GetTrustedAccount")
 	})
 }
