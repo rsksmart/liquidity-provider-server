@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -31,6 +32,31 @@ var acceptPegoutQuoteEip712Hash = "95c3ca51e1abd141bed5fb1c1802236aef4e5982ffc07
 var acceptPegoutQuoteHash = "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf"
 var acceptPegoutQuoteHashSignature = "b062b09f5f3000f1092e606e90fa449e8527fb1bac20ff72897fd1d0a8aa3b18049d39d1956110992de0284e6d85223d4f69ed06e57184cad13abca7b421d6e41b"
 var ownerAccountAddress = "0x57f9F71E683E2A8ff3d2f394aE45C58b2d913A35"
+
+// pegoutQuoteForAcceptLiquidityFailure returns Value 50 + GasFee 15; used by no-liquidity accept tests.
+func pegoutQuoteForAcceptLiquidityFailure(now time.Time) quote.PegoutQuote {
+	return quote.PegoutQuote{
+		LbcAddress:            "0xabcd01",
+		LpRskAddress:          "0xabcd02",
+		BtcRefundAddress:      "hijk",
+		RskRefundAddress:      "0xabcd04",
+		LpBtcAddress:          "edfg",
+		CallFee:               entities.NewWei(10),
+		PenaltyFee:            entities.NewWei(1),
+		Nonce:                 1,
+		DepositAddress:        "address",
+		Value:                 entities.NewWei(50),
+		AgreementTimestamp:    uint32(now.Unix()),
+		DepositDateLimit:      uint32(now.Unix() + 600),
+		DepositConfirmations:  1,
+		TransferConfirmations: 1,
+		TransferTime:          600,
+		ExpireDate:            uint32(now.Unix() + 600),
+		ExpireBlock:           1,
+		GasFee:                entities.NewWei(15),
+		ChainId:               31,
+	}
+}
 
 func TestAcceptQuoteUseCase_Run_Paused(t *testing.T) {
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
@@ -437,29 +463,9 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 }
 
 func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
-	quoteHash := "0x654321"
+	const quoteHash = "0x654321"
 	now := time.Now()
-	quoteMock := quote.PegoutQuote{
-		LbcAddress:            "0xabcd01",
-		LpRskAddress:          "0xabcd02",
-		BtcRefundAddress:      "hijk",
-		RskRefundAddress:      "0xabcd04",
-		LpBtcAddress:          "edfg",
-		CallFee:               entities.NewWei(10),
-		PenaltyFee:            entities.NewWei(1),
-		Nonce:                 1,
-		DepositAddress:        "address",
-		Value:                 entities.NewWei(50),
-		AgreementTimestamp:    uint32(now.Unix()),
-		DepositDateLimit:      uint32(now.Unix() + 600),
-		DepositConfirmations:  1,
-		TransferConfirmations: 1,
-		TransferTime:          600,
-		ExpireDate:            uint32(now.Unix() + 600),
-		ExpireBlock:           1,
-		GasFee:                entities.NewWei(15),
-		ChainId:               31,
-	}
+	quoteMock := pegoutQuoteForAcceptLiquidityFailure(now)
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
 	quoteRepositoryMock.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(nil, nil).Once()
@@ -467,6 +473,7 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", test.AnyCtx, entities.NewWei(65)).Return(usecases.NoLiquidityError).Once()
+	lp.On("AvailablePegoutLiquidity", test.AnyCtx).Return(entities.NewWei(20), nil).Once()
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Once()
@@ -483,6 +490,38 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 	eventBus.AssertNotCalled(t, "Publish")
 	assert.Empty(t, result)
 	require.ErrorIs(t, err, usecases.NoLiquidityError)
+	errMsg := err.Error()
+	require.Contains(t, errMsg, "quoteValue")
+	require.Contains(t, errMsg, "gasFee")
+	require.Contains(t, errMsg, "requiredLiquidity")
+	require.Contains(t, errMsg, "missingLiquidity")
+}
+
+func TestAcceptQuoteUseCase_Run_NoLiquidity_preservesProviderErrorMessage(t *testing.T) {
+	const quoteHash = "0x654321"
+	now := time.Now()
+	quoteMock := pegoutQuoteForAcceptLiquidityFailure(now)
+	liquidityErr := fmt.Errorf("%w, missing 7 satoshi", usecases.NoLiquidityError)
+	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
+	quoteRepositoryMock.On("GetQuote", test.AnyCtx, quoteHash).Return(&quoteMock, nil).Once()
+	quoteRepositoryMock.On("GetRetainedQuote", test.AnyCtx, quoteHash).Return(nil, nil).Once()
+	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	lp := new(mocks.ProviderMock)
+	lp.On("HasPegoutLiquidity", test.AnyCtx, entities.NewWei(65)).Return(liquidityErr).Once()
+	lp.On("AvailablePegoutLiquidity", test.AnyCtx).Return(entities.NewWei(58), nil).Once()
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
+	mutex.On("Lock").Once()
+	mutex.On("Unlock").Once()
+	contracts := blockchain.RskContracts{PegOut: pegoutContract}
+	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
+	result, err := useCase.Run(context.Background(), quoteHash, "")
+	quoteRepositoryMock.AssertExpectations(t)
+	lp.AssertExpectations(t)
+	assert.Empty(t, result)
+	require.ErrorIs(t, err, usecases.NoLiquidityError)
+	require.Contains(t, err.Error(), "missing 7 satoshi")
 }
 
 func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
