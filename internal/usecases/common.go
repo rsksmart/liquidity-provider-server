@@ -7,6 +7,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -249,7 +250,7 @@ func RecoverSignerAddress(signature string, getHashFunction func() ([]byte, erro
 		return "", errors.New("error unmarshalling public key: " + err.Error())
 	}
 
-	address := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
+	address := strings.ToLower(crypto.PubkeyToAddress(*pubKeyECDSA).Hex())
 	return address, nil
 }
 

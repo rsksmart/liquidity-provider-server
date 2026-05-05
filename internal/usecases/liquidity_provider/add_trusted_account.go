@@ -2,8 +2,10 @@ package liquidity_provider
 
 import (
 	"context"
+	"errors"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
@@ -27,6 +29,12 @@ func NewAddTrustedAccountUseCase(
 }
 
 func (useCase *AddTrustedAccountUseCase) Run(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
+	normalized, err := blockchain.NormalizeEthereumAddress(account.Address)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.AddTrustedAccountId,
+			errors.Join(liquidity_provider.InvalidTrustedAccountAddressError, err))
+	}
+	account.Address = normalized
 	signedAccount, err := usecases.SignConfiguration(usecases.AddTrustedAccountId, useCase.signer, useCase.hashFunc, account)
 	if err != nil {
 		return err
