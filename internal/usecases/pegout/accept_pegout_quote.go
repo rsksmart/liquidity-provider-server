@@ -2,6 +2,7 @@ package pegout
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -197,16 +198,41 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedA
 }
 
 func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Context, pegoutQuote quote.PegoutQuote) (*entities.Wei, error) {
-	var err error
 	requiredLiquidity := new(entities.Wei)
-	errorArgs := usecases.NewErrorArgs()
-
 	requiredLiquidity.Add(pegoutQuote.Value, pegoutQuote.GasFee)
-	if err = useCase.pegoutLp.HasPegoutLiquidity(ctx, requiredLiquidity); err != nil {
-		errorArgs["amount"] = requiredLiquidity.String()
-		return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, usecases.NoLiquidityError, errorArgs)
+
+	err := useCase.pegoutLp.HasPegoutLiquidity(ctx, requiredLiquidity)
+	if err == nil {
+		return requiredLiquidity, nil
 	}
-	return requiredLiquidity, nil
+	if !errors.Is(err, usecases.NoLiquidityError) {
+		return nil, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
+	}
+
+	available, availErr := useCase.pegoutLp.AvailablePegoutLiquidity(ctx)
+	var availableForArgs *entities.Wei
+	if availErr == nil {
+		availableForArgs = available
+	}
+	errorArgs := newPegoutAcceptNoLiquidityErrorArgs(pegoutQuote, requiredLiquidity, availableForArgs)
+	return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, err, errorArgs)
+}
+
+// newPegoutAcceptNoLiquidityErrorArgs builds API-facing context when accept fails for insufficient pegout liquidity.
+// available may be nil if it could not be read; missingLiquidity is omitted in that case.
+func newPegoutAcceptNoLiquidityErrorArgs(
+	q quote.PegoutQuote,
+	requiredLiquidity *entities.Wei,
+	available *entities.Wei,
+) usecases.ErrorArgs {
+	args := usecases.NewErrorArgs()
+	args["quoteValue"] = q.Value.String()
+	args["gasFee"] = q.GasFee.String()
+	args["requiredLiquidity"] = requiredLiquidity.String()
+	if available != nil && requiredLiquidity.Cmp(available) > 0 {
+		args["missingLiquidity"] = new(entities.Wei).Sub(requiredLiquidity, available).String()
+	}
+	return args
 }
 
 func (useCase *AcceptQuoteUseCase) publishQuote(
