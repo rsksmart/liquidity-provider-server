@@ -3,7 +3,6 @@ package liquidity_provider_test
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"strings"
 	"testing"
 
@@ -125,7 +124,7 @@ func TestGetTrustedAccountUseCase_Run(t *testing.T) {
 		result, err := useCase.Run(context.Background(), "invalid")
 		require.Error(t, err)
 		assert.Nil(t, result)
-		assert.True(t, errors.Is(err, liquidity_provider.InvalidTrustedAccountAddressError))
+		assert.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
 		repo.AssertNotCalled(t, "GetTrustedAccount")
 	})
 }

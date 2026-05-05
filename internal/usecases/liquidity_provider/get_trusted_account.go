@@ -33,9 +33,9 @@ func (useCase *GetTrustedAccountUseCase) Run(ctx context.Context, address string
 		return nil, errors.Join(liquidity_provider.InvalidTrustedAccountAddressError, err)
 	}
 	readFunction := func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
-		signedAccount, err := useCase.trustedAccountRepository.GetTrustedAccount(ctx, normalized)
-		if err != nil {
-			return nil, err
+		signedAccount, getErr := useCase.trustedAccountRepository.GetTrustedAccount(ctx, normalized)
+		if getErr != nil {
+			return nil, getErr
 		}
 		if signedAccount == nil {
 			return nil, liquidity_provider.TrustedAccountNotFoundError

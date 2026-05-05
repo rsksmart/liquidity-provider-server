@@ -7,7 +7,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +37,7 @@ func TestDeleteTrustedAccountUseCase_Run(t *testing.T) {
 		useCase := lp.NewDeleteTrustedAccountUseCase(repo)
 		err := useCase.Run(context.Background(), "bad-address")
 		require.Error(t, err)
-		assert.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
+		require.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
 		repo.AssertNotCalled(t, "DeleteTrustedAccount")
 	})
 }

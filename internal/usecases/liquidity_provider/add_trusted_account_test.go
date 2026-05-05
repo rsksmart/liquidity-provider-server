@@ -130,7 +130,7 @@ func TestAddTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		useCase := lp.NewAddTrustedAccountUseCase(repo, signer, hashMock.Hash)
 		err := useCase.Run(context.Background(), account)
 		require.Error(t, err)
-		assert.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
+		require.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
 		repo.AssertNotCalled(t, "AddTrustedAccount")
 	})
 
