@@ -133,6 +133,26 @@ func TestParseReceipt(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
+	t.Run("should not panic and return empty To when tx is a contract creation", func(t *testing.T) {
+		creationTxData := geth.LegacyTx{
+			Nonce:    0x1d1,
+			GasPrice: big.NewInt(0x18dbac0),
+			Gas:      0x2625a0,
+			To:       nil,
+			Value:    big.NewInt(0),
+			Data:     hexutil.MustDecode("0x6080604052"),
+			V:        big.NewInt(0x60),
+			R:        new(big.Int).SetBytes(hexutil.MustDecode("0xda4204b9a42bcdc0442d36fd87fee053dc121674e7aaf7639dcdb67631f755ac")),
+			S:        new(big.Int).SetBytes(hexutil.MustDecode("0x192902edaeb78e096b555b5884b6c0a62d10809f00a28ad8883e0074a4755f7f")),
+		}
+		creationTx := geth.NewTx(&creationTxData)
+		require.Nil(t, creationTx.To())
+		require.NotPanics(t, func() {
+			receipt, err := rootstock.ParseReceipt(creationTx, rawReceipt)
+			require.NoError(t, err)
+			assert.Equal(t, "", receipt.To)
+		})
+	})
 }
 
 // nolint:funlen
@@ -251,6 +271,53 @@ func TestParseDepositEvent(t *testing.T) {
 		deposit, err := rootstock.ParseDepositEvent(receipt)
 		require.ErrorContains(t, err, "invalid number of topics for PegOutDeposit event")
 		assert.Empty(t, deposit)
+	})
+	t.Run("should not panic when a log has no topics", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			TransactionHash:   txHash,
+			BlockHash:         blockHash,
+			BlockNumber:       blockNumber,
+			From:              from,
+			To:                to,
+			CumulativeGasUsed: big.NewInt(909304),
+			GasUsed:           big.NewInt(410230),
+			Value:             entities.NewWei(38805670000000000),
+			Logs: []blockchain.TransactionLog{
+				{
+					Address:     "0xAa9caf1e3967600578727f975F283446a3dA6612",
+					Topics:      [][32]byte{},
+					Data:        hexutil.MustDecode("0x"),
+					BlockNumber: blockNumber,
+					TxHash:      txHash,
+					TxIndex:     0,
+					BlockHash:   blockHash,
+					Index:       0,
+					Removed:     false,
+				},
+				{
+					Address: "0xAa9caf1e3967600578727f975F283446a3dA6612",
+					Topics: [][32]byte{
+						utils.To32Bytes(hexutil.MustDecode("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f")),
+						utils.To32Bytes(hexutil.MustDecode("0xeb8a4598a3cb0b8a697206316216b791e7b16dd5a8496349a6aad6fac8f190e7")),
+						utils.To32Bytes(hexutil.MustDecode("0x000000000000000000000000aca43e826be4d5cbff195797968a3fcf20cc7813")),
+						utils.To32Bytes(hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000685c4f0a")),
+					},
+					Data:        hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000089dd8d1f9efc00"),
+					BlockNumber: blockNumber,
+					TxHash:      txHash,
+					TxIndex:     0,
+					BlockHash:   blockHash,
+					Index:       1,
+					Removed:     false,
+				},
+			},
+		}
+		require.NotPanics(t, func() {
+			deposit, err := rootstock.ParseDepositEvent(receipt)
+			require.NoError(t, err)
+			assert.Equal(t, "eb8a4598a3cb0b8a697206316216b791e7b16dd5a8496349a6aad6fac8f190e7", deposit.Log.QuoteHash)
+			assert.Equal(t, amount, deposit.Log.Amount)
+		})
 	})
 	t.Run("should return error on malformed log data", func(t *testing.T) {
 		receipt := blockchain.TransactionReceipt{

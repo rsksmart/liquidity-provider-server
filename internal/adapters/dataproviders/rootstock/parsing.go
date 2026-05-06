@@ -32,12 +32,17 @@ func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.Trans
 		}
 	}
 
+	to := ""
+	if tx.To() != nil {
+		to = tx.To().String()
+	}
+
 	result := blockchain.TransactionReceipt{
 		TransactionHash:   receipt.TxHash.String(),
 		BlockHash:         receipt.BlockHash.String(),
 		BlockNumber:       receipt.BlockNumber.Uint64(),
 		From:              from.String(),
-		To:                tx.To().String(),
+		To:                to,
 		CumulativeGasUsed: cumulativeGasUsed,
 		GasUsed:           gasUsed,
 		Value:             entities.NewBigWei(tx.Value()),
@@ -84,7 +89,7 @@ func ParseDepositEvent(receipt blockchain.TransactionReceipt) (blockchain.Parsed
 		return blockchain.ParsedLog[quote.PegoutDeposit]{}, err
 	}
 	index := slices.IndexFunc(receipt.Logs, func(log blockchain.TransactionLog) bool {
-		return bytes.Equal(log.Topics[0][:], abi.Events[eventName].ID.Bytes())
+		return len(log.Topics) > 0 && bytes.Equal(log.Topics[0][:], abi.Events[eventName].ID.Bytes())
 	})
 	if index < 0 {
 		return blockchain.ParsedLog[quote.PegoutDeposit]{}, errors.New("deposit event not found in receipt logs")
