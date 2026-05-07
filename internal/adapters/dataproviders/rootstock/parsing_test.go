@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	geth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -283,5 +284,141 @@ func TestParseDepositEvent(t *testing.T) {
 		deposit, err := rootstock.ParseDepositEvent(receipt)
 		require.Error(t, err)
 		assert.Empty(t, deposit)
+	})
+}
+
+var releaseRejectedTopic = crypto.Keccak256Hash([]byte("release_request_rejected(address,uint256,int256)"))
+
+func encodeInt256TwosComplement(n *big.Int) []byte {
+	mod := new(big.Int).Lsh(big.NewInt(1), 256)
+	twos := new(big.Int).Mod(n, mod)
+	buf := make([]byte, 32)
+	twos.FillBytes(buf)
+	return buf
+}
+
+func buildReleaseRejectedData(reason *big.Int) []byte {
+	data := make([]byte, 0, 64)
+	data = append(data, make([]byte, 32)...)
+	data = append(data, encodeInt256TwosComplement(reason)...)
+	return data
+}
+
+// nolint:funlen
+func TestParseReleaseRejection(t *testing.T) {
+	const bridgeAddress = "0x0000000000000000000000000000000001000006"
+	topic := [32]byte(releaseRejectedTopic)
+
+	t.Run("no logs returns (false, empty reason)", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{Logs: nil}
+		rejected, reason := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		assert.False(t, rejected)
+		assert.Empty(t, reason)
+	})
+
+	t.Run("only unrelated topics returns (false, empty reason)", func(t *testing.T) {
+		otherTopic := crypto.Keccak256Hash([]byte("other_event(uint256)"))
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{[32]byte(otherTopic)},
+					Data:    buildReleaseRejectedData(big.NewInt(0)),
+				},
+			},
+		}
+		rejected, reason := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		assert.False(t, rejected)
+		assert.Empty(t, reason)
+	})
+
+	t.Run("matching topic but wrong address returns (false, empty reason)", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: "0xDeAdBeEf000000000000000000000000DeAdBeEf",
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(-3)),
+				},
+			},
+		}
+		rejected, reason := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		assert.False(t, rejected)
+		assert.Empty(t, reason)
+	})
+
+	t.Run("negative reason code maps to unknown reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(-3)),
+				},
+			},
+		}
+		rejected, reason := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonUnknown, reason)
+	})
+
+	t.Run("known reason code maps to low_amount reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(1)),
+				},
+			},
+		}
+		rejected, reason := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonLowAmount, reason)
+	})
+
+	t.Run("unknown reason code maps to unknown reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(7)),
+				},
+			},
+		}
+		rejected, reason := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonUnknown, reason)
+	})
+
+	t.Run("address match is case-insensitive and 0x-agnostic", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: "0X0000000000000000000000000000000001000006",
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(7)),
+				},
+			},
+		}
+		rejected, reason := rootstock.ParseReleaseRejection(receipt, "0000000000000000000000000000000001000006")
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonUnknown, reason)
+	})
+
+	t.Run("malformed data maps to unknown reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    make([]byte, 32),
+				},
+			},
+		}
+		rejected, reason := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonUnknown, reason)
 	})
 }

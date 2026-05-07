@@ -6,15 +6,19 @@ import (
 	"errors"
 	"math/big"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 )
+
+var releaseRequestRejectedTopic = crypto.Keccak256Hash([]byte("release_request_rejected(address,uint256,int256)"))
 
 func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.TransactionReceipt, error) {
 	if tx == nil || receipt == nil {
@@ -118,4 +122,58 @@ func ParseDepositEvent(receipt blockchain.TransactionReceipt) (blockchain.Parsed
 		},
 		RawLog: log,
 	}, nil
+}
+
+// ParseReleaseRejection scans receipt.Logs for a Bridge release_request_rejected event emitted by bridgeAddress.
+//
+// Event ABI (from rskj BridgeEvents.RELEASE_REQUEST_REJECTED):
+//
+//	release_request_rejected(address indexed sender, uint256 amount, int256 reason)
+//
+// Non-indexed params (amount, reason) are packed into log.Data as two 32-byte words; reason is the last word.
+// Reason codes are declared by rskj RejectedPegoutReason.
+func ParseReleaseRejection(receipt blockchain.TransactionReceipt, bridgeAddress string) (rejected bool, reason blockchain.RejectedPegoutReason) {
+	normalizedBridge := strings.TrimPrefix(strings.ToLower(bridgeAddress), "0x")
+	log, found := findReleaseRejectedLog(receipt.Logs, normalizedBridge)
+	if !found {
+		return false, ""
+	}
+	if len(log.Data) < 64 {
+		return true, blockchain.RejectedPegoutReasonUnknown
+	}
+	// Decode the trailing int256 reason word using two's complement. big.Int.SetBytes treats
+	// its input as unsigned, so a negative int256 (high bit of the leading byte set) would
+	// otherwise decode as a near-2^256 positive number. If the sign bit is set, subtract 2^256
+	// to recover the signed value. Current Bridge code only emits positive reason codes, but
+	// the param is declared int256 so we decode it as signed for forward compatibility.
+	reasonBytes := log.Data[len(log.Data)-32:]
+	r := new(big.Int).SetBytes(reasonBytes)
+	if reasonBytes[0]&0x80 != 0 {
+		r.Sub(r, new(big.Int).Lsh(big.NewInt(1), 256))
+	}
+	return true, parseRejectedPegoutReason(r.Int64())
+}
+
+func parseRejectedPegoutReason(reason int64) blockchain.RejectedPegoutReason {
+	switch reason {
+	case 1:
+		return blockchain.RejectedPegoutReasonLowAmount
+	case 2:
+		return blockchain.RejectedPegoutReasonCallerContract
+	case 3:
+		return blockchain.RejectedPegoutReasonFeeAboveValue
+	default:
+		return blockchain.RejectedPegoutReasonUnknown
+	}
+}
+
+func findReleaseRejectedLog(logs []blockchain.TransactionLog, normalizedBridge string) (blockchain.TransactionLog, bool) {
+	for _, log := range logs {
+		if len(log.Topics) > 0 &&
+			bytes.Equal(log.Topics[0][:], releaseRequestRejectedTopic.Bytes()) &&
+			strings.TrimPrefix(strings.ToLower(log.Address), "0x") == normalizedBridge {
+			return log, true
+		}
+	}
+	return blockchain.TransactionLog{}, false
 }

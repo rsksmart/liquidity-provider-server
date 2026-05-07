@@ -155,7 +155,7 @@ func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *
 		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
 		Value:             txValue,
 		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
-		Logs:              make([]blockchain.TransactionLog, 0),
+		Logs:              convertReceiptLogs(receipt),
 	}
 
 	if receipt.Status == 0 {
