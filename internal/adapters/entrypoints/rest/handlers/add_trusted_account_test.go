@@ -574,15 +574,15 @@ func ValidateFieldErrorResponse(t *testing.T, body []byte, expectedSubstring str
 	// Check if the specified field has the expected error
 	fieldError, exists := errorResponse.Details[fieldName]
 	if !exists {
-		require.Fail(t, "Expected field '%s' not found in error details: %+v", fieldName, errorResponse.Details)
+		require.Failf(t, "Expected field '%s' not found in error details: %+v", fieldName, errorResponse.Details)
 	}
 
 	errorStr, ok := fieldError.(string)
 	if !ok {
-		require.Fail(t, "Field '%s' error should be a string, but got: %T", fieldName, fieldError)
+		require.Failf(t, "Field '%s' error should be a string, but got: %T", fieldName, fieldError)
 	}
 
 	if !strings.Contains(errorStr, expectedSubstring) {
-		require.Fail(t, "Expected error containing '%s' in field '%s', but got: %s", expectedSubstring, fieldName, errorStr)
+		require.Failf(t, "Expected error containing '%s' in field '%s', but got: %s", expectedSubstring, fieldName, errorStr)
 	}
 }

@@ -32,9 +32,11 @@ func TestBitcoinReorgWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go bw.Shutdown(closeChannel)
 		<-closeChannel
-		assert.Eventually(t, func() bool {
-			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
-		}, time.Second, time.Millisecond*50)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			useCase.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should continue after reorg check error", func(t *testing.T) {
 		ticker := &mocks.TickerMock{}
@@ -51,9 +53,11 @@ func TestBitcoinReorgWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go bw.Shutdown(closeChannel)
 		<-closeChannel
-		assert.Eventually(t, func() bool {
-			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
-		}, time.Second, time.Millisecond*50)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			useCase.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
 	})
 }
 

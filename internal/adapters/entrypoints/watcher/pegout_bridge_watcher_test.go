@@ -50,14 +50,20 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	go bridgeWatcher.Start()
 	t.Run("should handle error getting quotes", func(t *testing.T) {
 		resetMocks()
+		log.SetLevel(log.DebugLevel)
 		checkFunc := test.AssertLogContains(t, "error getting pegout quotes")
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool { return checkFunc() && pegoutRepository.AssertExpectations(t) }, time.Second, 10*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			pegoutRepository.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunc())
 	})
 	const quoteHash = "0102"
 	t.Run("should log error sending tx to the bridge", func(t *testing.T) {
 		resetMocks()
+		log.SetLevel(log.DebugLevel)
 		checkFunc := test.AssertLogContains(t, "error sending pegout to bridge")
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateRefundPegOutSucceeded).Return([]quote.RetainedPegoutQuote{
 			{QuoteHash: quoteHash, State: quote.PegoutStateRefundPegOutSucceeded},
@@ -67,9 +73,13 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
 		rskWallet.On("GetBalance", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return checkFunc() && rskWallet.AssertExpectations(t) && providerMock.AssertExpectations(t) && pegoutRepository.AssertExpectations(t)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			rskWallet.AssertExpectations(mt)
+			providerMock.AssertExpectations(mt)
+			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunc())
 	})
 	t.Run("should send tx to the bridge successfully", func(t *testing.T) {
 		resetMocks()
@@ -100,10 +110,14 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 			Once()
 		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
-		require.Eventually(t, func() bool { return len(updated) > 0 }, 5*time.Second, 10*time.Millisecond)
-		rskWallet.AssertExpectations(t)
-		providerMock.AssertExpectations(t)
-		pegoutRepository.AssertExpectations(t)
+		checkFunc := func() bool { return len(updated) > 0 }
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			rskWallet.AssertExpectations(mt)
+			providerMock.AssertExpectations(mt)
+			pegoutRepository.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunc())
 	})
 }
 
