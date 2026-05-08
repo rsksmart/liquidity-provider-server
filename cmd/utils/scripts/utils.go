@@ -156,7 +156,7 @@ func CreateCollateralManagementContract(
 		rskWallet,
 		binding,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
-		environment.DefaultTimeouts().MiningWait.Seconds(),
+		timeouts.MiningWait.Seconds(),
 		rootstock.MustLoadFlyoverABIs(),
 	), nil
 }
