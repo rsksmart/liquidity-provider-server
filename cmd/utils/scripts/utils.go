@@ -7,6 +7,7 @@ import (
 	"github.com/awnumar/memguard"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	collateralBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
 	discoveryBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
 	peginBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	pegoutBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
@@ -93,7 +94,7 @@ func CreatePegoutContract(
 	pegoutContract := binding.Instance(rskClient.Rpc(), common.HexToAddress(env.Rsk.PegoutContractAddress))
 	return rootstock.NewPegoutContractImpl(
 		rskClient,
-		env.Rsk.PeginContractAddress,
+		env.Rsk.PegoutContractAddress,
 		pegoutContract,
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
@@ -121,12 +122,41 @@ func CreateDiscoveryContract(
 	discoveryContract := binding.Instance(rskClient.Rpc(), common.HexToAddress(env.Rsk.DiscoveryAddress))
 	return rootstock.NewDiscoveryContractImpl(
 		rskClient,
-		env.Rsk.PeginContractAddress,
+		env.Rsk.DiscoveryAddress,
 		discoveryContract,
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
 		environment.DefaultTimeouts().MiningWait.Seconds(),
 		binding,
+		rootstock.MustLoadFlyoverABIs(),
+	), nil
+}
+
+func CreateCollateralManagementContract(
+	ctx context.Context,
+	factory RskClientFactory,
+	env environment.Environment,
+	timeouts environment.ApplicationTimeouts,
+) (blockchain.CollateralManagementContract, error) {
+	rskClient, err := factory(ctx, env)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to RSK node: %w", err)
+	}
+	rskWallet, err := GetWallet(ctx, env, timeouts, rskClient)
+	if err != nil {
+		return nil, fmt.Errorf("error accessing to wallet: %w", err)
+	}
+	binding := collateralBindings.NewCollateralManagementContract()
+	collateralManagement := binding.Instance(rskClient.Rpc(), common.HexToAddress(env.Rsk.CollateralManagementAddress))
+	return rootstock.NewCollateralManagementContractImpl(
+		rskClient,
+		rskWallet.Address().String(),
+		env.Rsk.CollateralManagementAddress,
+		collateralManagement,
+		rskWallet,
+		binding,
+		rootstock.RetryParams{Retries: 0, Sleep: 0},
+		environment.DefaultTimeouts().MiningWait.Seconds(),
 		rootstock.MustLoadFlyoverABIs(),
 	), nil
 }

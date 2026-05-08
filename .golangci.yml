@@ -1,40 +1,105 @@
+version: "2"
 run:
-  allow-parallel-runners: true
-  timeout: 3m
   tests: true
-issues:
-  exclude-dirs:
-    - internal/adapters/dataproviders/rootstock/bindings/discovery
-    - internal/adapters/dataproviders/rootstock/bindings/pegin
-    - internal/adapters/dataproviders/rootstock/bindings/pegout
-    - internal/adapters/dataproviders/rootstock/bindings/collateral_management
-    - internal/adapters/dataproviders/rootstock/bindings/flyover
-    - internal/adapters/dataproviders/rootstock/bindings/bridge
-    - test/mocks
-  exclude-rules:
-    - linters:
-        - staticcheck
-      text: "SA1019: .*\\.(BridgeRefundTxHash|BridgeRefundGasUsed|BridgeRefundGasPrice) is deprecated: superseded by BridgeRebalances;"
+  allow-parallel-runners: true
 linters:
-  presets:
-    - bugs
-    - complexity
-    - unused
-    - performance
-linters-settings:
-  errcheck:
-   check-type-assertions: true
-   check-blank: true
-  govet:
-    enable:
-      - nilness
-      - defers
-      - lostcancel
-      - nilfunc
-      - shadow
-      - unusedwrite
-  exhaustive:
-    default-signifies-exhaustive: true
-  gosec:
-    excludes:
-      - G115 # TODO update project to cast safely
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - cyclop
+    - durationcheck
+    - errchkjson
+    - errorlint
+    - exhaustive
+    - fatcontext
+    - funlen
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - gocognit
+    - gocyclo
+    - gosec
+    - gosmopolitan
+    - loggercheck
+    - maintidx
+    - makezero
+    - musttag
+    - nestif
+    - nilerr
+    - nilnesserr
+    - noctx
+    - perfsprint
+    - prealloc
+    - protogetter
+    - reassign
+    - recvcheck
+    - rowserrcheck
+    - spancheck
+    - sqlclosecheck
+    - testifylint
+    - unparam
+    - zerologlint
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    gosec:
+      excludes:
+        - G115 # TODO update project to cast safely
+    govet:
+      enable:
+        - nilness
+        - defers
+        - lostcancel
+        - nilfunc
+        - shadow
+        - unusedwrite
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - staticcheck
+        text: 'SA1019: .*\.(BridgeRefundTxHash|BridgeRefundGasUsed|BridgeRefundGasPrice) is deprecated: superseded by BridgeRebalances;'
+      # TODO these are new rules we need to support over time
+      - linters:
+          - staticcheck
+        text: '(ST1012|QF1008|QF1003|ST1023|QF1001|ST1019|ST1005|QF1011).*'
+      - linters:
+          - gosec
+        text: '(G117|G101|G124): .*'
+      - linters:
+          - govet
+        text: 'Constant reflect.Ptr should be inlined'
+      - linters:
+          - noctx
+        text: 'net/http/httptest.NewRequest must not be called.'
+      - linters:
+          - prealloc
+        text: 'Consider preallocating .+ with capacity .+'
+    paths:
+      - internal/adapters/dataproviders/rootstock/bindings/discovery
+      - internal/adapters/dataproviders/rootstock/bindings/pegin
+      - internal/adapters/dataproviders/rootstock/bindings/pegout
+      - internal/adapters/dataproviders/rootstock/bindings/collateral_management
+      - internal/adapters/dataproviders/rootstock/bindings/flyover
+      - internal/adapters/dataproviders/rootstock/bindings/bridge
+      - test/mocks
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
