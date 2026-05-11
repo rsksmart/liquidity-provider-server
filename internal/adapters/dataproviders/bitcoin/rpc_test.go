@@ -6,6 +6,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -705,5 +706,93 @@ func TestBitcoindRpc_GetZeroAddress(t *testing.T) {
 		result, err := rpc.GetZeroAddress(blockchain.BtcAddressTypeP2PKH)
 		require.Error(t, err)
 		assert.Empty(t, result)
+	})
+}
+
+func TestBitcoindRpc_GetBlockHashAtHeight(t *testing.T) {
+	t.Run("should return block hash", func(t *testing.T) {
+		parsedHash, err := chainhash.NewHashFromStr(testnetTestBlockHash)
+		require.NoError(t, err)
+
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetBlockHash", int64(100)).Return(parsedHash, nil).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+
+		result, err := rpc.GetBlockHashAtHeight(100)
+		require.NoError(t, err)
+		assert.Equal(t, testnetTestBlockHash, result)
+		client.AssertExpectations(t)
+	})
+
+	t.Run("should return error if client fails", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetBlockHash", int64(200)).Return(nil, assert.AnError).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+
+		result, err := rpc.GetBlockHashAtHeight(200)
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, result)
+		client.AssertExpectations(t)
+	})
+}
+
+func TestBitcoindRpc_GetBlockHeaderVerbose(t *testing.T) {
+	t.Run("should return header info", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetBlockHeaderVerbose", mock.Anything).Return(&btcjson.GetBlockHeaderVerboseResult{
+			Hash:         testnetTestBlockHash,
+			Height:       100,
+			PreviousHash: mainnetTestBlockHash,
+		}, nil).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+
+		result, err := rpc.GetBlockHeaderVerbose(testnetTestBlockHash)
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.BitcoinBlockHeaderInfo{
+			Hash:         testnetTestBlockHash,
+			Height:       100,
+			PreviousHash: mainnetTestBlockHash,
+		}, result)
+		client.AssertExpectations(t)
+	})
+
+	t.Run("should return error if client fails", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetBlockHeaderVerbose", mock.Anything).Return(nil, assert.AnError).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+
+		result, err := rpc.GetBlockHeaderVerbose(testnetTestBlockHash)
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, result)
+		client.AssertExpectations(t)
+	})
+
+	t.Run("should return error if hash is invalid", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+
+		_, err := rpc.GetBlockHeaderVerbose("invalidHash")
+		require.Error(t, err)
+		client.AssertNotCalled(t, "GetBlockHeaderVerbose")
+	})
+}
+
+func TestBitcoindRpc_GetConnectionCount(t *testing.T) {
+	t.Run("Should return connection count", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.EXPECT().GetConnectionCount().Return(int64(8), nil).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+		count, err := rpc.GetConnectionCount()
+		require.NoError(t, err)
+		assert.Equal(t, int64(8), count)
+		client.AssertExpectations(t)
+	})
+	t.Run("Should return error when client fails", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.EXPECT().GetConnectionCount().Return(int64(0), assert.AnError).Once()
+		rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, client))
+		_, err := rpc.GetConnectionCount()
+		require.Error(t, err)
+		client.AssertExpectations(t)
 	})
 }

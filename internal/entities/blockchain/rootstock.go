@@ -26,6 +26,7 @@ var (
 	WaitingForBridgeError = errors.New("waiting for rootstock bridge")
 	InvalidAddressError   = errors.New("invalid rootstock address")
 	ContractPausedError   = errors.New("contract is paused")
+	TxFailedError         = errors.New("transaction failed")
 )
 
 type RskContracts struct {
@@ -80,10 +81,11 @@ type ParsedLog[E any] struct {
 }
 
 type BlockInfo struct {
-	Hash      string
-	Number    uint64
-	Timestamp time.Time
-	Nonce     uint64
+	Hash       string
+	ParentHash string
+	Number     uint64
+	Timestamp  time.Time
+	Nonce      uint64
 }
 
 func NewTransactionConfig(value *entities.Wei, gasLimit uint64, gasPrice *entities.Wei) TransactionConfig {
@@ -103,6 +105,7 @@ type RootstockRpcServer interface {
 	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
 	GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (BlockInfo, error)
 	ChainId(ctx context.Context) (uint64, error)
+	PeerCount(ctx context.Context) (uint64, error)
 }
 
 type RootstockWallet interface {

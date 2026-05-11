@@ -205,4 +205,3 @@ func TestLowLiquidityAlertUseCase_Run_ErrorFromPeginProvider(t *testing.T) {
 	alertSender.AssertNotCalled(t, "SendAlert")
 	require.Error(t, err)
 }
-

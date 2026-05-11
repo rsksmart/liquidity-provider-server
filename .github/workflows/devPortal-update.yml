@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       # Step 1: Generate GitHub App Token
       - name: Generate GitHub App Token
@@ -48,10 +48,10 @@ jobs:
           BASE_DST="devportal/docs/02-developers/06-integrate/02-flyover"
 
           #####################################
-          #  Usecases                         #
+          #  Overview                         #
           #####################################
           TEMP_FILE="temp_index.md"
-          tail -n +2 ${BASE_SRC}/docs/Usecases.md > ${TEMP_FILE}
+          tail -n +2 ${BASE_SRC}/docs/Overview.md > ${TEMP_FILE}
           TRANSFORMED_FILE="transformed/index.md"
           echo "---" > ${TRANSFORMED_FILE}
           echo "sidebar_label: RBTC Flyover" >> ${TRANSFORMED_FILE}

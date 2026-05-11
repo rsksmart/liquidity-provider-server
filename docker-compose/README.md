@@ -1,22 +1,5 @@
-# Docker Setup for Liquidity Provider Server
-
-The provided docker-compose files can be used to quickly spin up an environment with the Liquidity Provider Server and its dependent services (`bitcoind` and `rskj`) for either `regtest` or `testnet`. Note that different environments require different setup files - the regtest environment requires a regtest federation and localstack, making the setup process different from testnet or mainnet.
-
-## Deploy Locally (Regtest Environment)
-
-* Use scripts located in the `local` directory
-* If there are any changes to the Liquidity Bridge Contracts that you need to deploy locally in your environment, you'll need to:
-  * Get the LiquidityBridgeContractProxy address from your deployment
-  * Export it as an environment variable:
-    ```bash
-    export LBC_ADDR="NEW_ADDRESS"
-    export LPS_STAGE=regtest
-    ```
-  * Make the script executable and run it:
-    ```bash
-    chmod +x lps-env.sh
-    ./lps-env.sh up
-    ```
+## Deploy on Regtest Environment
+Go to the [`local` directory](./local) for a detailed explanation of the local set up.
 
 ## Deploy on Development Server with Testnet Config
 

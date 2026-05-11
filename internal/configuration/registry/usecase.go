@@ -2,6 +2,7 @@ package registry
 
 import (
 	"sync"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 
@@ -18,6 +19,8 @@ import (
 )
 
 var signingHashFunction = crypto.Keccak256
+
+const nodePeerAlertCooldown = 30 * time.Minute
 
 type UseCaseRegistry struct {
 	getPeginQuoteUseCase                *pegin.GetQuoteUseCase
@@ -85,10 +88,13 @@ type UseCaseRegistry struct {
 	lowLiquidityAlertUseCase            *liquidity_provider.LowLiquidityAlertUseCase
 	getLiquidityRatioUseCase            *liquidity_provider.GetLiquidityRatioUseCase
 	setLiquidityRatioUseCase            *liquidity_provider.SetLiquidityRatioUseCase
+	btcReorgCheckUseCase                *watcher.NodeReorgCheckUseCase
+	rskReorgCheckUseCase                *watcher.NodeReorgCheckUseCase
+	nodePeerCheckUseCase                *watcher.NodePeerCheckUseCase
 }
 
 // NewUseCaseRegistry
-// nolint:funlen, maintidx
+// nolint:funlen,maintidx
 func NewUseCaseRegistry(
 	env environment.Environment,
 	rskRegistry *Rootstock,
@@ -204,7 +210,7 @@ func NewUseCaseRegistry(
 			messaging.EventBus,
 			rskRegistry.Contracts,
 			mutexes.BtcWalletMutex(),
-			rootstock.ParseDepositEvent,
+			rootstock.ParseDepositEventByQuoteHash,
 		),
 		getUserDepositsUseCase: pegout.NewGetUserDepositsUseCase(databaseRegistry.PegoutRepository),
 		liquidityCheckUseCase: liquidity_provider.NewCheckLiquidityUseCase(
@@ -281,11 +287,14 @@ func NewUseCaseRegistry(
 			env.Provider.ApiBaseUrl,
 		),
 		bridgePegoutUseCase: pegout.NewBridgePegoutUseCase(
-			databaseRegistry.PegoutRepository,
 			lpRegistry.LiquidityProvider,
-			rskRegistry.Wallet,
-			rskRegistry.Contracts,
-			mutexes.RskWalletMutex(),
+			pegout.NewRebalanceHandler(
+				pegout.RebalanceStrategy(env.Pegout.RebalanceStrategy),
+				databaseRegistry.PegoutRepository,
+				rskRegistry.Wallet,
+				rskRegistry.Contracts,
+				mutexes.RskWalletMutex(),
+			),
 		),
 		peginStatusUseCase:  pegin.NewStatusUseCase(databaseRegistry.PeginRepository),
 		pegoutStatusUseCase: pegout.NewStatusUseCase(databaseRegistry.PegoutRepository),
@@ -360,6 +369,31 @@ func NewUseCaseRegistry(
 			messaging.AlertSender,
 			env.Provider.AlertRecipientEmail,
 			&sync.Mutex{},
+		),
+		btcReorgCheckUseCase: watcher.NewNodeReorgCheckUseCase(
+			messaging.Rpc,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			messaging.EventBus,
+			env.Btc.FillWithDefaults().MaxReorgDepth,
+			time.Duration(env.NodeReorg.FillWithDefaults().AlertCooldownSeconds)*time.Second,
+		),
+		rskReorgCheckUseCase: watcher.NewNodeReorgCheckUseCase(
+			messaging.Rpc,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			messaging.EventBus,
+			env.Rsk.FillWithDefaults().MaxReorgDepth,
+			time.Duration(env.NodeReorg.FillWithDefaults().AlertCooldownSeconds)*time.Second,
+		),
+		nodePeerCheckUseCase: watcher.NewNodePeerCheckUseCase(
+			messaging.Rpc,
+			messaging.AlertSender,
+			env.Provider.AlertRecipientEmail,
+			messaging.EventBus,
+			env.Btc.FillWithDefaults().MinPeers,
+			env.Rsk.FillWithDefaults().MinPeers,
+			nodePeerAlertCooldown,
 		),
 		updateBtcReleaseUseCase: pegout.NewUpdateBtcReleaseUseCase(
 			databaseRegistry.PegoutRepository,
