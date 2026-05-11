@@ -81,6 +81,8 @@ const (
 	LowLiquidityAlertId            UseCaseId = "LowLiquidityAlert"
 	GetLiquidityRatioId            UseCaseId = "GetLiquidityRatio"
 	SetLiquidityRatioId            UseCaseId = "SetLiquidityRatio"
+	NodeReorgAlertId               UseCaseId = "NodeReorgAlert"
+	NodePeerAlertId                UseCaseId = "NodePeerAlert"
 )
 
 var (
@@ -103,6 +105,28 @@ var (
 	NonPositiveConfirmationKeyError     = errors.New("confirmation amount key must be positive")
 	NonPositiveReimbursementWindowError = errors.New("reimbursement window blocks must be positive")
 )
+
+type EffectiveAmountTooLowError struct {
+	EffectiveAmount    *entities.Wei
+	MinEffectiveAmount *entities.Wei
+	SuggestedAmount    *entities.Wei
+}
+
+func NewEffectiveAmountTooLowError(effectiveAmount, minEffectiveAmount, suggestedAmount *entities.Wei) *EffectiveAmountTooLowError {
+	return &EffectiveAmountTooLowError{
+		EffectiveAmount:    effectiveAmount,
+		MinEffectiveAmount: minEffectiveAmount,
+		SuggestedAmount:    suggestedAmount,
+	}
+}
+
+func (e *EffectiveAmountTooLowError) Error() string {
+	return fmt.Sprintf(
+		"Amount too low: after fees your effective amount is %s, but it must be at least %s.",
+		e.EffectiveAmount.String(),
+		e.MinEffectiveAmount.String(),
+	)
+}
 
 type RecommendedOperationResult struct {
 	RecommendedQuoteValue *entities.Wei

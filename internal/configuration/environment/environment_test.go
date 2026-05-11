@@ -35,6 +35,48 @@ func TestBtcEnv_GetNetworkParams(t *testing.T) {
 	})
 }
 
+func TestBtcEnv_FillWithDefaults(t *testing.T) {
+	t.Run("should fill with default max reorg depth when zero", func(t *testing.T) {
+		env := &environment.BtcEnv{MaxReorgDepth: 0}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(2), defaults.MaxReorgDepth)
+	})
+	t.Run("should fill with default min peers when zero", func(t *testing.T) {
+		env := &environment.BtcEnv{MinPeers: 0}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(5), defaults.MinPeers)
+	})
+	t.Run("should keep custom min peers when set", func(t *testing.T) {
+		env := &environment.BtcEnv{MinPeers: 10}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(10), defaults.MinPeers)
+	})
+}
+
+func TestNodeReorgEnv_FillWithDefaults(t *testing.T) {
+	env := &environment.NodeReorgEnv{AlertCooldownSeconds: 0}
+	defaults := env.FillWithDefaults()
+	require.Equal(t, uint64(30*60), defaults.AlertCooldownSeconds)
+}
+
+func TestRskEnv_FillWithDefaults(t *testing.T) {
+	t.Run("should fill with default max reorg depth when zero", func(t *testing.T) {
+		env := &environment.RskEnv{MaxReorgDepth: 0}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(2), defaults.MaxReorgDepth)
+	})
+	t.Run("should fill with default min peers when zero", func(t *testing.T) {
+		env := &environment.RskEnv{MinPeers: 0}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(3), defaults.MinPeers)
+	})
+	t.Run("should keep custom min peers when set", func(t *testing.T) {
+		env := &environment.RskEnv{MinPeers: 10}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(10), defaults.MinPeers)
+	})
+}
+
 func TestEclipseEnv_FillWithDefaults(t *testing.T) {
 	env := &environment.EclipseEnv{
 		RskToleranceThreshold:    0,

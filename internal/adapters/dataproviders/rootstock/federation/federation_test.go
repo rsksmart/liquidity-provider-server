@@ -130,7 +130,7 @@ func TestDerivationComplete(t *testing.T) {
 
 		err = federation.ValidateRedeemScript(fedInfo, *test.NetworkParams, fedRedeemScript)
 		require.NoError(t, err)
-		require.EqualValues(t, test.ExpectedAddressHash, address.EncodeAddress())
+		require.Equal(t, test.ExpectedAddressHash, address.EncodeAddress())
 	}
 }
 
@@ -171,7 +171,7 @@ func TestLegacyDerivationComplete(t *testing.T) {
 
 		err = federation.ValidateRedeemScript(fedInfo, *test.NetworkParams, fedRedeemScript)
 		require.NoError(t, err)
-		require.EqualValues(t, test.ExpectedP2SHAddressHash, address.EncodeAddress())
+		require.Equal(t, test.ExpectedP2SHAddressHash, address.EncodeAddress())
 	}
 }
 
@@ -205,10 +205,10 @@ func TestBuildPowPegRedeemScript(t *testing.T) {
 	assert.True(t, checkSubstrings(scriptString, fedInfo.PubKeys...))
 
 	op2 := fmt.Sprintf("%02x", txscript.OP_2)
-	assert.EqualValues(t, scriptString[0:2], op2)
+	assert.Equal(t, scriptString[0:2], op2)
 
 	op3 := fmt.Sprintf("%02x", txscript.OP_3)
-	assert.EqualValues(t, scriptString[len(scriptString)-4:len(scriptString)-2], op3)
+	assert.Equal(t, scriptString[len(scriptString)-4:len(scriptString)-2], op3)
 
 	sort.Slice(fedInfo.PubKeys, func(i, j int) bool {
 		return fedInfo.PubKeys[i] < fedInfo.PubKeys[j]
@@ -218,7 +218,7 @@ func TestBuildPowPegRedeemScript(t *testing.T) {
 	require.NoError(t, err)
 	str2 := hex.EncodeToString(buf2.Bytes())
 
-	assert.EqualValues(t, str2, scriptString)
+	assert.Equal(t, str2, scriptString)
 }
 
 func TestBuildErpRedeemScript(t *testing.T) {
@@ -229,7 +229,7 @@ func TestBuildErpRedeemScript(t *testing.T) {
 
 	scriptString := hex.EncodeToString(fedRedeemScript.Bytes())
 	assert.True(t, checkSubstrings(scriptString, fedInfo.ErpKeys...))
-	assert.EqualValues(t, powpegErpScriptString, scriptString)
+	assert.Equal(t, powpegErpScriptString, scriptString)
 }
 
 func TestBuildFlyoverErpRedeemScript(t *testing.T) {
@@ -247,7 +247,7 @@ func TestBuildFlyoverErpRedeemScript(t *testing.T) {
 
 	str := hex.EncodeToString(flyoverScript)
 	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
-	assert.EqualValues(t, flyoverErpScriptString, str)
+	assert.Equal(t, flyoverErpScriptString, str)
 }
 
 func TestBuildFlyoverErpRedeemScriptFallback(t *testing.T) {
@@ -265,7 +265,7 @@ func TestBuildFlyoverErpRedeemScriptFallback(t *testing.T) {
 
 	str := hex.EncodeToString(flyoverScript)
 	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
-	assert.EqualValues(t, flyoverErpScriptString, str)
+	assert.Equal(t, flyoverErpScriptString, str)
 }
 
 func TestBuildPowPegAddressHash(t *testing.T) {
@@ -276,13 +276,13 @@ func TestBuildPowPegAddressHash(t *testing.T) {
 
 	str := hex.EncodeToString(buf.Bytes())
 	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
-	assert.EqualValues(t, powPegScriptString, str)
+	assert.Equal(t, powPegScriptString, str)
 
 	address, err := bitcoin.ScriptToAddressP2shP2wsh(buf.Bytes(), &chaincfg.MainNetParams)
 	require.NoError(t, err)
 
 	// we expect the address of just the multisig, not the erp part
-	assert.EqualValues(t, "3MxszLu3ZPvWY81ZXD5vAzd4yZRgSuQdpN", address.EncodeAddress())
+	assert.Equal(t, "3MxszLu3ZPvWY81ZXD5vAzd4yZRgSuQdpN", address.EncodeAddress())
 }
 
 func TestBuildFlyoverPowPegAddressHash(t *testing.T) {
@@ -300,12 +300,12 @@ func TestBuildFlyoverPowPegAddressHash(t *testing.T) {
 
 	str := hex.EncodeToString(flyoverScript)
 	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
-	assert.EqualValues(t, flyoverErpScriptString, str)
+	assert.Equal(t, flyoverErpScriptString, str)
 
 	address, err := bitcoin.ScriptToAddressP2shP2wsh(flyoverScript, &chaincfg.MainNetParams)
 	require.NoError(t, err)
 	expectedAddr := "3DuAtiHNNvbyb4D3pbW8z41VZT7X78TMa8"
-	assert.EqualValues(t, expectedAddr, address.EncodeAddress())
+	assert.Equal(t, expectedAddr, address.EncodeAddress())
 }
 
 func TestBuildFlyoverErpAddressHash(t *testing.T) {
@@ -322,12 +322,12 @@ func TestBuildFlyoverErpAddressHash(t *testing.T) {
 
 	str := hex.EncodeToString(flyoverScript)
 	assert.True(t, checkSubstrings(str, fedInfo.ErpKeys...))
-	assert.EqualValues(t, flyoverErpScriptString, str)
+	assert.Equal(t, flyoverErpScriptString, str)
 
 	address, err := btcutil.NewAddressScriptHash(flyoverScript, &chaincfg.MainNetParams)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, flyoverDerivationAddress, address.EncodeAddress())
+	assert.Equal(t, flyoverDerivationAddress, address.EncodeAddress())
 }
 
 func TestBuildFlyoverErpAddressHashFallback(t *testing.T) {
@@ -344,12 +344,12 @@ func TestBuildFlyoverErpAddressHashFallback(t *testing.T) {
 
 	str := hex.EncodeToString(flyoverScript)
 	assert.True(t, checkSubstrings(str, fedInfo.PubKeys...))
-	assert.EqualValues(t, flyoverErpScriptString, str)
+	assert.Equal(t, flyoverErpScriptString, str)
 
 	address, err := btcutil.NewAddressScriptHash(flyoverScript, &chaincfg.MainNetParams)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, flyoverDerivationAddress, address.EncodeAddress())
+	assert.Equal(t, flyoverDerivationAddress, address.EncodeAddress())
 }
 
 func TestGetDerivedBitcoinAddress(t *testing.T) {
@@ -383,7 +383,7 @@ func TestGetDerivedBitcoinAddress(t *testing.T) {
 		derivationValue := federation.GetDerivationValueHash(derivationArgs)
 		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, *params, fedRedeemScript, derivationValue)
 		require.NoError(t, err)
-		assert.EqualValues(t, test.ExpectedAddressHash, derivation.Address)
+		assert.Equal(t, test.ExpectedAddressHash, derivation.Address)
 	}
 }
 
@@ -419,7 +419,7 @@ func TestGetLegacyDerivedBitcoinAddress(t *testing.T) {
 		derivationValue := federation.GetDerivationValueHash(derivationArgs)
 		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, *params, fedRedeemScript, derivationValue)
 		require.NoError(t, err)
-		assert.EqualValues(t, test.ExpectedP2SHAddressHash, derivation.Address)
+		assert.Equal(t, test.ExpectedP2SHAddressHash, derivation.Address)
 	}
 }
 
@@ -435,7 +435,7 @@ func TestCalculateFlyoverDerivationAddress_ErrorHandling(t *testing.T) {
 		fedInfo := mocks.GetFakeFedInfo()
 		fedInfo.FedAddress = federationMainnetAddress
 		derivation, err := federation.CalculateFlyoverDerivationAddress(fedInfo, chaincfg.MainNetParams, []byte{}, derivationBytes)
-		assert.EqualValues(t, flyoverErpScriptString, derivation.RedeemScript)
+		assert.Equal(t, flyoverErpScriptString, derivation.RedeemScript)
 		require.NoError(t, err)
 	})
 

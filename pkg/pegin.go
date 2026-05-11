@@ -8,7 +8,7 @@ import (
 
 type PeginQuoteRequest struct {
 	CallEoaOrContractAddress string   `json:"callEoaOrContractAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"Contract address or EOA address"`
-	CallContractArguments    string   `json:"callContractArguments" required:"" validate:"" example:"0x0" description:"Contract data"`
+	CallContractArguments    string   `json:"callContractArguments" required:"" validate:"omitempty,max=8194" example:"0x0" description:"Contract data"`
 	ValueToTransfer          *big.Int `json:"valueToTransfer" required:"" validate:"required" example:"0x0" description:"Value to send in the call"`
 	RskRefundAddress         string   `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"User RSK refund address"`
 }

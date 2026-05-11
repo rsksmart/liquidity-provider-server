@@ -36,11 +36,11 @@ func TestInitializeStateConfigurationUseCase_Run_StateConfigAlreadyExists(t *tes
 
 	existingUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
 	existingConfig := lpEntity.StateConfiguration{
-		LastBtcToColdWalletTransfer:   existingUnix,
-		LastRbtcToColdWalletTransfer:  existingUnix,
-		BtcColdWalletAddressHash:      initHashAddress(test.AnyBtcAddress),
-		RskColdWalletAddressHash:      initHashAddress(test.AnyRskAddress),
-		BtcLiquidityTargetPercentage:  50,
+		LastBtcToColdWalletTransfer:  existingUnix,
+		LastRbtcToColdWalletTransfer: existingUnix,
+		BtcColdWalletAddressHash:     initHashAddress(test.AnyBtcAddress),
+		RskColdWalletAddressHash:     initHashAddress(test.AnyRskAddress),
+		BtcLiquidityTargetPercentage: 50,
 	}
 
 	providerMock.On("StateConfiguration", test.AnyCtx).Return(existingConfig, nil).Once()

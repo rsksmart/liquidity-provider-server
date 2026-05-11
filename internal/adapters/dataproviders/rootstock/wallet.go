@@ -159,7 +159,7 @@ func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *
 	}
 
 	if receipt.Status == 0 {
-		return transactionReceipt, fmt.Errorf("send rbtc error: transaction reverted (%s)", receipt.TxHash.String())
+		return transactionReceipt, fmt.Errorf("%w: send rbtc error: transaction reverted (%s)", blockchain.TxFailedError, receipt.TxHash.String())
 	}
 
 	return transactionReceipt, nil

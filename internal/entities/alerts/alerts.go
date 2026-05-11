@@ -14,6 +14,8 @@ const (
 	AlertSubjectHotToColdTransfer             = "Hot to cold wallet transfer executed"
 	AlertSubjectHotWalletLowLiquidityWarning  = "Hot wallet: Low liquidity, refill recommended"
 	AlertSubjectHotWalletLowLiquidityCritical = "Hot wallet: Critical low liquidity, refill required"
+	AlertSubjectNodeReorg                     = "Node Blockchain Reorganization"
+	AlertSubjectLowPeers                      = "Node Low Peer Count"
 )
 
 type AlertSender interface {

@@ -11,11 +11,10 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
-type DepositParser = func(receipt blockchain.TransactionReceipt) (blockchain.ParsedLog[quote.PegoutDeposit], error)
+type DepositParser = func(receipt blockchain.TransactionReceipt, quoteHash string, lbcAddress string) (blockchain.ParsedLog[quote.PegoutDeposit], error)
 
 type SendPegoutUseCase struct {
 	btcWallet       blockchain.BitcoinWallet
@@ -292,13 +291,9 @@ func (useCase *SendPegoutUseCase) validateDepositEvent(
 	retainedQuote *quote.RetainedPegoutQuote,
 	pegoutQuote *quote.PegoutQuote,
 ) error {
-	depositEvent, err := useCase.depositParser(receipt)
+	depositEvent, err := useCase.depositParser(receipt, retainedQuote.QuoteHash, pegoutQuote.LbcAddress)
 	if err != nil {
 		return err
-	} else if !strings.EqualFold(depositEvent.RawLog.Address, pegoutQuote.LbcAddress) {
-		return errors.New("invalid LBC address")
-	} else if !utils.CompareIgnore0x(depositEvent.Log.QuoteHash, retainedQuote.QuoteHash) {
-		return errors.New("deposit belongs to other quote")
 	} else if depositEvent.Log.Amount.Cmp(pegoutQuote.Total()) < 0 {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
 		return usecases.InsufficientAmountError

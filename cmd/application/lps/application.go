@@ -71,13 +71,11 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	if err != nil {
 		log.Fatal("Error creating BTC registry:", err)
 	}
-
 	dbRegistry := registry.NewDatabaseRegistry(dbConnection)
 	rootstockRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactory, timeouts)
 	if err != nil {
 		log.Fatal("Error creating Rootstock registry:", err)
 	}
-
 	messagingRegistry := registry.NewMessagingRegistry(initCtx, env, rskClient, btcConnection, externalClients)
 	lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rootstockRegistry, btcRegistry, messagingRegistry, walletFactory)
 	if err != nil {
@@ -178,10 +176,16 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		app.watcherRegistry.PenalizationAlertWatcher,
 		app.watcherRegistry.PegoutBridgeWatcher,
 		app.watcherRegistry.BtcReleaseWatcher,
+		app.watcherRegistry.BitcoinPeerWatcher,
+		app.watcherRegistry.RootstockPeerWatcher,
 		app.watcherRegistry.QuoteMetricsWatcher,
+		app.watcherRegistry.PeerMetricsWatcher,
 		app.watcherRegistry.AssetReportWatcher,
 		app.watcherRegistry.TransferColdWalletWatcher,
 		app.watcherRegistry.ColdWalletMetricsWatcher,
+		app.watcherRegistry.BitcoinReorgWatcher,
+		app.watcherRegistry.RootstockReorgWatcher,
+		app.watcherRegistry.ReorgMetricsWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {

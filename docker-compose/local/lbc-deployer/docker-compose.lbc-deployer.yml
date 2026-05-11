@@ -1,0 +1,26 @@
+services:
+  lbc-deployer:
+    build:
+      context: ./lbc-deployer
+      args:
+        LBC_COMMIT: "${LBC_COMMIT}"
+    image: lbc-deployer:latest
+    pull_policy: build
+    volumes:
+      - ./lbc-deployer/scripts:/scripts
+      - ./${ENV_FILE}:/${ENV_FILE}
+    entrypoint: [ "/scripts/deploy.sh" ]
+    container_name: lbc-deployer
+    restart: "no"
+    environment:
+      - RSK_ENDPOINT
+      - ENV_FILE
+      - DEPLOYER_MNEMONIC
+    depends_on:
+      wallet-funder:
+        condition: service_completed_successfully
+    networks:
+      - net_lps
+networks:
+  net_lps:
+    driver: "bridge"

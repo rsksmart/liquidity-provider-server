@@ -91,6 +91,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		RequiredLiquidity:   requiredLiquidity,
 		State:               quote.PegoutStateWaitingForDeposit,
 		OwnerAccountAddress: trustedAccount.Address,
+		RemainingToRefund:   pegoutQuote.Total(),
 	}
 	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, quoteHash)
 	if err = useCase.publishQuote(ctx, pegoutQuote, retainedQuote, creationData); err != nil {
