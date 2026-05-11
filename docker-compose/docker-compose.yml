@@ -95,7 +95,7 @@ services:
       - ERP_KEYS
       - USE_SEGWIT_FEDERATION
       - ACCOUNT_NUM
-      - KEY_SECRET
+      - WALLET_SECRET
       - PASSWORD_SECRET
       - BTC_NETWORK
       - BTC_USERNAME
