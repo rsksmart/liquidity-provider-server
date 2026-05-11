@@ -2,7 +2,6 @@ package monitoring
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 )
 
@@ -11,6 +10,8 @@ type Metrics struct {
 	PegoutQuotesMetric            *prometheus.CounterVec
 	ServerInfoMetric              *prometheus.GaugeVec
 	AssetsMetrics                 *prometheus.GaugeVec
+	ColdWalletTransfersMetric     *prometheus.CounterVec
+	ColdWalletLastAmountMetric    *prometheus.GaugeVec
 	NodeReorgDepthMetric          *prometheus.GaugeVec
 	NodeReorgMaxDepthMetric       *prometheus.GaugeVec
 	NodeReorgAboveThresholdMetric *prometheus.GaugeVec
@@ -88,6 +89,7 @@ func newNodePeerMetrics() (
 	return
 }
 
+// nolint:funlen
 func NewMetrics(reg prometheus.Registerer) *Metrics {
 	reorg := newNodeReorgMetrics()
 	peerCount, minThreshold, belowThreshold, checkErrors, peerAlerts := newNodePeerMetrics()
@@ -120,6 +122,20 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			},
 			[]string{"currency", "type"},
 		),
+		ColdWalletTransfersMetric: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "lps_cold_wallet_transfers",
+				Help: "Cold wallet transfers executed by reason",
+			},
+			[]string{"currency", "reason"},
+		),
+		ColdWalletLastAmountMetric: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "lps_cold_wallet_last_transfer_amount",
+				Help: "Amount transferred in last cold wallet transfer (in BTC/RBTC units)",
+			},
+			[]string{"currency"},
+		),
 		NodeReorgDepthMetric:          reorg.Depth,
 		NodeReorgMaxDepthMetric:       reorg.MaxDepth,
 		NodeReorgAboveThresholdMetric: reorg.AboveThreshold,
@@ -137,6 +153,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		appMetrics.PeginQuotesMetric,
 		appMetrics.ServerInfoMetric,
 		appMetrics.AssetsMetrics,
+		appMetrics.ColdWalletTransfersMetric,
+		appMetrics.ColdWalletLastAmountMetric,
 		reorg.Depth,
 		reorg.MaxDepth,
 		reorg.AboveThreshold,
@@ -167,31 +185,31 @@ func (m *Metrics) IncrementNodeReorgAlert(node string) {
 
 func (m *Metrics) UpdateAssetsFromReport(report reports.GetAssetsReportResult) {
 	// RBTC metrics - Total
-	m.AssetsMetrics.WithLabelValues("rbtc", "total").Set(weiToBtcFloat64(report.RbtcAssetReport.Total))
+	m.AssetsMetrics.WithLabelValues(MetricLabelRbtc, MetricLabelTotal).Set(report.RbtcAssetReport.Total.ToRbtcFloat64())
 
 	// RBTC Location metrics
-	m.AssetsMetrics.WithLabelValues("rbtc", "location_rsk_wallet").Set(weiToBtcFloat64(report.RbtcAssetReport.Location.RskWallet))
-	m.AssetsMetrics.WithLabelValues("rbtc", "location_lbc").Set(weiToBtcFloat64(report.RbtcAssetReport.Location.Lbc))
-	m.AssetsMetrics.WithLabelValues("rbtc", "location_federation").Set(weiToBtcFloat64(report.RbtcAssetReport.Location.Federation))
+	m.AssetsMetrics.WithLabelValues(MetricLabelRbtc, MetricLabelLocationRskWallet).Set(report.RbtcAssetReport.Location.RskWallet.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelRbtc, MetricLabelLocationLbc).Set(report.RbtcAssetReport.Location.Lbc.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelRbtc, MetricLabelLocationFederation).Set(report.RbtcAssetReport.Location.Federation.ToRbtcFloat64())
 
 	// RBTC Allocation metrics
-	m.AssetsMetrics.WithLabelValues("rbtc", "allocation_reserved_for_users").Set(weiToBtcFloat64(report.RbtcAssetReport.Allocation.ReservedForUsers))
-	m.AssetsMetrics.WithLabelValues("rbtc", "allocation_waiting_refund").Set(weiToBtcFloat64(report.RbtcAssetReport.Allocation.WaitingForRefund))
-	m.AssetsMetrics.WithLabelValues("rbtc", "allocation_available").Set(weiToBtcFloat64(report.RbtcAssetReport.Allocation.Available))
+	m.AssetsMetrics.WithLabelValues(MetricLabelRbtc, MetricLabelAllocationReservedForUsers).Set(report.RbtcAssetReport.Allocation.ReservedForUsers.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelRbtc, MetricLabelAllocationWaitingRefund).Set(report.RbtcAssetReport.Allocation.WaitingForRefund.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelRbtc, MetricLabelAllocationAvailable).Set(report.RbtcAssetReport.Allocation.Available.ToRbtcFloat64())
 
 	// BTC metrics - Total
-	m.AssetsMetrics.WithLabelValues("btc", "total").Set(weiToBtcFloat64(report.BtcAssetReport.Total))
+	m.AssetsMetrics.WithLabelValues(MetricLabelBtc, MetricLabelTotal).Set(report.BtcAssetReport.Total.ToRbtcFloat64())
 
 	// BTC Location metrics
-	m.AssetsMetrics.WithLabelValues("btc", "location_btc_wallet").Set(weiToBtcFloat64(report.BtcAssetReport.Location.BtcWallet))
-	m.AssetsMetrics.WithLabelValues("btc", "location_federation").Set(weiToBtcFloat64(report.BtcAssetReport.Location.Federation))
-	m.AssetsMetrics.WithLabelValues("btc", "location_rsk_wallet").Set(weiToBtcFloat64(report.BtcAssetReport.Location.RskWallet))
-	m.AssetsMetrics.WithLabelValues("btc", "location_lbc").Set(weiToBtcFloat64(report.BtcAssetReport.Location.Lbc))
+	m.AssetsMetrics.WithLabelValues(MetricLabelBtc, MetricLabelLocationBtcWallet).Set(report.BtcAssetReport.Location.BtcWallet.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelBtc, MetricLabelLocationFederation).Set(report.BtcAssetReport.Location.Federation.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelBtc, MetricLabelLocationRskWallet).Set(report.BtcAssetReport.Location.RskWallet.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelBtc, MetricLabelLocationLbc).Set(report.BtcAssetReport.Location.Lbc.ToRbtcFloat64())
 
 	// BTC Allocation metrics
-	m.AssetsMetrics.WithLabelValues("btc", "allocation_reserved_for_users").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.ReservedForUsers))
-	m.AssetsMetrics.WithLabelValues("btc", "allocation_waiting_refund").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.WaitingForRefund))
-	m.AssetsMetrics.WithLabelValues("btc", "allocation_available").Set(weiToBtcFloat64(report.BtcAssetReport.Allocation.Available))
+	m.AssetsMetrics.WithLabelValues(MetricLabelBtc, MetricLabelAllocationReservedForUsers).Set(report.BtcAssetReport.Allocation.ReservedForUsers.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelBtc, MetricLabelAllocationWaitingRefund).Set(report.BtcAssetReport.Allocation.WaitingForRefund.ToRbtcFloat64())
+	m.AssetsMetrics.WithLabelValues(MetricLabelBtc, MetricLabelAllocationAvailable).Set(report.BtcAssetReport.Allocation.Available.ToRbtcFloat64())
 }
 
 func (m *Metrics) UpdateNodePeerStatus(node string, currentPeers float64, minPeers float64, belowThreshold bool) {
@@ -210,10 +228,4 @@ func (m *Metrics) IncrementNodePeerCheckError(node string) {
 
 func (m *Metrics) IncrementNodePeerAlert(node string) {
 	m.NodePeerAlerts.WithLabelValues(node).Inc()
-}
-
-func weiToBtcFloat64(weiValue *entities.Wei) float64 {
-	asRbtc := weiValue.ToRbtc()
-	asFloat, _ := asRbtc.Float64()
-	return asFloat
 }

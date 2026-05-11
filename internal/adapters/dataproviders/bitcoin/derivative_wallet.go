@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	changePosition     = 2
-	DerivativeWalletId = "rsk-wallet"
+	changePositionSimple       = 1 // For transactions without OP_RETURN (2 outputs: recipient + change)
+	changePositionWithOpReturn = 2 // For transactions with OP_RETURN (3 outputs: recipient + OP_RETURN + change)
+	DerivativeWalletId         = "rsk-wallet"
 )
 
 type DerivativeWallet struct {
@@ -139,7 +140,7 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 
 	opts := btcjson.WalletCreateFundedPsbtOpts{
 		ChangeAddress:   btcjson.String(changeAddress.EncodeAddress()),
-		ChangePosition:  btcjson.Int64(changePosition),
+		ChangePosition:  btcjson.Int64(changePositionWithOpReturn),
 		IncludeWatching: btcjson.Bool(true),
 		FeeRate:         feeRate,
 	}
@@ -191,6 +192,46 @@ func (wallet *DerivativeWallet) GetBalance() (*entities.Wei, error) {
 	return balance, nil
 }
 
+func (wallet *DerivativeWallet) Send(address string, value *entities.Wei) (blockchain.BitcoinTransactionResult, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
+	}
+
+	rawTx, err := wallet.buildRawTransaction(address, value)
+	if err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
+	}
+
+	opts, err := wallet.buildFundRawTransactionOpts(changePositionSimple)
+	if err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
+	}
+	fundedTx, err := wallet.conn.client.FundRawTransaction(rawTx, opts, nil)
+	if err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
+	}
+
+	signedTx, err := wallet.signFundedTransaction(fundedTx)
+	if err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
+	}
+
+	log.Infof("Sending %v BTC to %s\n", value.ToRbtc(), address)
+	txHash, err := wallet.conn.client.SendRawTransaction(signedTx, false)
+	if err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
+	}
+
+	// Convert fee from satoshis to wei
+	feeSatoshis := uint64(fundedTx.Fee)
+	feeWei := entities.SatoshiToWei(feeSatoshis)
+
+	return blockchain.BitcoinTransactionResult{
+		Hash: txHash.String(),
+		Fee:  feeWei,
+	}, nil
+}
+
 func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (blockchain.BitcoinTransactionResult, error) {
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
@@ -201,7 +242,7 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 		return blockchain.BitcoinTransactionResult{}, err
 	}
 
-	opts, err := wallet.buildFundRawTransactionOpts()
+	opts, err := wallet.buildFundRawTransactionOpts(changePositionWithOpReturn)
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
@@ -290,7 +331,7 @@ func (wallet *DerivativeWallet) estimateFeeRate() (*float64, error) {
 	return btcjson.Float64(utils.RoundToNDecimals(*estimationResult.FeeRate, estimationMaxDecimals)), nil
 }
 
-func (wallet *DerivativeWallet) buildFundRawTransactionOpts() (btcjson.FundRawTransactionOpts, error) {
+func (wallet *DerivativeWallet) buildFundRawTransactionOpts(changePos int) (btcjson.FundRawTransactionOpts, error) {
 	feeRate, err := wallet.estimateFeeRate()
 	if err != nil {
 		return btcjson.FundRawTransactionOpts{}, err
@@ -301,7 +342,7 @@ func (wallet *DerivativeWallet) buildFundRawTransactionOpts() (btcjson.FundRawTr
 	}
 	return btcjson.FundRawTransactionOpts{
 		ChangeAddress:   btcjson.String(changeAddress.EncodeAddress()),
-		ChangePosition:  btcjson.Int(changePosition),
+		ChangePosition:  btcjson.Int(changePos),
 		IncludeWatching: btcjson.Bool(true),
 		LockUnspents:    btcjson.Bool(true),
 		FeeRate:         feeRate,
@@ -330,6 +371,22 @@ func (wallet *DerivativeWallet) signFundedTransaction(fundedTx *btcjson.FundRawT
 		return nil, signingErr
 	}
 	return signedTx, nil
+}
+
+func (wallet *DerivativeWallet) buildRawTransaction(address string, value *entities.Wei) (*wire.MsgTx, error) {
+	decodedAddress, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
+	if err != nil {
+		return nil, err
+	}
+
+	satoshis, _ := value.ToSatoshi().Float64()
+	output := map[btcutil.Address]btcutil.Amount{decodedAddress: btcutil.Amount(satoshis)}
+	rawTx, err := wallet.conn.client.CreateRawTransaction(nil, output, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return rawTx, nil
 }
 
 func (wallet *DerivativeWallet) buildRawTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (*wire.MsgTx, error) {
