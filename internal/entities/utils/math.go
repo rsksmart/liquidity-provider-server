@@ -34,7 +34,7 @@ func RoundToNDecimals(value float64, decimals uint) float64 {
 }
 
 // ApplyPercentageIncrease calculates value * (1 + percentage/100) using integer arithmetic
-// to avoid floating-point precision issues.
+// to avoid floating-point precision issues. This function assumes a maximum of two decimal places for the percentage.
 //
 // The calculation uses a scale factor (Scale constant = 10_000) for precision:
 // result = value * (Scale + basisPoints) / Scale

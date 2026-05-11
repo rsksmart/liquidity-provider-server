@@ -3,7 +3,7 @@ package cold_wallet
 type ColdWalletType string
 
 const (
-	StaticColdWalletType ColdWalletType = "StaticColdWallet"
+	StaticColdWalletType ColdWalletType = "static"
 )
 
 type ColdWallet interface {

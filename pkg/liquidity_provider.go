@@ -89,7 +89,7 @@ type GeneralConfigurationDTO struct {
 type ExcessToleranceDTO struct {
 	IsFixed         bool     `json:"isFixed"`
 	PercentageValue *float64 `json:"percentageValue" validate:"required,numeric,gte=0,lte=100,max_decimal_places=2"`
-	FixedValue      string   `json:"fixedValue" validate:"required,numeric,excludes=-"`
+	FixedValue      string   `json:"fixedValue" validate:"required,numeric,non_negative_bigint"`
 }
 
 type LoginRequest struct {

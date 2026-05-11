@@ -11,7 +11,7 @@ import (
 
 func Create(rpc blockchain.Rpc, config secrets.ColdWalletConfiguration) (cold_wallet.ColdWallet, error) {
 	switch config.Type {
-	case "static":
+	case string(cold_wallet.StaticColdWalletType):
 		var args cold_wallet.StaticColdWalletArgs
 		if err := json.Unmarshal(config.Configuration, &args); err != nil {
 			return nil, fmt.Errorf("invalid %s cold wallet configuration: %w", config.Type, err)
