@@ -2,6 +2,7 @@ package watcher_test
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -32,12 +33,24 @@ var peginQuotes = []quote.PeginQuote{
 	{Nonce: 8},
 }
 
+var peginsCreationData = []quote.PeginCreationData{
+	{GasPrice: entities.NewWei(1)},
+	{GasPrice: entities.NewWei(2)},
+	{GasPrice: entities.NewWei(3)},
+	{GasPrice: entities.NewWei(4)},
+	{GasPrice: entities.NewWei(5)},
+	{GasPrice: entities.NewWei(6)},
+	{GasPrice: entities.NewWei(7)},
+}
+
 func TestGetWatchedPeginQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PeginStateWaitingForDeposit).
 		Return([]quote.RetainedPeginQuote{retainedQuotes[0], retainedQuotes[3]}, nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[0].QuoteHash).Return(&peginQuotes[0], nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[3].QuoteHash).Return(&peginQuotes[2], nil)
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[0].QuoteHash).Return(peginsCreationData[0])
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[3].QuoteHash).Return(peginsCreationData[3])
 	useCase := watcher.NewGetWatchedPeginQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PeginStateWaitingForDeposit)
 	quoteRepository.AssertExpectations(t)
@@ -58,6 +71,8 @@ func TestGetWatchedPeginQuoteUseCase_Run_WaitingForDepositConfirmations(t *testi
 		Return([]quote.RetainedPeginQuote{retainedQuotes[1], retainedQuotes[5]}, nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[1].QuoteHash).Return(&peginQuotes[1], nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[5].QuoteHash).Return(&peginQuotes[5], nil)
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[1].QuoteHash).Return(peginsCreationData[1])
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[5].QuoteHash).Return(peginsCreationData[5])
 	useCase := watcher.NewGetWatchedPeginQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PeginStateWaitingForDepositConfirmations)
 	quoteRepository.AssertExpectations(t)
@@ -82,6 +97,10 @@ func TestGetWatchedPeginQuoteUseCase_Run_MoreThanOneState(t *testing.T) {
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[5].QuoteHash).Return(&peginQuotes[5], nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[0].QuoteHash).Return(&peginQuotes[0], nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[3].QuoteHash).Return(&peginQuotes[2], nil)
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[1].QuoteHash).Return(peginsCreationData[1])
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[5].QuoteHash).Return(peginsCreationData[5])
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[0].QuoteHash).Return(peginsCreationData[0])
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[3].QuoteHash).Return(peginsCreationData[3])
 	useCase := watcher.NewGetWatchedPeginQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations)
 	quoteRepository.AssertExpectations(t)
@@ -99,6 +118,7 @@ func TestGetWatchedPeginQuoteUseCase_Run_CallForUserSucceed(t *testing.T) {
 	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PeginStateCallForUserSucceeded).
 		Return([]quote.RetainedPeginQuote{retainedQuotes[2]}, nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedQuotes[2].QuoteHash).Return(&peginQuotes[3], nil)
+	quoteRepository.EXPECT().GetPeginCreationData(test.AnyCtx, retainedQuotes[2].QuoteHash).Return(peginsCreationData[2])
 	useCase := watcher.NewGetWatchedPeginQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PeginStateCallForUserSucceeded)
 	quoteRepository.AssertExpectations(t)

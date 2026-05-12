@@ -66,30 +66,15 @@ services:
       - lp-swap-network
     command:
       [
-        "java",
-        "-Drpc.providers.web.ws.bind_address=0.0.0.0",
-        "-Drpc.providers.web.http.bind_address=0.0.0.0",
-        "-Drpc.providers.web.cors=*",
-        "-Drpc.providers.web.ws.enabled=true",
-        "-Drpc.providers.web.http.hosts.0=localhost",
-        "-Drpc.providers.web.http.hosts.1=rskj",
-        "-cp",
-        "rskj-core.jar",
-        "-Drsk.conf.file=rsk.conf",
-        "co.rsk.Start",
         "--regtest",
       ]
   lbc-deployer:
-    build:
-      context: ../../docker-compose/lbc-deployer
-      secrets:
-        - gh_token
-      args:
-        LBC_GIT_BRANCH: "${LBC_GIT_BRANCH:-master}"
-    image: lbc-deployer:latest
+    image: ghcr.io/rsksmart/liquidity-bridge-contract:${LBC_VERSION}
     container_name: lbc-deployer01
     environment:
-      - LPS_STAGE=regtest
+      - NETWORK_NAME=rskRegtest
+      - REGTEST_RPC_URL=${RSK_ENDPOINT}
+      - LPS_STAGE
     networks:
       - lp-swap-network
   ui:

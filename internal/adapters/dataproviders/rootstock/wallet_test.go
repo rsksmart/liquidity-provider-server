@@ -3,6 +3,10 @@ package rootstock_test
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
@@ -14,9 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 const (
@@ -72,8 +73,25 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 				return assert.NotNil(t, v) && assert.NotNil(t, r) && assert.NotNil(t, s)
 			})).Return(nil)
 			clientMock.On("PendingNonceAt", mock.Anything, walletAddress).Return(uint64(54), nil)
+			// Create a proper transaction with valid To address and Value
+			toAddr := common.HexToAddress(toAddress)
+			txData := &geth.LegacyTx{
+				To:    &toAddr,
+				Value: big.NewInt(89607151182921727),
+			}
+			mockTx := geth.NewTx(txData)
+			clientMock.On("TransactionByHash", mock.Anything, mock.Anything).
+				Return(mockTx, true, nil)
 			clientMock.On("TransactionReceipt", mock.AnythingOfType(timerContextString), common.HexToHash(txHash)).
-				Return(&geth.Receipt{Status: 1}, nil)
+				Return(&geth.Receipt{
+					TxHash:            common.HexToHash(txHash),
+					Status:            1,
+					BlockNumber:       big.NewInt(123),
+					BlockHash:         common.HexToHash("0x456"),
+					GasUsed:           21000,
+					CumulativeGasUsed: 50000,
+					EffectiveGasPrice: big.NewInt(65164000),
+				}, nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
 			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{
 				Value:    entities.NewWei(89607151182921727),
@@ -81,11 +99,26 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 				GasPrice: entities.NewWei(65164000),
 			}, toAddress)
 			require.NoError(t, err)
-			require.Equal(t, txHash, tx)
+
+			expectedReceipt := blockchain.TransactionReceipt{
+				TransactionHash:   txHash,
+				BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+				BlockNumber:       123,
+				From:              walletAddress.String(),
+				To:                common.HexToAddress(toAddress).String(), // Use normalized address format
+				CumulativeGasUsed: big.NewInt(50000),
+				GasUsed:           big.NewInt(21000),
+				Value:             entities.NewWei(89607151182921727),
+				GasPrice:          entities.NewWei(65164000),
+				Logs:              []blockchain.TransactionLog{},
+			}
+
+			assert.Equal(t, expectedReceipt, tx)
 		})
 	}
 }
 
+// nolint:funlen
 func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testing.T) {
 	return func(t *testing.T) {
 		const toAddress = "0x79568C2989232dcA1840087d73d403602364c0D4"
@@ -139,11 +172,42 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			clientMock := &mocks.RpcClientBindingMock{}
 			clientMock.On("SendTransaction", mock.Anything, mock.Anything).Return(nil)
 			clientMock.On("PendingNonceAt", mock.Anything, walletAddress).Return(uint64(54), nil)
-			clientMock.On("TransactionReceipt", mock.AnythingOfType(timerContextString), common.HexToHash(txHash)).Return(&geth.Receipt{Status: 0}, nil)
+			// Create a proper transaction with valid To address and Value for error case
+			toAddr := common.HexToAddress(toAddress)
+			txData := &geth.LegacyTx{
+				To:    &toAddr,
+				Value: big.NewInt(1),
+			}
+			mockTx := geth.NewTx(txData)
+			clientMock.On("TransactionByHash", mock.Anything, mock.Anything).
+				Return(mockTx, true, nil)
+			clientMock.On("TransactionReceipt", mock.AnythingOfType(timerContextString), common.HexToHash(txHash)).Return(&geth.Receipt{
+				TxHash:            common.HexToHash(txHash),
+				Status:            0,
+				BlockNumber:       big.NewInt(123),
+				BlockHash:         common.HexToHash("0x456"),
+				GasUsed:           21000,
+				CumulativeGasUsed: 50000,
+				EffectiveGasPrice: big.NewInt(5),
+			}, nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
 			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
-			require.ErrorContains(t, err, "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63 transaction failed")
-			require.Equal(t, txHash, tx)
+			require.ErrorContains(t, err, "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63")
+
+			expectedReceipt := blockchain.TransactionReceipt{
+				TransactionHash:   txHash,
+				BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
+				BlockNumber:       123,
+				From:              walletAddress.String(),
+				To:                common.HexToAddress(toAddress).String(), // Use normalized address format
+				CumulativeGasUsed: big.NewInt(50000),
+				GasUsed:           big.NewInt(21000),
+				Value:             entities.NewWei(1),
+				GasPrice:          entities.NewWei(5),
+				Logs:              []blockchain.TransactionLog{},
+			}
+
+			assert.Equal(t, expectedReceipt, tx)
 		})
 	}
 }

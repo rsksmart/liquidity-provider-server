@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"math/big"
-	"sync"
 )
 
 type CallForUserUseCase struct {
@@ -43,7 +44,12 @@ func NewCallForUserUseCase(
 func (useCase *CallForUserUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
 	var valueToSend *entities.Wei
 	var peginQuote *quote.PeginQuote
+	var creationData quote.PeginCreationData
 	var err error
+
+	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, err, true)
+	}
 
 	if retainedQuote.State != quote.PeginStateWaitingForDepositConfirmations {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, err, true)
@@ -54,6 +60,7 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, retainedQuote quote.
 	} else if peginQuote == nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PeginQuote{}, usecases.QuoteNotFoundError, false)
 	}
+	creationData = useCase.quoteRepository.GetPeginCreationData(ctx, retainedQuote.QuoteHash)
 
 	if err = useCase.validateBitcoinTx(ctx, peginQuote, retainedQuote); err != nil {
 		return err
@@ -66,7 +73,7 @@ func (useCase *CallForUserUseCase) Run(ctx context.Context, retainedQuote quote.
 		return err
 	}
 
-	retainedQuote, err = useCase.performCallForUser(valueToSend, peginQuote, retainedQuote)
+	retainedQuote, err = useCase.performCallForUser(valueToSend, peginQuote, retainedQuote, creationData)
 
 	if updateError := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); updateError != nil {
 		err = errors.Join(err, updateError)
@@ -96,6 +103,7 @@ func (useCase *CallForUserUseCase) publishErrorEvent(
 			Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
 			RetainedQuote: retainedQuote,
 			PeginQuote:    peginQuote,
+			CreationData:  quote.PeginCreationDataZeroValue(),
 			Error:         wrappedError,
 		})
 
@@ -111,7 +119,7 @@ func (useCase *CallForUserUseCase) calculateValueToSend(
 	var contractBalance, networkBalance *entities.Wei
 	var err error
 
-	if contractBalance, err = useCase.contracts.Lbc.GetBalance(useCase.peginProvider.RskAddress()); err != nil {
+	if contractBalance, err = useCase.contracts.PegIn.GetBalance(useCase.peginProvider.RskAddress()); err != nil {
 		return nil, useCase.publishErrorEvent(ctx, retainedQuote, peginQuote, err, true)
 	}
 
@@ -134,24 +142,31 @@ func (useCase *CallForUserUseCase) performCallForUser(
 	valueToSend *entities.Wei,
 	peginQuote *quote.PeginQuote,
 	retainedQuote quote.RetainedPeginQuote,
+	creationData quote.PeginCreationData,
 ) (quote.RetainedPeginQuote, error) {
 	var quoteState quote.PeginState
-	var callForUserTx string
+	var receipt blockchain.TransactionReceipt
 	var err error
 
 	config := blockchain.NewTransactionConfig(valueToSend, uint64(peginQuote.GasLimit+CallForUserExtraGas), nil)
-	if callForUserTx, err = useCase.contracts.Lbc.CallForUser(config, *peginQuote); err != nil {
+	if receipt, err = useCase.contracts.PegIn.CallForUser(config, *peginQuote); err != nil {
 		quoteState = quote.PeginStateCallForUserFailed
 	} else {
 		quoteState = quote.PeginStateCallForUserSucceeded
 	}
 
-	retainedQuote.CallForUserTxHash = callForUserTx
+	if receipt.TransactionHash != "" {
+		retainedQuote.CallForUserTxHash = receipt.TransactionHash
+		retainedQuote.CallForUserGasUsed = receipt.GasUsed.Uint64()
+		retainedQuote.CallForUserGasPrice = receipt.GasPrice
+	}
+
 	retainedQuote.State = quoteState
 	useCase.eventBus.Publish(quote.CallForUserCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
 		PeginQuote:    *peginQuote,
 		RetainedQuote: retainedQuote,
+		CreationData:  creationData,
 		Error:         err,
 	})
 	return retainedQuote, err
@@ -195,5 +210,20 @@ func (useCase *CallForUserUseCase) validateBitcoinTx(
 	if err = usecases.ValidateBridgeUtxoMin(useCase.contracts.Bridge, txInfo, retainedQuote.DepositAddress); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, !errors.Is(err, usecases.TxBelowMinimumError))
 	}
+
+	rawBtcTx, err := useCase.rpc.Btc.GetRawTransaction(retainedQuote.UserBtcTxHash)
+	if err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *peginQuote, err, true)
+	}
+	if len(rawBtcTx) > MaxPeginDepositTxSize {
+		return useCase.publishErrorEvent(
+			ctx,
+			retainedQuote,
+			*peginQuote,
+			fmt.Errorf("BTC tx is larger than allowed: %d bytes (maximum is %d bytes)", len(rawBtcTx), MaxPeginDepositTxSize),
+			false,
+		)
+	}
+
 	return nil
 }

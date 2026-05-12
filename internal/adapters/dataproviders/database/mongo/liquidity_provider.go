@@ -11,7 +11,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const LiquidityProviderCollection = "liquidityProvider"
+const (
+	LiquidityProviderCollection = "liquidityProvider"
+)
 
 type ConfigurationName string
 

@@ -106,3 +106,10 @@ func getClientAndCollectionMocks(collectionName string) (*mocks.DbClientBindingM
 	db.On("Collection", collectionName).Return(collection)
 	return client, collection
 }
+
+func getClientAndDatabaseMocks() (*mocks.DbClientBindingMock, *mocks.DbBindingMock) {
+	client := &mocks.DbClientBindingMock{}
+	db := &mocks.DbBindingMock{}
+	client.On("Database", mongo.DbName).Return(db)
+	return client, db
+}

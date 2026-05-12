@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -25,16 +26,19 @@ func TestStatusUseCase_Run(t *testing.T) {
 		CallForUserTxHash:   "cfu tx hash",
 		RegisterPeginTxHash: "register pegin tx hash",
 	}
+	creationData := quote.PeginCreationData{FeePercentage: utils.NewBigFloat64(12.5), GasPrice: entities.NewWei(300), FixedFee: entities.NewWei(150)}
 	t.Run("Get status of a pegin quote", func(t *testing.T) {
 		repo := new(mocks.PeginQuoteRepositoryMock)
 		useCase := pegin.NewStatusUseCase(repo)
 		repo.On("GetQuote", context.Background(), quoteHash).Return(&testPeginQuote, nil).Once()
 		repo.On("GetRetainedQuote", context.Background(), quoteHash).Return(&retainedPeginQuote, nil).Once()
+		repo.EXPECT().GetPeginCreationData(context.Background(), quoteHash).Return(creationData).Once()
 		result, err := useCase.Run(context.Background(), quoteHash)
 		require.NoError(t, err)
 		require.Equal(t, quote.WatchedPeginQuote{
 			PeginQuote:    testPeginQuote,
 			RetainedQuote: retainedPeginQuote,
+			CreationData:  creationData,
 		}, result)
 	})
 	t.Run("Return not found error", func(t *testing.T) {

@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"errors"
 	"fmt"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient"
@@ -53,16 +54,20 @@ func (wallet *WatchOnlyWallet) createWallet() (*btcjson.GetWalletInfoResult, err
 	return wallet.conn.client.GetWalletInfo()
 }
 
-func (wallet *WatchOnlyWallet) EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error) {
-	return nil, errors.New("cannot estimate from a watch-only wallet")
+func (wallet *WatchOnlyWallet) EstimateTxFees(toAddress string, value *entities.Wei) (blockchain.BtcFeeEstimation, error) {
+	return blockchain.BtcFeeEstimation{}, errors.New("cannot estimate from a watch-only wallet")
 }
 
 func (wallet *WatchOnlyWallet) GetBalance() (*entities.Wei, error) {
 	return nil, errors.New("cannot get balance of a watch-only wallet since it may be tracking address from multiple wallets")
 }
 
-func (wallet *WatchOnlyWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (string, error) {
-	return "", errors.New("cannot send from a watch-only wallet")
+func (wallet *WatchOnlyWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (blockchain.BitcoinTransactionResult, error) {
+	return blockchain.BitcoinTransactionResult{}, errors.New("cannot send from a watch-only wallet")
+}
+
+func (wallet *WatchOnlyWallet) CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error) {
+	return nil, errors.New("cannot create transactions from a watch-only wallet")
 }
 
 func (wallet *WatchOnlyWallet) ImportAddress(address string) error {

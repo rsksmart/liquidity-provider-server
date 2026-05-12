@@ -2,19 +2,20 @@ package watcher
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 )
 
 type QuoteCleanerWatcher struct {
 	cleanUseCase       *watcher.CleanExpiredQuotesUseCase
-	ticker             Ticker
+	ticker             utils.Ticker
 	watcherStopChannel chan bool
 }
 
 func NewQuoteCleanerWatcher(
 	cleanUseCase *watcher.CleanExpiredQuotesUseCase,
-	ticker Ticker,
+	ticker utils.Ticker,
 ) *QuoteCleanerWatcher {
 	watcherStopChannel := make(chan bool, 1)
 	return &QuoteCleanerWatcher{

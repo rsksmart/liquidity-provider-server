@@ -14,6 +14,14 @@ var (
 	SerializationError   = errors.New("error during value serialization")
 	IntegrityError       = errors.New("error during value integrity check, stored hash doesn't match actual hash")
 	validate             = validator.New(validator.WithRequiredStructEnabled())
+	DivideByZeroError    = errors.New("divide by zero error")
+)
+
+type NodeType = string
+
+const (
+	NodeTypeRootstock NodeType = "rootstock"
+	NodeTypeBitcoin   NodeType = "bitcoin"
 )
 
 func ValidateStruct(s any) error {

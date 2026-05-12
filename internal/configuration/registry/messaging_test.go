@@ -17,7 +17,7 @@ func TestNewMessagingRegistry(t *testing.T) {
 	btcConnection := bitcoin.NewConnection(&chaincfg.TestNet3Params, client)
 	rskConnBinging := new(mocks.RpcClientBindingMock)
 	rskClient := rootstock.NewRskClient(rskConnBinging)
-	messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, btcConnection)
+	messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, btcConnection, registry.ExternalRpc{})
 	assert.NotNil(t, messagingRegistry)
 	assert.NotEmpty(t, messagingRegistry.Rpc)
 	assert.NotNil(t, messagingRegistry.Rpc.Rsk)

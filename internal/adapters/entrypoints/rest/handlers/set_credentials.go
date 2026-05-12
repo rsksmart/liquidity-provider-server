@@ -1,22 +1,27 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"net/http"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
-	"net/http"
 )
+
+type SetCredentialsUseCase interface {
+	Run(ctx context.Context, oldCredentials, newCredentials lp.Credentials) error
+}
 
 // NewSetCredentialsHandler
 // @Title Set Login Credentials
 // @Description Set new credentials to log into the Management API
 // @Success 200 object
 // @Route /management/credentials [post]
-func NewSetCredentialsHandler(env environment.ManagementEnv, useCase *liquidity_provider.SetCredentialsUseCase) http.HandlerFunc {
+func NewSetCredentialsHandler(useCase SetCredentialsUseCase, sessionManager SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		request := pkg.CredentialsUpdateRequest{}
@@ -44,7 +49,7 @@ func NewSetCredentialsHandler(env environment.ManagementEnv, useCase *liquidity_
 			return
 		}
 
-		if err = closeManagementSession(req, w, env); err != nil {
+		if err = sessionManager.CloseSession(req, w); err != nil {
 			return
 		}
 		rest.JsonResponse(w, http.StatusOK)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -26,16 +27,19 @@ func TestStatusUseCase_Run(t *testing.T) {
 		RefundPegoutTxHash: "refund tx hash",
 		BridgeRefundTxHash: "bridge tx hash",
 	}
+	creationData := quote.PegoutCreationData{FeeRate: utils.NewBigFloat64(100.5), FeePercentage: utils.NewBigFloat64(0.5), GasPrice: entities.NewWei(100), FixedFee: entities.NewWei(100)}
 	t.Run("Get status of a pegout quote", func(t *testing.T) {
 		repo := new(mocks.PegoutQuoteRepositoryMock)
 		useCase := pegout.NewStatusUseCase(repo)
 		repo.On("GetQuote", context.Background(), quoteHash).Return(&pegoutQuote, nil).Once()
 		repo.On("GetRetainedQuote", context.Background(), quoteHash).Return(&retainedPegoutQuote, nil).Once()
+		repo.EXPECT().GetPegoutCreationData(context.Background(), quoteHash).Return(creationData).Once()
 		result, err := useCase.Run(context.Background(), quoteHash)
 		require.NoError(t, err)
 		require.Equal(t, quote.WatchedPegoutQuote{
 			PegoutQuote:   pegoutQuote,
 			RetainedQuote: retainedPegoutQuote,
+			CreationData:  creationData,
 		}, result)
 	})
 	t.Run("Return not found error", func(t *testing.T) {

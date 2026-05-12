@@ -1,17 +1,18 @@
 package handlers
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"html/template"
 	"net/http"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
@@ -21,12 +22,16 @@ const (
 	nonceBytes = 32
 )
 
+type GetManagementUiDataUseCase interface {
+	Run(ctx context.Context, loggedIn bool) (*liquidity_provider.ManagementTemplate, error)
+}
+
 // NewManagementInterfaceHandler
 // @Title Management Interface
 // @Description Serves the static site for the Management UI
 // @Success 200 object
 // @Route /management [get]
-func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions.Store, useCase *liquidity_provider.GetManagementUiDataUseCase) http.HandlerFunc {
+func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions.Store, useCase GetManagementUiDataUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		const errorGeneratingTemplate = "Error generating template: %v"
 		session, err := store.Get(req, cookies.ManagementSessionCookieName)

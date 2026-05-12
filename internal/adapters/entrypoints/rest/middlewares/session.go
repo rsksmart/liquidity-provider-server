@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"net/http"
+
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -8,7 +10,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 )
 
 type SessionMiddlewares struct {
@@ -31,7 +32,7 @@ func sessionMiddleware(store sessions.Store) func(next http.Handler) http.Handle
 			session, err := store.Get(r, cookies.ManagementSessionCookieName)
 			if err != nil {
 				jsonErr := rest.NewErrorResponseWithDetails("session validation error", rest.DetailsFromError(err), false)
-				rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+				rest.JsonErrorResponse(w, http.StatusForbidden, jsonErr)
 				return
 			} else if session.IsNew {
 				jsonErr := rest.NewErrorResponse("session not recognized", true)

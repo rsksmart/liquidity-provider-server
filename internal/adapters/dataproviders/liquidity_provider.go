@@ -1,11 +1,12 @@
 package dataproviders
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -14,7 +15,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"strings"
 )
 
 type LocalLiquidityProvider struct {
@@ -55,17 +55,41 @@ func (lp *LocalLiquidityProvider) BtcAddress() string {
 	return lp.btc.Address()
 }
 
-func (lp *LocalLiquidityProvider) SignQuote(quoteHash string) (string, error) {
-	var buf bytes.Buffer
-
-	hash, err := hex.DecodeString(quoteHash)
+func (lp *LocalLiquidityProvider) SignPeginQuote(ctx context.Context, quoteHash string) (string, error) {
+	var peginQuote *quote.PeginQuote
+	var err error
+	if peginQuote, err = lp.peginRepository.GetQuote(ctx, quoteHash); err != nil {
+		return "", err
+	} else if peginQuote == nil {
+		return "", usecases.QuoteNotFoundError
+	}
+	hash, err := lp.contracts.PegIn.HashPeginQuoteEIP712(*peginQuote)
 	if err != nil {
 		return "", err
 	}
 
-	buf.WriteString("\x19Ethereum Signed Message:\n32")
-	buf.Write(hash)
-	signatureBytes, err := lp.signer.SignBytes(crypto.Keccak256(buf.Bytes()))
+	signatureBytes, err := lp.signer.SignBytes(hash[:])
+	if err != nil {
+		return "", err
+	}
+	signatureBytes[len(signatureBytes)-1] += 27 // v must be 27 or 28
+	return hex.EncodeToString(signatureBytes), nil
+}
+
+func (lp *LocalLiquidityProvider) SignPegoutQuote(ctx context.Context, quoteHash string) (string, error) {
+	var pegoutQuote *quote.PegoutQuote
+	var err error
+	if pegoutQuote, err = lp.pegoutRepository.GetQuote(ctx, quoteHash); err != nil {
+		return "", err
+	} else if pegoutQuote == nil {
+		return "", usecases.QuoteNotFoundError
+	}
+	hash, err := lp.contracts.PegOut.HashPegoutQuoteEIP712(*pegoutQuote)
+	if err != nil {
+		return "", err
+	}
+
+	signatureBytes, err := lp.signer.SignBytes(hash[:])
 	if err != nil {
 		return "", err
 	}
@@ -83,7 +107,8 @@ func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requir
 		return nil
 	} else {
 		return fmt.Errorf(
-			"not enough liquidity, missing %s satoshi",
+			"%w, missing %s satoshi",
+			usecases.NoLiquidityError,
 			requiredLiquidity.Sub(requiredLiquidity, availableLiquidity).ToSatoshi().String(),
 		)
 	}
@@ -106,8 +131,12 @@ func (lp *LocalLiquidityProvider) AvailablePegoutLiquidity(ctx context.Context) 
 		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
 	}
 	log.Debugf("Locked Liquidity: %s satoshi", lockedLiquidity.ToSatoshi().String())
-	availableLiquidity := new(entities.Wei).Sub(liquidity, lockedLiquidity)
-	return availableLiquidity, nil
+
+	if liquidity.Cmp(lockedLiquidity) < 0 {
+		log.Warning("There is more locked liquidity than available liquidity! Review the currently available UTXOs and accepted quotes.")
+		return entities.NewWei(0), nil
+	}
+	return new(entities.Wei).Sub(liquidity, lockedLiquidity), nil
 }
 
 func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error {
@@ -134,13 +163,15 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 	if err != nil {
 		return nil, err
 	}
-	lpLbcBalance, err := lp.contracts.Lbc.GetBalance(lp.RskAddress())
+	lpLbcBalance, err := lp.contracts.PegIn.GetBalance(lp.RskAddress())
 	if err != nil {
 		return nil, err
 	}
 	liquidity.Add(lpRskBalance, lpLbcBalance)
 	log.Debugf("Liquidity: %s wei", liquidity.String())
-	peginQuotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx, quote.PeginStateWaitingForDeposit)
+	peginQuotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx,
+		quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -156,60 +187,59 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
 	}
 	log.Debugf("Locked Liquidity: %s wei", lockedLiquidity.String())
+
+	if liquidity.Cmp(lockedLiquidity) < 0 {
+		log.Warning("There is more locked liquidity than available liquidity! Review the RBTC locked in the contract, in the wallet and the accepted quotes.")
+		return entities.NewWei(0), nil
+	}
 	return new(entities.Wei).Sub(liquidity, lockedLiquidity), nil
 }
 
 func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liquidity_provider.GeneralConfiguration {
-	configuration, err := validateConfiguration("general", lp, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
 		return lp.lpRepository.GetGeneralConfiguration(ctx)
 	})
 	if err != nil {
+		lp.logConfigError("general", err)
 		return liquidity_provider.DefaultGeneralConfiguration()
 	}
 	return configuration.Value
 }
 
 func (lp *LocalLiquidityProvider) PegoutConfiguration(ctx context.Context) liquidity_provider.PegoutConfiguration {
-	configuration, err := validateConfiguration("pegout", lp, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.PegoutConfiguration], error) {
 		return lp.lpRepository.GetPegoutConfiguration(ctx)
 	})
 	if err != nil {
+		lp.logConfigError("pegout", err)
 		return liquidity_provider.DefaultPegoutConfiguration()
 	}
 	return configuration.Value
 }
 
 func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquidity_provider.PeginConfiguration {
-	configuration, err := validateConfiguration("pegin", lp, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.PeginConfiguration], error) {
 		return lp.lpRepository.GetPeginConfiguration(ctx)
 	})
 	if err != nil {
+		lp.logConfigError("pegin", err)
 		return liquidity_provider.DefaultPeginConfiguration()
 	}
 	return configuration.Value
 }
 
-func validateConfiguration[T liquidity_provider.ConfigurationType](
-	displayName string,
-	lp *LocalLiquidityProvider,
-	readFunction func() (*entities.Signed[T], error),
-) (*entities.Signed[T], error) {
-	configuration, err := readFunction()
-	if err != nil {
-		log.Errorf("Error getting %s configuration, using default configuration. Error: %v", displayName, err)
-		return nil, err
-	}
-	if configuration == nil {
+func (lp *LocalLiquidityProvider) GetSigner() entities.Signer {
+	return lp.signer
+}
+
+func (lp *LocalLiquidityProvider) logConfigError(displayName string, err error) {
+	if errors.Is(err, liquidity_provider.ConfigurationNotFoundError) {
 		log.Warnf("Custom %s configuration not found. Using default configuration.", displayName)
-		return nil, errors.New("configuration not found")
-	}
-	if err = configuration.CheckIntegrity(crypto.Keccak256); err != nil {
-		log.Errorf("Tampered %s configuration. Using default configuration. Error: %v", displayName, err)
-		return nil, err
-	}
-	if !lp.signer.Validate(configuration.Signature, configuration.Hash) {
+	} else if errors.Is(err, liquidity_provider.InvalidSignatureError) {
 		log.Errorf("Invalid %s configuration signature. Using default configuration.", displayName)
-		return nil, errors.New("invalid signature")
+	} else if errors.Is(err, entities.IntegrityError) {
+		log.Errorf("Tampered %s configuration. Using default configuration.", displayName)
+	} else {
+		log.Errorf("Error getting %s configuration, using default configuration. Error: %v", displayName, err)
 	}
-	return configuration, nil
 }

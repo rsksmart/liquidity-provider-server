@@ -7,33 +7,33 @@ import (
 )
 
 type PeginQuoteRequest struct {
-	CallEoaOrContractAddress string `json:"callEoaOrContractAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"Contract address or EOA address"`
-	CallContractArguments    string `json:"callContractArguments" required:"" validate:"" example:"0x0" description:"Contract data"`
-	ValueToTransfer          uint64 `json:"valueToTransfer" required:"" validate:"required" example:"0x0" description:"Value to send in the call"`
-	RskRefundAddress         string `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"User RSK refund address"`
+	CallEoaOrContractAddress string   `json:"callEoaOrContractAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"Contract address or EOA address"`
+	CallContractArguments    string   `json:"callContractArguments" required:"" validate:"omitempty,max=8194" example:"0x0" description:"Contract data"`
+	ValueToTransfer          *big.Int `json:"valueToTransfer" required:"" validate:"required" example:"0x0" description:"Value to send in the call"`
+	RskRefundAddress         string   `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"User RSK refund address"`
 }
 
 type PeginQuoteDTO struct {
-	FedBTCAddr         string `json:"fedBTCAddr" required:"" description:"The BTC address of the PowPeg"`
-	LBCAddr            string `json:"lbcAddr" required:"" description:"The address of the LBC"`
-	LPRSKAddr          string `json:"lpRSKAddr" required:"" description:"The RSK address of the LP"`
-	BTCRefundAddr      string `json:"btcRefundAddr" required:"" description:"A User BTC refund address"`
-	RSKRefundAddr      string `json:"rskRefundAddr" required:"" description:"A User RSK refund address"`
-	LPBTCAddr          string `json:"lpBTCAddr" required:"" description:"The BTC address of the LP"`
-	CallFee            uint64 `json:"callFee" required:"" description:"The fee charged by the LP"`
-	PenaltyFee         uint64 `json:"penaltyFee" required:"" description:"The penalty fee that the LP pays if it fails to deliver the service"`
-	ContractAddr       string `json:"contractAddr" required:"" description:"The destination address of the peg-in"`
-	Data               string `json:"data" required:"" description:"The arguments to send in the call"`
-	GasLimit           uint32 `json:"gasLimit,omitempty" required:"" description:"The gas limit"`
-	Nonce              int64  `json:"nonce" required:"" description:"A nonce that uniquely identifies this quote"`
-	Value              uint64 `json:"value" required:"" description:"The value to transfer in the call"`
-	AgreementTimestamp uint32 `json:"agreementTimestamp" required:"" description:"The timestamp of the agreement"`
-	TimeForDeposit     uint32 `json:"timeForDeposit" required:"" description:"The time (in seconds) that the user has to achieve one confirmation on the BTC deposit"`
-	LpCallTime         uint32 `json:"lpCallTime" required:"" description:"The time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations"`
-	Confirmations      uint16 `json:"confirmations" required:"" description:"The number of confirmations that the LP requires before making the call"`
-	CallOnRegister     bool   `json:"callOnRegister" required:"" description:"A boolean value indicating whether the callForUser can be called on registerPegIn"`
-	GasFee             uint64 `json:"gasFee" required:"" description:"Fee to pay for the gas of every call done during the pegin (call on behalf of the user and call to the dao fee collector)"`
-	ProductFeeAmount   uint64 `json:"productFeeAmount" required:"" description:"The DAO Fee amount"`
+	FedBTCAddr         string   `json:"fedBTCAddr" required:"" description:"The BTC address of the PowPeg"`
+	LBCAddr            string   `json:"lbcAddr" required:"" description:"The address of the LBC"`
+	LPRSKAddr          string   `json:"lpRSKAddr" required:"" description:"The RSK address of the LP"`
+	BTCRefundAddr      string   `json:"btcRefundAddr" required:"" description:"A User BTC refund address"`
+	RSKRefundAddr      string   `json:"rskRefundAddr" required:"" description:"A User RSK refund address"`
+	LPBTCAddr          string   `json:"lpBTCAddr" required:"" description:"The BTC address of the LP"`
+	CallFee            *big.Int `json:"callFee" required:"" description:"The fee charged by the LP"`
+	PenaltyFee         *big.Int `json:"penaltyFee" required:"" description:"The penalty fee that the LP pays if it fails to deliver the service"`
+	ContractAddr       string   `json:"contractAddr" required:"" description:"The destination address of the peg-in"`
+	Data               string   `json:"data" required:"" description:"The arguments to send in the call"`
+	GasLimit           uint32   `json:"gasLimit,omitempty" required:"" description:"The gas limit"`
+	Nonce              int64    `json:"nonce" required:"" description:"A nonce that uniquely identifies this quote"`
+	Value              *big.Int `json:"value" required:"" description:"The value to transfer in the call"`
+	AgreementTimestamp uint32   `json:"agreementTimestamp" required:"" description:"The timestamp of the agreement"`
+	TimeForDeposit     uint32   `json:"timeForDeposit" required:"" description:"The time (in seconds) that the user has to achieve one confirmation on the BTC deposit"`
+	LpCallTime         uint32   `json:"lpCallTime" required:"" description:"The time (in seconds) that the LP has to perform the call on behalf of the user after the deposit achieves the number of confirmations"`
+	Confirmations      uint16   `json:"confirmations" required:"" description:"The number of confirmations that the LP requires before making the call"`
+	CallOnRegister     bool     `json:"callOnRegister" required:"" description:"A boolean value indicating whether the callForUser can be called on registerPegIn"`
+	GasFee             *big.Int `json:"gasFee" required:"" description:"Fee to pay for the gas of every call done during the pegin (call on behalf of the user)"`
+	ChainId            uint64   `json:"chainId" required:"" validate:"required" description:"Chain ID of the RSK network where the quote is valid"`
 }
 
 type RetainedPeginQuoteDTO struct {
@@ -47,9 +47,16 @@ type RetainedPeginQuoteDTO struct {
 	RegisterPeginTxHash string   `json:"registerPeginTxHash" required:"" description:"The hash of the RSK transaction where the LP gets his refund and fee"`
 }
 
+type PeginCreationDataDTO struct {
+	GasPrice      *big.Int `json:"gasPrice" required:"" description:"The gas price used to compute the gas fee"`
+	FeePercentage float64  `json:"feePercentage" required:"" description:"The percentage fee used to compute the call fee"`
+	FixedFee      *big.Int `json:"fixedFee" required:"" description:"The fixed fee used to compute the call fee"`
+}
+
 type PeginQuoteStatusDTO struct {
-	Detail PeginQuoteDTO         `json:"detail" required:"" description:"Agreed specification of the quote"`
-	Status RetainedPeginQuoteDTO `json:"status" required:"" description:"Current status of the quote"`
+	Detail       PeginQuoteDTO         `json:"detail" required:"" description:"Agreed specification of the quote"`
+	Status       RetainedPeginQuoteDTO `json:"status" required:"" description:"Current status of the quote"`
+	CreationData PeginCreationDataDTO  `json:"creationData" required:"" description:"Values used to compute some fields of the quote"`
 }
 
 type GetPeginQuoteResponse struct {
@@ -62,6 +69,15 @@ type AcceptPeginRespose struct {
 	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
 }
 
+type GetPeginReportResponse struct {
+	NumberOfQuotes     int      `json:"numberOfQuotes" required:"" description:"Number of finalized pegin quotes"`
+	MinimumQuoteValue  *big.Int `json:"minimumQuoteValue" required:"" description:"Minimum value of the quote"`
+	MaximumQuoteValue  *big.Int `json:"maximumQuoteValue" required:"" description:"Maximum value of the quote"`
+	AverageQuoteValue  *big.Int `json:"averageQuoteValue" required:"" description:"Average value of the quote"`
+	TotalFeesCollected *big.Int `json:"totalFeesCollected" required:"" description:"Total fees collected"`
+	AverageFeePerQuote *big.Int `json:"averageFeePerQuote" required:"" description:"Average fee per quote"`
+}
+
 func FromPeginQuoteDTO(dto PeginQuoteDTO) quote.PeginQuote {
 	return quote.PeginQuote{
 		FedBtcAddress:      dto.FedBTCAddr,
@@ -70,20 +86,20 @@ func FromPeginQuoteDTO(dto PeginQuoteDTO) quote.PeginQuote {
 		BtcRefundAddress:   dto.BTCRefundAddr,
 		RskRefundAddress:   dto.RSKRefundAddr,
 		LpBtcAddress:       dto.LPBTCAddr,
-		CallFee:            entities.NewUWei(dto.CallFee),
-		PenaltyFee:         entities.NewUWei(dto.PenaltyFee),
+		CallFee:            entities.NewBigWei(dto.CallFee),
+		PenaltyFee:         entities.NewBigWei(dto.PenaltyFee),
 		ContractAddress:    dto.ContractAddr,
 		Data:               dto.Data,
 		GasLimit:           dto.GasLimit,
 		Nonce:              dto.Nonce,
-		Value:              entities.NewUWei(dto.Value),
+		Value:              entities.NewBigWei(dto.Value),
 		AgreementTimestamp: dto.AgreementTimestamp,
 		TimeForDeposit:     dto.TimeForDeposit,
 		LpCallTime:         dto.LpCallTime,
 		Confirmations:      dto.Confirmations,
 		CallOnRegister:     dto.CallOnRegister,
-		GasFee:             entities.NewUWei(dto.GasFee),
-		ProductFeeAmount:   dto.ProductFeeAmount,
+		GasFee:             entities.NewBigWei(dto.GasFee),
+		ChainId:            dto.ChainId,
 	}
 }
 
@@ -95,20 +111,20 @@ func ToPeginQuoteDTO(entity quote.PeginQuote) PeginQuoteDTO {
 		BTCRefundAddr:      entity.BtcRefundAddress,
 		RSKRefundAddr:      entity.RskRefundAddress,
 		LPBTCAddr:          entity.LpBtcAddress,
-		CallFee:            entity.CallFee.Uint64(),
-		PenaltyFee:         entity.PenaltyFee.Uint64(),
+		CallFee:            entity.CallFee.AsBigInt(),
+		PenaltyFee:         entity.PenaltyFee.AsBigInt(),
 		ContractAddr:       entity.ContractAddress,
 		Data:               entity.Data,
 		GasLimit:           entity.GasLimit,
 		Nonce:              entity.Nonce,
-		Value:              entity.Value.Uint64(),
+		Value:              entity.Value.AsBigInt(),
 		AgreementTimestamp: entity.AgreementTimestamp,
 		TimeForDeposit:     entity.TimeForDeposit,
 		LpCallTime:         entity.LpCallTime,
 		Confirmations:      entity.Confirmations,
 		CallOnRegister:     entity.CallOnRegister,
-		GasFee:             entity.GasFee.Uint64(),
-		ProductFeeAmount:   entity.ProductFeeAmount,
+		GasFee:             entity.GasFee.AsBigInt(),
+		ChainId:            entity.ChainId,
 	}
 }
 
@@ -122,5 +138,14 @@ func ToRetainedPeginQuoteDTO(entity quote.RetainedPeginQuote) RetainedPeginQuote
 		UserBtcTxHash:       entity.UserBtcTxHash,
 		CallForUserTxHash:   entity.CallForUserTxHash,
 		RegisterPeginTxHash: entity.RegisterPeginTxHash,
+	}
+}
+
+func ToPeginCreationDataDTO(entity quote.PeginCreationData) PeginCreationDataDTO {
+	feePercentage, _ := entity.FeePercentage.Native().Float64()
+	return PeginCreationDataDTO{
+		GasPrice:      entity.GasPrice.AsBigInt(),
+		FeePercentage: feePercentage,
+		FixedFee:      entity.FixedFee.AsBigInt(),
 	}
 }

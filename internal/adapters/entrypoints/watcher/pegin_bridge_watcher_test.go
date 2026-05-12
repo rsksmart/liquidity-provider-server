@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -18,9 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 func TestPeginBridgeWatcher_Prepare(t *testing.T) {
@@ -31,20 +32,23 @@ func TestPeginBridgeWatcher_Prepare(t *testing.T) {
 	}
 	quoteRepository := &mocks.PeginQuoteRepositoryMock{}
 	quoteRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateCallForUserSucceeded).Return(quotes, nil)
-	for _, q := range quotes {
+	for i, q := range quotes {
 		quoteRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).
 			Return(&quote.PeginQuote{Value: q.RequiredLiquidity}, nil)
+		quoteRepository.EXPECT().GetPeginCreationData(mock.Anything, q.QuoteHash).
+			Return(quote.PeginCreationData{GasPrice: entities.NewWei(int64(i))})
 	}
 	useCase := w.NewGetWatchedPeginQuoteUseCase(quoteRepository)
 	peginWatcher := watcher.NewPeginBridgeWatcher(nil, useCase, blockchain.RskContracts{}, blockchain.Rpc{}, nil, nil)
 	err := peginWatcher.Prepare(context.Background())
 	require.NoError(t, err)
-	for _, q := range quotes {
+	for i, q := range quotes {
 		watchedQuote, ok := peginWatcher.GetWatchedQuote(q.QuoteHash)
 		require.True(t, ok)
 		assert.Equal(t, quote.WatchedPeginQuote{
 			PeginQuote:    quote.PeginQuote{Value: q.RequiredLiquidity},
 			RetainedQuote: q,
+			CreationData:  quote.PeginCreationData{GasPrice: entities.NewWei(int64(i))},
 		}, watchedQuote)
 	}
 	quoteRepository.AssertExpectations(t)
@@ -63,7 +67,7 @@ func TestPeginBridgeWatcher_Prepare_ErrorHandling(t *testing.T) {
 func TestPeginBridgeWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewPeginBridgeWatcher(nil, nil, blockchain.RskContracts{}, blockchain.Rpc{}, eventBus, ticker)
 	})
 	eventBus.AssertExpectations(t)
@@ -145,9 +149,21 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 	quoteRepository := &mocks.PeginQuoteRepositoryMock{}
 	quoteRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateCallForUserSucceeded).Return([]quote.RetainedPeginQuote{}, nil)
 	bridge := &mocks.BridgeMock{}
-	lbc := &mocks.LbcMock{}
-	lbc.On("RegisterPegin", mock.Anything).Return(test.AnyHash, nil)
-	contracts := blockchain.RskContracts{Bridge: bridge, Lbc: lbc}
+	peginContract := &mocks.PeginContractMock{}
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
+	peginContract.On("RegisterPegin", mock.Anything).Return(blockchain.TransactionReceipt{
+		TransactionHash:   test.AnyHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x1234",
+		To:                "0x5678",
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(1000000000),
+	}, nil)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
+
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}

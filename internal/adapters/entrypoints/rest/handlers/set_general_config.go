@@ -1,11 +1,16 @@
 package handlers
 
 import (
+	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"net/http"
 )
+
+type SetGeneralConfigUseCase interface {
+	Run(ctx context.Context, config liquidity_provider.GeneralConfiguration) error
+}
 
 // NewSetGeneralConfigHandler
 // @Title Set General Config
@@ -13,7 +18,7 @@ import (
 // @Param GeneralConfigurationRequest  body pkg.GeneralConfigurationRequest true "General parameters for the quote computation"
 // @Success 204 object
 // @Route /configuration [post]
-func NewSetGeneralConfigHandler(useCase *liquidity_provider.SetGeneralConfigUseCase) http.HandlerFunc {
+func NewSetGeneralConfigHandler(useCase SetGeneralConfigUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		request := &pkg.GeneralConfigurationRequest{}
@@ -23,7 +28,14 @@ func NewSetGeneralConfigHandler(useCase *liquidity_provider.SetGeneralConfigUseC
 			return
 		}
 
-		err = useCase.Run(req.Context(), *request.Configuration)
+		config, err := pkg.FromGeneralConfigurationDTO(request.Configuration)
+		if err != nil {
+			jsonErr := rest.NewErrorResponseWithDetails("Invalid configuration", rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
+
+		err = useCase.Run(req.Context(), config)
 		if err != nil {
 			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)

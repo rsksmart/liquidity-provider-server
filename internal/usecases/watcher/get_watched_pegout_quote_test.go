@@ -2,6 +2,7 @@ package watcher_test
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -32,6 +33,16 @@ var pegoutQuotes = []quote.PegoutQuote{
 	{Nonce: 7},
 }
 
+var pegoutsCreationData = []quote.PegoutCreationData{
+	{GasPrice: entities.NewWei(1)},
+	{GasPrice: entities.NewWei(2)},
+	{GasPrice: entities.NewWei(3)},
+	{GasPrice: entities.NewWei(4)},
+	{GasPrice: entities.NewWei(5)},
+	{GasPrice: entities.NewWei(6)},
+	{GasPrice: entities.NewWei(7)},
+}
+
 func TestGetWatchedPegoutQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepository.On(
@@ -47,6 +58,9 @@ func TestGetWatchedPegoutQuoteUseCase_Run_WaitingForDeposit(t *testing.T) {
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPegoutQuotes[0].QuoteHash).Return(&pegoutQuotes[0], nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPegoutQuotes[2].QuoteHash).Return(&pegoutQuotes[2], nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPegoutQuotes[4].QuoteHash).Return(&pegoutQuotes[5], nil)
+	quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, retainedPegoutQuotes[0].QuoteHash).Return(pegoutsCreationData[0])
+	quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, retainedPegoutQuotes[2].QuoteHash).Return(pegoutsCreationData[2])
+	quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, retainedPegoutQuotes[4].QuoteHash).Return(pegoutsCreationData[4])
 	useCase := watcher.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations)
 	quoteRepository.AssertExpectations(t)
@@ -66,6 +80,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_SendPegoutSucceed(t *testing.T) {
 	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PegoutStateSendPegoutSucceeded).
 		Return([]quote.RetainedPegoutQuote{retainedPegoutQuotes[1]}, nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPegoutQuotes[1].QuoteHash).Return(&pegoutQuotes[3], nil)
+	quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, retainedPegoutQuotes[1].QuoteHash).Return(pegoutsCreationData[3])
 	useCase := watcher.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PegoutStateSendPegoutSucceeded)
 	quoteRepository.AssertExpectations(t)
@@ -85,6 +100,7 @@ func TestGetWatchedPegoutQuoteUseCase_Run_RefundPegoutSucceeded(t *testing.T) {
 	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PegoutStateRefundPegOutSucceeded).
 		Return([]quote.RetainedPegoutQuote{retainedPegoutQuotes[5]}, nil)
 	quoteRepository.On("GetQuote", test.AnyCtx, retainedPegoutQuotes[5].QuoteHash).Return(&pegoutQuotes[6], nil)
+	quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, retainedPegoutQuotes[5].QuoteHash).Return(pegoutsCreationData[6])
 	useCase := watcher.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
 	watchedQuotes, err := useCase.Run(context.Background(), quote.PegoutStateRefundPegOutSucceeded)
 	quoteRepository.AssertExpectations(t)

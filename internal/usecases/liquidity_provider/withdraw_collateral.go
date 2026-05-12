@@ -3,7 +3,6 @@ package liquidity_provider
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"strings"
 )
 
 type WithdrawCollateralUseCase struct {
@@ -15,10 +14,8 @@ func NewWithdrawCollateralUseCase(contracts blockchain.RskContracts) *WithdrawCo
 }
 
 func (useCase *WithdrawCollateralUseCase) Run() error {
-	err := useCase.contracts.Lbc.WithdrawCollateral()
-	if err != nil && (strings.Contains(err.Error(), "LBC021") || strings.Contains(err.Error(), "LBC022")) {
-		return usecases.WrapUseCaseError(usecases.WithdrawCollateralId, usecases.ProviderNotResignedError)
-	} else if err != nil {
+	err := useCase.contracts.CollateralManagement.WithdrawCollateral()
+	if err != nil {
 		return usecases.WrapUseCaseError(usecases.WithdrawCollateralId, err)
 	}
 	return nil

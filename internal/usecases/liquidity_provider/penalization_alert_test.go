@@ -3,21 +3,23 @@ package liquidity_provider_test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestPenalizationAlertUseCase_Run(t *testing.T) {
-	lbc := &mocks.LbcMock{}
-	events := []lp.PunishmentEvent{
+	collateral := &mocks.CollateralManagementContractMock{}
+	events := []penalization.PenalizedEvent{
 		{
 			LiquidityProvider: "0x01",
 			Penalty:           entities.NewWei(100),
@@ -35,12 +37,15 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		},
 	}
 	toBlock := uint64(10)
-	lbc.On(
-		"GetPeginPunishmentEvents",
+	collateral.On(
+		"GetPenalizedEvents",
 		test.AnyCtx,
 		uint64(5),
 		&toBlock,
 	).Return(events, nil).Once()
+
+	repo := mocks.NewPenalizedEventRepositoryMock(t)
+	repo.On("InsertPenalization", mock.Anything, mock.Anything).Return(nil)
 
 	sender := &mocks.AlertSenderMock{}
 	recipient := "recipient@test.com"
@@ -49,28 +54,29 @@ func TestPenalizationAlertUseCase_Run(t *testing.T) {
 		sender.On(
 			"SendAlert",
 			test.AnyCtx,
-			"Pegin Punishment",
+			alerts.AlertSubjectPenalization,
 			fmt.Sprintf("You were punished in %v rBTC for the quoteHash %s", events[i].Penalty.ToRbtc(), events[i].QuoteHash),
 			[]string{recipient},
 		).Return(nil).Once()
 	}
 
-	contracts := blockchain.RskContracts{Lbc: lbc}
-	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, recipient)
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
+	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, recipient, repo)
 	err := useCase.Run(context.Background(), 5, 10)
 	require.NoError(t, err)
-	lbc.AssertExpectations(t)
+	collateral.AssertExpectations(t)
 	sender.AssertExpectations(t)
 }
 
 func TestPenalizationAlertUseCase_Run_GetEvents(t *testing.T) {
-	lbc := &mocks.LbcMock{}
+	collateral := &mocks.CollateralManagementContractMock{}
 	sender := &mocks.AlertSenderMock{}
-	lbc.On("GetPeginPunishmentEvents", test.AnyCtx, uint64(5), mock.Anything).
-		Return([]lp.PunishmentEvent{}, assert.AnError).Once()
-	contracts := blockchain.RskContracts{Lbc: lbc}
-	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, "recipient")
+	collateral.On("GetPenalizedEvents", test.AnyCtx, uint64(5), mock.Anything).
+		Return([]penalization.PenalizedEvent{}, assert.AnError).Once()
+	contracts := blockchain.RskContracts{CollateralManagement: collateral}
+	repo := mocks.NewPenalizedEventRepositoryMock(t)
+	useCase := liquidity_provider.NewPenalizationAlertUseCase(contracts, sender, "recipient", repo)
 	err := useCase.Run(context.Background(), 5, 10)
-	lbc.AssertExpectations(t)
+	collateral.AssertExpectations(t)
 	require.Error(t, err)
 }

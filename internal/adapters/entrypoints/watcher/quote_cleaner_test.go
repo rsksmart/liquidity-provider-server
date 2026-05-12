@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -59,7 +60,7 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 }
 
 func TestQuoteCleanerWatcher_Shutdown(t *testing.T) {
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 		useCase := w.NewCleanExpiredQuotesUseCase(peginRepository, pegoutRepository)

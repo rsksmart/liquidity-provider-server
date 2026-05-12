@@ -1,9 +1,12 @@
 package registry
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
 type WatcherRegistry struct {
@@ -15,6 +18,11 @@ type WatcherRegistry struct {
 	LiquidityCheckWatcher      *watcher.LiquidityCheckWatcher
 	PenalizationAlertWatcher   *watcher.PenalizationAlertWatcher
 	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
+	BitcoinEclipseWatcher      *watcher.EclipseWatcher
+	RskEclipseWatcher          *watcher.EclipseWatcher
+	BtcReleaseWatcher          *watcher.BtcReleaseWatcher
+	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
+	AssetReportWatcher         *monitoring.AssetReportWatcher
 }
 
 // nolint:funlen
@@ -28,6 +36,8 @@ func NewWatcherRegistry(
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,
 ) *WatcherRegistry {
+	appMetrics := monitoring.NewMetrics(prometheus.DefaultRegisterer)
+
 	return &WatcherRegistry{
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
 			watcher.NewPeginDepositAddressWatcherUseCases(
@@ -91,6 +101,37 @@ func NewWatcherRegistry(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
 			useCaseRegistry.bridgePegoutUseCase,
 			tickers.PegoutBridgeWatcherTicker,
+		),
+		BitcoinEclipseWatcher: watcher.NewEclipseWatcher(
+			useCaseRegistry.btcEclipseCheckUseCase,
+			entities.NodeTypeBitcoin,
+			env.Eclipse.FillWithDefaults().AlertCooldownSeconds,
+			tickers.BitcoinEclipseCheckTicker,
+		),
+		RskEclipseWatcher: watcher.NewEclipseWatcher(
+			useCaseRegistry.rskEclipseCheckUseCase,
+			entities.NodeTypeRootstock,
+			env.Eclipse.FillWithDefaults().AlertCooldownSeconds,
+			tickers.RskEclipseCheckTicker,
+		),
+		BtcReleaseWatcher: watcher.NewBtcReleaseWatcher(
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			useCaseRegistry.updateBtcReleaseUseCase,
+			tickers.BtcReleaseCheckTicker,
+			env.Pegout.BtcReleaseWatcherStartBlock,
+			env.Pegout.BtcReleaseWatcherPageSize,
+			timeouts.BtcReleaseCheck.Seconds(),
+		),
+		QuoteMetricsWatcher: monitoring.NewQuoteMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
+			useCaseRegistry.GetServerInfoUseCase(),
+		),
+		AssetReportWatcher: monitoring.NewAssetReportWatcher(
+			appMetrics,
+			useCaseRegistry.GetAssetsReportUseCase(),
+			tickers.AssetReportTicker,
 		),
 	}
 }

@@ -10,6 +10,8 @@ define utils_build
   	CGO_ENABLED=0 go build -v -o ./utils/register_pegin ./cmd/utils/register_pegin/register_pegin.go
   	CGO_ENABLED=0 go build -v -o ./utils/refund_user_pegout ./cmd/utils/refund_user_pegout/refund_user_pegout.go
   	CGO_ENABLED=0 go build -v -o ./utils/key_conversion ./cmd/utils/key_conversion/key_conversion.go
+ 	CGO_ENABLED=0 go build -v -o ./utils/resign_utils ./cmd/utils/resign_utils/resign_utils.go
+ 	CGO_ENABLED=0 go build -v -o ./utils/withdraw ./cmd/utils/withdraw/withdraw.go
 endef
 
 tools: download
@@ -17,7 +19,8 @@ tools: download
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	pip3 install pre-commit && pre-commit install
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.63.4
-	brew install mockery && brew upgrade mockery 	# installation with brew is because mockery team doesnt recommend to install with go install, if you don't have brew feel free to comment this line and install mockery with other method
+	go install github.com/ethereum/go-ethereum/cmd/abigen@eb00f1694c9265f6909c19995a535eef246dcf1e # v1.14.13
+	go install github.com/vektra/mockery/v2@v2.53.1  	# ensures mockery version 2.53.1 is installed
 
 download:
 	go mod download
@@ -87,3 +90,6 @@ monitoring:
 		-p $(MONITOR_PORT):$(MONITOR_PORT) \
 		-e MONITOR_PORT=$(MONITOR_PORT) \
 		monitoring
+
+bindings:
+	./scripts/create-bindings.sh $(IMAGE) && echo "Bindings generated successfully"

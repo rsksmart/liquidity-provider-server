@@ -2,6 +2,11 @@ package routes_test
 
 import (
 	"encoding/hex"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"testing"
+
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -13,17 +18,16 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"net/http/httptest"
-	"slices"
-	"testing"
 )
 
 // nolint:gosec // Linter is assuming the header name is a password
 const csrfTokenHeaderName = "X-Csrf-Token"
+
+var testAllowedDomains = []string{"https://allowed.com", "https://another-allowed.com"}
 
 type openApiSpecification struct {
 	// Path - Verb
@@ -43,6 +47,7 @@ func TestConfigureRoutes_Public(t *testing.T) {
 			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
+		AllowedOrigins: testAllowedDomains,
 	}
 
 	routes.ConfigureRoutes(onlyPublicRouter, onlyPublicEnv, useCaseRegistry, newBlockedEndpointFactory())
@@ -54,8 +59,16 @@ func TestConfigureRoutes_Public(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	t.Run("should configure cors middleware", func(t *testing.T) {
-		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter)
+	t.Run("should configure cors middleware if origin is present", func(t *testing.T) {
+		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter, testAllowedDomains[0], true)
+	})
+
+	t.Run("should not allow any domain if origin is not present", func(t *testing.T) {
+		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter, "", false)
+	})
+
+	t.Run("should not allow any domain if origin is not allowed", func(t *testing.T) {
+		testCorsMiddleware(t, onlyPublicRoutes, onlyPublicRouter, "https://not-allowed.com", false)
 	})
 
 	t.Run("should configure options handler", func(t *testing.T) {
@@ -95,6 +108,7 @@ func TestConfigureRoutes_Management(t *testing.T) {
 			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
+		AllowedOrigins: testAllowedDomains,
 	}
 	routes.ConfigureRoutes(managementRouter, managementEnv, useCaseRegistry, newBlockedEndpointFactory())
 	managementAndPublicRoutes := make([]*mux.Route, 0)
@@ -106,7 +120,15 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("should configure cors middleware", func(t *testing.T) {
-		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter)
+		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter, testAllowedDomains[1], true)
+	})
+
+	t.Run("should not allow any domain if origin is not present", func(t *testing.T) {
+		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter, "", false)
+	})
+
+	t.Run("should not allow any domain if origin is not allowed", func(t *testing.T) {
+		testCorsMiddleware(t, managementAndPublicRoutes, managementRouter, "https://not-allowed.com", false)
 	})
 
 	t.Run("should configure options handler", func(t *testing.T) {
@@ -148,7 +170,13 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	})
 }
 
-func testCorsMiddleware(t *testing.T, routesToTest []*mux.Route, routerToTest *mux.Router) {
+func testCorsMiddleware(
+	t *testing.T,
+	routesToTest []*mux.Route,
+	routerToTest *mux.Router,
+	origin string,
+	isOriginAllowed bool,
+) {
 	for _, route := range routesToTest {
 		methods, methodsErr := route.GetMethods()
 		require.NoError(t, methodsErr)
@@ -157,9 +185,14 @@ func testCorsMiddleware(t *testing.T, routesToTest []*mux.Route, routerToTest *m
 				path, pathErr := route.GetPathTemplate()
 				require.NoError(t, pathErr)
 				req := httptest.NewRequest(method, path, nil)
+				req.Header.Set("Origin", origin)
 				responseRecorder := httptest.NewRecorder()
 				routerToTest.ServeHTTP(responseRecorder, req)
-				assertHasCorsHeaders(t, responseRecorder)
+				if isOriginAllowed {
+					assertHasCorsHeadersAllowed(t, responseRecorder, origin)
+				} else {
+					assertHasCorsHeadersNotAllowed(t, responseRecorder)
+				}
 			}
 		}
 	}
@@ -211,10 +244,12 @@ func assertHasCsrfMiddleware(t *testing.T, router *mux.Router, endpoint routes.E
 }
 
 func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
+	acceptQuoteUseCase := &pegin.AcceptQuoteUseCase{}
+
 	registryMock.EXPECT().HealthUseCase().Return(&usecases.HealthUseCase{})
 	registryMock.EXPECT().GetProvidersUseCase().Return(&liquidity_provider.GetProvidersUseCase{})
 	registryMock.EXPECT().GetPeginQuoteUseCase().Return(&pegin.GetQuoteUseCase{})
-	registryMock.EXPECT().GetAcceptPeginQuoteUseCase().Return(&pegin.AcceptQuoteUseCase{})
+	registryMock.EXPECT().GetAcceptPeginQuoteUseCase().Return(acceptQuoteUseCase)
 	registryMock.EXPECT().GetPegoutQuoteUseCase().Return(&pegout.GetQuoteUseCase{})
 	registryMock.EXPECT().GetAcceptPegoutQuoteUseCase().Return(&pegout.AcceptQuoteUseCase{})
 	registryMock.EXPECT().GetUserDepositsUseCase().Return(&pegout.GetUserDepositsUseCase{})
@@ -222,6 +257,8 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().GetPeginStatusUseCase().Return(&pegin.StatusUseCase{})
 	registryMock.EXPECT().GetPegoutStatusUseCase().Return(&pegout.StatusUseCase{})
 	registryMock.EXPECT().GetAvailableLiquidityUseCase().Return(&liquidity_provider.GetAvailableLiquidityUseCase{})
+	registryMock.EXPECT().SummariesUseCase().Return(&reports.SummariesUseCase{})
+	registryMock.EXPECT().GetServerInfoUseCase().Return(&liquidity_provider.ServerInfoUseCase{})
 
 	registryMock.EXPECT().GetPeginCollateralUseCase().Return(&pegin.GetCollateralUseCase{})
 	registryMock.EXPECT().AddPeginCollateralUseCase().Return(&pegin.AddCollateralUseCase{})
@@ -238,12 +275,31 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().LoginUseCase().Return(&liquidity_provider.LoginUseCase{})
 	registryMock.EXPECT().GetManagementUiDataUseCase().Return(&liquidity_provider.GetManagementUiDataUseCase{})
 	registryMock.EXPECT().GetServerInfoUseCase().Return(&liquidity_provider.ServerInfoUseCase{})
+	registryMock.EXPECT().GetPeginReportUseCase().Return(&reports.GetPeginReportUseCase{})
+	registryMock.EXPECT().GetPegoutReportUseCase().Return(&reports.GetPegoutReportUseCase{})
+	registryMock.EXPECT().GetRevenueReportUseCase().Return(&reports.GetRevenueReportUseCase{})
+	registryMock.EXPECT().GetAssetsReportUseCase().Return(&reports.GetAssetsReportUseCase{})
+	registryMock.EXPECT().GetTransactionsReportUseCase().Return(&reports.GetTransactionsUseCase{})
+	registryMock.EXPECT().GetTrustedAccountsUseCase().Return(&liquidity_provider.GetTrustedAccountsUseCase{})
+	registryMock.EXPECT().UpdateTrustedAccountUseCase().Return(&liquidity_provider.UpdateTrustedAccountUseCase{})
+	registryMock.EXPECT().AddTrustedAccountUseCase().Return(&liquidity_provider.AddTrustedAccountUseCase{})
+	registryMock.EXPECT().DeleteTrustedAccountUseCase().Return(&liquidity_provider.DeleteTrustedAccountUseCase{})
+	registryMock.EXPECT().RecommendedPegoutUseCase().Return(&pegout.RecommendedPegoutUseCase{})
+	registryMock.EXPECT().RecommendedPeginUseCase().Return(&pegin.RecommendedPeginUseCase{})
 }
 
-func assertHasCorsHeaders(t *testing.T, recorder *httptest.ResponseRecorder) {
-	assert.Equal(t, "*", recorder.Header().Get("Access-Control-Allow-Origin"))
+func assertHasCorsHeadersAllowed(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {
+	assert.Equal(t, origin, recorder.Header().Get("Access-Control-Allow-Origin"))
 	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
-	assert.Equal(t, "GET, POST, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
+	assert.Equal(t, "true", recorder.Header().Get("Access-Control-Allow-Credentials"))
+	assert.Equal(t, "Origin", recorder.Header().Get("Vary"))
+}
+
+func assertHasCorsHeadersNotAllowed(t *testing.T, recorder *httptest.ResponseRecorder) {
+	assert.Empty(t, recorder.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
+	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
 	assert.Equal(t, "Origin", recorder.Header().Get("Vary"))
 }
 

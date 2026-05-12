@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
@@ -18,11 +19,11 @@ const pegoutBridgeWatcherLogPrefix = "PegoutBridgeWatcher:"
 type PegoutBridgeWatcher struct {
 	getQuotesUseCase    *w.GetWatchedPegoutQuoteUseCase
 	bridgePegoutUseCase *pegout.BridgePegoutUseCase
-	ticker              Ticker
+	ticker              utils.Ticker
 	watcherStopChannel  chan struct{}
 }
 
-func NewPegoutBridgeWatcher(getQuotesUseCase *w.GetWatchedPegoutQuoteUseCase, bridgePegoutUseCase *pegout.BridgePegoutUseCase, ticker Ticker) *PegoutBridgeWatcher {
+func NewPegoutBridgeWatcher(getQuotesUseCase *w.GetWatchedPegoutQuoteUseCase, bridgePegoutUseCase *pegout.BridgePegoutUseCase, ticker utils.Ticker) *PegoutBridgeWatcher {
 	return &PegoutBridgeWatcher{
 		getQuotesUseCase:    getQuotesUseCase,
 		bridgePegoutUseCase: bridgePegoutUseCase,

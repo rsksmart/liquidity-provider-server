@@ -2,13 +2,14 @@ package watcher_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"sync"
 	"testing"
 	"time"
 )
 
-func createWatcherShutdownTest(t *testing.T, createFunc func(t watcher.Ticker) watcher.Watcher) {
+func createWatcherShutdownTest(t *testing.T, createFunc func(t utils.Ticker) watcher.Watcher) {
 	tickerChannel := make(chan time.Time, 1)
 	ticker := &mocks.TickerMock{}
 	ticker.EXPECT().C().Return(tickerChannel)

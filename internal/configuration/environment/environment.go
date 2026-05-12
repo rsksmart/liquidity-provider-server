@@ -5,17 +5,20 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 )
 
 type Environment struct {
-	LpsStage         string `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
-	Port             uint   `env:"SERVER_PORT" validate:"required"`
-	LogLevel         string `env:"LOG_LEVEL" validate:"required"`
-	LogFile          string `env:"LOG_FILE"`
-	AwsLocalEndpoint string `env:"AWS_LOCAL_ENDPOINT"`
-	SecretSource     string `env:"SECRET_SRC" validate:"required,oneof=aws env"`
-	WalletManagement string `env:"WALLET" validate:"required,oneof=native fireblocks"`
+	LpsStage         string   `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
+	Port             uint     `env:"SERVER_PORT" validate:"required"`
+	LogLevel         string   `env:"LOG_LEVEL" validate:"required"`
+	LogFile          string   `env:"LOG_FILE"`
+	AwsLocalEndpoint string   `env:"AWS_LOCAL_ENDPOINT"`
+	SecretSource     string   `env:"SECRET_SRC" validate:"required,oneof=aws env"`
+	WalletManagement string   `env:"WALLET" validate:"required,oneof=native fireblocks"`
+	AllowedOrigins   []string `env:"ALLOWED_ORIGINS" validate:"required,dive,url"`
 	Management       ManagementEnv
 	Mongo            MongoEnv
 	Rsk              RskEnv
@@ -24,6 +27,7 @@ type Environment struct {
 	Pegout           PegoutEnv
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
+	Eclipse          EclipseEnv
 }
 
 type MongoEnv struct {
@@ -36,26 +40,35 @@ type MongoEnv struct {
 type RskEnv struct {
 	Endpoint                    string   `env:"RSK_ENDPOINT" validate:"required"`
 	ChainId                     uint64   `env:"CHAIN_ID" validate:"required"`
-	LbcAddress                  string   `env:"LBC_ADDR" validate:"required"`
+	PeginContractAddress        string   `env:"PEGIN_CONTRACT_ADDRESS" validate:"required"`
+	PegoutContractAddress       string   `env:"PEGOUT_CONTRACT_ADDRESS" validate:"required"`
+	CollateralManagementAddress string   `env:"COLLATERAL_MANAGEMENT_ADDRESS" validate:"required"`
+	DiscoveryAddress            string   `env:"DISCOVERY_ADDRESS" validate:"required"`
 	BridgeAddress               string   `env:"RSK_BRIDGE_ADDR" validate:"required"`
 	BridgeRequiredConfirmations uint64   `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
-	IrisActivationHeight        int64    `env:"IRIS_ACTIVATION_HEIGHT" validate:"required"`
 	ErpKeys                     []string `env:"ERP_KEYS" validate:"required"`
+	UseSegwitFederation         bool     `env:"USE_SEGWIT_FEDERATION"`
 	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
-	FeeCollectorAddress         string   `env:"DAO_FEE_COLLECTOR_ADDRESS" validate:"required"`
 	// Only if secret source is aws & wallet is native
 	EncryptedJsonSecret         string `env:"KEY_SECRET"`
 	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`
 	// Only if secret source is env & wallet is native
-	KeystoreFile     string `env:"KEYSTORE_FILE"`
-	KeystorePassword string `env:"KEYSTORE_PWD"`
+	KeystoreFile     string   `env:"KEYSTORE_FILE"`
+	KeystorePassword string   `env:"KEYSTORE_PWD"`
+	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
+}
+
+type BtcExtraSource struct {
+	Format string `json:"format" validate:"required,oneof=rpc,mempool"`
+	Url    string `json:"url" validate:"required,url"`
 }
 
 type BtcEnv struct {
-	Network  string `env:"BTC_NETWORK" validate:"required"`
-	Username string `env:"BTC_USERNAME" validate:"required"`
-	Password string `env:"BTC_PASSWORD" validate:"required"`
-	Endpoint string `env:"BTC_ENDPOINT" validate:"required"`
+	Network         string           `env:"BTC_NETWORK" validate:"required"`
+	Username        string           `env:"BTC_USERNAME" validate:"required"`
+	Password        string           `env:"BTC_PASSWORD" validate:"required"`
+	Endpoint        string           `env:"BTC_ENDPOINT" validate:"required"`
+	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES"`
 }
 
 type TimeoutEnv struct {
@@ -69,6 +82,49 @@ type TimeoutEnv struct {
 	ServerWrite         uint64 `env:"SERVER_WRITE_TIMEOUT"`
 	ServerIdle          uint64 `env:"SERVER_IDLE_TIMEOUT"`
 	PegoutDepositCheck  uint64 `env:"PEGOUT_DEPOSIT_CHECK_TIMEOUT"`
+	BtcReleaseCheck     uint64 `env:"BTC_RELEASE_CHECK_TIMEOUT"`
+}
+
+type EclipseEnv struct {
+	Enabled                  bool   `env:"ECLIPSE_CHECK_ENABLED"`
+	RskToleranceThreshold    uint8  `env:"ECLIPSE_RSK_TOLERANCE_THRESHOLD"`
+	RskMaxMsWaitForBlock     uint64 `env:"ECLIPSE_RSK_MAX_MS_WAIT_FOR_BLOCK"`
+	RskWaitPollingMsInterval uint64 `env:"ECLIPSE_RSK_WAIT_POLLING_MS_INTERVAL"`
+	BtcToleranceThreshold    uint8  `env:"ECLIPSE_BTC_TOLERANCE_THRESHOLD"`
+	BtcMaxMsWaitForBlock     uint64 `env:"ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK"`
+	BtcWaitPollingMsInterval uint64 `env:"ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL"`
+	AlertCooldownSeconds     uint64 `env:"ECLIPSE_ALERT_COOLDOWN_SECONDS"`
+}
+
+func (env *EclipseEnv) FillWithDefaults() *EclipseEnv {
+	defaults := EclipseEnv{
+		RskToleranceThreshold:    50,
+		RskMaxMsWaitForBlock:     10_000,
+		RskWaitPollingMsInterval: 1000,
+		BtcToleranceThreshold:    50,
+		BtcMaxMsWaitForBlock:     60_000,
+		BtcWaitPollingMsInterval: 10_000,
+		AlertCooldownSeconds:     30 * 60, // 30 min
+	}
+	env.RskToleranceThreshold = utils.FirstNonZero(env.RskToleranceThreshold, defaults.RskToleranceThreshold)
+	env.RskMaxMsWaitForBlock = utils.FirstNonZero(env.RskMaxMsWaitForBlock, defaults.RskMaxMsWaitForBlock)
+	env.RskWaitPollingMsInterval = utils.FirstNonZero(env.RskWaitPollingMsInterval, defaults.RskWaitPollingMsInterval)
+	env.BtcToleranceThreshold = utils.FirstNonZero(env.BtcToleranceThreshold, defaults.BtcToleranceThreshold)
+	env.BtcMaxMsWaitForBlock = utils.FirstNonZero(env.BtcMaxMsWaitForBlock, defaults.BtcMaxMsWaitForBlock)
+	env.BtcWaitPollingMsInterval = utils.FirstNonZero(env.BtcWaitPollingMsInterval, defaults.BtcWaitPollingMsInterval)
+	env.AlertCooldownSeconds = utils.FirstNonZero(env.AlertCooldownSeconds, defaults.AlertCooldownSeconds)
+	return env
+}
+
+func (env *EclipseEnv) ToConfig() watcher.EclipseCheckConfig {
+	return watcher.EclipseCheckConfig{
+		RskToleranceThreshold:    env.RskToleranceThreshold,
+		RskMaxMsWaitForBlock:     env.RskMaxMsWaitForBlock,
+		RskWaitPollingMsInterval: env.RskWaitPollingMsInterval,
+		BtcToleranceThreshold:    env.BtcToleranceThreshold,
+		BtcMaxMsWaitForBlock:     env.BtcMaxMsWaitForBlock,
+		BtcWaitPollingMsInterval: env.BtcWaitPollingMsInterval,
+	}
 }
 
 func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
@@ -85,18 +141,33 @@ func (env BtcEnv) GetNetworkParams() (*chaincfg.Params, error) {
 }
 
 type ProviderEnv struct {
-	AlertSenderEmail    string                          `env:"ALERT_SENDER_EMAIL"  validate:"required"`
-	AlertRecipientEmail string                          `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
-	Name                string                          `env:"PROVIDER_NAME"  validate:"required"`
-	ApiBaseUrl          string                          `env:"BASE_URL"  validate:"required"`
-	ProviderType        liquidity_provider.ProviderType `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
+	AlertSenderEmail    string `env:"ALERT_SENDER_EMAIL"  validate:"required"`
+	AlertRecipientEmail string `env:"ALERT_RECIPIENT_EMAIL"  validate:"required"`
+	Name                string `env:"PROVIDER_NAME"  validate:"required"`
+	ApiBaseUrl          string `env:"BASE_URL"  validate:"required"`
+	ProviderTypeName    string `env:"PROVIDER_TYPE"  validate:"required,oneof=pegin pegout both"`
+}
+
+func (env *ProviderEnv) ProviderType() liquidity_provider.ProviderType {
+	switch env.ProviderTypeName {
+	case "pegin":
+		return liquidity_provider.PeginProvider
+	case "pegout":
+		return liquidity_provider.PegoutProvider
+	case "both":
+		return liquidity_provider.FullProvider
+	default:
+		return -1
+	}
 }
 
 // PeginEnv This structure was kept just in case, right now all the parameters are manipulated through management API
 type PeginEnv struct{}
 
 type PegoutEnv struct {
-	DepositCacheStartBlock uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
+	DepositCacheStartBlock      uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
+	BtcReleaseWatcherStartBlock uint64 `env:"BTC_RELEASE_WATCHER_START_BLOCK"`
+	BtcReleaseWatcherPageSize   uint64 `env:"BTC_RELEASE_WATCHER_PAGE_SIZE"`
 }
 
 type CaptchaEnv struct {

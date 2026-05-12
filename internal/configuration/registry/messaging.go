@@ -2,17 +2,26 @@ package registry
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 )
 
 type Messaging struct {
 	Rpc         blockchain.Rpc
 	EventBus    entities.EventBus
-	AlertSender entities.AlertSender
+	AlertSender alerts.AlertSender
+	RskExtraRpc []blockchain.RootstockRpcServer
+	BtcExtraRpc []blockchain.BitcoinNetwork
+}
+
+type ExternalRpc struct {
+	RskExternalRpc []blockchain.RootstockRpcServer
+	BtcExternalRpc []blockchain.BitcoinNetwork
 }
 
 func NewMessagingRegistry(
@@ -20,6 +29,7 @@ func NewMessagingRegistry(
 	env environment.Environment,
 	rskClient *rootstock.RskClient,
 	btcConn *bitcoin.Connection,
+	externalRpc ExternalRpc,
 ) *Messaging {
 	return &Messaging{
 		Rpc: blockchain.Rpc{
@@ -28,5 +38,7 @@ func NewMessagingRegistry(
 		},
 		EventBus:    NewEventBus(),
 		AlertSender: NewAlertSender(ctx, env),
+		RskExtraRpc: externalRpc.RskExternalRpc,
+		BtcExtraRpc: externalRpc.BtcExternalRpc,
 	}
 }

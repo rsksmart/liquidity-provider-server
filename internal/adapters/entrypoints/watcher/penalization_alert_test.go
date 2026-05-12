@@ -2,17 +2,19 @@ package watcher_test
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestNewPenalizationAlertWatcher(t *testing.T) {
@@ -29,9 +31,14 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
-		lbc := &mocks.LbcMock{}
-		lbc.On("GetPeginPunishmentEvents", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
-		useCase := liquidity_provider.NewPenalizationAlertUseCase(blockchain.RskContracts{Lbc: lbc}, &mocks.AlertSenderMock{}, test.AnyString)
+		collateral := &mocks.CollateralManagementContractMock{}
+		collateral.EXPECT().GetPenalizedEvents(mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
+		useCase := liquidity_provider.NewPenalizationAlertUseCase(
+			blockchain.RskContracts{CollateralManagement: collateral},
+			&mocks.AlertSenderMock{},
+			test.AnyString,
+			mocks.NewPenalizedEventRepositoryMock(t),
+		)
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
@@ -41,16 +48,21 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		go penalizationWatcher.Start()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, func() bool {
-			return assert.Equal(t, uint64(555), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && lbc.AssertExpectations(t)
+			return assert.Equal(t, uint64(555), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && collateral.AssertExpectations(t)
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should update block if use case executed successfully", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(600, nil).Once()
-		lbc := &mocks.LbcMock{}
-		lbc.On("GetPeginPunishmentEvents", mock.Anything, mock.Anything, mock.Anything).Return([]lp.PunishmentEvent{}, nil)
-		useCase := liquidity_provider.NewPenalizationAlertUseCase(blockchain.RskContracts{Lbc: lbc}, &mocks.AlertSenderMock{}, test.AnyString)
+		collateral := &mocks.CollateralManagementContractMock{}
+		collateral.EXPECT().GetPenalizedEvents(mock.Anything, mock.Anything, mock.Anything).Return([]penalization.PenalizedEvent{}, nil)
+		useCase := liquidity_provider.NewPenalizationAlertUseCase(
+			blockchain.RskContracts{CollateralManagement: collateral},
+			&mocks.AlertSenderMock{},
+			test.AnyString,
+			mocks.NewPenalizedEventRepositoryMock(t),
+		)
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
@@ -60,7 +72,7 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 		go penalizationWatcher.Start()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, func() bool {
-			return assert.Equal(t, uint64(599), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && lbc.AssertExpectations(t)
+			return assert.Equal(t, uint64(599), penalizationWatcher.GetCurrentBlock()) && rskRpc.AssertExpectations(t) && collateral.AssertExpectations(t)
 		}, time.Second, 10*time.Millisecond)
 	})
 }
@@ -87,7 +99,7 @@ func TestPenalizationAlertWatcher_Prepare(t *testing.T) {
 }
 
 func TestPenalizationAlertWatcher_Shutdown(t *testing.T) {
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewPenalizationAlertWatcher(blockchain.Rpc{}, nil, ticker, time.Duration(1))
 	})
 }

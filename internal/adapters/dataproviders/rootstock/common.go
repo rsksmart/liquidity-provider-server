@@ -3,10 +3,14 @@ package rootstock
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	geth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
@@ -127,4 +131,39 @@ func AwaitTxWithCtx(client RpcClientBinding, miningTimeout time.Duration, logNam
 		log.Infof("Transaction %s (%s) reverted", logName, tx.Hash().String())
 	}
 	return receipt, nil
+}
+
+func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
+	const (
+		errorSelectorSize = 4
+		errorTemplate     = "no data to recover in error: %w"
+	)
+	if err == nil {
+		return nil, nil
+	}
+
+	var dataError rpc.DataError
+	if !errors.As(err, &dataError) {
+		return nil, fmt.Errorf(errorTemplate, err)
+	}
+	revertData, ok := dataError.ErrorData().(string)
+	if !ok {
+		return nil, fmt.Errorf(errorTemplate, dataError)
+	}
+	revertDataBytes, err := hexutil.Decode(revertData)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding data: %w", err)
+	}
+
+	if reason, unpackErr := abi.UnpackRevert(revertDataBytes); unpackErr == nil {
+		return nil, fmt.Errorf("found generic error: %s", reason)
+	}
+
+	var selectorBytes [errorSelectorSize]byte
+	var parsedError *abi.Error
+	copy(selectorBytes[:], revertDataBytes[:errorSelectorSize])
+	if parsedError, err = contractAbi.ErrorByID(selectorBytes); err != nil {
+		return nil, fmt.Errorf("error decoding data using ABI: %w", err)
+	}
+	return parsedError, nil
 }

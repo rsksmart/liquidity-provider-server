@@ -1,0 +1,68 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus-config.yml'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus:/etc/prometheus
+    networks:
+      - net_lps
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./volumes/loki:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - net_lps
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    ports:
+      - "12345:12345"
+    volumes:
+      - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
+      - ./volumes/lps/logs:/home/lps/logs:ro
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    depends_on:
+      - loki
+    networks:
+      - net_lps
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=test
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=mailhog:1025
+      - GF_SMTP_FROM_ADDRESS=alerts@lps-local.com
+      - GF_SMTP_FROM_NAME=LPS-Alerts-Local
+      - GF_SMTP_SKIP_VERIFY=true
+    volumes:
+      - ../monitoring/grafana:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki
+      - alloy
+    networks:
+      - net_lps
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - net_lps
+
+networks:
+  net_lps:
+    driver: "bridge"

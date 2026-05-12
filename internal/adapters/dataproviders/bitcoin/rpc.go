@@ -5,6 +5,7 @@ import (
 	"fmt"
 	merkle "github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"strings"
 	"time"
 
@@ -122,7 +123,7 @@ func (rpc *bitcoindRpc) GetPartialMerkleTree(hash string) ([]byte, error) {
 	}
 
 	block := btcutil.NewBlock(rawBlock)
-	return serializePartialMerkleTree(parsedTxHash, block)
+	return SerializePartialMerkleTree(parsedTxHash, block)
 }
 
 func (rpc *bitcoindRpc) GetHeight() (*big.Int, error) {
@@ -192,14 +193,14 @@ func (rpc *bitcoindRpc) GetTransactionBlockInfo(transactionHash string) (blockch
 	}, nil
 }
 
-func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoinbaseTransactionInformation, error) {
+func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (rootstock.BtcCoinbaseTransactionInformation, error) {
 	var coinbaseTxHash chainhash.Hash
 	var witnessReservedValue [32]byte
 	var err error
 
 	block, _, err := rpc.getTxBlock(txHash)
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, err
+		return rootstock.BtcCoinbaseTransactionInformation{}, err
 	}
 	txs := make([]*btcutil.Tx, 0)
 	serializedCoinbase := bytes.NewBuffer([]byte{})
@@ -207,25 +208,25 @@ func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoi
 	for _, tx := range block.Transactions {
 		if merkle.IsCoinBaseTx(tx) {
 			if err = tx.SerializeNoWitness(serializedCoinbase); err != nil {
-				return blockchain.BtcCoinbaseTransactionInformation{}, err
+				return rootstock.BtcCoinbaseTransactionInformation{}, err
 			}
 			coinbaseTxHash = tx.TxHash()
 			copy(witnessReservedValue[:], [][]byte(tx.TxIn[0].Witness)[0])
 		}
 		txs = append(txs, btcutil.NewTx(tx))
 	}
-	pmt, err := serializePartialMerkleTree(&coinbaseTxHash, btcutil.NewBlock(block))
+	pmt, err := SerializePartialMerkleTree(&coinbaseTxHash, btcutil.NewBlock(block))
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, err
+		return rootstock.BtcCoinbaseTransactionInformation{}, err
 	}
 
 	blockHash := block.BlockHash()
 	blockVerboseInfo, err := rpc.conn.client.GetBlockVerbose(&blockHash)
 	if err != nil {
-		return blockchain.BtcCoinbaseTransactionInformation{}, err
+		return rootstock.BtcCoinbaseTransactionInformation{}, err
 	}
 
-	return blockchain.BtcCoinbaseTransactionInformation{
+	return rootstock.BtcCoinbaseTransactionInformation{
 		BtcTxSerialized:      serializedCoinbase.Bytes(),
 		BlockHash:            ToSwappedBytes32(&blockHash),
 		BlockHeight:          big.NewInt(blockVerboseInfo.Height),
@@ -237,6 +238,27 @@ func (rpc *bitcoindRpc) GetCoinbaseInformation(txHash string) (blockchain.BtcCoi
 
 func (rpc *bitcoindRpc) NetworkName() string {
 	return strings.ToLower(rpc.conn.NetworkParams.Name)
+}
+
+func (rpc *bitcoindRpc) GetBlockchainInfo() (blockchain.BitcoinBlockchainInfo, error) {
+	blockchainInfo, err := rpc.conn.client.GetBlockChainInfo()
+	if err != nil {
+		return blockchain.BitcoinBlockchainInfo{}, err
+	}
+	return blockchain.BitcoinBlockchainInfo{
+		NetworkName:      blockchainInfo.Chain,
+		ValidatedBlocks:  big.NewInt(int64(blockchainInfo.Blocks)),
+		ValidatedHeaders: big.NewInt(int64(blockchainInfo.Headers)),
+		BestBlockHash:    blockchainInfo.BestBlockHash,
+	}, nil
+}
+
+func (rpc *bitcoindRpc) GetZeroAddress(addressType blockchain.BtcAddressType) (string, error) {
+	addresses, err := bitcoinZeroAddresses.Network(rpc.conn.NetworkParams.Name)
+	if err != nil {
+		return "", err
+	}
+	return addresses.Address(addressType)
 }
 
 func (rpc *bitcoindRpc) getTxBlock(txHash string) (*wire.MsgBlock, *chainhash.Hash, error) {

@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"sync"
 )
 
 type RegisterPeginUseCase struct {
@@ -39,6 +40,10 @@ func (useCase *RegisterPeginUseCase) Run(ctx context.Context, retainedQuote quot
 	var err error
 	var peginQuote *quote.PeginQuote
 	var params blockchain.RegisterPeginParams
+
+	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
+	}
 
 	if retainedQuote.State != quote.PeginStateCallForUserSucceeded {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.WrongStateError, true)
@@ -126,11 +131,11 @@ func (useCase *RegisterPeginUseCase) validateTransaction(ctx context.Context, re
 }
 
 func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, params blockchain.RegisterPeginParams, retainedQuote quote.RetainedPeginQuote) error {
-	var registerPeginTxHash string
+	var receipt blockchain.TransactionReceipt
 	var newState quote.PeginState
 	var err error
 
-	if registerPeginTxHash, err = useCase.contracts.Lbc.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
+	if receipt, err = useCase.contracts.PegIn.RegisterPegin(params); errors.Is(err, blockchain.WaitingForBridgeError) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
 	} else if err != nil {
 		newState = quote.PeginStateRegisterPegInFailed
@@ -138,8 +143,13 @@ func (useCase *RegisterPeginUseCase) performRegisterPegin(ctx context.Context, p
 		newState = quote.PeginStateRegisterPegInSucceeded
 	}
 
+	if receipt.TransactionHash != "" {
+		retainedQuote.RegisterPeginTxHash = receipt.TransactionHash
+		retainedQuote.RegisterPeginGasUsed = receipt.GasUsed.Uint64()
+		retainedQuote.RegisterPeginGasPrice = receipt.GasPrice
+	}
+
 	retainedQuote.State = newState
-	retainedQuote.RegisterPeginTxHash = registerPeginTxHash
 	useCase.eventBus.Publish(quote.RegisterPeginCompletedEvent{
 		Event:         entities.NewBaseEvent(quote.RegisterPeginCompletedEventId),
 		RetainedQuote: retainedQuote,

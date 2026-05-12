@@ -5,6 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
+	"os"
+	"path/filepath"
+	"slices"
+	"testing"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -18,11 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math"
-	"os"
-	"path/filepath"
-	"slices"
-	"testing"
 )
 
 var getTransactionsExpectedResult = []blockchain.BitcoinTransactionInformation{
@@ -166,7 +167,7 @@ func TestWatchOnlyWallet_EstimateTxFees(t *testing.T) {
 	require.NoError(t, err)
 	result, err := wallet.EstimateTxFees("address", nil)
 	require.ErrorContains(t, err, "cannot estimate from a watch-only wallet")
-	require.Nil(t, result)
+	require.Empty(t, result)
 }
 
 // TestWatchOnlyWallet_GetTransactions This test are reused from the bitcoind wallet tests suite since they share behavior
@@ -302,5 +303,16 @@ func TestWatchOnlyWallet_SendWithOpReturn(t *testing.T) {
 	require.NoError(t, err)
 	result, err := wallet.SendWithOpReturn("address", nil, nil)
 	require.ErrorContains(t, err, "cannot send from a watch-only wallet")
-	require.Empty(t, result)
+	require.Empty(t, result.Hash)
+	require.Nil(t, result.Fee)
+}
+
+func TestWatchOnlyWallet_CreateUnfundedTransactionWithOpReturn(t *testing.T) {
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+	wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
+	require.NoError(t, err)
+	result, err := wallet.CreateUnfundedTransactionWithOpReturn("address", nil, nil)
+	require.ErrorContains(t, err, "cannot create transactions from a watch-only wallet")
+	require.Nil(t, result)
 }

@@ -3,11 +3,16 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
@@ -16,15 +21,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 func TestPeginDepositAddressWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, nil, nil, nil)
 		return watcher.NewPeginDepositAddressWatcher(useCases, nil, blockchain.Rpc{}, eventBus, ticker)
 	})
@@ -43,6 +45,7 @@ func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
 		btcWallet := &mocks.BitcoinWalletMock{}
 		for i, q := range retainedQuotes {
 			peginRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).Return(&quote.PeginQuote{Nonce: int64(i)}, nil).Once()
+			peginRepository.EXPECT().GetPeginCreationData(mock.Anything, q.QuoteHash).Return(quote.PeginCreationData{GasPrice: entities.NewWei(int64(i))}).Once()
 			btcWallet.EXPECT().ImportAddress(q.DepositAddress).Return(nil).Once()
 		}
 		getWatchedUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
@@ -74,7 +77,7 @@ func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
 func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 	testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: "010203", DepositAddress: test.AnyAddress}
 	testPeginQuote := quote.PeginQuote{Nonce: 5}
-	btcWallet := &mocks.BtcWalletMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
 	rpc := blockchain.Rpc{}
 	eventBus := &mocks.EventBusMock{}
 	acceptPeginChannel := make(chan entities.Event)
@@ -152,7 +155,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	peginRepository := &mocks.PeginQuoteRepositoryMock{}
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil).Once()
-	btcWallet := &mocks.BtcWalletMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}
@@ -163,9 +166,21 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
-	lbc := &mocks.LbcMock{}
-	lbc.On("GetBalance", mock.Anything).Return(entities.NewWei(1000), nil)
-	lbc.On("CallForUser", mock.Anything, mock.Anything).Return(test.AnyHash, nil)
+	peginContract := &mocks.PeginContractMock{}
+	peginContract.EXPECT().GetBalance(mock.Anything).Return(entities.NewWei(1000), nil)
+	peginContract.On("CallForUser", mock.Anything, mock.Anything).Return(blockchain.TransactionReceipt{
+		TransactionHash:   test.AnyHash,
+		BlockHash:         "0xblock123",
+		BlockNumber:       uint64(1000),
+		From:              "0x1234",
+		To:                "0x5678",
+		CumulativeGasUsed: big.NewInt(21000),
+		GasUsed:           big.NewInt(21000),
+		Value:             entities.NewWei(0),
+		GasPrice:          entities.NewWei(1000000000),
+	}, nil)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
+
 	bridge := &mocks.BridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)
 	peginProvider := &mocks.ProviderMock{}
@@ -174,7 +189,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	getUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
 	expireUseCase := pegin.NewExpiredPeginQuoteUseCase(peginRepository)
 	updateUseCase := w.NewUpdatePeginDepositUseCase(peginRepository)
-	cfuUseCase := pegin.NewCallForUserUseCase(blockchain.RskContracts{Lbc: lbc, Bridge: bridge}, peginRepository, rpc, peginProvider, eventBus, appMutexes.RskWalletMutex())
+	cfuUseCase := pegin.NewCallForUserUseCase(blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}, peginRepository, rpc, peginProvider, eventBus, appMutexes.RskWalletMutex())
 	useCases := watcher.NewPeginDepositAddressWatcherUseCases(cfuUseCase, getUseCase, updateUseCase, expireUseCase)
 	peginWatcher := watcher.NewPeginDepositAddressWatcher(useCases, btcWallet, rpc, eventBus, ticker)
 
@@ -392,8 +407,10 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 			}, nil).Twice()
 			btcRpc.On("GetHeight").Return(big.NewInt(19), nil).Once()
 			btcRpc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{Time: time.Now()}, nil).Once()
+			btcRpc.On("GetRawTransaction", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 			peginRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testQuote, nil).Once()
 			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
+			peginRepository.EXPECT().GetPeginCreationData(mock.Anything, mock.Anything).Return(quote.PeginCreationData{GasPrice: entities.NewWei(1)}).Once()
 
 			acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 				Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
@@ -461,8 +478,10 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		btcRpc.On("GetTransactionBlockInfo", txHash).Return(blockchain.BitcoinBlockInformation{Time: time.Unix(now-2000, 0)}, nil).Twice()
 		btcRpc.On("GetTransactionInfo", txHash).Return(confirmedTx, nil).Twice()
 		btcRpc.On("GetTransactionInfo", mock.Anything).Return(unconfirmedTx, nil).Once() // the quote from the old test still in the watcher
+		btcRpc.On("GetRawTransaction", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
 		peginRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testQuote, nil).Once()
 		peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Twice()
+		peginRepository.EXPECT().GetPeginCreationData(mock.Anything, mock.Anything).Return(quote.PeginCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, func() bool {
 			watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)

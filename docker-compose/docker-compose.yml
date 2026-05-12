@@ -56,20 +56,12 @@ services:
       - "4444:4444"
       - "4445:4445"
     volumes:
-      - ${RSKJ_HOME:-./volumes/rskj}/db:/home/rsk/.rsk
-      - ${RSKJ_HOME:-./volumes/rskj}/logs:/home/rsk/logs
+      - ${RSKJ_HOME:-./volumes/rskj}/db:/var/lib/rsk/database
+      - ${RSKJ_HOME:-./volumes/rskj}/logs:/var/log/rsk
     networks:
       - net_lps
     command:
       [
-        "java",
-        "-Drpc.providers.web.http.bind_address=0.0.0.0",
-        "-Drpc.providers.web.http.hosts.0=localhost",
-        "-Drpc.providers.web.http.hosts.1=rskj",
-        "-cp",
-        "rskj-core.jar",
-        "-Drsk.conf.file=rsk.conf",
-        "co.rsk.Start",
         "--${LPS_STAGE}",
       ]
   lps:
@@ -94,13 +86,15 @@ services:
       - MONGODB_PORT
       - RSK_ENDPOINT
       - CHAIN_ID
-      - LBC_ADDR
+      - PEGIN_CONTRACT_ADDRESS
+      - PEGOUT_CONTRACT_ADDRESS
+      - COLLATERAL_MANAGEMENT_ADDRESS
+      - DISCOVERY_ADDRESS
       - RSK_BRIDGE_ADDR
       - RSK_REQUIRED_BRIDGE_CONFIRMATIONS
-      - IRIS_ACTIVATION_HEIGHT
       - ERP_KEYS
+      - USE_SEGWIT_FEDERATION
       - ACCOUNT_NUM
-      - DAO_FEE_COLLECTOR_ADDRESS
       - KEY_SECRET
       - PASSWORD_SECRET
       - BTC_NETWORK
@@ -129,6 +123,7 @@ services:
       - ENABLE_SECURITY_HEADERS
       - WALLET
       - SECRET_SRC
+      - ALLOWED_ORIGINS
       - KEYSTORE_FILE
       - KEYSTORE_PWD
       - BOOTSTRAP_TIMEOUT
@@ -141,6 +136,19 @@ services:
       - SERVER_WRITE_TIMEOUT
       - SERVER_IDLE_TIMEOUT
       - PEGOUT_DEPOSIT_CHECK_TIMEOUT
+      - RSK_EXTRA_SOURCES
+      - BTC_EXTRA_SOURCES
+      - ECLIPSE_CHECK_ENABLED
+      - ECLIPSE_RSK_TOLERANCE_THRESHOLD
+      - ECLIPSE_RSK_MAX_MS_WAIT_FOR_BLOCK
+      - ECLIPSE_RSK_WAIT_POLLING_MS_INTERVAL
+      - ECLIPSE_BTC_TOLERANCE_THRESHOLD
+      - ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK
+      - ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL
+      - ECLIPSE_ALERT_COOLDOWN_SECONDS
+      - BTC_RELEASE_WATCHER_START_BLOCK
+      - BTC_RELEASE_WATCHER_PAGE_SIZE
+      - BTC_RELEASE_CHECK_TIMEOUT
     ports:
       - "8080:8080"
     volumes:

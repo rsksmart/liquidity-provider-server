@@ -2,12 +2,14 @@ package mongo
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
-	DbName = "flyover"
+	DbName        = "flyover"
+	SortAscending = 1
 )
 
 type DbInteraction string

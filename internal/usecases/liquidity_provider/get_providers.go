@@ -17,7 +17,7 @@ func NewGetProvidersUseCase(contracts blockchain.RskContracts) *GetProvidersUseC
 func (useCase *GetProvidersUseCase) Run() ([]liquidity_provider.RegisteredLiquidityProvider, error) {
 	var err error
 	var providers []liquidity_provider.RegisteredLiquidityProvider
-	if providers, err = useCase.contracts.Lbc.GetProviders(); err != nil {
+	if providers, err = useCase.contracts.Discovery.GetProviders(); err != nil {
 		return providers, usecases.WrapUseCaseError(usecases.GetProvidersId, err)
 	}
 	return providers, nil

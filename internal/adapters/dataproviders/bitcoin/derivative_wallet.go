@@ -1,9 +1,11 @@
 package bitcoin
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
@@ -110,14 +112,14 @@ func (wallet *DerivativeWallet) importPublicKey() error {
 	return errors.New("public key imported, rescan started, please wait for the rescan process to finish before initializing the server again")
 }
 
-func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities.Wei) (*entities.Wei, error) {
+func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities.Wei) (blockchain.BtcFeeEstimation, error) {
 	const quoteHashLength = 32
 
 	if _, err := btcutil.DecodeAddress(toAddress, wallet.conn.NetworkParams); err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 
 	amountInSatoshi, _ := value.ToSatoshi().Int64()
@@ -128,11 +130,11 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 
 	feeRate, err := wallet.estimateFeeRate()
 	if err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 	changeAddress, err := wallet.rskAccount.BtcAddress()
 	if err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 
 	opts := btcjson.WalletCreateFundedPsbtOpts{
@@ -144,14 +146,17 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 
 	simulatedTx, err := wallet.conn.client.WalletCreateFundedPsbt(nil, output, nil, &opts, nil)
 	if err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 	btcFee, err := btcutil.NewAmount(simulatedTx.Fee)
 	if err != nil {
-		return nil, err
+		return blockchain.BtcFeeEstimation{}, err
 	}
 	satoshiFee := btcFee.ToUnit(btcutil.AmountSatoshi)
-	return entities.SatoshiToWei(uint64(satoshiFee)), nil
+	return blockchain.BtcFeeEstimation{
+		Value:   entities.SatoshiToWei(uint64(satoshiFee)),
+		FeeRate: utils.NewBigFloat64(*feeRate),
+	}, nil
 }
 
 func (wallet *DerivativeWallet) GetBalance() (*entities.Wei, error) {
@@ -186,48 +191,59 @@ func (wallet *DerivativeWallet) GetBalance() (*entities.Wei, error) {
 	return balance, nil
 }
 
-func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (transactionHash string, err error) {
-	decodedAddress, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
-	if err != nil {
-		return "", err
-	}
-	if err = EnsureLoadedBtcWallet(wallet.conn); err != nil {
-		return "", err
+func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (blockchain.BitcoinTransactionResult, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
 	}
 
-	satoshis, _ := value.ToSatoshi().Float64()
-	output := map[btcutil.Address]btcutil.Amount{decodedAddress: btcutil.Amount(satoshis)}
-	rawTx, err := wallet.conn.client.CreateRawTransaction(nil, output, nil)
+	rawTx, err := wallet.buildRawTransactionWithOpReturn(address, value, opReturnContent)
 	if err != nil {
-		return "", err
+		return blockchain.BitcoinTransactionResult{}, err
 	}
-
-	opReturnScript, err := txscript.NullDataScript(opReturnContent)
-	if err != nil {
-		return "", err
-	}
-	rawTx.AddTxOut(wire.NewTxOut(0, opReturnScript))
 
 	opts, err := wallet.buildFundRawTransactionOpts()
 	if err != nil {
-		return "", err
+		return blockchain.BitcoinTransactionResult{}, err
 	}
 	fundedTx, err := wallet.conn.client.FundRawTransaction(rawTx, opts, nil)
 	if err != nil {
-		return "", err
+		return blockchain.BitcoinTransactionResult{}, err
 	}
 
 	signedTx, err := wallet.signFundedTransaction(fundedTx)
 	if err != nil {
-		return "", err
+		return blockchain.BitcoinTransactionResult{}, err
 	}
 
 	log.Infof("Sending %v BTC to %s\n", value.ToRbtc(), address)
 	txHash, err := wallet.conn.client.SendRawTransaction(signedTx, false)
 	if err != nil {
-		return "", err
+		return blockchain.BitcoinTransactionResult{}, err
 	}
-	return txHash.String(), nil
+
+	// Convert fee from satoshis to wei
+	feeSatoshis := uint64(fundedTx.Fee)
+	feeWei := entities.SatoshiToWei(feeSatoshis)
+
+	return blockchain.BitcoinTransactionResult{
+		Hash: txHash.String(),
+		Fee:  feeWei,
+	}, nil
+}
+
+func (wallet *DerivativeWallet) CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error) {
+	rawTx, err := wallet.buildRawTransactionWithOpReturn(address, value, opReturnContent)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	err = rawTx.Serialize(&buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (wallet *DerivativeWallet) ImportAddress(address string) error {
@@ -314,4 +330,26 @@ func (wallet *DerivativeWallet) signFundedTransaction(fundedTx *btcjson.FundRawT
 		return nil, signingErr
 	}
 	return signedTx, nil
+}
+
+func (wallet *DerivativeWallet) buildRawTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (*wire.MsgTx, error) {
+	decodedAddress, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
+	if err != nil {
+		return nil, err
+	}
+
+	satoshis, _ := value.ToSatoshi().Float64()
+	output := map[btcutil.Address]btcutil.Amount{decodedAddress: btcutil.Amount(satoshis)}
+	rawTx, err := wallet.conn.client.CreateRawTransaction(nil, output, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	opReturnScript, err := txscript.NullDataScript(opReturnContent)
+	if err != nil {
+		return nil, err
+	}
+	rawTx.AddTxOut(wire.NewTxOut(0, opReturnScript))
+
+	return rawTx, nil
 }

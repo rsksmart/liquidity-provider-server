@@ -3,6 +3,7 @@ package pkg_test
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 		RskRefundAddress:      "0x56",
 		LpBtcAddress:          "btc2",
 		CallFee:               entities.NewWei(5),
-		PenaltyFee:            10,
+		PenaltyFee:            entities.NewWei(10),
 		Nonce:                 15,
 		DepositAddress:        "btc3",
 		Value:                 entities.NewWei(20),
@@ -29,7 +30,7 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 		ExpireDate:            50,
 		ExpireBlock:           55,
 		GasFee:                entities.NewWei(60),
-		ProductFeeAmount:      65,
+		ChainId:               31,
 	}
 
 	dto := pkg.ToPegoutQuoteDTO(pegoutQuote)
@@ -39,11 +40,11 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 	assert.Equal(t, pegoutQuote.BtcRefundAddress, dto.BtcRefundAddr)
 	assert.Equal(t, pegoutQuote.RskRefundAddress, dto.RSKRefundAddr)
 	assert.Equal(t, pegoutQuote.LpBtcAddress, dto.LpBTCAddr)
-	assert.Equal(t, pegoutQuote.CallFee.Uint64(), dto.CallFee)
-	assert.Equal(t, pegoutQuote.PenaltyFee, dto.PenaltyFee)
+	assert.Equal(t, pegoutQuote.CallFee.String(), dto.CallFee.String())
+	assert.Equal(t, pegoutQuote.PenaltyFee.String(), dto.PenaltyFee.String())
 	assert.Equal(t, pegoutQuote.Nonce, dto.Nonce)
 	assert.Equal(t, pegoutQuote.DepositAddress, dto.DepositAddr)
-	assert.Equal(t, pegoutQuote.Value.Uint64(), dto.Value)
+	assert.Equal(t, pegoutQuote.Value.String(), dto.Value.String())
 	assert.Equal(t, pegoutQuote.AgreementTimestamp, dto.AgreementTimestamp)
 	assert.Equal(t, pegoutQuote.DepositDateLimit, dto.DepositDateLimit)
 	assert.Equal(t, pegoutQuote.DepositConfirmations, dto.DepositConfirmations)
@@ -51,8 +52,8 @@ func TestToPegoutQuoteDTO(t *testing.T) {
 	assert.Equal(t, pegoutQuote.TransferTime, dto.TransferTime)
 	assert.Equal(t, pegoutQuote.ExpireDate, dto.ExpireDate)
 	assert.Equal(t, pegoutQuote.ExpireBlock, dto.ExpireBlock)
-	assert.Equal(t, pegoutQuote.GasFee.Uint64(), dto.GasFee)
-	assert.Equal(t, pegoutQuote.ProductFeeAmount, dto.ProductFeeAmount)
+	assert.Equal(t, pegoutQuote.GasFee.String(), dto.GasFee.String())
+	assert.Equal(t, pegoutQuote.ChainId, dto.ChainId)
 	const expectedFields = 19
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(pegoutQuote))
@@ -85,4 +86,22 @@ func TestToRetainedPegoutQuoteDTO(t *testing.T) {
 	const expectedFields = 9
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(dto))
 	assert.Equal(t, expectedFields, test.CountNonZeroValues(pegoutQuote))
+}
+
+func TestToPegoutCreationDataDTO(t *testing.T) {
+	pegoutCreationData := quote.PegoutCreationData{
+		FeeRate:       utils.NewBigFloat64(31251.3333333),
+		FeePercentage: utils.NewBigFloat64(11.57),
+		GasPrice:      entities.NewWei(10003124124),
+		FixedFee:      entities.NewWei(15000000),
+	}
+
+	dto := pkg.ToPegoutCreationDataDTO(pegoutCreationData)
+
+	feeRate, _ := pegoutCreationData.FeeRate.Native().Float64()
+	feePercentage, _ := pegoutCreationData.FeePercentage.Native().Float64()
+	assert.InDelta(t, feeRate, dto.FeeRate, 0.000000001)
+	assert.InDelta(t, feePercentage, dto.FeePercentage, 0.000000001)
+	assert.Equal(t, pegoutCreationData.GasPrice.String(), dto.GasPrice.String())
+	assert.Equal(t, pegoutCreationData.FixedFee.String(), dto.FixedFee.String())
 }

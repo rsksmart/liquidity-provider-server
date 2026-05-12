@@ -2,6 +2,10 @@ package watcher_test
 
 import (
 	"context"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -9,6 +13,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -17,10 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
+// nolint:funlen
 func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	tickerChannel := make(chan time.Time)
@@ -58,6 +62,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 			{QuoteHash: quoteHash, State: quote.PegoutStateRefundPegOutSucceeded},
 		}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(&quote.PegoutQuote{Value: entities.NewBigWei(math.BigPow(10, 19))}, nil).Once()
+		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
 		rskWallet.On("GetBalance", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
 		tickerChannel <- time.Now()
@@ -75,8 +80,20 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(&quote.PegoutQuote{Value: entities.NewBigWei(math.BigPow(10, 19))}, nil).Once()
 		providerMock.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.DefaultPegoutConfiguration()).Once()
 		rskWallet.On("GetBalance", mock.Anything).Return(entities.NewBigWei(math.BigPow(10, 20)), nil).Once()
-		rskWallet.On("SendRbtc", mock.Anything, mock.Anything, mock.Anything).Return(test.AnyHash, nil).Once()
+		sendRbtcReceipt := blockchain.TransactionReceipt{
+			TransactionHash:   test.AnyHash,
+			BlockHash:         "0xblock123",
+			BlockNumber:       uint64(1000),
+			From:              "0x123",
+			To:                test.AnyAddress,
+			CumulativeGasUsed: big.NewInt(21000),
+			GasUsed:           big.NewInt(21000),
+			Value:             entities.NewWei(0),
+			GasPrice:          entities.NewWei(1000000000),
+		}
+		rskWallet.On("SendRbtc", mock.Anything, mock.Anything, mock.Anything).Return(sendRbtcReceipt, nil).Once()
 		pegoutRepository.EXPECT().UpdateRetainedQuotes(mock.Anything, mock.Anything).Return(nil).Once()
+		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(1)}).Once()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, func() bool {
 			return checkFunc() && rskWallet.AssertExpectations(t) && providerMock.AssertExpectations(t) && pegoutRepository.AssertExpectations(t)
@@ -91,7 +108,7 @@ func TestPegoutBridgeWatcher_Prepare(t *testing.T) {
 }
 
 func TestPegoutBridgeWatcher_Shutdown(t *testing.T) {
-	createWatcherShutdownTest(t, func(ticker watcher.Ticker) watcher.Watcher {
+	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		return watcher.NewPegoutBridgeWatcher(nil, nil, ticker)
 	})
 }

@@ -1,4 +1,5 @@
 # Liquidity Provider Server Integration Test
+# TODO updarte documentation and automate
 ## How to run
 There are two ways of running this tests:
 1. **Test instance**: to run this test you need to have the same environment variables that you have when you run the LPS. 

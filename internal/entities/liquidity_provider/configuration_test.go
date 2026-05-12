@@ -45,7 +45,7 @@ func TestConfirmationsPerAmount_Max(t *testing.T) {
 			Result: uint16(0),
 		},
 		{
-			Value:  liquidity_provider.ConfirmationsPerAmount{100: 10, 200: 20, 300: 30},
+			Value:  liquidity_provider.ConfirmationsPerAmount{"100": 10, "200": 20, "300": 30},
 			Result: uint16(30),
 		},
 	}

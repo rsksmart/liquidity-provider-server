@@ -1,20 +1,25 @@
 package usecases
 
 import (
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"strconv"
+
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"math/big"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
 
 // used for error logging
 
 type UseCaseId string
+
+const EthereumSignedMessagePrefix = "\x19Ethereum Signed Message:\n32"
 
 const (
 	GetPeginQuoteId            UseCaseId = "GetPeginQuote"
@@ -48,6 +53,9 @@ const (
 	SetPeginConfigId           UseCaseId = "SetPeginConfigUseCase"
 	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
+	UpdateTrustedAccountId     UseCaseId = "UpdateTrustedAccountUseCase"
+	AddTrustedAccountId        UseCaseId = "AddTrustedAccountUseCase"
+	DeleteTrustedAccountId     UseCaseId = "DeleteTrustedAccountUseCase"
 	LoginId                    UseCaseId = "Login"
 	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
 	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"
@@ -58,24 +66,42 @@ const (
 	GetAvailableLiquidityId    UseCaseId = "GetAvailableLiquidity"
 	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
 	ServerInfoId               UseCaseId = "ServerInfo"
+	SummariesUseCaseId         UseCaseId = "Summaries"
+	GetPeginReportId           UseCaseId = "GetPeginReport"
+	GetPegoutReportId          UseCaseId = "GetPegoutReport"
+	GetRevenueReportId         UseCaseId = "GetRevenueReport"
+	GetTransactionsReportId    UseCaseId = "GetTransactionsReport"
+	EclipseCheckId             UseCaseId = "EclipseCheck"
+	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
+	RecommendedPegoutId        UseCaseId = "RecommendedPegout"
+	RecommendedPeginId         UseCaseId = "RecommendedPegin"
 )
 
 var (
-	NonRecoverableError         = errors.New("non recoverable")
-	TxBelowMinimumError         = errors.New("requested amount below bridge's min transaction value")
-	RskAddressNotSupportedError = errors.New("rsk address not supported")
-	QuoteNotFoundError          = errors.New("quote not found")
-	QuoteNotAcceptedError       = errors.New("quote not accepted")
-	ExpiredQuoteError           = errors.New("expired quote")
-	NoLiquidityError            = errors.New("not enough liquidity")
-	ProviderConfigurationError  = errors.New("pegin and pegout providers are not using the same account")
-	WrongStateError             = errors.New("quote with wrong state")
-	NoEnoughConfirmationsError  = errors.New("not enough confirmations for transaction")
-	InsufficientAmountError     = errors.New("insufficient amount")
-	AlreadyRegisteredError      = errors.New("liquidity provider already registered")
-	ProviderNotResignedError    = errors.New("provided hasn't completed resignation process")
-	IllegalQuoteStateError      = errors.New("illegal quote state")
+	NonRecoverableError             = errors.New("non recoverable")
+	TxBelowMinimumError             = errors.New("requested amount should be greater than bridge's min transaction value")
+	RskAddressNotSupportedError     = errors.New("rsk address not supported")
+	QuoteNotFoundError              = errors.New("quote not found")
+	QuoteNotAcceptedError           = errors.New("quote not accepted")
+	ExpiredQuoteError               = errors.New("expired quote")
+	NoLiquidityError                = errors.New("not enough liquidity")
+	ProviderConfigurationError      = errors.New("pegin and pegout providers are not using the same account")
+	WrongStateError                 = errors.New("quote with wrong state")
+	NoEnoughConfirmationsError      = errors.New("not enough confirmations for transaction")
+	InsufficientAmountError         = errors.New("insufficient amount")
+	AlreadyRegisteredError          = errors.New("liquidity provider already registered")
+	IllegalQuoteStateError          = errors.New("illegal quote state")
+	LockingCapExceededError         = errors.New("locking cap exceeded")
+	NonPositiveWeiError             = errors.New("wei value must be positive")
+	EmptyConfirmationsMapError      = errors.New("confirmations map cannot be empty")
+	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
+
+type RecommendedOperationResult struct {
+	RecommendedQuoteValue *entities.Wei
+	EstimatedCallFee      *entities.Wei
+	EstimatedGasFee       *entities.Wei
+}
 
 type ErrorArgs map[string]string
 
@@ -107,35 +133,7 @@ func WrapUseCaseErrorArgs(useCase UseCaseId, err error, args ErrorArgs) error {
 	}
 }
 
-type DaoAmounts struct {
-	DaoGasAmount *entities.Wei
-	DaoFeeAmount *entities.Wei
-}
-
-func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer, value *entities.Wei, daoFeePercentage uint64, feeCollectorAddress string) (DaoAmounts, error) {
-	var daoGasAmount *entities.Wei
-	daoFeeAmount := new(entities.Wei)
-	var err error
-	if daoFeePercentage == 0 {
-		return DaoAmounts{
-			DaoFeeAmount: entities.NewWei(0),
-			DaoGasAmount: entities.NewWei(0),
-		}, nil
-	}
-
-	daoFeeAmount.Mul(value, entities.NewUWei(daoFeePercentage))
-	daoFeeAmount.AsBigInt().Div(daoFeeAmount.AsBigInt(), big.NewInt(100))
-	daoGasAmount, err = rsk.EstimateGas(ctx, feeCollectorAddress, daoFeeAmount, make([]byte, 0))
-	if err != nil {
-		return DaoAmounts{}, err
-	}
-	return DaoAmounts{
-		DaoFeeAmount: daoFeeAmount,
-		DaoGasAmount: daoGasAmount,
-	}, nil
-}
-
-func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, value *entities.Wei) error {
+func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {
 	var err error
 	var minLockTxValue *entities.Wei
 
@@ -143,7 +141,7 @@ func ValidateMinLockValue(useCase UseCaseId, bridge blockchain.RootstockBridge, 
 	if minLockTxValue, err = bridge.GetMinimumLockTxValue(); err != nil {
 		return WrapUseCaseError(useCase, err)
 	}
-	if value.Cmp(minLockTxValue) < 0 {
+	if value.Cmp(minLockTxValue) <= 0 {
 		errorArgs["minimum"] = minLockTxValue.String()
 		errorArgs["value"] = value.String()
 		return WrapUseCaseErrorArgs(useCase, TxBelowMinimumError, errorArgs)
@@ -176,7 +174,7 @@ func SignConfiguration[C liquidity_provider.ConfigurationType](
 
 // RegisterCoinbaseTransaction registers the information of the coinbase transaction of the block of a specific transaction in the Rootstock Bridge.
 // IMPORTANT: this function should not be called right now for security reasons. It is in the codebase for future compatibility but should not be used for now.
-func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract blockchain.RootstockBridge, tx blockchain.BitcoinTransactionInformation) error {
+func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContract rootstock.Bridge, tx blockchain.BitcoinTransactionInformation) error {
 	if !tx.HasWitness {
 		return nil
 	}
@@ -190,7 +188,7 @@ func RegisterCoinbaseTransaction(btcRpc blockchain.BitcoinNetwork, bridgeContrac
 }
 
 // ValidateBridgeUtxoMin checks that all the UTXOs to an address of a Bitcoin transaction are above the Rootstock Bridge minimum
-func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
+func ValidateBridgeUtxoMin(bridge rootstock.Bridge, transaction blockchain.BitcoinTransactionInformation, address string) error {
 	minLockTxValueInWei, err := bridge.GetMinimumLockTxValue()
 	if err != nil {
 		return err
@@ -207,4 +205,100 @@ func ValidateBridgeUtxoMin(bridge blockchain.RootstockBridge, transaction blockc
 		}
 	}
 	return nil
+}
+
+// RecoverSignerAddress recovers the address from a signature. Important function for the management
+// of trusted accounts.
+func RecoverSignerAddress(signature string, getHashFunction func() ([]byte, error)) (string, error) {
+	if signature == "" {
+		return "", errors.New("empty signature provided")
+	}
+
+	signatureBytes, err := hex.DecodeString(signature)
+	if err != nil {
+		return "", fmt.Errorf("error decoding signature: %w", err)
+	}
+
+	// Ethereum signatures should be 65 bytes (r,s,v) where v is the recovery ID
+	if len(signatureBytes) != 65 {
+		return "", fmt.Errorf("invalid signature length, expected 65 bytes, got %d", len(signatureBytes))
+	}
+
+	// The signature's recovery ID (v) needs to be adjusted from Ethereum's convention
+	// Ethereum uses 27 or 28 as the v value, but Ecrecover expects 0 or 1
+	v := signatureBytes[64]
+	if v >= 27 {
+		signatureBytes[64] = v - 27
+	}
+
+	hash, err := getHashFunction()
+	if err != nil {
+		return "", err
+	} else if len(hash) != 32 {
+		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hash))
+	}
+
+	pubKey, err := crypto.Ecrecover(hash, signatureBytes)
+	if err != nil {
+		return "", errors.New("error recovering public key: " + err.Error())
+	}
+
+	// Convert the public key to an Ethereum address
+	pubKeyECDSA, err := crypto.UnmarshalPubkey(pubKey)
+	if err != nil {
+		return "", errors.New("error unmarshalling public key: " + err.Error())
+	}
+
+	address := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
+	return address, nil
+}
+
+func ValidatePositiveWeiValues(useCase UseCaseId, weiValues ...*entities.Wei) error {
+	if err := entities.ValidatePositiveWei(weiValues...); err != nil {
+		return WrapUseCaseError(useCase, NonPositiveWeiError)
+	}
+	return nil
+}
+
+func ValidateConfirmations(useCase UseCaseId, confirmations liquidity_provider.ConfirmationsPerAmount) error {
+	if len(confirmations) == 0 {
+		return WrapUseCaseError(useCase, EmptyConfirmationsMapError)
+	}
+	for keyStr := range confirmations {
+		intKey, err := strconv.Atoi(keyStr)
+		if err != nil || intKey <= 0 {
+			args := ErrorArg("key", keyStr)
+			return WrapUseCaseErrorArgs(useCase, NonPositiveConfirmationKeyError, args)
+		}
+	}
+	return nil
+}
+
+func CheckPauseState(contracts ...blockchain.Pausable) error {
+	var err error
+	for _, contract := range contracts {
+		if err = checkPauseState(contract); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func checkPauseState(contract blockchain.Pausable) error {
+	pausedStatus, err := contract.PausedStatus()
+	if err != nil {
+		return err
+	}
+
+	if !pausedStatus.IsPaused {
+		return nil
+	}
+	log.Warnf("Contract %s is paused. Reason: %s since block %d", contract.GetAddress(), pausedStatus.Reason, pausedStatus.Since)
+
+	return fmt.Errorf(
+		"%w. Reason %s at %d",
+		blockchain.ContractPausedError,
+		pausedStatus.Reason,
+		pausedStatus.Since,
+	)
 }

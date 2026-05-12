@@ -1,11 +1,15 @@
 package handlers
 
 import (
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"net/http"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
+
+type ChangeStatusUseCase interface {
+	Run(newStatus bool) error
+}
 
 // NewChangeStatusHandler
 // @Title Change Provider Status
@@ -13,7 +17,7 @@ import (
 // @Param ChangeStatusRequest body pkg.ChangeStatusRequest true "Change Provider Status Request"
 // @Success 204 object
 // @Route /providers/changeStatus [post]
-func NewChangeStatusHandler(useCase *liquidity_provider.ChangeStatusUseCase) http.HandlerFunc {
+func NewChangeStatusHandler(useCase ChangeStatusUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var err error
 		request := pkg.ChangeStatusRequest{}

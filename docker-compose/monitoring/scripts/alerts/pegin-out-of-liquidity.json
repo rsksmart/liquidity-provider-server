@@ -1,0 +1,111 @@
+{
+  "uid": "besm06zhw8o3kb",
+  "title": "PegIn Out of Liquidity Alert",
+  "condition": "C",
+  "data": [
+    {
+      "refId": "A",
+      "queryType": "range",
+      "relativeTimeRange": {
+        "from": 600,
+        "to": 0
+      },
+      "datasourceUid": "loki-uid",
+      "model": {
+        "datasource": {
+          "type": "loki",
+          "uid": "loki-uid"
+        },
+        "editorMode": "code",
+        "expr": "sum(count_over_time({service=\"lps\"} |~ \"Alert! - Subject: PegIn: Out of liquidity\" [1m]) > 0)",
+        "instant": true,
+        "intervalMs": 1000,
+        "maxDataPoints": 43200,
+        "queryType": "range",
+        "refId": "A"
+      }
+    },
+    {
+      "refId": "B",
+      "datasourceUid": "__expr__",
+      "model": {
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [0, 0],
+              "type": "gt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": []
+            },
+            "reducer": {
+              "params": [],
+              "type": "avg"
+            },
+            "type": "query"
+          }
+        ],
+        "datasource": {
+          "name": "Expression",
+          "type": "__expr__",
+          "uid": "__expr__"
+        },
+        "expression": "A",
+        "intervalMs": 1000,
+        "maxDataPoints": 43200,
+        "reducer": "last",
+        "refId": "B",
+        "type": "reduce"
+      }
+    },
+    {
+      "refId": "C",
+      "datasourceUid": "__expr__",
+      "model": {
+        "conditions": [
+          {
+            "evaluator": {
+              "params": [0, 0],
+              "type": "gt"
+            },
+            "operator": {
+              "type": "and"
+            },
+            "query": {
+              "params": []
+            },
+            "reducer": {
+              "params": [],
+              "type": "avg"
+            },
+            "type": "query"
+          }
+        ],
+        "datasource": {
+          "name": "Expression",
+          "type": "__expr__",
+          "uid": "__expr__"
+        },
+        "expression": "B",
+        "intervalMs": 1000,
+        "maxDataPoints": 43200,
+        "refId": "C",
+        "type": "threshold"
+      }
+    }
+  ],
+  "noDataState": "OK",
+  "execErrState": "OK",
+  "for": "0s",
+  "annotations": {
+    "description": "PegIn operations cannot be processed due to insufficient Bitcoin liquidity",
+    "summary": "[URGENT] PegIn Liquidity Shortage Detected"
+  },
+  "labels": {},
+  "folderUID": "LPS",
+  "ruleGroup": "10s",
+  "intervalSeconds": 10
+}

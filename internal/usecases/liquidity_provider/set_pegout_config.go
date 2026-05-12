@@ -2,6 +2,7 @@ package liquidity_provider
 
 import (
 	"context"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -25,6 +26,17 @@ func NewSetPegoutConfigUseCase(
 }
 
 func (useCase *SetPegoutConfigUseCase) Run(ctx context.Context, config liquidity_provider.PegoutConfiguration) error {
+	if err := usecases.ValidatePositiveWeiValues(
+		usecases.SetPegoutConfigId,
+		config.PenaltyFee,
+		config.FixedFee,
+		config.MaxValue,
+		config.MinValue,
+		config.BridgeTransactionMin,
+	); err != nil {
+		return err
+	}
+
 	var err error
 	if err = usecases.ValidateMinLockValue(usecases.SetPegoutConfigId, useCase.contracts.Bridge, config.BridgeTransactionMin); err != nil {
 		return err

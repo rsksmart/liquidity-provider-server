@@ -6,16 +6,18 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/cmd/utils/scripts"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/btc_bootstrap"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 	"golang.org/x/term"
-	"os"
 )
 
 type RegisterPegInScriptInput struct {
@@ -82,21 +84,28 @@ func main() {
 		scripts.ExitWithError(errorCode, "Error parsing input", err)
 	}
 
-	btcClient, err := bootstrap.Bitcoin(env.Btc)
+	btcClient, err := btc_bootstrap.Bitcoin(env.Btc)
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error connecting to BTC node", err)
 	}
 
-	lbc, err := scripts.CreateLiquidityBridgeContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
+	peginContract, err := scripts.CreatePeginContract(ctx, bootstrap.Rootstock, env, environment.DefaultTimeouts())
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error accessing the Liquidity Bridge Contract", err)
 	}
 
-	txHash, err := ExecuteRegisterPegIn(bitcoin.NewBitcoindRpc(btcClient), lbc, parsedInput)
+	receipt, err := ExecuteRegisterPegIn(bitcoin.NewBitcoindRpc(btcClient), peginContract, parsedInput)
 	if err != nil {
 		scripts.ExitWithError(errorCode, "Error executing register PegIn", err)
 	}
-	fmt.Println("Register PegIn executed successfully. Transaction hash: ", txHash)
+	fmt.Println("Register PegIn executed successfully!")
+	fmt.Printf("Transaction Hash: %s\n", receipt.TransactionHash)
+	fmt.Printf("Block Number: %d\n", receipt.BlockNumber)
+	fmt.Printf("Gas Used: %s\n", receipt.GasUsed.String())
+	fmt.Printf("Gas Price: %s wei\n", receipt.GasPrice.String())
+	fmt.Printf("From: %s\n", receipt.From)
+	fmt.Printf("To: %s\n", receipt.To)
+	fmt.Printf("Value: %s wei\n", receipt.Value.String())
 }
 
 func ReadRegisterPegInScriptInput(scriptInput *RegisterPegInScriptInput) {
@@ -142,24 +151,24 @@ func ParseRegisterPegInScriptInput(parse scripts.ParseFunc, scriptInput *Registe
 
 func ExecuteRegisterPegIn(
 	btcRpc blockchain.BitcoinNetwork,
-	lbc blockchain.LiquidityBridgeContract,
+	peginContract blockchain.PeginContract,
 	parsedInput ParsedRegisterPegInInput,
-) (string, error) {
+) (blockchain.TransactionReceipt, error) {
 	var pmt, rawTx []byte
 	var err error
 
 	if pmt, err = btcRpc.GetPartialMerkleTree(parsedInput.BtcTxHash); err != nil {
-		return "", err
+		return blockchain.TransactionReceipt{}, err
 	}
 	if rawTx, err = btcRpc.GetRawTransaction(parsedInput.BtcTxHash); err != nil {
-		return "", err
+		return blockchain.TransactionReceipt{}, err
 	}
 	blockInfo, err := btcRpc.GetTransactionBlockInfo(parsedInput.BtcTxHash)
 	if err != nil {
-		return "", err
+		return blockchain.TransactionReceipt{}, err
 	}
 
-	return lbc.RegisterPegin(blockchain.RegisterPeginParams{
+	return peginContract.RegisterPegin(blockchain.RegisterPeginParams{
 		QuoteSignature:        parsedInput.Signature,
 		BitcoinRawTransaction: rawTx,
 		PartialMerkleTree:     pmt,

@@ -1,12 +1,13 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
-	"net/http"
 )
 
 const (
@@ -20,6 +21,7 @@ var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
 
 // nolint:funlen
 func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
+	sessionManager := handlers.NewCookieSessionManager(env.Management)
 	return []Endpoint{
 		{
 			Path:    "/pegin/collateral",
@@ -57,6 +59,15 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewWithdrawCollateralHandler(useCaseRegistry.WithdrawCollateralUseCase()),
 		},
 		{
+			Path:   "/reports/summaries",
+			Method: http.MethodGet,
+			Handler: handlers.NewGetReportSummariesHandler(
+				handlers.SingleFlightGroup,
+				handlers.SummariesReportSingleFlightKey,
+				useCaseRegistry.SummariesUseCase(),
+			),
+		},
+		{
 			Path:    "/configuration",
 			Method:  http.MethodPost,
 			Handler: handlers.NewSetGeneralConfigHandler(useCaseRegistry.SetGeneralConfigUseCase()),
@@ -77,19 +88,56 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewSetPegoutConfigHandler(useCaseRegistry.SetPegoutConfigUseCase()),
 		},
 		{
+			Path:   "/reports/pegin",
+			Method: http.MethodGet,
+			Handler: handlers.NewGetReportsPeginHandler(
+				handlers.SingleFlightGroup,
+				handlers.PegInReportSingleFlightKey,
+				useCaseRegistry.GetPeginReportUseCase(),
+			),
+		},
+		{
+			Path:   "/reports/pegout",
+			Method: http.MethodGet,
+			Handler: handlers.NewGetReportsPegoutHandler(
+				handlers.SingleFlightGroup,
+				handlers.PegOutReportSingleFlightKey,
+				useCaseRegistry.GetPegoutReportUseCase(),
+			),
+		},
+		{
+			Path:   "/reports/revenue",
+			Method: http.MethodGet,
+			Handler: handlers.NewGetReportsRevenueHandler(
+				handlers.SingleFlightGroup,
+				handlers.RevenueReportSingleFlightKey,
+				useCaseRegistry.GetRevenueReportUseCase(),
+			),
+		},
+		{
+			Path:    "/reports/assets",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportsAssetsHandler(useCaseRegistry.GetAssetsReportUseCase()),
+		},
+		{
+			Path:    "/reports/transactions",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetReportsTransactionHandler(useCaseRegistry.GetTransactionsReportUseCase()),
+		},
+		{
 			Path:    LoginPath,
 			Method:  http.MethodPost,
-			Handler: handlers.NewManagementLoginHandler(env.Management, useCaseRegistry.LoginUseCase()),
+			Handler: handlers.NewManagementLoginHandler(useCaseRegistry.LoginUseCase(), sessionManager),
 		},
 		{
 			Path:    "/management/logout",
 			Method:  http.MethodPost,
-			Handler: handlers.NewManagementLogoutHandler(env.Management),
+			Handler: handlers.NewManagementLogoutHandler(sessionManager),
 		},
 		{
 			Path:    "/management/credentials",
 			Method:  http.MethodPost,
-			Handler: handlers.NewSetCredentialsHandler(env.Management, useCaseRegistry.SetCredentialsUseCase()),
+			Handler: handlers.NewSetCredentialsHandler(useCaseRegistry.SetCredentialsUseCase(), sessionManager),
 		},
 		{
 			Path:    UiPath,
@@ -105,6 +153,26 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Path:    IconPath,
 			Method:  http.MethodGet,
 			Handler: http.FileServer(http.FS(assets.FileSystem)),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetTrustedAccountsHandler(useCaseRegistry.GetTrustedAccountsUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodPost,
+			Handler: handlers.NewAddTrustedAccountHandler(useCaseRegistry.AddTrustedAccountUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodPut,
+			Handler: handlers.NewUpdateTrustedAccountHandler(useCaseRegistry.UpdateTrustedAccountUseCase()),
+		},
+		{
+			Path:    "/management/trusted-accounts",
+			Method:  http.MethodDelete,
+			Handler: handlers.NewDeleteTrustedAccountHandler(useCaseRegistry.DeleteTrustedAccountUseCase()),
 		},
 	}
 }

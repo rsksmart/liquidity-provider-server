@@ -1,8 +1,13 @@
 package usecases_test
 
 import (
-	"context"
-	"errors"
+	"encoding/hex"
+	"math/big"
+	"strings"
+	"testing"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -14,88 +19,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
 )
 
 const id = "anyUseCase"
 
-type rpcMock struct {
-	mock.Mock
-	blockchain.RootstockRpcServer
-}
-
-func (m *rpcMock) EstimateGas(ctx context.Context, addr string, value *entities.Wei, data []byte) (*entities.Wei, error) {
-	args := m.Called(ctx, addr, value, data)
-	return args.Get(0).(*entities.Wei), args.Error(1) // nolint:errcheck
-}
-
 type bridgeMock struct {
 	mock.Mock
-	blockchain.RootstockBridge
+	rootstock.Bridge
 }
 
 func (m *bridgeMock) GetMinimumLockTxValue() (*entities.Wei, error) {
 	args := m.Called()
 	return args.Get(0).(*entities.Wei), args.Error(1) // nolint:errcheck
-}
-
-func TestCalculateDaoAmounts(t *testing.T) {
-	type testArgs struct {
-		value      *entities.Wei
-		percentage uint64
-	}
-	rpc := rpcMock{}
-	rpc.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(entities.NewWei(500000000000000), nil)
-
-	ctx := context.Background()
-	feeCollectorAddress := "0x1234"
-
-	cases := test.Table[testArgs, u.DaoAmounts]{
-		{
-			Value:  testArgs{entities.NewWei(1000000000000000000), 0},
-			Result: u.DaoAmounts{DaoFeeAmount: entities.NewWei(0), DaoGasAmount: entities.NewWei(0)},
-		},
-		{
-			Value: testArgs{entities.NewWei(500000000000000000), 50},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(250000000000000000),
-			},
-		},
-		{
-			Value: testArgs{entities.NewWei(6000000000000000000), 1},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(60000000000000000),
-			},
-		},
-		{
-			Value: testArgs{entities.NewWei(7700000000000000000), 17},
-			Result: u.DaoAmounts{
-				DaoGasAmount: entities.NewWei(500000000000000),
-				DaoFeeAmount: entities.NewWei(1309000000000000000),
-			},
-		},
-	}
-
-	test.RunTable(t, cases, func(args testArgs) u.DaoAmounts {
-		amounts, err := u.CalculateDaoAmounts(ctx, &rpc, args.value, args.percentage, feeCollectorAddress)
-		require.NoError(t, err)
-		return amounts
-	})
-
-}
-
-func TestCalculateDaoAmounts_Fail(t *testing.T) {
-	ctx := context.Background()
-	rpc := rpcMock{}
-	rpc.On("EstimateGas", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(entities.NewWei(0), errors.New("some error"))
-	result, err := u.CalculateDaoAmounts(ctx, &rpc, entities.NewUWei(500000000000000), 1, "0x1234")
-	require.Equal(t, u.DaoAmounts{}, result)
-	require.Error(t, err)
 }
 
 func TestValidateMinLockValue(t *testing.T) {
@@ -104,16 +39,20 @@ func TestValidateMinLockValue(t *testing.T) {
 	bridge := &bridgeMock{}
 	bridge.On("GetMinimumLockTxValue").Return(entities.SatoshiToWei(oneBtcInSatoshi), nil)
 
+	// Value must be strictly greater
 	err := u.ValidateMinLockValue(useCase, bridge, entities.SatoshiToWei(oneBtcInSatoshi))
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.Equal(t, "anyUseCase: requested amount should be greater than bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"1000000000000000000\"}", err.Error())
 
+	// Value greater than minimum should succeed
 	err = u.ValidateMinLockValue(useCase, bridge, entities.SatoshiToWei(oneBtcInSatoshi+1))
 	require.NoError(t, err)
 
+	// Value less than minimum should fail
 	value := new(entities.Wei).Sub(entities.SatoshiToWei(oneBtcInSatoshi), entities.NewWei(1))
 	err = u.ValidateMinLockValue(useCase, bridge, value)
 	require.Error(t, err)
-	assert.Equal(t, "anyUseCase: requested amount below bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"999999999999999999\"}", err.Error())
+	assert.Equal(t, "anyUseCase: requested amount should be greater than bridge's min transaction value. Args: {\"minimum\":\"1000000000000000000\",\"value\":\"999999999999999999\"}", err.Error())
 }
 
 func TestSignConfiguration(t *testing.T) {
@@ -153,7 +92,7 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 		HasWitness:    true,
 		Hash:          test.AnyHash,
 	}
-	coinbaseInfo := blockchain.BtcCoinbaseTransactionInformation{
+	coinbaseInfo := rootstock.BtcCoinbaseTransactionInformation{
 		BtcTxSerialized:      utils.MustGetRandomBytes(32),
 		BlockHash:            utils.To32Bytes(utils.MustGetRandomBytes(32)),
 		BlockHeight:          big.NewInt(500),
@@ -174,7 +113,7 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 	t.Run("Should handle error fetching the coinbase information", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
 		rpc := &mocks.BtcRpcMock{}
-		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(blockchain.BtcCoinbaseTransactionInformation{}, assert.AnError)
+		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(rootstock.BtcCoinbaseTransactionInformation{}, assert.AnError)
 		err := u.RegisterCoinbaseTransaction(rpc, bridge, tx)
 		require.Error(t, err)
 		bridge.AssertNotCalled(t, "RegisterCoinbaseTransaction")
@@ -285,5 +224,197 @@ func TestValidateBridgeUtxoMin(t *testing.T) {
 		require.ErrorContains(t, err, "no UTXO directed to address 2N991MLUtYHfHzLQgtNfK9NtUVUSEe9Ncaf present in transaction")
 		require.ErrorIs(t, err, u.TxBelowMinimumError)
 		bridge.AssertExpectations(t)
+	})
+}
+
+// nolint:funlen
+func TestRecoverSignerAddress(t *testing.T) {
+	testCases := []struct {
+		name            string
+		quoteHash       string
+		signature       string
+		expectedAddress string
+		expectError     bool
+	}{
+		{
+			name:            "valid signature and hash",
+			quoteHash:       "b2e14c87f0cd6e0074bdd7f7617f4c206cb7a48abe572f7862ada5f265d4d1d6",
+			signature:       "3763a6b88b92d31546d1369668834624a5c4fc7cd95c0c90c461db7313a218390b1c6d89fe8107da5325f328d2429959f89d86dcc9cd7eedd2be147f10ad82dd1c",
+			expectedAddress: "0xAFf2c034FD8Bc690e62A897BbC5A6C4dF2321992",
+			expectError:     false,
+		},
+		/* TODO removing these cases temporarily until we have testnet/mainnet real cases
+		{
+			name:            "valid signature and hash mainnet",
+			quoteHash:       "249e59bf1a92a867629f111222fa63946370640030faaa5fdb79744fd0539f81",
+			signature:       "229ac43839c3a66520f3f96b1b8f124608dd652c0c9071629a9d8457c292b0257eb3300d2c3b7f5be30c35c9bd15b05582e00070052a4006b8768afab853872a1c",
+			expectedAddress: "0x82a06ebdb97776a2da4041df8f2b2ea8d3257852",
+			expectError:     false,
+		},
+		{
+			name:            "valid signature and hash testnet",
+			quoteHash:       "3431bf06ab6ebde3e1297d5eaa5563edf500fea7dcdc466be1a8492e78dd6d80",
+			signature:       "a316d2dd76e2a325efdfee6b6686fa2c73aedad0090a1cbf286a5799f03548892943d436af4543c7b33548a6e24c1546ed51b844e0b9ab9b8da37aa30dd8f7031b",
+			expectedAddress: "0x7c4890a0f1d4bbf2c669ac2d1effa185c505359b",
+			expectError:     false,
+		},
+		{
+			name:            "valid signature and hash dev",
+			quoteHash:       "e795e119e597f411d379197f11680840f995128a1502024dee5d8a1480658ed5",
+			signature:       "72a8cfd0da1b4c008b209b404574469a1c935c5e6252ef3d53688320d2f0060449c0033709f3460ab34bd17aa6141d8e5485476793382391ca33d8cc5c6895831c",
+			expectedAddress: "0xdfcf32644e6cc5badd1188cddf66f66e21b24375",
+			expectError:     false,
+		},
+		*/
+		{
+			name:            "invalid hash format",
+			quoteHash:       "invalid-hex",
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "invalid signature format",
+			quoteHash:       "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			signature:       "invalid-signature",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "signature too short",
+			quoteHash:       "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			signature:       "5f1a", // Too short
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "hash too short",
+			quoteHash:       "c8d4", // Too short
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "empty hash",
+			quoteHash:       "",
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1c",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:            "empty signature",
+			quoteHash:       "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			signature:       "",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:      "signature with wrong recovery ID",
+			quoteHash: "c8d4ad8d5d717371b92950cbe43a6a4e891cf27bcd7603c988595866944bd9cf",
+			// This is the valid signature with the last byte changed from 1c to 1d (invalid recovery ID)
+			signature:       "5f1a75f55f92c23be729adfb9eff21a00feb1ba99c5e7c2ea9c98a6430e3958f2db856b6260730b6aeeab83571bbafb77730ef1a9cb3a09ce3fa07065c8b200d1d",
+			expectedAddress: "",
+			expectError:     true,
+		},
+		{
+			name:      "signature with recovery ID = 27 (0x1b)",
+			quoteHash: "17d04ce861f43c2d3162568c44d0b5ae285ce26b3153c9f98b6f5e8c30b02f6c",
+			// This is a signature with recovery ID 27 (0x1b) which should adjust to 0
+			signature:       "2a3bfcbf5dc437ee1c76ff0320b674900eb6fd6e55b359df6a030b2d1e3c041f140c450de729b98ea3b314da6cc924c593666e24749151d52ffc23d8a611e5041b",
+			expectedAddress: "0xD839C223634b224327430Bb7062858109C850bf9", // Actual recovered address for this signature
+			expectError:     false,
+		},
+		{
+			name:      "signature with recovery ID = 28 (0x1c)",
+			quoteHash: "bad965e00a5b1085cb2d4d448e2cdb7fd06b8875583055620f08516b18ee899f",
+			// Valid signature with recovery ID 28 (0x1c) which should adjust to 1
+			signature:       "82925cbc9ed77f4d27fc426e1b78e6cf013bfd05243973b6bac59920dac3b21612752cde635b0685a4351b3bc92ec052b417f9783e0ca1f7c3ebd64db5f1645c1c",
+			expectedAddress: "0x57f9F71E683E2A8ff3d2f394aE45C58b2d913A35",
+			expectError:     false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			recoveredAddress, err := u.RecoverSignerAddress(tc.signature, func() ([]byte, error) {
+				return hex.DecodeString(tc.quoteHash)
+			})
+
+			if tc.expectError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t,
+					strings.ToLower(tc.expectedAddress),
+					strings.ToLower(recoveredAddress),
+					"Address recovery should match the expected signer address")
+			}
+		})
+	}
+}
+func TestValidatePositiveWeiValues(t *testing.T) {
+	var useCase u.UseCaseId = "validateWei"
+
+	t.Run("should return nil when all values are positive", func(t *testing.T) {
+		err := u.ValidatePositiveWeiValues(useCase, entities.NewWei(1), entities.NewWei(0), entities.NewWei(100))
+		require.NoError(t, err)
+	})
+
+	t.Run("should fail when any value is negative", func(t *testing.T) {
+		err := u.ValidatePositiveWeiValues(useCase, entities.NewWei(1), entities.NewWei(-1))
+		require.ErrorIs(t, err, u.NonPositiveWeiError)
+	})
+
+	t.Run("should fail when any value is nil", func(t *testing.T) {
+		err := u.ValidatePositiveWeiValues(useCase, entities.NewWei(1), nil)
+		require.ErrorIs(t, err, u.NonPositiveWeiError)
+	})
+}
+
+func TestValidateConfirmations(t *testing.T) {
+	var useCase u.UseCaseId = "validateConfirmations"
+
+	t.Run("should return nil for valid confirmations map", func(t *testing.T) {
+		confirmations := liquidity_provider.ConfirmationsPerAmount{"1": 6, "10": 10}
+		err := u.ValidateConfirmations(useCase, confirmations)
+		require.NoError(t, err)
+	})
+
+	t.Run("should fail for empty map", func(t *testing.T) {
+		err := u.ValidateConfirmations(useCase, liquidity_provider.ConfirmationsPerAmount{})
+		require.ErrorIs(t, err, u.EmptyConfirmationsMapError)
+	})
+
+	t.Run("should fail for non-positive keys", func(t *testing.T) {
+		confirmations := liquidity_provider.ConfirmationsPerAmount{"0": 1, "-5": 2}
+		err := u.ValidateConfirmations(useCase, confirmations)
+		require.ErrorIs(t, err, u.NonPositiveConfirmationKeyError)
+	})
+}
+
+func TestCheckPauseState(t *testing.T) {
+	pausedA := new(mocks.PausableMock)
+	pausedA.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Reason: "paused A", Since: 5}, nil)
+	pausedA.EXPECT().GetAddress().Return("test-contract")
+	notPausedA := new(mocks.PausableMock)
+	notPausedA.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
+	notPausedB := new(mocks.PausableMock)
+	notPausedB.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
+
+	t.Run("should return nil when no contract is paused", func(t *testing.T) {
+		err := u.CheckPauseState(notPausedA, notPausedB)
+		require.NoError(t, err)
+	})
+	t.Run("should handle error getting pause state", func(t *testing.T) {
+		pausedAWithError := new(mocks.PausableMock)
+		pausedAWithError.EXPECT().PausedStatus().Return(blockchain.PauseStatus{}, assert.AnError)
+		err := u.CheckPauseState(pausedAWithError, notPausedB)
+		require.Error(t, err)
+	})
+	t.Run("should return pause details if at least one contract is paused", func(t *testing.T) {
+		err := u.CheckPauseState(notPausedA, pausedA, notPausedB)
+		require.ErrorIs(t, err, blockchain.ContractPausedError)
+		require.Contains(t, err.Error(), "paused A")
+		require.Contains(t, err.Error(), "5")
 	})
 }
