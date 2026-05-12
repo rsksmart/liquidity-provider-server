@@ -83,9 +83,9 @@ func (input BaseInput) ToEnv(pwdReader PasswordReader) (environment.Environment,
 		DiscoveryAddress:            discoveryAddress,
 		BridgeAddress:               rskEnvDefaults.BridgeAddress,
 		AccountNumber:               rskEnvDefaults.AccountNumber,
-		EncryptedJsonSecret:         input.EncryptedJsonSecret,
-		EncryptedJsonPasswordSecret: input.EncryptedJsonPasswordSecret,
-		KeystoreFile:                input.KeystoreFile,
+		WalletSecret:                input.EncryptedJsonSecret,
+		PasswordSecret:              input.EncryptedJsonPasswordSecret,
+		WalletFile:                  input.KeystoreFile,
 		KeystorePassword:            input.KeystorePassword,
 	}
 	env.Btc = environment.BtcEnv{Network: input.Network}

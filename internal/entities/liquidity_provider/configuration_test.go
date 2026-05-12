@@ -3,6 +3,7 @@ package liquidity_provider_test
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -118,6 +119,138 @@ func TestPegoutConfiguration_ValidateAmount(t *testing.T) {
 	}
 	for _, item := range table {
 		err := config.ValidateAmount(item.Value)
+		require.ErrorIs(t, err, item.Result)
+	}
+}
+
+func TestExcessTolerance_Normalize(t *testing.T) {
+	table := test.Table[liquidity_provider.ExcessTolerance, liquidity_provider.ExcessTolerance]{
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(5),
+				FixedValue:      entities.NewWei(1000),
+			},
+			Result: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(0),
+				FixedValue:      entities.NewWei(1000),
+			},
+		},
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(2.5),
+				FixedValue:      entities.NewWei(500),
+			},
+			Result: liquidity_provider.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(2.5),
+				FixedValue:      entities.NewWei(0),
+			},
+		},
+	}
+	for _, item := range table {
+		item.Value.Normalize()
+		require.Equal(t, item.Result, item.Value)
+	}
+}
+
+func TestExcessTolerance_ComputeThreshold(t *testing.T) {
+	type input struct {
+		tolerance liquidity_provider.ExcessTolerance
+		target    *entities.Wei
+	}
+	table := test.Table[input, *entities.Wei]{
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         true,
+					PercentageValue: utils.NewBigFloat64(0),
+					FixedValue:      entities.NewWei(200),
+				},
+				target: entities.NewWei(1000),
+			},
+			Result: entities.NewWei(1200),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         true,
+					PercentageValue: utils.NewBigFloat64(0),
+					FixedValue:      entities.NewWei(500),
+				},
+				target: entities.NewWei(0),
+			},
+			Result: entities.NewWei(500),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         false,
+					PercentageValue: utils.NewBigFloat64(20),
+					FixedValue:      entities.NewWei(0),
+				},
+				target: entities.NewWei(1000),
+			},
+			Result: entities.NewWei(1200),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         false,
+					PercentageValue: utils.NewBigFloat64(50),
+					FixedValue:      entities.NewWei(0),
+				},
+				target: entities.NewWei(200),
+			},
+			Result: entities.NewWei(300),
+		},
+	}
+	for _, item := range table {
+		result := item.Value.tolerance.ComputeThreshold(item.Value.target)
+		require.Equal(t, item.Result.AsBigInt().String(), result.AsBigInt().String())
+	}
+}
+
+func TestExcessTolerance_Validate(t *testing.T) {
+	table := test.Table[liquidity_provider.ExcessTolerance, error]{
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(1),
+				FixedValue:      entities.NewWei(0),
+			},
+			Result: liquidity_provider.InvalidConfigurationError,
+		},
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(0),
+				FixedValue:      entities.NewWei(1),
+			},
+			Result: liquidity_provider.InvalidConfigurationError,
+		},
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(1),
+				FixedValue:      entities.NewWei(0),
+			},
+			Result: nil,
+		},
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(0),
+				FixedValue:      entities.NewWei(1),
+			},
+			Result: nil,
+		},
+	}
+
+	for _, item := range table {
+		err := item.Value.Validate()
 		require.ErrorIs(t, err, item.Result)
 	}
 }

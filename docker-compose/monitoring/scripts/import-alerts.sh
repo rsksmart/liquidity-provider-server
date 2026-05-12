@@ -9,6 +9,7 @@ USERNAME=${2:-"admin"}
 PASSWORD=${3:-"test"}
 FOLDER_UID=${4:-"LPS"}  # Default to LPS folder
 DATASOURCE_UID=${5:-"loki-uid"}  # Default Loki datasource UID
+ALERT_EMAIL=${ALERT_RECIPIENT_EMAIL:?"ALERT_RECIPIENT_EMAIL environment variable is required"}
 SCRIPT_DIR="$(dirname "$0")"
 
 # Detect OS for cross-platform sed compatibility
@@ -30,6 +31,8 @@ RULE_FILES=(
     "pegin-out-of-liquidity.json"
     "pegout-out-of-liquidity.json"
     "lps-penalization.json"
+    "hot-wallet-low-liquidity-warning.json"
+    "hot-wallet-low-liquidity-critical.json"
 )
 
 RULE_NAMES=(
@@ -37,19 +40,15 @@ RULE_NAMES=(
     "PegIn Out of Liquidity Alert"
     "PegOut Out of Liquidity Alert"
     "LPS Penalization Alert"
+    "Hot Wallet Low Liquidity Warning Alert"
+    "Hot Wallet Critical Low Liquidity Alert"
 )
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-echo -e "${YELLOW}Importing LPS alert rules to Grafana...${NC}"
+echo "Importing LPS alert rules to Grafana..."
 echo "Target: $GRAFANA_URL"
 echo "Folder: $FOLDER_UID"
 echo "Loki Datasource UID: $DATASOURCE_UID"
+echo "Alert email: $ALERT_EMAIL"
 echo "Rules to import: ${#RULE_FILES[@]}"
 echo ""
 
@@ -57,11 +56,11 @@ echo ""
 echo "Checking Grafana connectivity..."
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$GRAFANA_URL/api/health")
 if [ "$HTTP_STATUS" != "200" ]; then
-    echo -e "${RED}ERROR: Cannot reach Grafana at $GRAFANA_URL (HTTP $HTTP_STATUS)${NC}"
+    echo "ERROR: Cannot reach Grafana at $GRAFANA_URL (HTTP $HTTP_STATUS)"
     echo "Make sure Grafana is running and accessible."
     exit 1
 fi
-echo -e "${GREEN}Grafana is accessible${NC}"
+echo "Grafana is accessible"
 
 # Check if folder exists, create if not
 echo ""
@@ -78,14 +77,142 @@ if [ "$FOLDER_STATUS" == "not_found" ]; then
         "$GRAFANA_URL/api/folders")
 
     if echo "$CREATE_FOLDER_RESPONSE" | grep -q '"uid"'; then
-        echo -e "${GREEN}Folder created successfully${NC}"
+        echo "Folder created successfully"
     else
-        echo -e "${RED}Failed to create folder${NC}"
+        echo "Failed to create folder"
         echo "Response: $CREATE_FOLDER_RESPONSE"
         exit 1
     fi
 else
-    echo -e "${GREEN}Folder already exists${NC}"
+    echo "Folder already exists"
+fi
+
+# Set up default email contact point for all alerts
+DEFAULT_CONTACT_POINT_NAME="lps-email"
+echo ""
+echo "Checking if default contact point '$DEFAULT_CONTACT_POINT_NAME' exists..."
+CONTACT_POINTS_RESPONSE=$(curl -s -u "$USERNAME:$PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points")
+CONTACT_POINT_EXISTS=$(echo "$CONTACT_POINTS_RESPONSE" | grep -o "\"name\":\"$DEFAULT_CONTACT_POINT_NAME\"" || echo "not_found")
+
+if [ "$CONTACT_POINT_EXISTS" == "not_found" ]; then
+    echo "Creating default contact point '$DEFAULT_CONTACT_POINT_NAME' (email: $ALERT_EMAIL)..."
+    CONTACT_POINT_CREATE_RESPONSE=$(curl -s -X POST \
+        -u "$USERNAME:$PASSWORD" \
+        -H "Content-Type: application/json" \
+        -d "{\"name\":\"$DEFAULT_CONTACT_POINT_NAME\",\"type\":\"email\",\"settings\":{\"addresses\":\"$ALERT_EMAIL\",\"singleEmail\":true}}" \
+        "$GRAFANA_URL/api/v1/provisioning/contact-points")
+
+    if echo "$CONTACT_POINT_CREATE_RESPONSE" | grep -q '"uid"'; then
+        echo "Default contact point created successfully"
+    else
+        echo "Failed to create default contact point"
+        echo "Response: $CONTACT_POINT_CREATE_RESPONSE"
+        exit 1
+    fi
+else
+    echo "Default contact point already exists"
+fi
+
+# Import custom contact points from JSON files
+echo ""
+echo "Importing custom contact points..."
+
+for contact_point_file in "$SCRIPT_DIR"/contact-points/*.json; do
+    [ -f "$contact_point_file" ] || continue
+    contact_point_basename=$(basename "$contact_point_file")
+    echo "  Processing: $contact_point_basename"
+
+    TEMP_CONTACT_POINT_FILE=$(mktemp)
+    cp "$contact_point_file" "$TEMP_CONTACT_POINT_FILE"
+    "${SED_INPLACE[@]}" "s/__ALERT_EMAIL__/$ALERT_EMAIL/g" "$TEMP_CONTACT_POINT_FILE"
+
+    CONTACT_POINT_NAME=$(python3 -c "import json; print(json.load(open('$TEMP_CONTACT_POINT_FILE'))['name'])")
+    CONTACT_POINT_CHECK=$(echo "$CONTACT_POINTS_RESPONSE" | grep -o "\"name\":\"$CONTACT_POINT_NAME\"" || echo "not_found")
+
+    if [ "$CONTACT_POINT_CHECK" == "not_found" ]; then
+        CONTACT_POINT_RESULT=$(curl -s -X POST \
+            -u "$USERNAME:$PASSWORD" \
+            -H "Content-Type: application/json" \
+            -d "@$TEMP_CONTACT_POINT_FILE" \
+            "$GRAFANA_URL/api/v1/provisioning/contact-points")
+
+        if echo "$CONTACT_POINT_RESULT" | grep -q '"uid"'; then
+            echo "  Contact point '$CONTACT_POINT_NAME' created"
+            CONTACT_POINTS_RESPONSE=$(curl -s -u "$USERNAME:$PASSWORD" "$GRAFANA_URL/api/v1/provisioning/contact-points")
+        else
+            echo "  Failed to create contact point '$CONTACT_POINT_NAME'"
+            echo "  Response: $CONTACT_POINT_RESULT"
+        fi
+    else
+        echo "  Contact point '$CONTACT_POINT_NAME' already exists"
+    fi
+    rm "$TEMP_CONTACT_POINT_FILE"
+done
+
+# Build child routes from alert files that declare a __contact_point__
+echo ""
+echo "Building notification routes from alert rules..."
+CHILD_ROUTES="[]"
+
+for alert_file in "$SCRIPT_DIR"/alerts/*.json; do
+    [ -f "$alert_file" ] || continue
+    ROUTE_INFO=$(python3 -c "
+import json
+data = json.load(open('$alert_file'))
+cp = data.get('__contact_point__')
+if cp:
+    print(data['title'] + '|' + cp)
+")
+    if [ -n "$ROUTE_INFO" ]; then
+        ALERT_TITLE=$(echo "$ROUTE_INFO" | cut -d'|' -f1)
+        CONTACT_POINT_NAME=$(echo "$ROUTE_INFO" | cut -d'|' -f2)
+        echo "  Route: '$ALERT_TITLE' -> '$CONTACT_POINT_NAME'"
+        CHILD_ROUTES=$(echo "$CHILD_ROUTES" | python3 -c "
+import json, sys
+routes = json.load(sys.stdin)
+routes.append({
+    'receiver': '$CONTACT_POINT_NAME',
+    'object_matchers': [['alertname', '=', '$ALERT_TITLE']],
+    'group_by': ['grafana_folder', 'alertname'],
+    'group_wait': '10s',
+    'group_interval': '1m',
+    'repeat_interval': '5m'
+})
+json.dump(routes, sys.stdout)
+")
+    fi
+done
+
+# Set up notification policy with child routes for custom contact points
+echo ""
+echo "Configuring notification policy..."
+POLICY_JSON=$(python3 -c "
+import json, sys
+routes = json.loads('$CHILD_ROUTES')
+policy = {
+    'receiver': '$DEFAULT_CONTACT_POINT_NAME',
+    'group_by': ['grafana_folder', 'alertname'],
+    'group_wait': '10s',
+    'group_interval': '1m',
+    'repeat_interval': '5m'
+}
+if routes:
+    policy['routes'] = routes
+json.dump(policy, sys.stdout)
+")
+
+POLICY_RESPONSE=$(curl -s -X PUT \
+    -u "$USERNAME:$PASSWORD" \
+    -H "Content-Type: application/json" \
+    -d "$POLICY_JSON" \
+    "$GRAFANA_URL/api/v1/provisioning/policies")
+
+if echo "$POLICY_RESPONSE" | grep -q '"message"'; then
+    echo "Notification policy configured successfully"
+else
+    echo "Failed to configure notification policy"
+    echo "Response: $POLICY_RESPONSE"
+    exit 1
 fi
 
 # Function to prepare rule file with correct datasource UID
@@ -99,6 +226,14 @@ prepare_rule_file() {
     # Replace datasource UID in the temp file (in-place)
     "${SED_INPLACE[@]}" "s/\"loki-uid\"/\"$DATASOURCE_UID\"/g" "$temp_file"
 
+    # Strip __contact_point__ metadata field (not a valid Grafana API field)
+    python3 -c "
+import json
+data = json.load(open('$temp_file'))
+data.pop('__contact_point__', None)
+json.dump(data, open('$temp_file', 'w'), indent=2)
+"
+
     # Also update the folderUID if needed
     if [ "$FOLDER_UID" != "LPS" ]; then
         "${SED_INPLACE[@]}" "s/\"folderUID\": \"LPS\"/\"folderUID\": \"$FOLDER_UID\"/g" "$temp_file"
@@ -110,7 +245,7 @@ create_alert_rule() {
     local rule_file="$1"
     local rule_name="$2"
 
-    echo -e "${BLUE}Creating rule: $rule_name${NC}"
+    echo "Creating rule: $rule_name"
 
     # Prepare temporary file with correct datasource UID
     TEMP_RULE_FILE=$(mktemp)
@@ -132,13 +267,13 @@ create_alert_rule() {
 
     if [ "$HTTP_STATUS" = "201" ]; then
         RULE_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":[0-9]*' | cut -d':' -f2)
-        echo -e "${GREEN}  Rule created successfully (ID: $RULE_ID)${NC}"
+        echo "  Rule created successfully (ID: $RULE_ID)"
         return 0
     elif [ "$HTTP_STATUS" = "409" ]; then
-        echo -e "${YELLOW}  Rule already exists (skipping)${NC}"
+        echo "  Rule already exists (skipping)"
         return 0
     else
-        echo -e "${RED}  Failed to create rule (HTTP $HTTP_STATUS)${NC}"
+        echo "  Failed to create rule (HTTP $HTTP_STATUS)"
         echo "  Response: $CREATE_RESPONSE"
         return 1
     fi
@@ -153,14 +288,14 @@ for rule_file in "${RULE_FILES[@]}"; do
     rule_path="$SCRIPT_DIR/alerts/$rule_file"
     if [ ! -f "$rule_path" ]; then
         MISSING_FILES=("${MISSING_FILES[@]}" "$rule_path")
-        echo -e "${RED}ERROR: Rule file not found: $rule_path${NC}"
+        echo "ERROR: Rule file not found: $rule_path"
     else
-        echo -e "${GREEN}  Found: $rule_file${NC}"
+        echo "  Found: $rule_file"
     fi
 done
 
 if [ ${#MISSING_FILES[@]} -gt 0 ]; then
-    echo -e "${RED}ERROR: ${#MISSING_FILES[@]} rule file(s) missing. Aborting.${NC}"
+    echo "ERROR: ${#MISSING_FILES[@]} rule file(s) missing. Aborting."
     exit 1
 fi
 
@@ -191,9 +326,9 @@ echo "  Successful: $SUCCESSFUL_RULES"
 echo "  Failed: $FAILED_RULES"
 
 if [ $FAILED_RULES -eq 0 ]; then
-    echo -e "${GREEN}All alert rules imported successfully!${NC}"
+    echo "All alert rules imported successfully!"
 else
-    echo -e "${YELLOW}Import completed with $FAILED_RULES failed rules${NC}"
+    echo "Import completed with $FAILED_RULES failed rules"
 fi
 
 # Verify imported rules
@@ -212,18 +347,18 @@ for rule_name in "${RULE_NAMES[@]}"; do
 done
 
 if echo "$LIST_RESPONSE" | grep -q "$VERIFICATION_PATTERN"; then
-    echo -e "${GREEN}Rules verification successful!${NC}"
+    echo "Rules verification successful!"
     echo ""
     echo "Current rules in Grafana:"
     echo "$LIST_RESPONSE" | grep -o '"title":"[^"]*"' | sed 's/"title":"/ - /' | sed 's/"$//'
 else
-    echo -e "${YELLOW}Could not verify rules${NC}"
+    echo "Could not verify rules"
 fi
 
 echo ""
-echo -e "${BLUE}Next steps:${NC}"
+echo "Next steps:"
 echo "1. Go to $GRAFANA_URL/alerting/list"
 echo "2. Check that your rules are visible in the '$FOLDER_UID' folder"
-echo "3. Configure contact points and notification policies if needed"
+echo "3. Notifications will be sent to $ALERT_EMAIL (default: '$DEFAULT_CONTACT_POINT_NAME', custom contact points for specific alerts)"
 echo ""
-echo -e "${GREEN}Import process completed!${NC}"
+echo "Import process completed!"

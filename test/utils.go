@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/btcsuite/btcd/btcutil"
@@ -127,7 +128,6 @@ func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
 	log.SetOutput(buff)
 	return func() bool {
 		if buff.Len() == 0 {
-			t.Errorf("No log message found")
 			return false
 		}
 		_, err := buff.Read(message)
@@ -146,11 +146,15 @@ func OpenDerivativeWalletForTest(t *testing.T, testRef string) *account.RskAccou
 
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
+	var walletInfo struct {
+		HotWallet json.RawMessage `json:"hotWallet"`
+	}
+	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	testAccount, err := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
 		CreationArgs: account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      KeyPassword,
 		},
 		BtcParams: &chaincfg.TestNet3Params,
@@ -172,10 +176,14 @@ func OpenWalletForTest(t *testing.T, testRef string) *account.RskAccount {
 
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
+	var walletInfo struct {
+		HotWallet json.RawMessage `json:"hotWallet"`
+	}
+	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	testAccount, err := account.GetRskAccount(account.CreationArgs{
 		KeyDir:        testDir,
 		AccountNum:    0,
-		EncryptedJson: string(keyBytes),
+		EncryptedJson: string(walletInfo.HotWallet),
 		Password:      KeyPassword,
 	})
 	require.NoError(t, err)

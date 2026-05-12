@@ -2,6 +2,7 @@ package secrets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -19,28 +20,36 @@ func NewEnvSecretsLoader(environment environment.Environment) SecretLoader {
 }
 
 func (loader *EnvSecretsLoader) LoadDerivativeSecrets(ctx context.Context) (DerivativeWalletSecrets, error) {
-	if loader.env.Rsk.KeystoreFile == "" || loader.env.Rsk.KeystorePassword == "" {
+	if loader.env.Rsk.WalletFile == "" || loader.env.Rsk.KeystorePassword == "" {
 		return DerivativeWalletSecrets{}, errors.New("missing keystore file or password")
 	}
 
-	keystoreFile, err := os.Open(loader.env.Rsk.KeystoreFile)
+	walletFile, err := os.Open(loader.env.Rsk.WalletFile)
 	if err != nil {
-		return DerivativeWalletSecrets{}, fmt.Errorf("error opening keystore file: %w", err)
+		return DerivativeWalletSecrets{}, fmt.Errorf("error opening wallet file: %w", err)
 	}
 
 	defer func(file *os.File) {
 		if closingErr := file.Close(); closingErr != nil {
-			log.Error("Error closing keystore file:", closingErr)
+			log.Error("Error closing wallet file:", closingErr)
 		}
-	}(keystoreFile)
+	}(walletFile)
 
-	keystoreBytes, err := io.ReadAll(keystoreFile)
+	walletFileBytes, err := io.ReadAll(walletFile)
 	if err != nil {
-		return DerivativeWalletSecrets{}, fmt.Errorf("error reading keystore file: %w", err)
+		return DerivativeWalletSecrets{}, fmt.Errorf("error reading wallet file: %w", err)
+	}
+	var parsedWalletSecret walletSecretLayout
+	if err = json.Unmarshal(walletFileBytes, &parsedWalletSecret); err != nil {
+		return DerivativeWalletSecrets{}, errors.New("error parsing wallet file")
 	}
 
 	return DerivativeWalletSecrets{
-		EncryptedJson:         string(keystoreBytes),
+		ColdWalletConfiguration: ColdWalletConfiguration{
+			Type:          parsedWalletSecret.ColdWallet.Type,
+			Configuration: parsedWalletSecret.ColdWallet.Configuration,
+		},
+		EncryptedJson:         string(parsedWalletSecret.HotWallet),
 		EncryptedJsonPassword: loader.env.Rsk.KeystorePassword,
 	}, nil
 }

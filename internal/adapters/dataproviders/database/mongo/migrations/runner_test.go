@@ -136,7 +136,7 @@ func TestParseVersionAndName(t *testing.T) {
 		v, n, err := NewRunner(nil).parseVersionAndName("000002.up.json")
 		require.NoError(t, err)
 		assert.Equal(t, 2, v)
-		assert.Equal(t, "", n)
+		assert.Empty(t, n)
 	})
 
 	t.Run("returns error when version prefix is not six digits", func(t *testing.T) {
