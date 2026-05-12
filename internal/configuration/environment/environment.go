@@ -35,7 +35,7 @@ type Environment struct {
 
 type MongoEnv struct {
 	Username      string `env:"MONGODB_USER" validate:"required"`
-	Password      string `env:"MONGODB_PASSWORD" validate:"required" secret:""`
+	Password      string `env:"MONGODB_PASSWORD" validate:"required"`
 	Host          string `env:"MONGODB_HOST" validate:"required"`
 	Port          uint   `env:"MONGODB_PORT" validate:"required"`
 	RunMigrations bool   `env:"RUN_DB_MIGRATIONS"`
@@ -58,7 +58,7 @@ type RskEnv struct {
 	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`
 	// Only if secret source is env & wallet is native
 	KeystoreFile     string   `env:"KEYSTORE_FILE"`
-	KeystorePassword string   `env:"KEYSTORE_PWD" secret:""`
+	KeystorePassword string   `env:"KEYSTORE_PWD"`
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
 	MaxReorgDepth    uint64   `env:"RSK_MAX_REORG_DEPTH"`
 	MinPeers         uint64   `env:"RSK_MIN_PEERS"`
@@ -80,7 +80,7 @@ type BtcExtraSource struct {
 type BtcEnv struct {
 	Network         string           `env:"BTC_NETWORK" validate:"required"`
 	Username        string           `env:"BTC_USERNAME" validate:"required"`
-	Password        string           `env:"BTC_PASSWORD" validate:"required" secret:""`
+	Password        string           `env:"BTC_PASSWORD" validate:"required"`
 	Endpoint        string           `env:"BTC_ENDPOINT" validate:"required"`
 	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES"`
 	MaxReorgDepth   uint64           `env:"BITCOIN_MAX_REORG_DEPTH"`
@@ -207,7 +207,7 @@ type PegoutEnv struct {
 }
 
 type CaptchaEnv struct {
-	SecretKey string  `env:"CAPTCHA_SECRET_KEY" secret:""`
+	SecretKey string  `env:"CAPTCHA_SECRET_KEY"`
 	SiteKey   string  `env:"CAPTCHA_SITE_KEY"`
 	Threshold float32 `env:"CAPTCHA_THRESHOLD"`
 	Disabled  bool    `env:"DISABLE_CAPTCHA"`
@@ -216,9 +216,9 @@ type CaptchaEnv struct {
 
 type ManagementEnv struct {
 	EnableManagementApi   bool   `env:"ENABLE_MANAGEMENT_API"`
-	SessionAuthKey        string `env:"MANAGEMENT_AUTH_KEY" secret:""`
-	SessionEncryptionKey  string `env:"MANAGEMENT_ENCRYPTION_KEY" secret:""`
-	SessionTokenAuthKey   string `env:"MANAGEMENT_TOKEN_AUTH_KEY" secret:""`
+	SessionAuthKey        string `env:"MANAGEMENT_AUTH_KEY"`
+	SessionEncryptionKey  string `env:"MANAGEMENT_ENCRYPTION_KEY"`
+	SessionTokenAuthKey   string `env:"MANAGEMENT_TOKEN_AUTH_KEY"`
 	UseHttps              bool   `env:"MANAGEMENT_USE_HTTPS"`
 	EnableSecurityHeaders bool   `env:"ENABLE_SECURITY_HEADERS"`
 }
