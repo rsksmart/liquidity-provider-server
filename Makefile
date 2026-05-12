@@ -2,6 +2,11 @@
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
+# Pinned gotestsum: end-of-run failure summary for unit tests (see docs/ci-test-failures-summary.md)
+GOTESTSUM := gotest.tools/gotestsum@v1.13.0
+GOTESTSUM_FLAGS := --format standard-verbose
+TEST_PACKAGES := ./pkg/... ./internal/... ./cmd/...
+TEST_GO_FLAGS := -timeout 30m -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/...
 
 filter_coverage_file = grep -v "internal/adapters/dataproviders/rootstock/bindings" $(1) > coverage/temp.txt && mv coverage/temp.txt $(1)
 
@@ -21,6 +26,7 @@ tools: download
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.12.1
 	go install github.com/ethereum/go-ethereum/cmd/abigen@be4dc0c4be2fe316dbdd0a73e48421f64978232f # v1.17.2
 	go install github.com/vektra/mockery/v2@v2.53.1  	# ensures mockery version 2.53.1 is installed
+	go install $(GOTESTSUM)
 
 download:
 	go mod download
@@ -53,19 +59,19 @@ api:
 
 coverage: clean
 	mkdir -p coverage
-	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
+	go run $(GOTESTSUM) $(GOTESTSUM_FLAGS) -- $(TEST_GO_FLAGS) -coverprofile=$(TEMPORAL_COVER_FILE) $(TEST_PACKAGES)
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
 	go tool cover -func "$(TEMPORAL_COVER_FILE)" && go tool cover -html="$(TEMPORAL_COVER_FILE)"
 	rm $(TEMPORAL_COVER_FILE)
 
 coverage-report: clean
 	mkdir -p coverage
-	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(COVER_FILE) ./pkg/... ./internal/... ./cmd/...
+	go run $(GOTESTSUM) $(GOTESTSUM_FLAGS) -- $(TEST_GO_FLAGS) -coverprofile=$(COVER_FILE) $(TEST_PACKAGES)
 	$(call filter_coverage_file, $(COVER_FILE))
 
 test: clean
 	mkdir -p coverage
-	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE)  ./pkg/... ./internal/... ./cmd/...
+	go run $(GOTESTSUM) $(GOTESTSUM_FLAGS) -- $(TEST_GO_FLAGS) -coverprofile=$(TEMPORAL_COVER_FILE) $(TEST_PACKAGES)
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
 	go tool cover -func $(TEMPORAL_COVER_FILE)
 	rm $(TEMPORAL_COVER_FILE)

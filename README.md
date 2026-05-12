@@ -27,7 +27,7 @@ To run the project locally you can follow these steps:
 This will set up a local environment, please keep in mind that a productive set-up could vary in multiple aspects.
 
 ### How to run the tests
-For the unit tests you can run `make test` in the root of the repository and for the integration tests please [check this file](https://github.com/rsksmart/liquidity-provider-server/blob/master/test/integration/Readme.md)
+For the unit tests you can run `make test` in the root of the repository. The target uses [gotestsum](https://github.com/gotestyourself/gotestsum) so failing tests are summarized again at the **end** of the log (CI runs the same `make test` via GitHub Actions). See [docs/ci-test-failures-summary.md](./docs/ci-test-failures-summary.md) for rationale, pin version, and tradeoffs. For the integration tests please [check this file](https://github.com/rsksmart/liquidity-provider-server/blob/master/test/integration/Readme.md)
 
 ### Installing the project
 If you want to play with the code and make modifications to it then run the following commands (remember that you need to have Go installed with the version specified in the `go.mod` file):
