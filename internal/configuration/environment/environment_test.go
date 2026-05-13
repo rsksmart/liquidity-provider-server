@@ -97,11 +97,10 @@ func TestEnvironment_String_RedactsSecrets(t *testing.T) {
 			EnableSecurityHeaders: true,
 		},
 		Mongo: environment.MongoEnv{
-			Username:      "mongo-user",
-			Password:      "mongo-secret",
-			Host:          "mongodb.local",
-			Port:          27017,
-			RunMigrations: true,
+			Username: "mongo-user",
+			Password: "mongo-secret",
+			Host:     "mongodb.local",
+			Port:     27017,
 		},
 		Rsk: environment.RskEnv{
 			Endpoint:                    "http://rsk.local",
