@@ -55,6 +55,13 @@ func SatoshiToWei(x uint64) *Wei {
 	return w
 }
 
+func EtherToWei(x uint64) *Wei {
+	ether := new(big.Int).SetUint64(x)
+	w := new(Wei)
+	w.AsBigInt().Mul(ether, bTenPowEighteen)
+	return w
+}
+
 func (w *Wei) Copy() *Wei {
 	return NewBigWei(w.AsBigInt())
 }
@@ -73,6 +80,12 @@ func (w *Wei) Uint64() uint64 {
 
 func (w *Wei) ToRbtc() *big.Float {
 	return new(big.Float).Quo(new(big.Float).SetInt(w.AsBigInt()), new(big.Float).SetInt(bTenPowEighteen))
+}
+
+func (w *Wei) ToRbtcFloat64() float64 {
+	asRbtc := w.ToRbtc()
+	asFloat, _ := asRbtc.Float64()
+	return asFloat
 }
 
 func (w *Wei) ToSatoshi() *big.Float {
@@ -187,4 +200,13 @@ func (w *Wei) Div(x, y *Wei) (*Wei, error) {
 	}
 	w.AsBigInt().Div(x.AsBigInt(), y.AsBigInt())
 	return w, nil
+}
+
+func (w *Wei) Min(x, y *Wei) *Wei {
+	if x.Cmp(y) <= 0 {
+		w.AsBigInt().Set(x.AsBigInt())
+	} else {
+		w.AsBigInt().Set(y.AsBigInt())
+	}
+	return w
 }

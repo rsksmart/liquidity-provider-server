@@ -151,9 +151,5 @@ func (useCase *RecommendedPegoutUseCase) validateRecommendedValue(
 		return usecases.WrapUseCaseError(usecases.RecommendedPegoutId, usecases.NoLiquidityError)
 	}
 
-	if err = usecases.ValidateMinLockValue(usecases.RecommendedPegoutId, useCase.contracts.Bridge, entities.NewBigWei(result)); err != nil {
-		err = fmt.Errorf("recommended amount %s is below the minimum lock value: %w", entities.NewBigWei(result).String(), err)
-		return err
-	}
 	return nil
 }

@@ -6,6 +6,15 @@ import (
 )
 
 const (
+	DefaultMaxLiquidity                   = 1000000000000000000
+	DefaultReimbursementWindowBlocks      = 100
+	DefaultExcessToleranceIsFixed         = false
+	DefaultExcessTolerancePercentageValue = 20
+	DefaultExcessToleranceFixedValue      = 100000000000000000
+	DefaultBtcLiquidityTargetPercentage   = 50
+)
+
+const (
 	PeginTimeForDeposit = 3600
 	PeginCallTime       = 7200
 	PeginPenaltyFee     = 10000000000000
@@ -75,8 +84,15 @@ func DefaultPegoutConfiguration() PegoutConfiguration {
 
 func DefaultGeneralConfiguration() GeneralConfiguration {
 	return GeneralConfiguration{
-		RskConfirmations:     DefaultRskConfirmationsPerAmount(),
-		BtcConfirmations:     DefaultBtcConfirmationsPerAmount(),
-		PublicLiquidityCheck: false,
+		RskConfirmations:          DefaultRskConfirmationsPerAmount(),
+		BtcConfirmations:          DefaultBtcConfirmationsPerAmount(),
+		PublicLiquidityCheck:      false,
+		MaxLiquidity:              entities.NewWei(DefaultMaxLiquidity),
+		ReimbursementWindowBlocks: DefaultReimbursementWindowBlocks,
+		ExcessTolerance: ExcessTolerance{
+			IsFixed:         DefaultExcessToleranceIsFixed,
+			PercentageValue: utils.NewBigFloat64(DefaultExcessTolerancePercentageValue),
+			FixedValue:      entities.NewWei(DefaultExcessToleranceFixedValue),
+		},
 	}
 }

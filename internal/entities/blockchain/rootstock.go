@@ -26,6 +26,7 @@ var (
 	WaitingForBridgeError = errors.New("waiting for rootstock bridge")
 	InvalidAddressError   = errors.New("invalid rootstock address")
 	ContractPausedError   = errors.New("contract is paused")
+	TxFailedError         = errors.New("transaction failed")
 )
 
 type RskContracts struct {

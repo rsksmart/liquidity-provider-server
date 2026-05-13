@@ -542,8 +542,13 @@ func (repo *pegoutMongoRepository) GetRetainedQuotesInBatch(ctx context.Context,
 	collection := repo.conn.Collection(RetainedPegoutQuoteCollection)
 	query := bson.D{
 		bson.E{Key: "state", Value: quote.PegoutStateBridgeTxSucceeded},
-		bson.E{Key: "bridge_refund_tx_hash", Value: bson.D{
-			bson.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
+		bson.E{Key: "$or", Value: bson.A{
+			bson.D{bson.E{Key: "bridge_refund_tx_hash", Value: bson.D{
+				bson.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
+			}}},
+			bson.D{bson.E{Key: "bridge_rebalances.tx_hash", Value: bson.D{
+				bson.E{Key: "$in", Value: batch.ReleaseRskTxHashes},
+			}}},
 		}},
 	}
 

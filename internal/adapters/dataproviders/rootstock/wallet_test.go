@@ -192,7 +192,7 @@ func createSendRbtcErrorHandlingTest(account *account.RskAccount) func(t *testin
 			}, nil)
 			wallet := rootstock.NewRskWalletImpl(rootstock.NewRskClient(clientMock), account, chainId, time.Duration(1))
 			tx, err := wallet.SendRbtc(context.Background(), blockchain.TransactionConfig{Value: entities.NewWei(1), GasLimit: &gasLimit, GasPrice: entities.NewWei(5)}, toAddress)
-			require.ErrorContains(t, err, "0x8f100377f37b948df47abd8a781eebc0ccdf482f8e3520968f752642cc6c4c63")
+			require.ErrorIs(t, err, blockchain.TxFailedError)
 
 			expectedReceipt := blockchain.TransactionReceipt{
 				TransactionHash:   txHash,

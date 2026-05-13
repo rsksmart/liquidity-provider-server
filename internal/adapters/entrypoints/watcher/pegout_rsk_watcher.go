@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -14,8 +17,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
-	"sync"
-	"time"
 )
 
 type PegoutRskDepositWatcher struct {
@@ -278,7 +279,7 @@ func (watcher *PegoutRskDepositWatcher) GetCurrentBlock() uint64 {
 }
 
 func validateDepositedPegoutQuote(watchedQuote quote.WatchedPegoutQuote, receipt blockchain.TransactionReceipt, height uint64) bool {
-	event, err := rootstock.ParseDepositEvent(receipt)
+	event, err := rootstock.ParseDepositEventByQuoteHash(receipt, watchedQuote.RetainedQuote.QuoteHash, watchedQuote.PegoutQuote.LbcAddress)
 	if err != nil {
 		log.Error(pegoutRskWatcherLog("Error parsing deposit event for quote %s: %v", watchedQuote.RetainedQuote.QuoteHash, err))
 		return false

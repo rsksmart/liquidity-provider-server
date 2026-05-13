@@ -2,7 +2,6 @@ package registry
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -26,6 +25,8 @@ type WatcherRegistry struct {
 	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
 	PeerMetricsWatcher         *monitoring.PeerMetricsWatcher
 	AssetReportWatcher         *monitoring.AssetReportWatcher
+	TransferColdWalletWatcher  *watcher.TransferColdWalletWatcher
+	ColdWalletMetricsWatcher   *monitoring.ColdWalletMetricsWatcher
 	BitcoinReorgWatcher        *watcher.BitcoinReorgWatcher
 	RootstockReorgWatcher      *watcher.RootstockReorgWatcher
 	ReorgMetricsWatcher        *monitoring.ReorgMetricsWatcher
@@ -37,7 +38,7 @@ func NewWatcherRegistry(
 	useCaseRegistry *UseCaseRegistry,
 	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
-	liquidityProvider *dataproviders.LocalLiquidityProvider,
+	lpRegistry *LiquidityProvider,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,
@@ -77,7 +78,7 @@ func NewWatcherRegistry(
 				useCaseRegistry.updatePegoutDepositUseCase,
 				useCaseRegistry.initPegoutDepositCacheUseCase,
 			),
-			liquidityProvider,
+			lpRegistry.LiquidityProvider,
 			messaging.Rpc,
 			rskRegistry.Contracts,
 			messaging.EventBus,
@@ -94,6 +95,7 @@ func NewWatcherRegistry(
 		),
 		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(
 			useCaseRegistry.liquidityCheckUseCase,
+			useCaseRegistry.lowLiquidityAlertUseCase,
 			tickers.LiquidityCheckTicker,
 			timeouts.WatcherValidation.Seconds(),
 		),
@@ -152,6 +154,15 @@ func NewWatcherRegistry(
 			appMetrics,
 			useCaseRegistry.GetAssetsReportUseCase(),
 			tickers.AssetReportTicker,
+		),
+		TransferColdWalletWatcher: watcher.NewTransferColdWalletWatcher(
+			useCaseRegistry.TransferExcessToColdWalletUseCase(),
+			tickers.TransferColdWalletTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
+		ColdWalletMetricsWatcher: monitoring.NewColdWalletMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
 		),
 		BitcoinReorgWatcher: watcher.NewBitcoinReorgWatcher(
 			useCaseRegistry.btcReorgCheckUseCase,

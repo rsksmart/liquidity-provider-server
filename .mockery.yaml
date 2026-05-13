@@ -62,15 +62,20 @@ packages:
       PeginStatusUseCase:
       PegoutStatusUseCase:
       SetGeneralConfigUseCase:
+      SetLiquidityRatioUseCase:
       GetPegoutReportUseCase:
       GetPeginReportUseCase:
       RecommendedPegoutUseCase:
       RecommendedPeginUseCase:
       GetRevenueReportUseCase:
+      GetLiquidityRatioUseCase:
       GetSummariesReportUseCase:
       GetTrustedAccountsUseCase:
       ServerInfoUseCase:
       WithdrawCollateralUseCase:
+  github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet:
+    interfaces:
+      ColdWallet:
   github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider:
     interfaces:
       LiquidityProviderRepository:

@@ -243,6 +243,7 @@ func assertHasCsrfMiddleware(t *testing.T, router *mux.Router, endpoint routes.E
 	assert.NotEqual(t, -1, i, "response does not have CSRF cookie")
 }
 
+// nolint:funlen
 func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	acceptQuoteUseCase := &pegin.AcceptQuoteUseCase{}
 
@@ -286,6 +287,8 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().DeleteTrustedAccountUseCase().Return(&liquidity_provider.DeleteTrustedAccountUseCase{})
 	registryMock.EXPECT().RecommendedPegoutUseCase().Return(&pegout.RecommendedPegoutUseCase{})
 	registryMock.EXPECT().RecommendedPeginUseCase().Return(&pegin.RecommendedPeginUseCase{})
+	registryMock.EXPECT().GetLiquidityRatioUseCase().Return(&liquidity_provider.GetLiquidityRatioUseCase{})
+	registryMock.EXPECT().SetLiquidityRatioUseCase().Return(&liquidity_provider.SetLiquidityRatioUseCase{})
 }
 
 func assertHasCorsHeadersAllowed(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {

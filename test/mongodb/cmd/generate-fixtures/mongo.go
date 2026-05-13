@@ -32,7 +32,7 @@ func loadConfigFromEnv() (mongoConfig, error) {
 }
 
 func connectMongo(ctx context.Context, cfg mongoConfig) (*mongodriver.Client, error) {
-	client, err := mongo.Connect(ctx, defaultMongoTimeout, cfg.username, cfg.password, cfg.host, cfg.port)
+	client, err := mongo.Connect(ctx, defaultMongoTimeout, cfg.username, cfg.password, cfg.host, cfg.port, true)
 	if err != nil {
 		return nil, fmt.Errorf("connect to mongo: %w", err)
 	}

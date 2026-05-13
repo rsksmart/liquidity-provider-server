@@ -123,12 +123,13 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertExpectations(t) &&
-				bridge.AssertExpectations(t) &&
-				rskRpc.AssertExpectations(t) &&
-				assertQuotesLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertExpectations(mt)
+			bridge.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.True(t, assertQuotesLog())
 	})
 	t.Run("should run tick with a with reduce page if its too close to the latest block", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -154,12 +155,13 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertExpectations(t) &&
-				bridge.AssertExpectations(t) &&
-				rskRpc.AssertExpectations(t) &&
-				assertNoQuotesLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertExpectations(mt)
+			bridge.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.True(t, assertNoQuotesLog())
 	})
 }
 
@@ -205,12 +207,13 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertNotCalled(t, "Run") &&
-				bridge.AssertNotCalled(t, "GetBatchPegOutCreatedEvent") &&
-				rskRpc.AssertExpectations(t) &&
-				assertErrorLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertNotCalled(mt, "Run")
+			bridge.AssertNotCalled(mt, "GetBatchPegOutCreatedEvent")
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.True(t, assertErrorLog())
 	})
 	t.Run("should handle error getting event", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -232,12 +235,13 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertNotCalled(t, "Run") &&
-				bridge.AssertExpectations(t) &&
-				rskRpc.AssertExpectations(t) &&
-				assertNoQuotesLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertNotCalled(mt, "Run")
+			bridge.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.True(t, assertNoQuotesLog())
 	})
 	t.Run("should handle error in use case", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -260,9 +264,13 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertExpectations(t) && bridge.AssertExpectations(t) && rskRpc.AssertExpectations(t) && assertNoQuotesLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertExpectations(mt)
+			bridge.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.True(t, assertNoQuotesLog())
 	})
 }
 
