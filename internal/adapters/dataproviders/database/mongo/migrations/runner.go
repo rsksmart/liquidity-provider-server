@@ -13,9 +13,9 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 //go:embed scripts/*.json
@@ -31,15 +31,15 @@ const (
 type (
 	// DatabaseBinding is the interface the migration runner needs from the database.
 	DatabaseBinding interface {
-		RunCommand(ctx context.Context, runCommand any, opts ...*options.RunCmdOptions) *mongo.SingleResult
-		Collection(name string, opts ...*options.CollectionOptions) CollectionBinding
+		RunCommand(ctx context.Context, runCommand any, opts ...options.Lister[options.RunCmdOptions]) *mongo.SingleResult
+		Collection(name string, opts ...options.Lister[options.CollectionOptions]) CollectionBinding
 	}
 
 	// CollectionBinding is the interface for collection operations needed by version tracking.
 	CollectionBinding interface {
-		FindOne(ctx context.Context, filter any, opts ...*options.FindOneOptions) *mongo.SingleResult
+		FindOne(ctx context.Context, filter any, opts ...options.Lister[options.FindOneOptions]) *mongo.SingleResult
 		UpdateOne(ctx context.Context, filter any, update any,
-			opts ...*options.UpdateOptions) (*mongo.UpdateResult, error)
+			opts ...options.Lister[options.UpdateOneOptions]) (*mongo.UpdateResult, error)
 	}
 
 	migrationRecord struct {
@@ -257,7 +257,7 @@ func (r *Runner) setVersion(ctx context.Context, version int) error {
 	result, err := r.db.Collection(migrationsCollection).UpdateOne(ctx,
 		filter,
 		bson.D{{Key: "$set", Value: setDoc}},
-		options.Update().SetUpsert(true),
+		options.UpdateOne().SetUpsert(true),
 	)
 	if err != nil {
 		return fmt.Errorf("error recording migration version %d: %w", version, err)
@@ -277,7 +277,7 @@ func (r *Runner) markDirty(ctx context.Context, version int, migrationErr error)
 	result, err := r.db.Collection(migrationsCollection).UpdateOne(ctx,
 		filter,
 		bson.D{{Key: "$set", Value: setDoc}},
-		options.Update().SetUpsert(true),
+		options.UpdateOne().SetUpsert(true),
 	)
 	if err != nil {
 		return errors.Join(

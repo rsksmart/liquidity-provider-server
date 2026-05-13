@@ -21,7 +21,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	mongoDriver "go.mongodb.org/mongo-driver/mongo"
+	mongoDriver "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 var (
