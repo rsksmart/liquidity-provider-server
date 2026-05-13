@@ -1,0 +1,8 @@
+{
+  "name": "fed-migrator",
+  "version": "1.0.0",
+  "description": "Triggers a federation change on the RSK regtest bridge to produce a segwit-compatible (P2SH-P2WSH) federation",
+  "dependencies": {
+    "ethers": "^6.13.5"
+  }
+}
