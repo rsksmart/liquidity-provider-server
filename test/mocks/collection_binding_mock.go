@@ -503,7 +503,7 @@ type CollectionBindingMock_InsertMany_Call struct {
 
 // InsertMany is a helper method to define mock.On call
 //   - ctx context.Context
-//   - documents []any
+//   - documents any
 //   - opts ...options.Lister[options.InsertManyOptions]
 func (_e *CollectionBindingMock_Expecter) InsertMany(ctx interface{}, documents interface{}, opts ...interface{}) *CollectionBindingMock_InsertMany_Call {
 	return &CollectionBindingMock_InsertMany_Call{Call: _e.mock.On("InsertMany",
