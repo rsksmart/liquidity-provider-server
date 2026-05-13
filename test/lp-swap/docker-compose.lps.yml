@@ -92,7 +92,7 @@ services:
       - lp-swap-network
     command: ["liquidity-provider-server"]
   mongodb:
-    image: mongo:4
+    image: mongo:8.0
     restart: on-failure
     environment:
       - MONGO_INITDB_ROOT_USERNAME=flyover-user

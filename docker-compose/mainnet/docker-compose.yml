@@ -1,7 +1,7 @@
 version: "3"
 services:
   mongodb:
-    image: mongo:4
+    image: mongo:8.0
     restart: on-failure
     container_name: mongo01
     environment:
