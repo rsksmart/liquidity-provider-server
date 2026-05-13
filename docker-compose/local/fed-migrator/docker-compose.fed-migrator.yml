@@ -1,0 +1,20 @@
+services:
+  fed-migrator:
+    build:
+      context: ./fed-migrator
+    pull_policy: build
+    image: fed-migrator:latest
+    volumes:
+      - ./fed-migrator/scripts:/scripts
+      - ./${ENV_FILE}:/${ENV_FILE}
+    command: ["node", "/scripts/migrateFederationToSegwit.js"]
+    restart: "no"
+    container_name: fed-migrator
+    environment:
+      - RSK_ENDPOINT
+      - ENV_FILE
+    networks:
+      - net_lps
+networks:
+  net_lps:
+    driver: "bridge"
