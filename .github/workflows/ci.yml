@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@c4a0df2e75a225d979a444342dd3db752b53619f # v1.13.0
+
       - name: Run unit test
         run: make test
 
@@ -55,6 +58,9 @@ jobs:
 
       - name: Install dependencies
         run: go mod download
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@c4a0df2e75a225d979a444342dd3db752b53619f # v1.13.0
 
       - name: Run mongodb integration test
         run: make test-integration-db
