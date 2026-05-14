@@ -1,4 +1,3 @@
-version: "3"
 services:
   mongo-keyfile-init:
     image: alpine:3.20

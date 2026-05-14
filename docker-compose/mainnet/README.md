@@ -6,6 +6,7 @@
   MongoDB.
 * In both installations you must have a `.env.mainnet` file with appropriate
   variables.
+* Requires Docker Compose v2 (`docker compose`); legacy `docker-compose` v1 is not supported.
 
 # In-place upgrade: standalone MongoDB → single-node replica set (rs0)
 
