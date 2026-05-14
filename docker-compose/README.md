@@ -3,12 +3,12 @@ Go to the [`local` directory](./local) for a detailed explanation of the local s
 
 ## Deploy on Development Server with Testnet Config
 
-For testnet or mainnet environments, use the docker-compose files directly:
+For testnet or mainnet environments, use the docker-compose files directly (requires Docker Compose v2; legacy `docker-compose` v1 is not supported):
 
 ```bash
-docker-compose --env-file .env.testnet down &&
-docker-compose --env-file .env.testnet build --no-cache &&
-docker-compose --env-file .env.testnet up -d
+docker compose --env-file .env.testnet down &&
+docker compose --env-file .env.testnet build --no-cache &&
+docker compose --env-file .env.testnet up -d
 ```
 
 :::danger[Troubleshooting]
