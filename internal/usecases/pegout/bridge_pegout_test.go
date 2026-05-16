@@ -67,8 +67,8 @@ var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
 	},
 }
 
-func noRejectionParser(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason) {
-	return false, blockchain.RejectedPegoutReasonUnknown
+func noRejectionParser(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+	return false, blockchain.RejectedPegoutReasonUnknown, nil
 }
 
 func TestBridgePegoutUseCase_Run(t *testing.T) {
@@ -379,8 +379,8 @@ func testBridgePegoutUseCaseBridgeRejected(t *testing.T) {
 		return true
 	})).Return(nil).Once()
 
-	rejectionParser := func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason) {
-		return true, blockchain.RejectedPegoutReasonUnknown
+	rejectionParser := func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+		return true, blockchain.RejectedPegoutReasonUnknown, nil
 	}
 	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, rejectionParser)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))

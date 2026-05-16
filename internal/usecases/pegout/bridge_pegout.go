@@ -23,7 +23,7 @@ const (
 
 var ErrBridgeReleaseRejected = errors.New("bridge release request rejected")
 
-type ReleaseRejectionParser = func(receipt blockchain.TransactionReceipt, bridgeAddress string) (bool, blockchain.RejectedPegoutReason)
+type ReleaseRejectionParser = func(receipt blockchain.TransactionReceipt, bridgeAddress string) (bool, blockchain.RejectedPegoutReason, error)
 
 type BridgePegoutUseCase struct {
 	quoteRepository        quote.PegoutQuoteRepository
@@ -98,7 +98,10 @@ func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...qu
 }
 
 func (useCase *BridgePegoutUseCase) checkBridgeRejection(receipt blockchain.TransactionReceipt) error {
-	rejected, reason := useCase.releaseRejectionParser(receipt, useCase.contracts.Bridge.GetAddress())
+	rejected, reason, err := useCase.releaseRejectionParser(receipt, useCase.contracts.Bridge.GetAddress())
+	if err != nil {
+		return err
+	}
 	if rejected {
 		reasonStr := string(reason)
 		log.Errorf("%s: bridge rejected release for tx %s, reason=%s", usecases.BridgePegoutId, receipt.TransactionHash, reasonStr)
