@@ -64,6 +64,23 @@ fi
 ### Powpeg ###
 if [[ "$CREATE_POWPEG" == "true" ]]; then
   docker compose -f docker-compose.yml -f powpeg/docker-compose.powpeg.yml --env-file "$ENV_FILE" up -d
+
+  ### Federation segwit migration ###
+  if [[ "$MIGRATE_FEDERATION" == "true" ]]; then
+    echo "Migrating federation to segwit..."
+    docker compose -f docker-compose.yml -f fed-migrator/docker-compose.fed-migrator.yml --env-file "$ENV_FILE" up --wait
+    EXIT_CODE=$(docker wait fed-migrator)
+    if [ "$EXIT_CODE" != "0" ]; then
+      echo "ERROR: Federation migration failed (exit code $EXIT_CODE)"
+      exit 1
+    fi
+    echo "Federation migrated to segwit"
+    set -a
+    
+    source "$ENV_FILE"
+    set +a
+    set_defaults
+  fi
 fi
 
 ### LPS (always runs) ###
