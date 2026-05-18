@@ -448,4 +448,43 @@ func TestParseReleaseRejection(t *testing.T) {
 		assert.False(t, rejected)
 		assert.Empty(t, reason)
 	})
+
+	// Real testnet rejection: rootstock-testnet tx
+	// 0x4d9ee3b5c976097e074bf8f5ce9385ce475e1c7800e05a0468fc6b5e45a79f35
+	// — EOA sent 0.001 tRBTC to the Bridge precompile and the Bridge emitted
+	// release_request_rejected(sender=0x62db…d5b0, amount=100000 sat, reason=1/LOW_AMOUNT).
+	t.Run("real testnet receipt decodes to low_amount", func(t *testing.T) {
+		const (
+			txHash      = "0x4d9ee3b5c976097e074bf8f5ce9385ce475e1c7800e05a0468fc6b5e45a79f35"
+			blockHash   = "0x3432e6917b072ce4f2bcc419faf673ec24f383ae07e0e49e1ad387bf21da883f"
+			blockNumber = 0x209080
+			senderTopic = "0x00000000000000000000000062db6c4b118d7259c23692b162829e6bd5e4d5b0"
+			rejectData  = "0x00000000000000000000000000000000000000000000000000000000000186a0" +
+				"0000000000000000000000000000000000000000000000000000000000000001"
+		)
+		receipt := blockchain.TransactionReceipt{
+			TransactionHash: txHash,
+			BlockHash:       blockHash,
+			BlockNumber:     blockNumber,
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics: [][32]byte{
+						topic,
+						utils.To32Bytes(hexutil.MustDecode(senderTopic)),
+					},
+					Data:        hexutil.MustDecode(rejectData),
+					BlockNumber: blockNumber,
+					TxHash:      txHash,
+					TxIndex:     0,
+					BlockHash:   blockHash,
+					Index:       0,
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonLowAmount, reason)
+	})
 }
