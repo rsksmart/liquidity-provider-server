@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"errors"
-
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	entities_lp "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -29,7 +29,9 @@ func NewSetPegoutConfigHandler(useCase *liquidity_provider.SetPegoutConfigUseCas
 
 		err = useCase.Run(req.Context(), pkg.FromPegoutConfigurationDTO(request.Configuration))
 		if err != nil {
-			if errors.Is(err, usecases.TxBelowMinimumError) || errors.Is(err, usecases.NonPositiveWeiError) {
+			if errors.Is(err, usecases.TxBelowMinimumError) ||
+				errors.Is(err, usecases.NonPositiveWeiError) ||
+				errors.Is(err, entities_lp.PegoutExpiryTooShortForConfirmationsError) {
 				jsonErr := rest.NewErrorResponseWithDetails("Validation error", rest.DetailsFromError(err), true)
 				rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			} else {

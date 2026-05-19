@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	AmountOutOfRangeError = errors.New("amount out of range")
+	AmountOutOfRangeError                      = errors.New("amount out of range")
+	PegoutExpiryTooShortForConfirmationsError = errors.New("pegout expiry too short for required confirmations")
 )
 
 // ConfirmationsPerAmount the key represents the amount in wei serialized as a string, and the value represents the number of confirmations required for that amount.
@@ -61,6 +62,28 @@ func (config PegoutConfiguration) GetFixedFee() *entities.Wei {
 
 func (config PegoutConfiguration) GetFeePercentage() *utils.BigFloat {
 	return config.FeePercentage
+}
+
+func (config PegoutConfiguration) ValidateExpiryAgainstConfirmations(general GeneralConfiguration) error {
+	maxRskConfirmations := uint64(general.RskConfirmations.Max())
+	maxBtcConfirmations := uint64(general.BtcConfirmations.Max())
+	estimatedConfirmationTimeSec := (maxRskConfirmations * AvgRskBlockTimeSec) + (maxBtcConfirmations * AvgBtcBlockTimeSec)
+	estimatedExpireBlocksTimeSec := config.ExpireBlocks * AvgRskBlockTimeSec
+
+	if estimatedConfirmationTimeSec >= uint64(config.ExpireTime) {
+		return fmt.Errorf("%w: estimated=%ds expireTime=%ds", PegoutExpiryTooShortForConfirmationsError, estimatedConfirmationTimeSec, config.ExpireTime)
+	}
+	if estimatedConfirmationTimeSec >= estimatedExpireBlocksTimeSec {
+		return fmt.Errorf(
+			"%w: estimated=%ds expireBlocks=%d (~%ds)",
+			PegoutExpiryTooShortForConfirmationsError,
+			estimatedConfirmationTimeSec,
+			config.ExpireBlocks,
+			estimatedExpireBlocksTimeSec,
+		)
+	}
+
+	return nil
 }
 
 type GeneralConfiguration struct {
