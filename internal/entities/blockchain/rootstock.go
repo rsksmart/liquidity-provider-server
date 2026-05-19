@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"regexp"
 	"strings"
@@ -41,6 +42,15 @@ func DecodeStringTrimPrefix(hexString string) ([]byte, error) {
 }
 func IsRskAddress(address string) bool {
 	return rskAddressRegex.MatchString(address)
+}
+
+// NormalizeRskAddress returns the canonical lowercase 0x-prefixed 40-hex form for RSK account addresses.
+func NormalizeRskAddress(addr string) (string, error) {
+	trimmed := strings.TrimSpace(addr)
+	if !IsRskAddress(trimmed) {
+		return "", fmt.Errorf("%w: %q", InvalidAddressError, addr)
+	}
+	return strings.ToLower(trimmed), nil
 }
 
 type TransactionConfig struct {

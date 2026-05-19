@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 type GetTrustedAccountUseCase struct {
@@ -28,9 +28,9 @@ func NewGetTrustedAccountUseCase(
 }
 
 func (useCase *GetTrustedAccountUseCase) Run(ctx context.Context, address string) (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
-	normalized, err := blockchain.NormalizeEthereumAddress(address)
+	normalized, err := usecases.NormalizeTrustedAccountAddress(usecases.GetTrustedAccountId, address)
 	if err != nil {
-		return nil, errors.Join(liquidity_provider.InvalidTrustedAccountAddressError, err)
+		return nil, err
 	}
 	readFunction := func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 		signedAccount, getErr := useCase.trustedAccountRepository.GetTrustedAccount(ctx, normalized)

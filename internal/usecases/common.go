@@ -56,6 +56,7 @@ const (
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
 	UpdateTrustedAccountId     UseCaseId = "UpdateTrustedAccountUseCase"
 	AddTrustedAccountId        UseCaseId = "AddTrustedAccountUseCase"
+	GetTrustedAccountId        UseCaseId = "GetTrustedAccountUseCase"
 	DeleteTrustedAccountId     UseCaseId = "DeleteTrustedAccountUseCase"
 	LoginId                    UseCaseId = "Login"
 	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
@@ -132,6 +133,18 @@ func WrapUseCaseErrorArgs(useCase UseCaseId, err error, args ErrorArgs) error {
 	} else {
 		return fmt.Errorf("%s: %w. Args: %v", useCase, err, args)
 	}
+}
+
+func NormalizeTrustedAccountAddress(useCase UseCaseId, addr string) (string, error) {
+	normalized, err := blockchain.NormalizeRskAddress(addr)
+	if err != nil {
+		return "", WrapUseCaseError(useCase, errors.Join(
+			liquidity_provider.InvalidTrustedAccountAddressError,
+			blockchain.InvalidAddressError,
+			err,
+		))
+	}
+	return normalized, nil
 }
 
 func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {

@@ -2,9 +2,7 @@ package liquidity_provider
 
 import (
 	"context"
-	"errors"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
@@ -22,10 +20,9 @@ func NewDeleteTrustedAccountUseCase(
 }
 
 func (useCase *DeleteTrustedAccountUseCase) Run(ctx context.Context, address string) error {
-	normalized, err := blockchain.NormalizeEthereumAddress(address)
+	normalized, err := usecases.NormalizeTrustedAccountAddress(usecases.DeleteTrustedAccountId, address)
 	if err != nil {
-		return usecases.WrapUseCaseError(usecases.DeleteTrustedAccountId,
-			errors.Join(liquidity_provider.InvalidTrustedAccountAddressError, err))
+		return err
 	}
 	err = useCase.trustedAccountRepository.DeleteTrustedAccount(ctx, normalized)
 	if err != nil {

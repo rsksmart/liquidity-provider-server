@@ -3,7 +3,6 @@ package mongo
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -14,9 +13,9 @@ import (
 )
 
 func trustedAccountAddressFilter(address string) (bson.M, error) {
-	normalized, err := blockchain.NormalizeEthereumAddress(address)
+	normalized, err := blockchain.NormalizeRskAddress(address)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", liquidity_provider.InvalidTrustedAccountAddressError, err)
+		return nil, errors.Join(liquidity_provider.InvalidTrustedAccountAddressError, blockchain.InvalidAddressError, err)
 	}
 	return bson.M{
 		"$expr": bson.M{

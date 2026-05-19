@@ -32,7 +32,7 @@ var signedTestAccount = entities.Signed[liquidity_provider.TrustedAccountDetails
 }
 
 func trustedAccountCaseInsensitiveFilter(address string) bson.M {
-	normalized, err := blockchain.NormalizeEthereumAddress(address)
+	normalized, err := blockchain.NormalizeRskAddress(address)
 	if err != nil {
 		panic(err)
 	}
