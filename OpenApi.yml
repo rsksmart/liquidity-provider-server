@@ -1304,7 +1304,9 @@ paths:
   /pegout/configuration:
     post:
       description: ' Set the configuration for the Pegout service. Included in the
-        management API.'
+        management API. The configuration is rejected when the estimated time required
+        to wait for deposit and transfer confirmations is greater than or equal to
+        expireTime or to the estimated time represented by expireBlocks.'
       requestBody:
         content:
           application/json:
@@ -1312,6 +1314,8 @@ paths:
               $ref: '#/components/schemas/PegoutConfigurationRequest'
         required: true
       responses:
+        "400":
+          description: Validation error
         "204":
           description: ""
       summary: Set Pegout Config
