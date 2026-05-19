@@ -209,10 +209,10 @@ func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Contex
 		return nil, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
 	}
 
-	available, availErr := useCase.pegoutLp.AvailablePegoutLiquidity(ctx)
 	var availableForArgs *entities.Wei
-	if availErr == nil {
-		availableForArgs = available
+	var insuf *usecases.InsufficientLiquidityError
+	if errors.As(err, &insuf) {
+		availableForArgs = insuf.Available
 	}
 	errorArgs := newPegoutAcceptNoLiquidityErrorArgs(pegoutQuote, requiredLiquidity, availableForArgs)
 	return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, err, errorArgs)
@@ -230,7 +230,7 @@ func newPegoutAcceptNoLiquidityErrorArgs(
 	args["gasFee"] = q.GasFee.String()
 	args["requiredLiquidity"] = requiredLiquidity.String()
 	if available != nil && requiredLiquidity.Cmp(available) > 0 {
-		args["missingLiquidity"] = new(entities.Wei).Sub(requiredLiquidity, available).String()
+		args["missingLiquidity"] = new(entities.Wei).Sub(requiredLiquidity.Copy(), available.Copy()).String()
 	}
 	return args
 }

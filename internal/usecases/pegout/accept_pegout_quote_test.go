@@ -472,8 +472,10 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
-	lp.On("HasPegoutLiquidity", test.AnyCtx, entities.NewWei(65)).Return(usecases.NoLiquidityError).Once()
-	lp.On("AvailablePegoutLiquidity", test.AnyCtx).Return(entities.NewWei(20), nil).Once()
+	lp.On("HasPegoutLiquidity", test.AnyCtx, entities.NewWei(65)).Return(&usecases.InsufficientLiquidityError{
+		Available: entities.NewWei(20),
+		Required:  entities.NewWei(65),
+	}).Once()
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Once()
@@ -509,7 +511,6 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity_preservesProviderErrorMessage(t *tes
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", test.AnyCtx, entities.NewWei(65)).Return(liquidityErr).Once()
-	lp.On("AvailablePegoutLiquidity", test.AnyCtx).Return(entities.NewWei(58), nil).Once()
 	eventBus := new(mocks.EventBusMock)
 	mutex := new(mocks.MutexMock)
 	mutex.On("Lock").Once()

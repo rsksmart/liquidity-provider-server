@@ -270,6 +270,11 @@ func TestLocalLiquidityProvider_HasPegoutLiquidity(t *testing.T) {
 		} else {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.expectedError)
+			require.ErrorIs(t, err, usecases.NoLiquidityError)
+			var insuf *usecases.InsufficientLiquidityError
+			require.ErrorAs(t, err, &insuf)
+			assert.NotNil(t, insuf.Available)
+			assert.NotNil(t, insuf.Required)
 		}
 	}
 	btcWallet.AssertExpectations(t)

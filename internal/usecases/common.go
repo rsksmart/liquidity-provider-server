@@ -97,6 +97,22 @@ var (
 	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
 
+// InsufficientLiquidityError is returned when available liquidity is below required.
+// It wraps NoLiquidityError for errors.Is compatibility.
+type InsufficientLiquidityError struct {
+	Available *entities.Wei
+	Required  *entities.Wei
+}
+
+func (e *InsufficientLiquidityError) Error() string {
+	missing := new(entities.Wei).Sub(e.Required.Copy(), e.Available.Copy())
+	return fmt.Errorf("%w, missing %s satoshi", NoLiquidityError, missing.ToSatoshi().String()).Error()
+}
+
+func (e *InsufficientLiquidityError) Is(target error) bool {
+	return target == NoLiquidityError
+}
+
 type RecommendedOperationResult struct {
 	RecommendedQuoteValue *entities.Wei
 	EstimatedCallFee      *entities.Wei
