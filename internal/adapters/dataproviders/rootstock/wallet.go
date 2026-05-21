@@ -135,27 +135,9 @@ func (wallet *RskWalletImpl) sendAndAwaitTransaction(ctx context.Context, signed
 }
 
 func (wallet *RskWalletImpl) buildTransactionReceipt(receipt *geth.Receipt, tx *geth.Transaction) (blockchain.TransactionReceipt, error) {
-	// Use the transaction directly to get the "To" address and the Value
-	toAddressStr := ""
-	txValue := entities.NewWei(0)
-	if tx != nil {
-		if tx.To() != nil {
-			toAddressStr = tx.To().String()
-		}
-		txValue = entities.NewBigWei(tx.Value())
-	}
-
-	transactionReceipt := blockchain.TransactionReceipt{
-		TransactionHash:   receipt.TxHash.String(),
-		BlockHash:         receipt.BlockHash.String(),
-		BlockNumber:       receipt.BlockNumber.Uint64(),
-		From:              wallet.Address().String(),
-		To:                toAddressStr,
-		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
-		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
-		Value:             txValue,
-		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
-		Logs:              make([]blockchain.TransactionLog, 0),
+	transactionReceipt, err := ParseReceipt(tx, receipt)
+	if err != nil {
+		return blockchain.TransactionReceipt{}, err
 	}
 
 	if receipt.Status == 0 {
