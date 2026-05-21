@@ -2,6 +2,7 @@ package pegout
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -15,6 +16,14 @@ const (
 	// BridgeConversionGasPrice see https://dev.rootstock.io/rsk/rbtc/conversion/networks/
 	BridgeConversionGasPrice = 60000000
 )
+
+// ErrBridgeReleaseRejected wraps errors returned when the Bridge emits release_request_rejected
+// for a bridge conversion transaction. Callers can identify the case via errors.Is.
+var ErrBridgeReleaseRejected = errors.New("bridge release request rejected")
+
+// ReleaseRejectionParser inspects a receipt for the Bridge release_request_rejected event
+// emitted by bridgeAddress. It returns rejected=true together with the decoded reason when found.
+type ReleaseRejectionParser = func(receipt blockchain.TransactionReceipt, bridgeAddress string) (bool, blockchain.RejectedPegoutReason, error)
 
 type RebalanceStrategy string
 
@@ -37,12 +46,13 @@ func NewRebalanceHandler(
 	rskWallet blockchain.RootstockWallet,
 	contracts blockchain.RskContracts,
 	mutex sync.Locker,
+	releaseRejectionParser ReleaseRejectionParser,
 ) RebalanceHandler {
 	switch strategy {
 	case UtxoSplit:
-		return NewUtxoSplitHandler(quoteRepository, rskWallet, contracts, mutex)
+		return NewUtxoSplitHandler(quoteRepository, rskWallet, contracts, mutex, releaseRejectionParser)
 	default:
-		return NewAllAtOnceHandler(quoteRepository, rskWallet, contracts, mutex)
+		return NewAllAtOnceHandler(quoteRepository, rskWallet, contracts, mutex, releaseRejectionParser)
 	}
 }
 

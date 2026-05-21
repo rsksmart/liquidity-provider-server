@@ -56,7 +56,7 @@ func utxoSplitReceipt(txHash string, value int64) blockchain.TransactionReceipt 
 }
 
 func newUtxoSplitHandler(repo quote.PegoutQuoteRepository, wallet blockchain.RootstockWallet, bridge rootstock.Bridge, mutex *mocks.MutexMock) *pegout.UtxoSplitHandler {
-	return pegout.NewUtxoSplitHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	return pegout.NewUtxoSplitHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 }
 
 func utxoSplitGasPerTx() int64 {

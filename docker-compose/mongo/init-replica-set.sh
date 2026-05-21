@@ -12,7 +12,7 @@ USER=${MONGO_INITDB_ROOT_USERNAME:?MONGO_INITDB_ROOT_USERNAME is required}
 PASS=${MONGO_INITDB_ROOT_PASSWORD:?MONGO_INITDB_ROOT_PASSWORD is required}
 
 mongo_eval() {
-  mongo --host "$HOST" --port "$PORT" --quiet \
+  mongosh --host "$HOST" --port "$PORT" --quiet \
     -u "$USER" -p "$PASS" --authenticationDatabase admin \
     --eval "$1"
 }

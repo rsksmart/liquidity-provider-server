@@ -3,6 +3,7 @@ package pegout
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -15,10 +16,11 @@ import (
 )
 
 type AllAtOnceHandler struct {
-	quoteRepository quote.PegoutQuoteRepository
-	rskWallet       blockchain.RootstockWallet
-	contracts       blockchain.RskContracts
-	mutex           sync.Locker
+	quoteRepository        quote.PegoutQuoteRepository
+	rskWallet              blockchain.RootstockWallet
+	contracts              blockchain.RskContracts
+	mutex                  sync.Locker
+	releaseRejectionParser ReleaseRejectionParser
 }
 
 func NewAllAtOnceHandler(
@@ -26,12 +28,14 @@ func NewAllAtOnceHandler(
 	rskWallet blockchain.RootstockWallet,
 	contracts blockchain.RskContracts,
 	mutex sync.Locker,
+	releaseRejectionParser ReleaseRejectionParser,
 ) *AllAtOnceHandler {
 	return &AllAtOnceHandler{
-		quoteRepository: quoteRepository,
-		rskWallet:       rskWallet,
-		contracts:       contracts,
-		mutex:           mutex,
+		quoteRepository:        quoteRepository,
+		rskWallet:              rskWallet,
+		contracts:              contracts,
+		mutex:                  mutex,
+		releaseRejectionParser: releaseRejectionParser,
 	}
 }
 
@@ -57,14 +61,36 @@ func (h *AllAtOnceHandler) Execute(
 		return err
 	}
 
+	bridgeAddress := h.contracts.Bridge.GetAddress()
 	config := blockchain.NewTransactionConfig(totalValue, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
-	receipt, txErr := h.rskWallet.SendRbtc(ctx, config, h.contracts.Bridge.GetAddress())
+	receipt, txErr := h.rskWallet.SendRbtc(ctx, config, bridgeAddress)
+	if txErr == nil && receipt.TransactionHash != "" {
+		txErr = h.checkBridgeRejection(receipt, bridgeAddress)
+	}
 	if txErr == nil {
 		log.Debugf("%s: transaction sent to the bridge successfully (%s)", usecases.BridgePegoutId, receipt.TransactionHash)
 	}
 
 	if err := h.updateQuotes(ctx, receipt, txErr, watchedQuotes); err != nil {
 		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
+	}
+	return nil
+}
+
+// checkBridgeRejection turns a successful-looking receipt that actually contains a
+// Bridge release_request_rejected event into ErrBridgeReleaseRejected so updateQuotes
+// records the quotes as PegoutStateBridgeTxFailed.
+func (h *AllAtOnceHandler) checkBridgeRejection(receipt blockchain.TransactionReceipt, bridgeAddress string) error {
+	if h.releaseRejectionParser == nil {
+		return nil
+	}
+	rejected, reason, err := h.releaseRejectionParser(receipt, bridgeAddress)
+	if err != nil {
+		return err
+	}
+	if rejected {
+		log.Errorf("%s: bridge rejected release for tx %s, reason=%s", usecases.BridgePegoutId, receipt.TransactionHash, reason)
+		return fmt.Errorf("%w: reason=%s", ErrBridgeReleaseRejected, reason)
 	}
 	return nil
 }

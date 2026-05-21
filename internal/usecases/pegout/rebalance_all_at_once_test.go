@@ -104,7 +104,7 @@ func matchAllAtOnceRevertedQuotes(quotes []quote.RetainedPegoutQuote) bool {
 }
 
 func newAllAtOnceHandler(repo quote.PegoutQuoteRepository, wallet blockchain.RootstockWallet, bridge rootstock.Bridge, mutex *mocks.MutexMock) *pegout.AllAtOnceHandler {
-	return pegout.NewAllAtOnceHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	return pegout.NewAllAtOnceHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 }
 
 //nolint:funlen

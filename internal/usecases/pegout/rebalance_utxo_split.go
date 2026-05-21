@@ -15,10 +15,11 @@ import (
 )
 
 type UtxoSplitHandler struct {
-	quoteRepository quote.PegoutQuoteRepository
-	rskWallet       blockchain.RootstockWallet
-	contracts       blockchain.RskContracts
-	mutex           sync.Locker
+	quoteRepository        quote.PegoutQuoteRepository
+	rskWallet              blockchain.RootstockWallet
+	contracts              blockchain.RskContracts
+	mutex                  sync.Locker
+	releaseRejectionParser ReleaseRejectionParser
 }
 
 func NewUtxoSplitHandler(
@@ -26,12 +27,14 @@ func NewUtxoSplitHandler(
 	rskWallet blockchain.RootstockWallet,
 	contracts blockchain.RskContracts,
 	mutex sync.Locker,
+	releaseRejectionParser ReleaseRejectionParser,
 ) *UtxoSplitHandler {
 	return &UtxoSplitHandler{
-		quoteRepository: quoteRepository,
-		rskWallet:       rskWallet,
-		contracts:       contracts,
-		mutex:           mutex,
+		quoteRepository:        quoteRepository,
+		rskWallet:              rskWallet,
+		contracts:              contracts,
+		mutex:                  mutex,
+		releaseRejectionParser: releaseRejectionParser,
 	}
 }
 
@@ -101,6 +104,9 @@ func (h *UtxoSplitHandler) sendChunkAndPersist(
 	if !h.isValidSplitReceipt(receipt, txErr, chunkIndex, totalChunks) {
 		return watchedQuotes, nil
 	}
+	if h.isChunkRejectedByBridge(receipt, bridgeAddress, chunkIndex, totalChunks) {
+		return watchedQuotes, nil
+	}
 	return h.distributeChunkReceipt(ctx, chunkIndex, totalChunks, receipt, watchedQuotes)
 }
 
@@ -123,6 +129,24 @@ func (h *UtxoSplitHandler) isValidSplitReceipt(receipt blockchain.TransactionRec
 	}
 	log.Debugf("%s: split tx %d/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, chunkIndex+1, totalChunks, receipt.TransactionHash)
 	return true
+}
+
+// isChunkRejectedByBridge returns true when receipt contains a release_request_rejected event,
+// so the chunk is skipped and not allocated to any quote (next cycle retries the remaining amount).
+func (h *UtxoSplitHandler) isChunkRejectedByBridge(receipt blockchain.TransactionReceipt, bridgeAddress string, chunkIndex, totalChunks int) bool {
+	if h.releaseRejectionParser == nil {
+		return false
+	}
+	rejected, reason, err := h.releaseRejectionParser(receipt, bridgeAddress)
+	if err != nil {
+		log.Errorf("%s: split tx %d/%d failed to parse rejection event: %v", usecases.BridgePegoutId, chunkIndex+1, totalChunks, err)
+		return true
+	}
+	if rejected {
+		log.Errorf("%s: split tx %d/%d rejected by bridge (%s), reason=%s", usecases.BridgePegoutId, chunkIndex+1, totalChunks, receipt.TransactionHash, reason)
+		return true
+	}
+	return false
 }
 
 func (h *UtxoSplitHandler) distributeChunkReceipt(
