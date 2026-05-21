@@ -137,7 +137,7 @@ func ParseReleaseRejection(receipt blockchain.TransactionReceipt, bridgeAddress 
 		return false, "", err
 	}
 	topic := bridgeAbi.Events[releaseRequestRejectedEvent].ID
-	log, found := findReleaseRejectedLog(receipt.Logs, bridgeAddress, topic)
+	log, found := findEventLog(receipt.Logs, bridgeAddress, topic)
 	if !found {
 		return false, "", nil
 	}
@@ -164,11 +164,11 @@ func parseRejectedPegoutReason(reason int64) blockchain.RejectedPegoutReason {
 	}
 }
 
-func findReleaseRejectedLog(logs []blockchain.TransactionLog, bridgeAddress string, topic common.Hash) (blockchain.TransactionLog, bool) {
+func findEventLog(logs []blockchain.TransactionLog, contractAddress string, topic common.Hash) (blockchain.TransactionLog, bool) {
 	for _, log := range logs {
 		if len(log.Topics) > 0 &&
 			bytes.Equal(log.Topics[0][:], topic.Bytes()) &&
-			utils.CompareIgnore0x(log.Address, bridgeAddress) {
+			utils.CompareIgnore0x(log.Address, contractAddress) {
 			return log, true
 		}
 	}
