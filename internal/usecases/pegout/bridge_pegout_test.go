@@ -146,6 +146,7 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress).Once()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
@@ -178,6 +179,7 @@ func testBridgePegoutUseCaseValueBelowMinimum(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(5000),
 	}).Once()
@@ -209,6 +211,7 @@ func testBridgePegoutUseCaseWalletBalanceError(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
@@ -240,6 +243,7 @@ func testBridgePegoutUseCaseWalletWithoutBalance(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
@@ -273,6 +277,7 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress).Once()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
@@ -328,6 +333,7 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress).Once()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
@@ -355,6 +361,7 @@ func TestNewRebalanceHandler(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	wallet := &mocks.RskWalletMock{}
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	contracts := blockchain.RskContracts{Bridge: bridge}
 
 	t.Run("ALL_AT_ONCE returns AllAtOnceHandler", func(t *testing.T) {
@@ -390,6 +397,7 @@ func testBridgePegoutUseCaseBridgeRejected(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress).Once()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
@@ -474,6 +482,7 @@ func setupUtxoSplitSuccess() (*mocks.PegoutQuoteRepositoryMock, *mocks.ProviderM
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(200),
@@ -546,6 +555,7 @@ func testUtxoSplitNoSplitWhenN1(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(200),
@@ -573,6 +583,7 @@ func testUtxoSplitBelowMinimum(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(200),
 	}).Once()
@@ -609,6 +620,7 @@ func testUtxoSplitExactMultiple(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(200),
@@ -652,6 +664,7 @@ func testUtxoSplitFailMidSplit(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(200),
@@ -697,6 +710,7 @@ func testUtxoSplitInsufficientGas(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(200),
 	}).Once()
@@ -768,6 +782,7 @@ func runAmountIntegritySubtest(t *testing.T, total, bridgeMin *big.Int, wantN in
 	walletMutex.On("Lock").Return()
 	walletMutex.On("Unlock").Return()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp := &mocks.ProviderMock{}
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
@@ -867,6 +882,7 @@ func testUtxoSplitChunkSpansTwoQuotes(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(500),
@@ -937,6 +953,7 @@ func setupUtxoSplitQuoteSpansMultipleChunks() (*mocks.PegoutQuoteRepositoryMock,
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(300),
@@ -1009,6 +1026,7 @@ func testUtxoSplitDbUpdateFailure(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(400),
@@ -1049,6 +1067,7 @@ func setupUtxoSplitRetryWithRemaining() (*mocks.PegoutQuoteRepositoryMock, *mock
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(400),
@@ -1126,6 +1145,7 @@ func testUtxoSplitAllChunksFail(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(200),

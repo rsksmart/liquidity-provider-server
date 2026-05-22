@@ -69,6 +69,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		walletBalance := new(entities.Wei).Add(entities.NewWei(utxoSplitTotal), entities.NewWei(2*utxoSplitGasPerTx()))
@@ -125,6 +126,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		mutex.On("Lock").Return().Once()
@@ -147,6 +149,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		wallet.On("GetBalance", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
@@ -170,6 +173,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		// N=2 chunks need 2*gasPerTx, only provide 1
@@ -195,6 +199,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		walletBalance := new(entities.Wei).Add(entities.NewWei(utxoSplitTotal), entities.NewWei(2*utxoSplitGasPerTx()))
@@ -240,6 +245,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		walletBalance := new(entities.Wei).Add(entities.NewWei(utxoSplitTotal), entities.NewWei(2*utxoSplitGasPerTx()))
@@ -265,6 +271,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		walletBalance := new(entities.Wei).Add(entities.NewWei(utxoSplitTotal), entities.NewWei(utxoSplitGasPerTx()))
@@ -295,6 +302,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		walletBalance := new(entities.Wei).Add(entities.NewWei(utxoSplitTotal), entities.NewWei(utxoSplitGasPerTx()))
@@ -344,6 +352,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		walletBalance := new(entities.Wei).Add(entities.NewWei(800), entities.NewWei(2*utxoSplitGasPerTx()))
@@ -404,6 +413,7 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
 		mutex := &mocks.MutexMock{}
 
 		// retry-01: Total=500, RemainingToRefund=200, retry-02: Total=300 → adjusted=500

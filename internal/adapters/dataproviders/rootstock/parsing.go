@@ -184,8 +184,8 @@ func findEventLog(logs []blockchain.TransactionLog, contractAddress string, topi
 		if len(log.Topics) > 0 &&
 			bytes.Equal(log.Topics[0][:], topic.Bytes()) &&
 			utils.CompareIgnore0x(log.Address, contractAddress) {
-				return log, true
-			}
+			return log, true
 		}
+	}
 	return blockchain.TransactionLog{}, false
 }
