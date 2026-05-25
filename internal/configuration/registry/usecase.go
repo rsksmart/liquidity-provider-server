@@ -259,6 +259,7 @@ func NewUseCaseRegistry(
 			rskRegistry.Wallet,
 			rskRegistry.Contracts,
 			mutexes.RskWalletMutex(),
+			rootstock.ParseReleaseRejection,
 		),
 		peginStatusUseCase:        pegin.NewStatusUseCase(databaseRegistry.PeginRepository),
 		pegoutStatusUseCase:       pegout.NewStatusUseCase(databaseRegistry.PegoutRepository),

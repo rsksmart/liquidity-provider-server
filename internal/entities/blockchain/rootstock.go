@@ -119,3 +119,13 @@ type RootstockWallet interface {
 	SendRbtc(ctx context.Context, config TransactionConfig, toAddress string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context) (*entities.Wei, error)
 }
+
+// RejectedPegoutReason is a display label decoded from the Bridge release_request_rejected event.
+type RejectedPegoutReason string
+
+const (
+	RejectedPegoutReasonUnknown        RejectedPegoutReason = "unknown"
+	RejectedPegoutReasonLowAmount      RejectedPegoutReason = "low_amount"
+	RejectedPegoutReasonCallerContract RejectedPegoutReason = "caller_contract"
+	RejectedPegoutReasonFeeAboveValue  RejectedPegoutReason = "fee_above_value"
+)
