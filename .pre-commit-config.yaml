@@ -21,6 +21,31 @@ repos:
         entry: make lint
         language: system
         types: [go]
+  - repo: local
+    hooks:
+      - id: ui-lint
+        name: UI Lint
+        entry: bash -c 'cd ui && pnpm run lint'
+        language: system
+        files: ^ui/
+      - id: ui-test
+        name: UI Tests
+        entry: bash -c 'cd ui && pnpm run test'
+        language: system
+        files: ^ui/
+      - id: ui-build
+        name: UI Build
+        entry: bash -c 'cd ui && pnpm run build'
+        language: system
+        stages: [pre-push]
+        always_run: true
+      - id: go-build-check
+        name: Go Build Check
+        entry: go build ./...
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        always_run: true
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.16.3
     hooks:

@@ -10,7 +10,40 @@ permissions:
   pull-requests: read
 
 jobs:
+  ui-check:
+    name: UI build, test, and lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@fe02b34f77a8b67e50862a613ee8837dc5a8d057 # v4.0.0
+        with:
+          version: 9.15.4
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f8d03042a5 # v4.4.0
+        with:
+          node-version-file: ui/.nvmrc
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install UI dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ui
+
+      - name: Lint, test, and build UI
+        run: pnpm run lint && pnpm run test && pnpm run build
+        working-directory: ui
+
   unit-tests:
+    needs: ui-check
     name: Unit tests execution
     runs-on: ubuntu-latest
     permissions:
@@ -44,6 +77,7 @@ jobs:
           fail_ci_if_error: true
 
   integration-db-tests:
+    needs: ui-check
     name: MongoDB integration tests execution
     runs-on: ubuntu-latest
     permissions:
@@ -67,6 +101,7 @@ jobs:
         run: make test-integration-db
 
   code-lint:
+    needs: ui-check
     name: Source code format validation
     runs-on: ubuntu-latest
     permissions:
