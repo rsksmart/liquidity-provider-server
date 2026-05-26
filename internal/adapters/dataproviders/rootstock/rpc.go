@@ -170,10 +170,11 @@ func (rpc *rskjRpcServer) GetBlockByHash(ctx context.Context, hash string) (bloc
 	}
 
 	return blockchain.BlockInfo{
-		Hash:      result.Hash().String(),
-		Number:    result.NumberU64(),
-		Timestamp: time.Unix(int64(result.Time()), 0),
-		Nonce:     result.Nonce(),
+		Hash:       result.Hash().String(),
+		ParentHash: result.ParentHash().Hex(),
+		Number:     result.NumberU64(),
+		Timestamp:  time.Unix(int64(result.Time()), 0),
+		Nonce:      result.Nonce(),
 	}, nil
 }
 
@@ -186,10 +187,11 @@ func (rpc *rskjRpcServer) GetBlockByNumber(ctx context.Context, blockNumber *big
 		return blockchain.BlockInfo{}, err
 	}
 	return blockchain.BlockInfo{
-		Hash:      result.Hash().String(),
-		Number:    result.NumberU64(),
-		Timestamp: time.Unix(int64(result.Time()), 0),
-		Nonce:     result.Nonce(),
+		Hash:       result.Hash().String(),
+		ParentHash: result.ParentHash().Hex(),
+		Number:     result.NumberU64(),
+		Timestamp:  time.Unix(int64(result.Time()), 0),
+		Nonce:      result.Nonce(),
 	}, nil
 }
 

@@ -2,6 +2,7 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/liquidity-provider-server/badge?branch=master)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/liquidity-provider-server)
 [![CodeQL](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml?query=branch%3Amaster)
 [![Unit Tests](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml?query=branch%3Amaster)
+[![codecov](https://codecov.io/gh/rsksmart/liquidity-provider-server/branch/master/graph/badge.svg)](https://codecov.io/gh/rsksmart/liquidity-provider-server)
 
 The Liquidity Provider Server (LPS) is a server that interacts with a [Liquidity Bridge Contract (LBC)](https://github.com/rsksmart/liquidity-bridge-contract) to provide liquidity for users as part of the Flyover protocol. This server performs all the necessary operations to play the role of the Liquidity Provider, involving transactions in both Rootstock and Bitcoin networks.
 
@@ -22,8 +23,7 @@ To run the project locally you can follow these steps:
 
 1. `git clone git@github.com:rsksmart/liquidity-provider-server.git`
 2. `cd docker-compose/local`
-3. `export LPS_STAGE=regtest`
-4. `./lps-env.sh up`
+3. `./lps-local.sh`
 
 This will set up a local environment, please keep in mind that a productive set-up could vary in multiple aspects.
 
@@ -141,12 +141,12 @@ The option to select of the following can be set through the value of the `SECRE
 
 ### AWS Secrets Manager
 In this option the LPS will get the secrets from [AWS secrets manager service](https://aws.amazon.com/secrets-manager/), this means that the LPS will need to be provided with the AWS keys in any of the ways that the AWS client allows (through a file in home directory, environment variables, etc). In this case, the LPS should receive the name of the secrets to use through the environment variables (that are listed below). This is the recommended option for production environments.
-1. KEY_SECRET
+1. WALLET_SECRET
 2. PASSWORD_SECRET
 
 ### Environment (Not recommended)
 In this option the LPS will get the required secrets from the environment (this might include the path to existing files in the filesystem). This option is not recommended to be used in production environments as it was developed only for testing purposes. The env vars that need to be set if this option is used are the following:
-1. KEYSTORE_FILE
+1. WALLET_FILE
 2. KEYSTORE_PWD
 
 ### Technical clarifications
@@ -165,6 +165,10 @@ The LPS provides several utility scripts that can be helpful for liquidity provi
 - **register_pegin**: Register a PegIn transaction within the Liquidity Bridge Contract. Most times, this script is only required to execute refunds on special cases. This script requires an input file whose structure can be found in the [input-example.json](https://github.com/rsksmart/liquidity-provider-server/blob/master/cmd/utils/register_pegin/input-example.json) file.
 - **refund_user_pegout**: Executes a refund for a user's peg-out operation through the Liquidity Bridge Contract. This is used when a peg-out operation needs to be refunded back to the user's RSK address. The script requires the quote hash of the operation to refund.
 - **key_conversion**: Shows the corresponding BTC and RSK address for a given private key and encrypts it into a keystore, accepts the key either in WIF or hex format. The key can be provided through the terminal, a file or an existing keystore.
+- **resign_utils**: Resigns a liquidity provider and withdraws collateral from the contract.
+- **withdraw**: Withdraws liquidity locked in the contract (full balance or specific amount).
+
+For migration-specific examples, see [docs/LP-Migration-Utils.md](./docs/LP-Migration-Utils.md).
 
 ## Monitoring Service
 
@@ -190,6 +194,9 @@ The service is configured in `docker-compose/monitoring/src/config.ts` and suppo
   - port: The port where the service will be exposed.
 
 The service can be configured to monitor other addresses by modifying the `MONITORED_ADDRESSES` array in `docker-compose/monitoring/src/config.ts`.
+
+## Additional clarifications
+- The liquidity provider server is designed to run with an exclusive wallet. Horizontal scaling requires a separate wallet per instance. This codebase assumes a non-shared wallet.
 
 ## More Information
 

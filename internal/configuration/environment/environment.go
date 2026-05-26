@@ -29,13 +29,16 @@ type Environment struct {
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
 	Eclipse          EclipseEnv
+	ColdWallet       ColdWalletEnv
+	NodeReorg        NodeReorgEnv
 }
 
 type MongoEnv struct {
-	Username string `env:"MONGODB_USER" validate:"required"`
-	Password string `env:"MONGODB_PASSWORD" validate:"required"`
-	Host     string `env:"MONGODB_HOST" validate:"required"`
-	Port     uint   `env:"MONGODB_PORT" validate:"required"`
+	Username      string `env:"MONGODB_USER" validate:"required"`
+	Password      string `env:"MONGODB_PASSWORD" validate:"required"`
+	Host          string `env:"MONGODB_HOST" validate:"required"`
+	Port          uint   `env:"MONGODB_PORT" validate:"required"`
+	RunMigrations bool   `env:"RUN_DB_MIGRATIONS"`
 }
 
 type RskEnv struct {
@@ -51,17 +54,20 @@ type RskEnv struct {
 	UseSegwitFederation         bool     `env:"USE_SEGWIT_FEDERATION"`
 	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
 	// Only if secret source is aws & wallet is native
-	EncryptedJsonSecret         string `env:"KEY_SECRET"`
-	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`
+	WalletSecret   string `env:"WALLET_SECRET"`
+	PasswordSecret string `env:"PASSWORD_SECRET"`
 	// Only if secret source is env & wallet is native
-	KeystoreFile     string   `env:"KEYSTORE_FILE"`
+	WalletFile       string   `env:"WALLET_FILE"`
 	KeystorePassword string   `env:"KEYSTORE_PWD"`
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
+	MaxReorgDepth    uint64   `env:"RSK_MAX_REORG_DEPTH"`
 	MinPeers         uint64   `env:"RSK_MIN_PEERS"`
 }
 
 func (env *RskEnv) FillWithDefaults() *RskEnv {
+	const defaultMaxReorgDepth uint64 = 2
 	const defaultRskMinPeers uint64 = 3
+	env.MaxReorgDepth = utils.FirstNonZero(env.MaxReorgDepth, defaultMaxReorgDepth)
 	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultRskMinPeers)
 	return env
 }
@@ -77,11 +83,14 @@ type BtcEnv struct {
 	Password        string           `env:"BTC_PASSWORD" validate:"required"`
 	Endpoint        string           `env:"BTC_ENDPOINT" validate:"required"`
 	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES"`
+	MaxReorgDepth   uint64           `env:"BITCOIN_MAX_REORG_DEPTH"`
 	MinPeers        uint64           `env:"BITCOIN_MIN_PEERS"`
 }
 
 func (env *BtcEnv) FillWithDefaults() *BtcEnv {
+	const defaultMaxReorgDepth uint64 = 2
 	const defaultBitcoinMinPeers uint64 = 5
+	env.MaxReorgDepth = utils.FirstNonZero(env.MaxReorgDepth, defaultMaxReorgDepth)
 	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultBitcoinMinPeers)
 	return env
 }
@@ -109,6 +118,17 @@ type EclipseEnv struct {
 	BtcMaxMsWaitForBlock     uint64 `env:"ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK"`
 	BtcWaitPollingMsInterval uint64 `env:"ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL"`
 	AlertCooldownSeconds     uint64 `env:"ECLIPSE_ALERT_COOLDOWN_SECONDS"`
+}
+
+type NodeReorgEnv struct {
+	// AlertCooldownSeconds is the minimum time between email alerts when reorg depth stays above the configured max.
+	AlertCooldownSeconds uint64 `env:"NODE_REORG_ALERT_COOLDOWN_SECONDS"`
+}
+
+func (env *NodeReorgEnv) FillWithDefaults() *NodeReorgEnv {
+	const defaultAlertCooldownSeconds uint64 = 30 * 60
+	env.AlertCooldownSeconds = utils.FirstNonZero(env.AlertCooldownSeconds, defaultAlertCooldownSeconds)
+	return env
 }
 
 func (env *EclipseEnv) FillWithDefaults() *EclipseEnv {
@@ -190,6 +210,7 @@ type PegoutEnv struct {
 	DepositCacheStartBlock      uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
 	BtcReleaseWatcherStartBlock uint64 `env:"BTC_RELEASE_WATCHER_START_BLOCK"`
 	BtcReleaseWatcherPageSize   uint64 `env:"BTC_RELEASE_WATCHER_PAGE_SIZE"`
+	RebalanceStrategy           string `env:"REBALANCE_STRATEGY" validate:"oneof=ALL_AT_ONCE UTXO_SPLIT"`
 }
 
 type CaptchaEnv struct {
@@ -207,6 +228,33 @@ type ManagementEnv struct {
 	SessionTokenAuthKey   string `env:"MANAGEMENT_TOKEN_AUTH_KEY"`
 	UseHttps              bool   `env:"MANAGEMENT_USE_HTTPS"`
 	EnableSecurityHeaders bool   `env:"ENABLE_SECURITY_HEADERS"`
+}
+
+type ColdWalletEnv struct {
+	BtcMinTransferFeeMultiplier   uint64 `env:"BTC_MIN_TRANSFER_FEE_MULTIPLIER"`
+	RbtcMinTransferFeeMultiplier  uint64 `env:"RBTC_MIN_TRANSFER_FEE_MULTIPLIER"`
+	ForceTransferAfterSeconds     uint64 `env:"COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS"`
+	HotWalletLowLiquidityWarning  uint64 `env:"HOT_WALLET_LOW_LIQUIDITY_WARNING"`
+	HotWalletLowLiquidityCritical uint64 `env:"HOT_WALLET_LOW_LIQUIDITY_CRITICAL"`
+}
+
+func (env *ColdWalletEnv) FillWithDefaults() *ColdWalletEnv {
+	defaults := ColdWalletEnv{
+		BtcMinTransferFeeMultiplier:   5,
+		RbtcMinTransferFeeMultiplier:  100,
+		ForceTransferAfterSeconds:     1209600, // 2 weeks (14 days * 24 hours * 60 minutes * 60 seconds)
+		HotWalletLowLiquidityWarning:  3,
+		HotWalletLowLiquidityCritical: 1,
+	}
+	env.BtcMinTransferFeeMultiplier = utils.FirstNonZero(env.BtcMinTransferFeeMultiplier, defaults.BtcMinTransferFeeMultiplier)
+	env.RbtcMinTransferFeeMultiplier = utils.FirstNonZero(env.RbtcMinTransferFeeMultiplier, defaults.RbtcMinTransferFeeMultiplier)
+	env.ForceTransferAfterSeconds = utils.FirstNonZero(env.ForceTransferAfterSeconds, defaults.ForceTransferAfterSeconds)
+	env.HotWalletLowLiquidityWarning = utils.FirstNonZero(env.HotWalletLowLiquidityWarning, defaults.HotWalletLowLiquidityWarning)
+	env.HotWalletLowLiquidityCritical = utils.FirstNonZero(env.HotWalletLowLiquidityCritical, defaults.HotWalletLowLiquidityCritical)
+	if env.HotWalletLowLiquidityCritical >= env.HotWalletLowLiquidityWarning {
+		log.Fatal("HOT_WALLET_LOW_LIQUIDITY_CRITICAL must be less than HOT_WALLET_LOW_LIQUIDITY_WARNING")
+	}
+	return env
 }
 
 func LoadEnv() *Environment {

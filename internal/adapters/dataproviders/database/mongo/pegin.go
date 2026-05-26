@@ -9,10 +9,8 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 const (
@@ -37,6 +35,13 @@ type StoredPeginQuote struct {
 type StoredPeginCreationData struct {
 	quote.PeginCreationData `bson:",inline"`
 	Hash                    string `json:"hash" bson:"hash"`
+}
+
+// peginQuoteWithRetainedAggDoc decodes pegin quote aggregation rows after $lookup and $unwind on "retained"
+// (e.g. ListQuotesByDateRange, GetQuotesWithRetainedByStateAndDate).
+type peginQuoteWithRetainedAggDoc struct {
+	StoredPeginQuote `bson:",inline"`
+	Retained         quote.RetainedPeginQuote `bson:"retained"`
 }
 
 func (repo *peginMongoRepository) InsertQuote(ctx context.Context, createdQuote quote.CreatedPeginQuote) error {
@@ -77,7 +82,7 @@ func (repo *peginMongoRepository) GetPeginCreationData(ctx context.Context, hash
 	}
 
 	collection := repo.conn.Collection(PeginCreationDataCollection)
-	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if err != nil {
@@ -98,7 +103,7 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 	}
 
 	collection := repo.conn.Collection(PeginQuoteCollection)
-	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if errors.Is(err, mongo.ErrNoDocuments) {
@@ -162,7 +167,7 @@ func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash str
 	}
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
-	filter := bson.D{primitive.E{Key: "quote_hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "quote_hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if errors.Is(err, mongo.ErrNoDocuments) {
@@ -193,8 +198,8 @@ func (repo *peginMongoRepository) UpdateRetainedQuote(ctx context.Context, retai
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
-	filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
-	updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
+	filter := bson.D{bson.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
+	updateStatement := bson.D{bson.E{Key: "$set", Value: retainedQuote}}
 
 	result, err := collection.UpdateOne(dbCtx, filter, updateStatement)
 	if err != nil {
@@ -214,7 +219,7 @@ func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, s
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
-	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}}
+	query := bson.D{bson.E{Key: "state", Value: bson.D{bson.E{Key: "$in", Value: states}}}}
 	rows, err := collection.Find(dbCtx, query)
 	if err != nil {
 		return nil, err
@@ -284,8 +289,8 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout*2)
 	defer cancel()
 
-	quoteFilter := bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
-	retainedFilter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
+	quoteFilter := bson.D{bson.E{Key: "hash", Value: bson.D{bson.E{Key: "$in", Value: quotes}}}}
+	retainedFilter := bson.D{bson.E{Key: "quote_hash", Value: bson.D{bson.E{Key: "$in", Value: quotes}}}}
 	peginResult, err := repo.conn.Collection(PeginQuoteCollection).DeleteMany(dbCtx, quoteFilter)
 	if err != nil {
 		return 0, err
@@ -313,120 +318,84 @@ func (repo *peginMongoRepository) ListQuotesByDateRange(ctx context.Context, sta
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	// Fetch quotes with pagination
-	storedQuotes, err := repo.fetchQuotesByDateRange(dbCtx, startDate, endDate, page, perPage)
+	cursor, err := repo.conn.Collection(PeginQuoteCollection).Aggregate(dbCtx, buildPeginListByDateRangePipeline(startDate, endDate, page, perPage))
 	if err != nil {
 		return nil, 0, err
 	}
+	defer cursor.Close(dbCtx)
 
-	if len(storedQuotes) == 0 {
-		result := make([]quote.PeginQuoteWithRetained, 0)
-		logDbInteraction(Read, result)
-		return result, 0, nil
+	// $facet always produces exactly one document whose fields are the branch names,
+	// so the cursor will have at most one row.
+	var facetResult struct {
+		Metadata []struct {
+			Total int `bson:"total"`
+		} `bson:"metadata"`
+		Data []peginQuoteWithRetainedAggDoc `bson:"data"`
+	}
+	if cursor.Next(dbCtx) {
+		if err := cursor.Decode(&facetResult); err != nil {
+			return nil, 0, err
+		}
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, 0, err
 	}
 
-	// Build initial result structure with quotes
-	result, quoteHashes := repo.buildQuoteResults(storedQuotes)
+	// Metadata is a slice because $count inside $facet always returns an array
+	total := 0
+	if len(facetResult.Metadata) > 0 {
+		total = facetResult.Metadata[0].Total
+	}
 
-	// Fetch and merge retained quotes
-	if err := repo.mergeRetainedQuotes(dbCtx, result, quoteHashes); err != nil {
-		return result, len(result), err
+	result := make([]quote.PeginQuoteWithRetained, 0, len(facetResult.Data))
+	for _, doc := range facetResult.Data {
+		doc.Retained.FillZeroValues()
+		result = append(result, quote.PeginQuoteWithRetained{
+			Quote:         doc.PeginQuote,
+			RetainedQuote: doc.Retained,
+		})
 	}
 
 	logDbInteraction(Read, len(result))
-	return result, len(result), nil
+	return result, total, nil
 }
 
-func (repo *peginMongoRepository) fetchQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]StoredPeginQuote, error) {
-	quoteFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-		{Key: "$gte", Value: startDate.Unix()},
-		{Key: "$lte", Value: endDate.Unix()},
-	}}}
-
-	findOpts := repo.buildFindOptions(page, perPage)
-
-	quoteCursor, err := repo.conn.Collection(PeginQuoteCollection).Find(ctx, quoteFilter, findOpts)
-	if err != nil {
-		return nil, err
+func buildPeginListByDateRangePipeline(startDate, endDate time.Time, page, perPage int) mongo.Pipeline {
+	pagedRowsPipeline := mongo.Pipeline{
+		{{Key: "$unwind", Value: "$retained"}},
+		{{Key: "$sort", Value: bson.D{{Key: "agreement_timestamp", Value: SortAscending}}}},
 	}
-
-	var storedQuotes []StoredPeginQuote
-	if err = quoteCursor.All(ctx, &storedQuotes); err != nil {
-		return nil, err
-	}
-
-	return storedQuotes, nil
-}
-
-func (repo *peginMongoRepository) buildFindOptions(page, perPage int) *options.FindOptions {
-	findOpts := options.Find().SetSort(bson.D{{Key: "agreement_timestamp", Value: SortAscending}})
-
-	// Apply pagination if page and perPage are provided (not 0)
-	// When page=0 and perPage=0, return all results
 	if page > 0 && perPage > 0 {
-		skip := (page - 1) * perPage
-		findOpts.SetSkip(int64(skip)).SetLimit(int64(perPage))
+		skip := int64((page - 1) * perPage)
+		pagedRowsPipeline = append(pagedRowsPipeline,
+			bson.D{{Key: "$skip", Value: skip}},
+			bson.D{{Key: "$limit", Value: int64(perPage)}},
+		)
 	}
 
-	return findOpts
-}
-
-func (repo *peginMongoRepository) buildQuoteResults(storedQuotes []StoredPeginQuote) ([]quote.PeginQuoteWithRetained, []string) {
-	result := make([]quote.PeginQuoteWithRetained, len(storedQuotes))
-	quoteHashes := make([]string, len(storedQuotes))
-
-	for i, stored := range storedQuotes {
-		quoteHashes[i] = stored.Hash
-		result[i] = quote.PeginQuoteWithRetained{
-			Quote:         stored.PeginQuote,
-			RetainedQuote: quote.RetainedPeginQuote{},
-		}
+	return mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{{Key: "agreement_timestamp", Value: bson.D{
+			{Key: "$gte", Value: startDate.Unix()},
+			{Key: "$lte", Value: endDate.Unix()},
+		}}}}},
+		{{Key: "$lookup", Value: bson.D{
+			{Key: "from", Value: RetainedPeginQuoteCollection},
+			{Key: "localField", Value: "hash"},
+			{Key: "foreignField", Value: "quote_hash"},
+			{Key: "as", Value: "retained"},
+		}}},
+		// Drop quotes with no retained record (i.e. quotes that were never accepted).
+		{{Key: "$match", Value: bson.D{
+			{Key: "retained.0", Value: bson.D{{Key: "$exists", Value: true}}},
+		}}},
+		// Single round-trip: count the full result set and return the requested page simultaneously.
+		{{Key: "$facet", Value: bson.D{
+			{Key: "metadata", Value: mongo.Pipeline{
+				{{Key: "$count", Value: "total"}},
+			}},
+			{Key: "data", Value: pagedRowsPipeline},
+		}}},
 	}
-
-	return result, quoteHashes
-}
-
-func (repo *peginMongoRepository) mergeRetainedQuotes(ctx context.Context, result []quote.PeginQuoteWithRetained, quoteHashes []string) error {
-	retainedQuotes, err := repo.fetchRetainedQuotes(ctx, quoteHashes)
-	if err != nil {
-		return err
-	}
-
-	// Create hash to index mapping for efficient lookup
-	hashToIndex := make(map[string]int, len(quoteHashes))
-	for i, hash := range quoteHashes {
-		hashToIndex[hash] = i
-	}
-
-	// Merge retained quotes into result
-	for _, retainedQuote := range retainedQuotes {
-		if idx, exists := hashToIndex[retainedQuote.QuoteHash]; exists {
-			result[idx].RetainedQuote = retainedQuote
-		}
-	}
-
-	return nil
-}
-
-func (repo *peginMongoRepository) fetchRetainedQuotes(ctx context.Context, quoteHashes []string) ([]quote.RetainedPeginQuote, error) {
-	retainedCursor, err := repo.conn.Collection(RetainedPeginQuoteCollection).Find(
-		ctx,
-		bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: quoteHashes}}}},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	var retainedQuotes []quote.RetainedPeginQuote
-	if err = retainedCursor.All(ctx, &retainedQuotes); err != nil {
-		return nil, err
-	}
-
-	for i := range retainedQuotes {
-		retainedQuotes[i].FillZeroValues()
-	}
-
-	return retainedQuotes, nil
 }
 
 func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
@@ -436,9 +405,9 @@ func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Contex
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	filter := bson.D{
-		primitive.E{Key: "owner_account_address", Value: address},
-		primitive.E{Key: "state", Value: bson.D{
-			primitive.E{Key: "$in", Value: states},
+		bson.E{Key: "owner_account_address", Value: address},
+		bson.E{Key: "state", Value: bson.D{
+			bson.E{Key: "$in", Value: states},
 		}},
 	}
 
@@ -523,10 +492,7 @@ func (repo *peginMongoRepository) GetQuotesWithRetainedByStateAndDate(ctx contex
 
 	result := make([]quote.PeginQuoteWithRetained, 0)
 	for cursor.Next(dbCtx) {
-		var doc struct {
-			StoredPeginQuote `bson:",inline"`
-			Retained         quote.RetainedPeginQuote `bson:"retained"`
-		}
+		var doc peginQuoteWithRetainedAggDoc
 		if err := cursor.Decode(&doc); err != nil {
 			return nil, err
 		}

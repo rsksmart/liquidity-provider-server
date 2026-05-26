@@ -1,0 +1,73 @@
+[
+  {
+    "max_value": "10000000000000000000",
+    "min_value": "100000000000000000",
+    "call_time": {
+      "$numberLong": "7200"
+    },
+    "penalty_fee": "5000000",
+    "fixed_fee": "1000000",
+    "signature": "pegin-config-sig-fixture",
+    "hash": "aabbccdd",
+    "name": "pegin",
+    "time_for_deposit": {
+      "$numberLong": "3600"
+    },
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    }
+  },
+  {
+    "bridge_transaction_min": "50000000000000000",
+    "signature": "pegout-config-sig-fixture",
+    "name": "pegout",
+    "time_for_deposit": {
+      "$numberLong": "3600"
+    },
+    "penalty_fee": "10000000",
+    "max_value": "10000000000000000000",
+    "min_value": "100000000000000000",
+    "expire_blocks": {
+      "$numberLong": "1000"
+    },
+    "hash": "eeff0011",
+    "expire_time": {
+      "$numberLong": "86400"
+    },
+    "fixed_fee": "2000000",
+    "fee_percentage": {
+      "$numberDouble": "0.5"
+    }
+  },
+  {
+    "rsk_confirmations": {
+      "1000000000000000000": {
+        "$numberInt": "10"
+      },
+      "5000000000000000000": {
+        "$numberInt": "20"
+      }
+    },
+    "btc_confirmations": {
+      "1000000000000000000": {
+        "$numberInt": "2"
+      },
+      "5000000000000000000": {
+        "$numberInt": "6"
+      }
+    },
+    "public_liquidity_check": true,
+    "signature": "general-config-sig-fixture",
+    "hash": "22334455",
+    "name": "general"
+  },
+  {
+    "hashed_username": "hashed_user_fixture",
+    "hashed_password": "hashed_pass_fixture",
+    "username_salt": "salt_user_fixture",
+    "password_salt": "salt_pass_fixture",
+    "signature": "creds-sig-fixture",
+    "hash": "66778899",
+    "name": "credentials"
+  }
+]

@@ -77,5 +77,6 @@ func isGetPeginQuoteBadRequest(err error) bool {
 		errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
 		errors.Is(err, usecases.RskAddressNotSupportedError) ||
 		errors.Is(err, usecases.TxBelowMinimumError) ||
+		errors.Is(err, pegin.DataCapExceededError) ||
 		errors.Is(err, liquidity_provider.AmountOutOfRangeError)
 }

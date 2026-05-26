@@ -27,9 +27,9 @@ These are the environment variables required by the liquidity provider server (L
 | `ERP_KEYS` | Keys that are used as a secondary multisig that would be allowed to spend UTXOs after a year they were created. |`0216c23b2ea8e4f11c3f9e22711addb1d16a93964796913830856b568cc3ea21d3`,`0275562901dd8faae20de0a4166362a4f82188db77dbed4ca887422ea1ec185f14`,`034db69f2112f4fb1bb6141bf6e2bd6631f0484d0bd95b16767902c9fe219d4a6f` | YES |
 | `USE_SEGWIT_FEDERATION` | Wether to generate the federation address as a P2SH-P2WSH or not | true | NO |
 | `ACCOUNT_NUM` | The keystore account number to use. If not provided default value will be 0. | `0` | NO |
-| `KEY_SECRET` | Name of the secret of AWS secrets manager that contains the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `aws`. | `FlyoverTestEnv/LPS-KEY` | NO |
+| `WALLET_SECRET` | Name of the AWS Secrets Manager secret (`WALLET_SECRET`) that contains the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `aws`. | `FlyoverTestEnv/LPS-KEY` | NO |
 | `PASSWORD_SECRET` | Name of the secret of AWS secrets manager that contains the password of the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `aws`. | `FlyoverTestEnv/LPS-PASSWORD` | NO |
-| `KEYSTORE_FILE` | Name of the file that contains the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `env`. | `geth_keystore/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c` | NO |
+| `WALLET_FILE` | Name of the file that contains the encrypted json of the liquidity provider RSK account and the details of the cold wallet. Only required if `SECRET_SRC` is `env`. | `geth_keystore/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c` | NO |
 | `KEYSTORE_PWD` | The password of the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `env`. | `<any password>` | NO |
 | `BTC_NETWORK` | Network to use when connecting to the Bitcoin node. | One of the following: `regtest`, `testnet`, `mainnet` | YES |
 | `BTC_USERNAME` | Username for the bitcoind rpc server. | `user` | YES |
@@ -70,6 +70,11 @@ These are the environment variables required by the liquidity provider server (L
 | `ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK` | Number of milliseconds that the LPS will wait for our BTC node to catch up with the external datasources before assuming the node is eclipsed | `1000` | No |
 | `ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL` | Polling interval in ms to check our BTC node when is out of sync with the external data sources | `500` | No |
 | `ECLIPSE_ALERT_COOLDOWN_SECONDS` | Number of seconds after an eclipsed node detection that the watcher will wait to start checking again | `3600` | No |
+| `BTC_MIN_TRANSFER_FEE_MULTIPLIER` | It is a plain number meaning the minimum multiplier for BTC transfers to cold wallet to be considered economical (transfer amount must be >= fee * multiplier) | `5` | No |
+| `RBTC_MIN_TRANSFER_FEE_MULTIPLIER` | It is a plain number meaning the minimum multiplier for RBTC transfers to cold wallet to be considered economical (transfer amount must be >= fee * multiplier) | `100` | No |
+| `COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS` | Number of seconds after which excess liquidity will be transferred to cold wallet even if below threshold | `1209600` (2 weeks) | No |
+| `HOT_WALLET_LOW_LIQUIDITY_WARNING` | Hot wallet liquidity threshold in whole coins (BTC/RBTC) below which a warning alert is emitted every check cycle | `3` | No |
+| `HOT_WALLET_LOW_LIQUIDITY_CRITICAL` | Hot wallet liquidity threshold in whole coins (BTC/RBTC) below which a critical alert is emitted every check cycle. Must be less than `HOT_WALLET_LOW_LIQUIDITY_WARNING` | `1` | No |
 
 ## AWS variables
 You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidity-provider-server/blob/master/sample-config.env) there are some environment variables that are related to AWS. These variables are required to use AWS services, however, they are not listed in the table as the AWS SDK has the functionality to load them from multiple sources. For that reason, they are not accessed directly from the code and are not listed in the table above.

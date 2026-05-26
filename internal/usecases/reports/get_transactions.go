@@ -99,21 +99,13 @@ func (useCase *GetTransactionsUseCase) getPeginTransactions(ctx context.Context,
 
 	transactions := make([]TransactionItem, 0, len(quotePairs))
 	for _, pair := range quotePairs {
-		// Skip quotes that have not been accepted
-		if pair.RetainedQuote.QuoteHash == "" {
-			totalCount--
-			continue
-		}
-
-		transaction := TransactionItem{
+		transactions = append(transactions, TransactionItem{
 			QuoteHash: pair.RetainedQuote.QuoteHash,
 			Amount:    pair.Quote.Value,
 			CallFee:   pair.Quote.CallFee,
 			GasFee:    pair.Quote.GasFee,
 			Status:    string(pair.RetainedQuote.State),
-		}
-
-		transactions = append(transactions, transaction)
+		})
 	}
 
 	return transactions, totalCount, nil
@@ -127,21 +119,13 @@ func (useCase *GetTransactionsUseCase) getPegoutTransactions(ctx context.Context
 
 	transactions := make([]TransactionItem, 0, len(quotePairs))
 	for _, pair := range quotePairs {
-		// Skip quotes that have not been accepted
-		if pair.RetainedQuote.QuoteHash == "" {
-			totalCount--
-			continue
-		}
-
-		transaction := TransactionItem{
+		transactions = append(transactions, TransactionItem{
 			QuoteHash: pair.RetainedQuote.QuoteHash,
 			Amount:    pair.Quote.Value,
 			CallFee:   pair.Quote.CallFee,
 			GasFee:    pair.Quote.GasFee,
 			Status:    string(pair.RetainedQuote.State),
-		}
-
-		transactions = append(transactions, transaction)
+		})
 	}
 
 	return transactions, totalCount, nil

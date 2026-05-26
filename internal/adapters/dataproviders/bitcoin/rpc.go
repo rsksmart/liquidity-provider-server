@@ -253,6 +253,30 @@ func (rpc *bitcoindRpc) GetBlockchainInfo() (blockchain.BitcoinBlockchainInfo, e
 	}, nil
 }
 
+func (rpc *bitcoindRpc) GetBlockHashAtHeight(height int64) (string, error) {
+	h, err := rpc.conn.client.GetBlockHash(height)
+	if err != nil {
+		return "", err
+	}
+	return h.String(), nil
+}
+
+func (rpc *bitcoindRpc) GetBlockHeaderVerbose(blockHash string) (blockchain.BitcoinBlockHeaderInfo, error) {
+	parsed, err := chainhash.NewHashFromStr(blockHash)
+	if err != nil {
+		return blockchain.BitcoinBlockHeaderInfo{}, err
+	}
+	hdr, err := rpc.conn.client.GetBlockHeaderVerbose(parsed)
+	if err != nil {
+		return blockchain.BitcoinBlockHeaderInfo{}, err
+	}
+	return blockchain.BitcoinBlockHeaderInfo{
+		Hash:         hdr.Hash,
+		Height:       uint64(hdr.Height),
+		PreviousHash: hdr.PreviousHash,
+	}, nil
+}
+
 func (rpc *bitcoindRpc) GetZeroAddress(addressType blockchain.BtcAddressType) (string, error) {
 	addresses, err := bitcoinZeroAddresses.Network(rpc.conn.NetworkParams.Name)
 	if err != nil {
