@@ -126,7 +126,7 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 		return blockchain.BtcFeeEstimation{}, err
 	}
 
-	opts, err := wallet.buildFundRawTransactionOpts()
+	opts, err := wallet.buildFundRawTransactionOpts(false)
 	if err != nil {
 		return blockchain.BtcFeeEstimation{}, err
 	}
@@ -187,7 +187,7 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 		return blockchain.BitcoinTransactionResult{}, err
 	}
 
-	opts, err := wallet.buildFundRawTransactionOpts()
+	opts, err := wallet.buildFundRawTransactionOpts(true)
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
@@ -279,7 +279,7 @@ func (wallet *DerivativeWallet) estimateFeeRate() (*float64, error) {
 	return btcjson.Float64(utils.RoundToNDecimals(*estimationResult.FeeRate, estimationMaxDecimals)), nil
 }
 
-func (wallet *DerivativeWallet) buildFundRawTransactionOpts() (btcjson.FundRawTransactionOpts, error) {
+func (wallet *DerivativeWallet) buildFundRawTransactionOpts(lockUnspent bool) (btcjson.FundRawTransactionOpts, error) {
 	feeRate, err := wallet.estimateFeeRate()
 	if err != nil {
 		return btcjson.FundRawTransactionOpts{}, err
@@ -292,7 +292,7 @@ func (wallet *DerivativeWallet) buildFundRawTransactionOpts() (btcjson.FundRawTr
 		ChangeAddress:   btcjson.String(changeAddress.EncodeAddress()),
 		ChangePosition:  btcjson.Int(changePosition),
 		IncludeWatching: btcjson.Bool(true),
-		LockUnspents:    btcjson.Bool(true),
+		LockUnspents:    btcjson.Bool(lockUnspent),
 		FeeRate:         feeRate,
 		Replaceable:     btcjson.Bool(true),
 	}, nil
