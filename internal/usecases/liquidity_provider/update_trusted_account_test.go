@@ -89,6 +89,22 @@ func TestUpdateTrustedAccountUseCase_Run(t *testing.T) { //nolint:funlen
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
 	})
+	t.Run("invalid address", func(t *testing.T) {
+		repo := &mocks.TrustedAccountRepositoryMock{}
+		signer := &mocks.TransactionSignerMock{}
+		hashMock := &mocks.HashMock{}
+		account := liquidity_provider.TrustedAccountDetails{
+			Address:        "not-a-hex-address",
+			Name:           "Test Account",
+			BtcLockingCap:  entities.NewWei(1000),
+			RbtcLockingCap: entities.NewWei(1000),
+		}
+		useCase := lp.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		err := useCase.Run(context.Background(), account)
+		require.Error(t, err)
+		require.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
+		repo.AssertNotCalled(t, "UpdateTrustedAccount")
+	})
 	t.Run("Account not found error", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
 		signer := &mocks.TransactionSignerMock{}

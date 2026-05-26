@@ -48,6 +48,17 @@ func TestNewDeleteTrustedAccountHandler(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, recorder.Code)
 		repo.AssertExpectations(t)
 	})
+	t.Run("should return 400 on invalid trusted account address", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address=not-a-valid-address", nil)
+		repo := &mocks.TrustedAccountRepositoryMock{}
+		useCase := lpuc.NewDeleteTrustedAccountUseCase(repo)
+		handler := http.HandlerFunc(handlers.NewDeleteTrustedAccountHandler(useCase))
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assertInvalidTrustedAccountAddressResponse(t, recorder)
+		repo.AssertNotCalled(t, "DeleteTrustedAccount")
+	})
 	t.Run("should return 500 on unexpected error", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address="+deleteTestAddr, nil)

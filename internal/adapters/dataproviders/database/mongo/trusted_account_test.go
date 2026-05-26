@@ -31,6 +31,8 @@ var signedTestAccount = entities.Signed[liquidity_provider.TrustedAccountDetails
 	Hash:      "hash",
 }
 
+const invalidTrustedAccountAddress = "not-a-valid-address"
+
 func trustedAccountCaseInsensitiveFilter(address string) bson.M {
 	normalized, err := blockchain.NormalizeRskAddress(address)
 	if err != nil {
@@ -43,6 +45,28 @@ func trustedAccountCaseInsensitiveFilter(address string) bson.M {
 				normalized,
 			},
 		},
+	}
+}
+
+func signedTrustedAccountWithAddress(address string) entities.Signed[liquidity_provider.TrustedAccountDetails] {
+	account := signedTestAccount
+	account.Value.Address = address
+	return account
+}
+
+func assertTrustedAccountInvalidAddress(
+	t *testing.T,
+	uncalledMethods []string,
+	action func(repo liquidity_provider.TrustedAccountRepository) error,
+) {
+	t.Helper()
+	client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
+	repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
+	err := action(repo)
+	require.Error(t, err)
+	require.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
+	for _, method := range uncalledMethods {
+		collection.AssertNotCalled(t, method)
 	}
 }
 
@@ -80,6 +104,13 @@ func TestLpMongoRepository_GetTrustedAccount(t *testing.T) {
 		result, err := repo.GetTrustedAccount(context.Background(), testAccount.Address)
 		require.Error(t, err)
 		assert.Nil(t, result)
+	})
+	t.Run("invalid address", func(t *testing.T) {
+		assertTrustedAccountInvalidAddress(t, []string{"FindOne"}, func(repo liquidity_provider.TrustedAccountRepository) error {
+			result, err := repo.GetTrustedAccount(context.Background(), invalidTrustedAccountAddress)
+			assert.Nil(t, result)
+			return err
+		})
 	})
 	t.Run("finds account when query uses EIP-55 casing", func(t *testing.T) {
 		const checksummedQuery = "0x1234567890ABCDEF1234567890AbCdEf12345678"
@@ -177,6 +208,11 @@ func TestLpMongoRepository_UpdateTrustedAccount(t *testing.T) {
 		err := repo.UpdateTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
 	})
+	t.Run("invalid address", func(t *testing.T) {
+		assertTrustedAccountInvalidAddress(t, []string{"FindOne", "UpdateOne"}, func(repo liquidity_provider.TrustedAccountRepository) error {
+			return repo.UpdateTrustedAccount(context.Background(), signedTrustedAccountWithAddress(invalidTrustedAccountAddress))
+		})
+	})
 }
 
 func TestLpMongoRepository_AddTrustedAccount(t *testing.T) {
@@ -223,6 +259,11 @@ func TestLpMongoRepository_AddTrustedAccount(t *testing.T) {
 		err := repo.AddTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
 	})
+	t.Run("invalid address", func(t *testing.T) {
+		assertTrustedAccountInvalidAddress(t, []string{"FindOne", "InsertOne"}, func(repo liquidity_provider.TrustedAccountRepository) error {
+			return repo.AddTrustedAccount(context.Background(), signedTrustedAccountWithAddress(invalidTrustedAccountAddress))
+		})
+	})
 }
 
 func TestLpMongoRepository_DeleteTrustedAccount(t *testing.T) {
@@ -254,5 +295,10 @@ func TestLpMongoRepository_DeleteTrustedAccount(t *testing.T) {
 		collection.On("DeleteOne", mock.Anything, filter).Return(nil, assert.AnError).Once()
 		err := repo.DeleteTrustedAccount(context.Background(), testAccount.Address)
 		require.Error(t, err)
+	})
+	t.Run("invalid address", func(t *testing.T) {
+		assertTrustedAccountInvalidAddress(t, []string{"DeleteOne"}, func(repo liquidity_provider.TrustedAccountRepository) error {
+			return repo.DeleteTrustedAccount(context.Background(), invalidTrustedAccountAddress)
+		})
 	})
 }
