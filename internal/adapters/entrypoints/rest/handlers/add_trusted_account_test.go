@@ -87,6 +87,24 @@ func TestNewAddTrustedAccountHandler(t *testing.T) {
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
 	})
+	t.Run("should return 400 on invalid trusted account address", func(t *testing.T) {
+		request := createValidAddRequest()
+		recorder := httptest.NewRecorder()
+		repo := &mocks.TrustedAccountRepositoryMock{}
+		signer := &mocks.TransactionSignerMock{}
+		hashMock := &mocks.HashMock{}
+		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
+		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
+		repo.On("AddTrustedAccount", mock.Anything, mock.Anything).Return(lp.InvalidTrustedAccountAddressError)
+		useCase := lpuc.NewAddTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		handler := http.HandlerFunc(handlers.NewAddTrustedAccountHandler(useCase))
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assertInvalidTrustedAccountAddressResponse(t, recorder)
+		repo.AssertExpectations(t)
+		signer.AssertExpectations(t)
+		hashMock.AssertExpectations(t)
+	})
 	t.Run("should return 500 on unexpected error", func(t *testing.T) {
 		request := createValidAddRequest()
 		recorder := httptest.NewRecorder()
@@ -562,6 +580,16 @@ func createAddressValidationHandler(expectError bool) (http.HandlerFunc, *mocks.
 	useCase := lpuc.NewAddTrustedAccountUseCase(repo, signer, hashMock.Hash)
 	handler := http.HandlerFunc(handlers.NewAddTrustedAccountHandler(useCase))
 	return handler, repo, signer, hashMock
+}
+
+func assertInvalidTrustedAccountAddressResponse(t *testing.T, recorder *httptest.ResponseRecorder) {
+	t.Helper()
+	var errorResponse rest.ErrorResponse
+	err := json.Unmarshal(recorder.Body.Bytes(), &errorResponse)
+	require.NoError(t, err)
+	assert.Equal(t, lp.InvalidTrustedAccountAddressError.Error(), errorResponse.Message)
+	assert.True(t, errorResponse.Recoverable)
+	assert.NotEmpty(t, errorResponse.Details)
 }
 
 // Helper function to check if there is an error in the response for a specific field
