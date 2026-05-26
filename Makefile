@@ -17,7 +17,7 @@ endef
 tools: download
 	go install github.com/parvez3019/go-swagger3@fef3d30b0707883c389261bf26297eebd10d7216 #v1.0.3
 	go install golang.org/x/vuln/cmd/govulncheck@latest
-	pip3 install pre-commit && pre-commit install
+	pip3 install pre-commit && pre-commit install && pre-commit install --hook-type pre-push
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.12.1
 	go install github.com/ethereum/go-ethereum/cmd/abigen@be4dc0c4be2fe316dbdd0a73e48421f64978232f # v1.17.2
 	go install github.com/vektra/mockery/v2@v2.53.1  	# ensures mockery version 2.53.1 is installed
