@@ -35,6 +35,29 @@ If you want to play with the code and make modifications to it then run the foll
 1. `git clone git@github.com:rsksmart/liquidity-provider-server.git`
 2. `make tools`
 
+`make tools` installs Go utilities, **pre-commit** and **pre-push** git hooks (including UI lint/test on commit and UI build + `go build ./...` on push). Do not use `git commit --no-verify` to bypass hooks.
+
+### Management UI workspace (`ui/`)
+
+A Vite + React + TypeScript app lives under `ui/` (scaffold for the Management UI migration epic). The legacy Management UI at `/management` is unchanged until later stories wire this app in.
+
+**Prerequisites:** Node.js 20 LTS (see `ui/.nvmrc`), [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`), then pnpm is taken from `ui/package.json` `packageManager` (pnpm 9.x).
+
+```sh
+cd ui
+corepack enable
+pnpm install --frozen-lockfile   # first time or after lockfile changes
+pnpm run dev                     # local dev server
+pnpm run build                   # production build → ui/dist/
+pnpm run test                    # Vitest smoke tests
+pnpm run lint                    # ESLint + typecheck
+pnpm run format                  # Prettier write
+```
+
+**Directory layout:** See **[docs/ui-folder-structure.md](./docs/ui-folder-structure.md)** for the canonical tree (shared vs per-feature vs per-lib). Summary: only `shared/` has top-level `components/`, `types/`, and `utils/` today; add `feature/<name>/…` and `lib/<name>/…` when those stories land.
+
+**CI:** The `ui-check` job runs install, lint, test, and build before Go unit tests and lint jobs. A failing UI gate blocks the rest of the pipeline.
+
 ## LPS APIs
 
 The LPS has two main APIs:

@@ -1,3 +1,7 @@
+# UI workspace (Vite + React)
+ui/node_modules/
+ui/dist/
+
 # IDE
 .vscode/
 .idea/
