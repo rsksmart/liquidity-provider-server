@@ -2,7 +2,6 @@ package bitcoin
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -122,40 +121,27 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 		return blockchain.BtcFeeEstimation{}, err
 	}
 
-	amountInSatoshi, _ := value.ToSatoshi().Int64()
-	output := []btcjson.PsbtOutput{
-		{toAddress: btcutil.Amount(amountInSatoshi).ToUnit(btcutil.AmountBTC)},
-		{"data": hex.EncodeToString(make([]byte, quoteHashLength))}, // quote hash output
-	}
-
-	feeRate, err := wallet.estimateFeeRate()
-	if err != nil {
-		return blockchain.BtcFeeEstimation{}, err
-	}
-	changeAddress, err := wallet.rskAccount.BtcAddress()
+	rawTx, err := wallet.buildRawTransactionWithOpReturn(toAddress, value, make([]byte, quoteHashLength))
 	if err != nil {
 		return blockchain.BtcFeeEstimation{}, err
 	}
 
-	opts := btcjson.WalletCreateFundedPsbtOpts{
-		ChangeAddress:   btcjson.String(changeAddress.EncodeAddress()),
-		ChangePosition:  btcjson.Int64(changePosition),
-		IncludeWatching: btcjson.Bool(true),
-		FeeRate:         feeRate,
+	opts, err := wallet.buildFundRawTransactionOpts()
+	if err != nil {
+		return blockchain.BtcFeeEstimation{}, err
 	}
 
-	simulatedTx, err := wallet.conn.client.WalletCreateFundedPsbt(nil, output, nil, &opts, nil)
+	fundedTx, err := wallet.conn.client.FundRawTransaction(rawTx, opts, nil)
 	if err != nil {
 		return blockchain.BtcFeeEstimation{}, err
 	}
-	btcFee, err := btcutil.NewAmount(simulatedTx.Fee)
-	if err != nil {
+	if err = validateBtcTxInputCount(len(fundedTx.Transaction.TxIn)); err != nil {
 		return blockchain.BtcFeeEstimation{}, err
 	}
-	satoshiFee := btcFee.ToUnit(btcutil.AmountSatoshi)
+
 	return blockchain.BtcFeeEstimation{
-		Value:   entities.SatoshiToWei(uint64(satoshiFee)),
-		FeeRate: utils.NewBigFloat64(*feeRate),
+		Value:   entities.SatoshiToWei(uint64(fundedTx.Fee)),
+		FeeRate: utils.NewBigFloat64(*opts.FeeRate),
 	}, nil
 }
 
@@ -207,6 +193,9 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 	}
 	fundedTx, err := wallet.conn.client.FundRawTransaction(rawTx, opts, nil)
 	if err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
+	}
+	if err = validateBtcTxInputCount(len(fundedTx.Transaction.TxIn)); err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
 
