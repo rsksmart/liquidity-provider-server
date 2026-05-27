@@ -104,10 +104,10 @@ func matchAllAtOnceRevertedQuotes(quotes []quote.RetainedPegoutQuote) bool {
 }
 
 func newAllAtOnceHandler(repo quote.PegoutQuoteRepository, wallet blockchain.RootstockWallet, bridge rootstock.Bridge, mutex *mocks.MutexMock) *pegout.AllAtOnceHandler {
-	return pegout.NewAllAtOnceHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	return pegout.NewAllAtOnceHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 }
 
-//nolint:funlen
+//nolint:funlen,maintidx
 func TestAllAtOnceHandler_Execute(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
@@ -338,6 +338,77 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 
 		require.ErrorContains(t, err, "tx error")
 		require.ErrorContains(t, err, "update error")
+		repo.AssertExpectations(t)
+		wallet.AssertExpectations(t)
+		bridge.AssertExpectations(t)
+		mutex.AssertExpectations(t)
+	})
+
+	t.Run("nil rejection parser skips rejection check", func(t *testing.T) {
+		repo := &mocks.PegoutQuoteRepositoryMock{}
+		wallet := &mocks.RskWalletMock{}
+		bridge := &mocks.BridgeMock{}
+		mutex := &mocks.MutexMock{}
+
+		walletBalance := new(entities.Wei).Add(
+			entities.NewWei(allAtOnceTotal),
+			entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice),
+		)
+		wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
+		wallet.On("SendRbtc", mock.Anything,
+			mock.MatchedBy(matchBridgeTxConfig(entities.NewWei(allAtOnceTotal))),
+			test.AnyAddress,
+		).Return(allAtOnceReceipt(), nil).Once()
+		bridge.On("GetAddress").Return(test.AnyAddress).Once()
+		mutex.On("Lock").Return().Once()
+		mutex.On("Unlock").Return().Once()
+		repo.On("UpdateRetainedQuotes", mock.Anything, mock.MatchedBy(matchAllAtOnceSuccessQuotes)).
+			Return(nil).Once()
+
+		testQuotes := make([]quote.WatchedPegoutQuote, len(allAtOnceWatchedQuotes))
+		copy(testQuotes, allAtOnceWatchedQuotes)
+		handler := pegout.NewAllAtOnceHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, nil)
+		err := handler.Execute(context.Background(), allAtOnceConfig(500), testQuotes)
+
+		require.NoError(t, err)
+		repo.AssertExpectations(t)
+		wallet.AssertExpectations(t)
+		bridge.AssertExpectations(t)
+		mutex.AssertExpectations(t)
+	})
+
+	t.Run("rejection parser error marks quotes failed", func(t *testing.T) {
+		repo := &mocks.PegoutQuoteRepositoryMock{}
+		wallet := &mocks.RskWalletMock{}
+		bridge := &mocks.BridgeMock{}
+		mutex := &mocks.MutexMock{}
+
+		walletBalance := new(entities.Wei).Add(
+			entities.NewWei(allAtOnceTotal),
+			entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice),
+		)
+		wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
+		wallet.On("SendRbtc", mock.Anything,
+			mock.MatchedBy(matchBridgeTxConfig(entities.NewWei(allAtOnceTotal))),
+			test.AnyAddress,
+		).Return(allAtOnceReceipt(), nil).Once()
+		bridge.On("GetAddress").Return(test.AnyAddress).Once()
+		mutex.On("Lock").Return().Once()
+		mutex.On("Unlock").Return().Once()
+		repo.On("UpdateRetainedQuotes", mock.Anything, mock.MatchedBy(matchAllAtOnceRevertedQuotes)).
+			Return(nil).Once()
+
+		parseErr := errors.New("parse error")
+		rejectionParser := func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+			return false, blockchain.RejectedPegoutReasonUnknown, parseErr
+		}
+
+		testQuotes := make([]quote.WatchedPegoutQuote, len(allAtOnceWatchedQuotes))
+		copy(testQuotes, allAtOnceWatchedQuotes)
+		handler := pegout.NewAllAtOnceHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, rejectionParser)
+		err := handler.Execute(context.Background(), allAtOnceConfig(500), testQuotes)
+
+		require.ErrorIs(t, err, parseErr)
 		repo.AssertExpectations(t)
 		wallet.AssertExpectations(t)
 		bridge.AssertExpectations(t)
