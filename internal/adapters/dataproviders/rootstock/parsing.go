@@ -37,17 +37,28 @@ func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.Trans
 		}
 	}
 
+	// tx.To() is nil for contract-creation transactions; keep To empty in that case.
+	to := ""
+	if tx.To() != nil {
+		to = tx.To().String()
+	}
+
+	
+	if receipt.EffectiveGasPrice == nil {
+		receipt.EffectiveGasPrice = tx.GasPrice()
+	}
+
 	result := blockchain.TransactionReceipt{
 		TransactionHash:   receipt.TxHash.String(),
 		BlockHash:         receipt.BlockHash.String(),
 		BlockNumber:       receipt.BlockNumber.Uint64(),
 		From:              from.String(),
-		To:                tx.To().String(),
+		To:                to,
 		CumulativeGasUsed: cumulativeGasUsed,
 		GasUsed:           gasUsed,
 		Value:             entities.NewBigWei(tx.Value()),
 		Logs:              convertReceiptLogs(receipt),
-		GasPrice:          entities.NewBigWei(tx.GasPrice()),
+		GasPrice:          entities.NewBigWei(receipt.EffectiveGasPrice),
 	}
 
 	return result, nil

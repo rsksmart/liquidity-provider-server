@@ -135,6 +135,42 @@ func TestParseReceipt(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
+	t.Run("should not panic and leave To empty for contract-creation tx", func(t *testing.T) {
+		key, err := crypto.GenerateKey()
+		require.NoError(t, err)
+		signer := geth.NewEIP155Signer(big.NewInt(31))
+		creationTx, err := geth.SignNewTx(key, signer, &geth.LegacyTx{
+			Nonce:    1,
+			GasPrice: big.NewInt(0x18dbac0),
+			Gas:      0x2625a0,
+			To:       nil, // contract-creation tx
+			Value:    big.NewInt(0),
+		})
+		require.NoError(t, err)
+
+		receipt, err := rootstock.ParseReceipt(creationTx, rawReceipt)
+		require.NoError(t, err)
+		assert.Empty(t, receipt.To)
+	})
+	t.Run("should use receipt EffectiveGasPrice, not tx gas price", func(t *testing.T) {
+		key, err := crypto.GenerateKey()
+		require.NoError(t, err)
+		signer := geth.NewEIP155Signer(big.NewInt(31))
+		signedTx, err := geth.SignNewTx(key, signer, &geth.LegacyTx{
+			Nonce:    1,
+			GasPrice: big.NewInt(1000), // tx gas price, must be ignored
+			Gas:      0x2625a0,
+			To:       &to,
+			Value:    big.NewInt(0),
+		})
+		require.NoError(t, err)
+		effectiveGasPriceReceipt := *rawReceipt
+		effectiveGasPriceReceipt.EffectiveGasPrice = big.NewInt(2000) // the price actually paid
+
+		receipt, err := rootstock.ParseReceipt(signedTx, &effectiveGasPriceReceipt)
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(2000), receipt.GasPrice)
+	})
 }
 
 // nolint:funlen
