@@ -55,8 +55,6 @@ Sizes: `accept_pegin_quote.go` is 70 lines, of which one calls the use case. `ge
 
 ## 3. Three approaches
 
-Pseudocode only. None of this compiles.
-
 ### A. Descriptor struct + generic wrapper
 
 ```go
@@ -131,29 +129,26 @@ Reads nicer per line. The issue is `Body[T]()` and `Returns[T]()` mid-chain. Go 
 | `EndpointFactory` mock| preserved                           | preserved               | preserved                        |
 | Migration             | incremental, low risk               | medium                  | one big lift or all-or-nothing   |
 | Reversibility         | high (descriptors are data)         | medium (DSL spreads)    | low (gen step is sticky)         |
-| New runtime deps      | none                                | none, or one small lib  | one toolchain we own             |
-| Time to a viable v1   | ~1 week                             | ~1.5 weeks              | ~2-3 weeks                       |
+| New runtime deps      | none                                | none, or one small lib  | one toolchain we own             |                      |
 
 ## 5. Open decisions
 
 1. **OpenAPI: generate or validate?** Generate is correct-by-construction but commits us to a code generator. Validate-in-CI is cheap, catches drift at PR time, and doesn't prevent it.
 2. **Middleware on the descriptor: bools or slice?** Today there's one bool, `RequiresCaptcha`. Adding more bools (`CSRF`, `Session`, `SingleFlight`) is fine if the set stays small. A `Middlewares []Middleware` slice handles the long tail — e.g. the three `/reports/*` endpoints that wrap singleflight at construction time (`get_report_summaries.go:27-31`).
-3. **Migration: big-bang or rolling?** All 44 in one PR is one risky merge. Rolling means mixed styles for a while. Approach A coexists with the current `[]Endpoint` cleanly; C doesn't.
+3. **Migration steps** All 44 in one PR is one risky merge. Rolling means mixed styles for a while. Approach A coexists with the current `[]Endpoint` cleanly; C doesn't.
 4. **Keep `gorilla/mux`?** It's been in maintenance mode since 2022. Swap to `chi`, `httprouter`, or stdlib `http.ServeMux` (1.22+) while we're here, or out of scope? The scaffold itself is router-agnostic.
 5. **Where do error-to-HTTP mappings live?** Per-route descriptor (as sketched), a global registry, or a typed interface on use-case errors so the mapping lives in the use-case package. The last is the cleanest, also the biggest change.
 6. **Keep the `@Title`/`@Route` doc comments?** If descriptors carry the same metadata, the comments are duplicate. Delete or keep as a redundant human-readable copy?
 
 ## 6. Recommendation
 
-Approach A, rolling migration, OpenAPI handled by CI validation first. Defer codegen until we've used the descriptor shape for a release or two.
+Approach A, rolling migration, OpenAPI handled by CI validation first.
 
-A is the smallest change that fixes what hurts in §2. Decode, validate, response, and error mapping move into the wrapper. The existing `Endpoint`/`RequiresCaptcha` shape extends naturally, so routes can migrate one at a time without a flag day. Anything that doesn't fit (e.g. the singleflight report handlers) can stay hand-rolled; the scaffold and the original `[]Endpoint` coexist. `EndpointFactory` doesn't change.
+A is the smallest change that fixes the points §2. Decode, validate, response, and error mapping move into the wrapper. The existing `Endpoint`/`RequiresCaptcha` shape extends naturally, so routes can migrate one at a time without a flag day. Anything that doesn't fit (e.g. the singleflight report handlers) can stay hand-rolled; the scaffold and the original `[]Endpoint` coexist. `EndpointFactory` doesn't change.
 
 Validation in CI gets most of the drift-protection win for a small fraction of the cost of generation. If we later want generation, the descriptor shape we settle on now becomes its input.
 
-B looks nice in screenshots and is harder to get right in Go generics today. C is plausibly the right end state, but it's the wrong first step — we'd be locking in a descriptor shape before we've felt the rough edges.
-
-If you disagree, the matrix is the place to push back. Tell me which row is wrong.
+B looks nice in screenshots and is harder to get right in Go generics today. C is plausibly the right end state, but it's the wrong first step — we'd be locking in a descriptor shape.
 
 ## Appendix — `/pegin/acceptQuote` before and after
 
