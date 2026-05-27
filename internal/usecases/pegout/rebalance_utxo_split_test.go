@@ -477,4 +477,244 @@ func TestUtxoSplitHandler_Execute(t *testing.T) {
 		wallet.AssertExpectations(t)
 		mutex.AssertExpectations(t)
 	})
+
+	t.Run("chunk size floored to bridge minimum", func(t *testing.T) {
+		repo := &mocks.PegoutQuoteRepositoryMock{}
+		wallet := &mocks.RskWalletMock{}
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(300), nil).Once()
+		mutex := &mocks.MutexMock{}
+
+		walletBalance := new(entities.Wei).Add(entities.NewWei(utxoSplitTotal), entities.NewWei(2*utxoSplitGasPerTx()))
+		wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
+		// config min=100 is below bridge min=300 → floored to 300; total=700 → N=2, remainder=100, chunks=[400, 300].
+		// A non-floored chunk of 100 would instead produce 7 txs, so the [400, 300] split proves the floor applied.
+		wallet.On("SendRbtc", mock.Anything,
+			mock.MatchedBy(func(c blockchain.TransactionConfig) bool { return c.Value.Cmp(entities.NewWei(400)) == 0 }),
+			test.AnyAddress,
+		).Return(utxoSplitReceipt("0xfloor1", 400), nil).Once()
+		wallet.On("SendRbtc", mock.Anything,
+			mock.MatchedBy(func(c blockchain.TransactionConfig) bool { return c.Value.Cmp(entities.NewWei(300)) == 0 }),
+			test.AnyAddress,
+		).Return(utxoSplitReceipt("0xfloor2", 300), nil).Once()
+		bridge.On("GetAddress").Return(test.AnyAddress)
+		mutex.On("Lock").Return().Once()
+		mutex.On("Unlock").Return().Once()
+
+		var updatedQuotes []quote.RetainedPegoutQuote
+		repo.On("UpdateRetainedQuote", mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				q, ok := args.Get(1).(quote.RetainedPegoutQuote)
+				require.True(t, ok, "expected quote.RetainedPegoutQuote")
+				updatedQuotes = append(updatedQuotes, q)
+			}).Return(nil)
+
+		testQuotes := make([]quote.WatchedPegoutQuote, len(utxoSplitQuotes))
+		copy(testQuotes, utxoSplitQuotes)
+		handler := newUtxoSplitHandler(repo, wallet, bridge, mutex)
+		err := handler.Execute(context.Background(), utxoSplitConfig(100), testQuotes)
+
+		require.NoError(t, err)
+		q1 := findUpdatedQuote(updatedQuotes, "us-01")
+		require.NotNil(t, q1)
+		assert.Equal(t, 0, q1.RemainingToRefund.Cmp(entities.NewWei(0)))
+		q2 := findUpdatedQuote(updatedQuotes, "us-02")
+		require.NotNil(t, q2)
+		assert.Equal(t, 0, q2.RemainingToRefund.Cmp(entities.NewWei(0)))
+
+		repo.AssertExpectations(t)
+		wallet.AssertExpectations(t)
+		bridge.AssertExpectations(t)
+		mutex.AssertExpectations(t)
+	})
+
+	t.Run("bridge minimum lookup fails", func(t *testing.T) {
+		repo := &mocks.PegoutQuoteRepositoryMock{}
+		wallet := &mocks.RskWalletMock{}
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return((*entities.Wei)(nil), assert.AnError).Once()
+		mutex := &mocks.MutexMock{}
+		mutex.On("Lock").Return().Once()
+		mutex.On("Unlock").Return().Once()
+
+		testQuotes := make([]quote.WatchedPegoutQuote, len(utxoSplitQuotes))
+		copy(testQuotes, utxoSplitQuotes)
+		handler := newUtxoSplitHandler(repo, wallet, bridge, mutex)
+		err := handler.Execute(context.Background(), utxoSplitConfig(300), testQuotes)
+
+		require.ErrorIs(t, err, assert.AnError)
+		wallet.AssertNotCalled(t, "GetBalance")
+		wallet.AssertNotCalled(t, "SendRbtc")
+		repo.AssertNotCalled(t, "UpdateRetainedQuote")
+		bridge.AssertNotCalled(t, "GetAddress")
+		bridge.AssertExpectations(t)
+		mutex.AssertExpectations(t)
+	})
+
+	t.Run("bridge rejection skips chunk", func(t *testing.T) {
+		parser := func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+			return true, blockchain.RejectedPegoutReasonLowAmount, nil
+		}
+		runUtxoSplitChunkSkipped(t, parser, utxoSplitReceipt("0xrej", 700), nil)
+	})
+
+	t.Run("rejection parse error skips chunk", func(t *testing.T) {
+		parser := func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+			return false, blockchain.RejectedPegoutReasonUnknown, errors.New("parse error")
+		}
+		runUtxoSplitChunkSkipped(t, parser, utxoSplitReceipt("0xerr", 700), nil)
+	})
+
+	t.Run("tx failed skips chunk", func(t *testing.T) {
+		runUtxoSplitChunkSkipped(t, noRejectionParser, blockchain.TransactionReceipt{}, blockchain.TxFailedError)
+	})
+
+	t.Run("missing receipt value skips chunk", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			TransactionHash: "0xnoval",
+			GasUsed:         big.NewInt(21000),
+			GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
+		}
+		runUtxoSplitChunkSkipped(t, noRejectionParser, receipt, nil)
+	})
+
+	t.Run("missing receipt gas used skips chunk", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			TransactionHash: "0xnogas",
+			Value:           entities.NewWei(700),
+			GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
+		}
+		runUtxoSplitChunkSkipped(t, noRejectionParser, receipt, nil)
+	})
+
+	t.Run("flushes already-covered quote", func(t *testing.T) {
+		repo := &mocks.PegoutQuoteRepositoryMock{}
+		wallet := &mocks.RskWalletMock{}
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
+		mutex := &mocks.MutexMock{}
+
+		walletBalance := new(entities.Wei).Add(entities.NewWei(300), entities.NewWei(utxoSplitGasPerTx()))
+		wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
+		// flush-01 already covered (Remaining=0), flush-02 Total=300 → adjusted=300, bridgeMin=300 → N=1, chunks=[300]
+		wallet.On("SendRbtc", mock.Anything,
+			mock.MatchedBy(func(c blockchain.TransactionConfig) bool { return c.Value.Cmp(entities.NewWei(300)) == 0 }),
+			test.AnyAddress,
+		).Return(utxoSplitReceipt("0xflush", 300), nil).Once()
+		bridge.On("GetAddress").Return(test.AnyAddress)
+		mutex.On("Lock").Return().Once()
+		mutex.On("Unlock").Return().Once()
+
+		var updatedQuotes []quote.RetainedPegoutQuote
+		repo.On("UpdateRetainedQuote", mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				q, ok := args.Get(1).(quote.RetainedPegoutQuote)
+				require.True(t, ok, "expected quote.RetainedPegoutQuote")
+				updatedQuotes = append(updatedQuotes, q)
+			}).Return(nil)
+
+		customQuotes := []quote.WatchedPegoutQuote{
+			{
+				RetainedQuote: quote.RetainedPegoutQuote{
+					QuoteHash:         "flush-01",
+					State:             quote.PegoutStateRefundPegOutSucceeded,
+					RemainingToRefund: entities.NewWei(0),
+				},
+				PegoutQuote: quote.PegoutQuote{Value: entities.NewWei(300), CallFee: entities.NewWei(0), GasFee: entities.NewWei(0)},
+			},
+			{
+				RetainedQuote: quote.RetainedPegoutQuote{QuoteHash: "flush-02", State: quote.PegoutStateRefundPegOutSucceeded},
+				PegoutQuote:   quote.PegoutQuote{Value: entities.NewWei(300), CallFee: entities.NewWei(0), GasFee: entities.NewWei(0)},
+			},
+		}
+		handler := newUtxoSplitHandler(repo, wallet, bridge, mutex)
+		err := handler.Execute(context.Background(), utxoSplitConfig(300), customQuotes)
+
+		require.NoError(t, err)
+		q1 := findUpdatedQuote(updatedQuotes, "flush-01")
+		require.NotNil(t, q1)
+		assert.Equal(t, quote.PegoutStateBridgeTxSucceeded, q1.State)
+		assert.Equal(t, 0, q1.RemainingToRefund.Cmp(entities.NewWei(0)))
+		q2 := findUpdatedQuote(updatedQuotes, "flush-02")
+		require.NotNil(t, q2)
+		assert.Equal(t, quote.PegoutStateBridgeTxSucceeded, q2.State)
+		assert.Equal(t, 0, q2.RemainingToRefund.Cmp(entities.NewWei(0)))
+
+		repo.AssertExpectations(t)
+		wallet.AssertExpectations(t)
+		mutex.AssertExpectations(t)
+	})
+
+	t.Run("flush persist failure propagates", func(t *testing.T) {
+		repo := &mocks.PegoutQuoteRepositoryMock{}
+		wallet := &mocks.RskWalletMock{}
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
+		mutex := &mocks.MutexMock{}
+
+		walletBalance := new(entities.Wei).Add(entities.NewWei(300), entities.NewWei(utxoSplitGasPerTx()))
+		wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
+		wallet.On("SendRbtc", mock.Anything,
+			mock.MatchedBy(func(c blockchain.TransactionConfig) bool { return c.Value.Cmp(entities.NewWei(300)) == 0 }),
+			test.AnyAddress,
+		).Return(utxoSplitReceipt("0xflushfail", 300), nil).Once()
+		bridge.On("GetAddress").Return(test.AnyAddress)
+		mutex.On("Lock").Return().Once()
+		mutex.On("Unlock").Return().Once()
+		repo.On("UpdateRetainedQuote", mock.Anything, mock.Anything).Return(errors.New("db connection lost")).Once()
+
+		customQuotes := []quote.WatchedPegoutQuote{
+			{
+				RetainedQuote: quote.RetainedPegoutQuote{
+					QuoteHash:         "flushfail-01",
+					State:             quote.PegoutStateRefundPegOutSucceeded,
+					RemainingToRefund: entities.NewWei(0),
+				},
+				PegoutQuote: quote.PegoutQuote{Value: entities.NewWei(300), CallFee: entities.NewWei(0), GasFee: entities.NewWei(0)},
+			},
+			{
+				RetainedQuote: quote.RetainedPegoutQuote{QuoteHash: "flushfail-02", State: quote.PegoutStateRefundPegOutSucceeded},
+				PegoutQuote:   quote.PegoutQuote{Value: entities.NewWei(300), CallFee: entities.NewWei(0), GasFee: entities.NewWei(0)},
+			},
+		}
+		handler := newUtxoSplitHandler(repo, wallet, bridge, mutex)
+		err := handler.Execute(context.Background(), utxoSplitConfig(300), customQuotes)
+
+		require.ErrorContains(t, err, "db connection lost")
+		wallet.AssertExpectations(t)
+		repo.AssertExpectations(t)
+		mutex.AssertExpectations(t)
+	})
+}
+
+// runUtxoSplitChunkSkipped drives Execute with a single-chunk config (bridgeMin=600, total=700 → N=1,
+// chunk=[700]) where SendRbtc yields the given receipt/error under the given parser. It asserts the
+// chunk is skipped: Execute returns nil and no quote is persisted.
+func runUtxoSplitChunkSkipped(t *testing.T, parser pegout.ReleaseRejectionParser, receipt blockchain.TransactionReceipt, txErr error) {
+	t.Helper()
+	repo := &mocks.PegoutQuoteRepositoryMock{}
+	wallet := &mocks.RskWalletMock{}
+	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil).Maybe()
+	mutex := &mocks.MutexMock{}
+
+	walletBalance := new(entities.Wei).Add(entities.NewWei(utxoSplitTotal), entities.NewWei(utxoSplitGasPerTx()))
+	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
+	wallet.On("SendRbtc", mock.Anything,
+		mock.MatchedBy(func(c blockchain.TransactionConfig) bool { return c.Value.Cmp(entities.NewWei(700)) == 0 }),
+		test.AnyAddress,
+	).Return(receipt, txErr).Once()
+	bridge.On("GetAddress").Return(test.AnyAddress)
+	mutex.On("Lock").Return().Once()
+	mutex.On("Unlock").Return().Once()
+
+	testQuotes := make([]quote.WatchedPegoutQuote, len(utxoSplitQuotes))
+	copy(testQuotes, utxoSplitQuotes)
+	handler := pegout.NewUtxoSplitHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, parser)
+	err := handler.Execute(context.Background(), utxoSplitConfig(600), testQuotes)
+
+	require.NoError(t, err)
+	repo.AssertNotCalled(t, "UpdateRetainedQuote")
+	wallet.AssertExpectations(t)
+	mutex.AssertExpectations(t)
 }

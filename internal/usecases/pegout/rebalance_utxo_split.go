@@ -46,11 +46,12 @@ func (h *UtxoSplitHandler) Execute(
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	// Floor the chunk size to the bridge's minimum lock value. Without this guard, a
-	// misconfigured BridgeTransactionMin below the bridge minimum would make every chunk
-	// fail with release_request_rejected (low_amount); each rejected chunk still burns
-	// gas, and a silent retry happens on every watcher tick — so a misconfiguration could
-	// quickly drain the LP's RBTC balance without any quote ever making progress.
+	// Floor the chunk size to the bridge's minimum lock value. This is the pegin (lock)
+	// minimum — the only minimum the bridge exposes on-chain — but it sits above the pegout
+	// release minimum on every network, so it's a safe (slightly conservative) lower bound.
+	// Without this guard, a misconfigured BridgeTransactionMin below the bridge minimum would
+	// make every chunk fail with release_request_rejected (low_amount); each rejected chunk
+	// still burns gas on every watcher tick, draining the LP's RBTC without any quote making progress.
 	bridgeMinLockValue, err := h.contracts.Bridge.GetMinimumLockTxValue()
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)

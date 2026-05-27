@@ -410,6 +410,38 @@ func TestParseReleaseRejection(t *testing.T) {
 		assert.Equal(t, blockchain.RejectedPegoutReasonLowAmount, reason)
 	})
 
+	t.Run("reason code 2 maps to caller_contract reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(2)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonCallerContract, reason)
+	})
+
+	t.Run("reason code 3 maps to fee_above_value reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(3)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonFeeAboveValue, reason)
+	})
+
 	t.Run("unknown reason code maps to unknown reason", func(t *testing.T) {
 		receipt := blockchain.TransactionReceipt{
 			Logs: []blockchain.TransactionLog{
