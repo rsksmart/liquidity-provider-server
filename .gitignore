@@ -2,6 +2,9 @@
 ui/node_modules/
 ui/dist/
 
+# Embedded Vite build (generated copy for go:embed)
+managementnextui/dist/
+
 # IDE
 .vscode/
 .idea/
