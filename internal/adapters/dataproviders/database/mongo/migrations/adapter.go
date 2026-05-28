@@ -3,8 +3,8 @@ package migrations
 import (
 	"context"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // MongoDatabaseAdapter wraps *mongo.Database to satisfy DatabaseBinding.
@@ -17,13 +17,13 @@ func NewMongoDatabaseAdapter(db *mongo.Database) *MongoDatabaseAdapter {
 }
 
 func (a *MongoDatabaseAdapter) RunCommand(
-	ctx context.Context, runCommand any, opts ...*options.RunCmdOptions,
+	ctx context.Context, runCommand any, opts ...options.Lister[options.RunCmdOptions],
 ) *mongo.SingleResult {
 	return a.db.RunCommand(ctx, runCommand, opts...)
 }
 
 func (a *MongoDatabaseAdapter) Collection(
-	name string, opts ...*options.CollectionOptions,
+	name string, opts ...options.Lister[options.CollectionOptions],
 ) CollectionBinding {
 	return a.db.Collection(name, opts...)
 }

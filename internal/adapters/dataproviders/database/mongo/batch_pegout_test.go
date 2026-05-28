@@ -9,9 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	mongoDb "go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongoDb "go.mongodb.org/mongo-driver/v2/mongo"
 	"testing"
 	"time"
 )
@@ -36,7 +35,7 @@ func TestBatchPegOutMongoRepository_UpsertBatch(t *testing.T) {
 		collection.On("ReplaceOne", mock.Anything,
 			bson.M{"transaction_hash": batch.TransactionHash},
 			newBatch,
-			options.Replace().SetUpsert(true),
+			withUpsert(),
 		).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewBatchPegOutMongoRepository(conn)

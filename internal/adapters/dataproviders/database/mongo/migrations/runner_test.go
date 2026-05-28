@@ -8,16 +8,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type mockDatabase struct {
 	mock.Mock
 }
 
-func (m *mockDatabase) RunCommand(ctx context.Context, runCommand any, opts ...*options.RunCmdOptions) *mongo.SingleResult {
+func (m *mockDatabase) RunCommand(ctx context.Context, runCommand any, opts ...options.Lister[options.RunCmdOptions]) *mongo.SingleResult {
 	args := m.Called(ctx, runCommand)
 	result, ok := args.Get(0).(*mongo.SingleResult)
 	if !ok {
@@ -26,7 +26,7 @@ func (m *mockDatabase) RunCommand(ctx context.Context, runCommand any, opts ...*
 	return result
 }
 
-func (m *mockDatabase) Collection(name string, opts ...*options.CollectionOptions) CollectionBinding {
+func (m *mockDatabase) Collection(name string, opts ...options.Lister[options.CollectionOptions]) CollectionBinding {
 	args := m.Called(name)
 	collection, ok := args.Get(0).(CollectionBinding)
 	if !ok {
@@ -39,7 +39,7 @@ type mockCollection struct {
 	mock.Mock
 }
 
-func (m *mockCollection) FindOne(ctx context.Context, filter any, opts ...*options.FindOneOptions) *mongo.SingleResult {
+func (m *mockCollection) FindOne(ctx context.Context, filter any, opts ...options.Lister[options.FindOneOptions]) *mongo.SingleResult {
 	args := m.Called(ctx, filter, opts)
 	result, ok := args.Get(0).(*mongo.SingleResult)
 	if !ok {
@@ -49,7 +49,7 @@ func (m *mockCollection) FindOne(ctx context.Context, filter any, opts ...*optio
 }
 
 func (m *mockCollection) UpdateOne(
-	ctx context.Context, filter any, update any, opts ...*options.UpdateOptions,
+	ctx context.Context, filter any, update any, opts ...options.Lister[options.UpdateOneOptions],
 ) (*mongo.UpdateResult, error) {
 	args := m.Called(ctx, filter, update, opts)
 	result, ok := args.Get(0).(*mongo.UpdateResult)

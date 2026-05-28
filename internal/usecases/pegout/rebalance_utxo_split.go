@@ -15,10 +15,11 @@ import (
 )
 
 type UtxoSplitHandler struct {
-	quoteRepository quote.PegoutQuoteRepository
-	rskWallet       blockchain.RootstockWallet
-	contracts       blockchain.RskContracts
-	mutex           sync.Locker
+	quoteRepository        quote.PegoutQuoteRepository
+	rskWallet              blockchain.RootstockWallet
+	contracts              blockchain.RskContracts
+	mutex                  sync.Locker
+	releaseRejectionParser ReleaseRejectionParser
 }
 
 func NewUtxoSplitHandler(
@@ -26,12 +27,14 @@ func NewUtxoSplitHandler(
 	rskWallet blockchain.RootstockWallet,
 	contracts blockchain.RskContracts,
 	mutex sync.Locker,
+	releaseRejectionParser ReleaseRejectionParser,
 ) *UtxoSplitHandler {
 	return &UtxoSplitHandler{
-		quoteRepository: quoteRepository,
-		rskWallet:       rskWallet,
-		contracts:       contracts,
-		mutex:           mutex,
+		quoteRepository:        quoteRepository,
+		rskWallet:              rskWallet,
+		contracts:              contracts,
+		mutex:                  mutex,
+		releaseRejectionParser: releaseRejectionParser,
 	}
 }
 
@@ -42,7 +45,23 @@ func (h *UtxoSplitHandler) Execute(
 ) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
+
+	// Floor the chunk size to the bridge's minimum lock value. This is the pegin (lock)
+	// minimum — the only minimum the bridge exposes on-chain — but it sits above the pegout
+	// release minimum on every network, so it's a safe (slightly conservative) lower bound.
+	// Without this guard, a misconfigured BridgeTransactionMin below the bridge minimum would
+	// make every chunk fail with release_request_rejected (low_amount); each rejected chunk
+	// still burns gas on every watcher tick, draining the LP's RBTC without any quote making progress.
+	bridgeMinLockValue, err := h.contracts.Bridge.GetMinimumLockTxValue()
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
+	}
 	bridgeMin := pegoutConfig.BridgeTransactionMin
+	if bridgeMin.Cmp(bridgeMinLockValue) < 0 {
+		log.Warnf("%s: configured BridgeTransactionMin %v RBTC is below bridge minimum %v RBTC; using bridge minimum as chunk size",
+			usecases.BridgePegoutId, bridgeMin.ToRbtc(), bridgeMinLockValue.ToRbtc())
+		bridgeMin = bridgeMinLockValue
+	}
 	adjustedTotal := h.adjustTotalForRetries(watchedQuotes)
 	if bridgeMin.Cmp(adjustedTotal) > 0 {
 		log.Infof(
@@ -98,13 +117,16 @@ func (h *UtxoSplitHandler) sendChunkAndPersist(
 ) ([]quote.WatchedPegoutQuote, error) {
 	config := blockchain.NewTransactionConfig(chunkAmount, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
 	receipt, txErr := h.rskWallet.SendRbtc(ctx, config, bridgeAddress)
-	if !h.isValidSplitReceipt(receipt, txErr, chunkIndex, totalChunks) {
+	if !h.isValidSplitReceipt(receipt, txErr, bridgeAddress, chunkIndex, totalChunks) {
 		return watchedQuotes, nil
 	}
 	return h.distributeChunkReceipt(ctx, chunkIndex, totalChunks, receipt, watchedQuotes)
 }
 
-func (h *UtxoSplitHandler) isValidSplitReceipt(receipt blockchain.TransactionReceipt, txErr error, chunkIndex, totalChunks int) bool {
+// isValidSplitReceipt returns true only when the chunk tx is both well-formed and not rejected
+// by the bridge. A receipt that carries a release_request_rejected event is treated as invalid
+// so the chunk is skipped and not allocated to any quote (next cycle retries the remaining amount).
+func (h *UtxoSplitHandler) isValidSplitReceipt(receipt blockchain.TransactionReceipt, txErr error, bridgeAddress string, chunkIndex, totalChunks int) bool {
 	if errors.Is(txErr, blockchain.TxFailedError) {
 		log.Errorf("%s: split tx %d/%d failed: %v", usecases.BridgePegoutId, chunkIndex+1, totalChunks, txErr)
 		return false
@@ -120,6 +142,17 @@ func (h *UtxoSplitHandler) isValidSplitReceipt(receipt blockchain.TransactionRec
 	if receipt.GasUsed == nil {
 		log.Errorf("%s: split tx %d/%d failed: missing receipt gas used", usecases.BridgePegoutId, chunkIndex+1, totalChunks)
 		return false
+	}
+	if h.releaseRejectionParser != nil {
+		rejected, reason, err := h.releaseRejectionParser(receipt, bridgeAddress)
+		if err != nil {
+			log.Errorf("%s: split tx %d/%d failed to parse rejection event: %v", usecases.BridgePegoutId, chunkIndex+1, totalChunks, err)
+			return false
+		}
+		if rejected {
+			log.Errorf("%s: split tx %d/%d rejected by bridge (%s), reason=%s", usecases.BridgePegoutId, chunkIndex+1, totalChunks, receipt.TransactionHash, reason)
+			return false
+		}
 	}
 	log.Debugf("%s: split tx %d/%d sent to the bridge successfully (%s)", usecases.BridgePegoutId, chunkIndex+1, totalChunks, receipt.TransactionHash)
 	return true

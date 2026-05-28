@@ -9,9 +9,8 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 const (
@@ -83,7 +82,7 @@ func (repo *peginMongoRepository) GetPeginCreationData(ctx context.Context, hash
 	}
 
 	collection := repo.conn.Collection(PeginCreationDataCollection)
-	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if err != nil {
@@ -104,7 +103,7 @@ func (repo *peginMongoRepository) GetQuote(ctx context.Context, hash string) (*q
 	}
 
 	collection := repo.conn.Collection(PeginQuoteCollection)
-	filter := bson.D{primitive.E{Key: "hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if errors.Is(err, mongo.ErrNoDocuments) {
@@ -168,7 +167,7 @@ func (repo *peginMongoRepository) GetRetainedQuote(ctx context.Context, hash str
 	}
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
-	filter := bson.D{primitive.E{Key: "quote_hash", Value: hash}}
+	filter := bson.D{bson.E{Key: "quote_hash", Value: hash}}
 
 	err := collection.FindOne(dbCtx, filter).Decode(&result)
 	if errors.Is(err, mongo.ErrNoDocuments) {
@@ -199,8 +198,8 @@ func (repo *peginMongoRepository) UpdateRetainedQuote(ctx context.Context, retai
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
-	filter := bson.D{primitive.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
-	updateStatement := bson.D{primitive.E{Key: "$set", Value: retainedQuote}}
+	filter := bson.D{bson.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
+	updateStatement := bson.D{bson.E{Key: "$set", Value: retainedQuote}}
 
 	result, err := collection.UpdateOne(dbCtx, filter, updateStatement)
 	if err != nil {
@@ -220,7 +219,7 @@ func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, s
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
-	query := bson.D{primitive.E{Key: "state", Value: bson.D{primitive.E{Key: "$in", Value: states}}}}
+	query := bson.D{bson.E{Key: "state", Value: bson.D{bson.E{Key: "$in", Value: states}}}}
 	rows, err := collection.Find(dbCtx, query)
 	if err != nil {
 		return nil, err
@@ -290,8 +289,8 @@ func (repo *peginMongoRepository) DeleteQuotes(ctx context.Context, quotes []str
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout*2)
 	defer cancel()
 
-	quoteFilter := bson.D{primitive.E{Key: "hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
-	retainedFilter := bson.D{primitive.E{Key: "quote_hash", Value: bson.D{primitive.E{Key: "$in", Value: quotes}}}}
+	quoteFilter := bson.D{bson.E{Key: "hash", Value: bson.D{bson.E{Key: "$in", Value: quotes}}}}
+	retainedFilter := bson.D{bson.E{Key: "quote_hash", Value: bson.D{bson.E{Key: "$in", Value: quotes}}}}
 	peginResult, err := repo.conn.Collection(PeginQuoteCollection).DeleteMany(dbCtx, quoteFilter)
 	if err != nil {
 		return 0, err
@@ -406,9 +405,9 @@ func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Contex
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
 	filter := bson.D{
-		primitive.E{Key: "owner_account_address", Value: address},
-		primitive.E{Key: "state", Value: bson.D{
-			primitive.E{Key: "$in", Value: states},
+		bson.E{Key: "owner_account_address", Value: address},
+		bson.E{Key: "state", Value: bson.D{
+			bson.E{Key: "$in", Value: states},
 		}},
 	}
 

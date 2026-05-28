@@ -15,10 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	mongoDb "go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongoDb "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 var peginTestConfig = &entities.Signed[liquidity_provider.PeginConfiguration]{
@@ -100,7 +98,7 @@ var testStateConfig = &entities.Signed[liquidity_provider.StateConfiguration]{
 }
 
 func TestLpMongoRepository_GetPeginConfiguration(t *testing.T) {
-	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("pegin")}}
+	filter := bson.D{bson.E{Key: "name", Value: mongo.ConfigurationName("pegin")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("pegin configuration read successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 FixedFee:4 FeePercentage:4.5 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash}"
@@ -135,7 +133,7 @@ func TestLpMongoRepository_GetPeginConfiguration(t *testing.T) {
 }
 
 func TestLpMongoRepository_GetPegoutConfiguration(t *testing.T) {
-	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("pegout")}}
+	filter := bson.D{bson.E{Key: "name", Value: mongo.ConfigurationName("pegout")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("pegout configuration read successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 FixedFee:4 FeePercentage:4.5 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash}"
@@ -170,7 +168,7 @@ func TestLpMongoRepository_GetPegoutConfiguration(t *testing.T) {
 }
 
 func TestLpMongoRepository_GetGeneralConfiguration(t *testing.T) {
-	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("general")}}
+	filter := bson.D{bson.E{Key: "name", Value: mongo.ConfigurationName("general")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("general configuration read successfully", func(t *testing.T) {
 		const expectedLog = "READ interaction with db: {Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false MaxLiquidity:123 ReimbursementWindowBlocks:100 ExcessTolerance:{IsFixed:true PercentageValue:10 FixedValue:555}} Signature:general signature Hash:general hash}"
@@ -205,7 +203,7 @@ func TestLpMongoRepository_GetGeneralConfiguration(t *testing.T) {
 }
 
 func TestLpMongoRepository_GetCredentials(t *testing.T) {
-	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("credentials")}}
+	filter := bson.D{bson.E{Key: "name", Value: mongo.ConfigurationName("credentials")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("credentials read successfully", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
@@ -241,7 +239,7 @@ func TestLpMongoRepository_GetCredentials(t *testing.T) {
 func TestLpMongoRepository_UpsertPeginConfiguration(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	configName := mongo.ConfigurationName("pegin")
-	filter := bson.D{primitive.E{Key: "name", Value: configName}}
+	filter := bson.D{bson.E{Key: "name", Value: configName}}
 	t.Run("pegin configuration upserted successfully", func(t *testing.T) {
 		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 CallTime:2 PenaltyFee:3 FixedFee:4 FeePercentage:4.5 MaxValue:5 MinValue:6} Signature:pegin signature Hash:pegin hash} Name:pegin}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
@@ -249,7 +247,7 @@ func TestLpMongoRepository_UpsertPeginConfiguration(t *testing.T) {
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.PeginConfiguration]{
 			Signed: *peginTestConfig,
 			Name:   configName,
-		}, options.Replace().SetUpsert(true)).
+		}, withUpsert()).
 			Return(nil, nil).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.UpsertPeginConfiguration(context.Background(), *peginTestConfig)
@@ -268,7 +266,7 @@ func TestLpMongoRepository_UpsertPeginConfiguration(t *testing.T) {
 func TestLpMongoRepository_UpsertPegoutConfiguration(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	configName := mongo.ConfigurationName("pegout")
-	filter := bson.D{primitive.E{Key: "name", Value: configName}}
+	filter := bson.D{bson.E{Key: "name", Value: configName}}
 	t.Run("pegout configuration upserted successfully", func(t *testing.T) {
 		const expectedLog = "INSERT interaction with db: {Signed:{Value:{TimeForDeposit:1 ExpireTime:2 PenaltyFee:3 FixedFee:4 FeePercentage:4.5 MaxValue:5 MinValue:6 ExpireBlocks:7 BridgeTransactionMin:8} Signature:pegout signature Hash:pegout hash} Name:pegout}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
@@ -276,7 +274,7 @@ func TestLpMongoRepository_UpsertPegoutConfiguration(t *testing.T) {
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.PegoutConfiguration]{
 			Signed: *pegoutTestConfig,
 			Name:   configName,
-		}, options.Replace().SetUpsert(true)).
+		}, withUpsert()).
 			Return(nil, nil).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.UpsertPegoutConfiguration(context.Background(), *pegoutTestConfig)
@@ -295,7 +293,7 @@ func TestLpMongoRepository_UpsertPegoutConfiguration(t *testing.T) {
 func TestLpMongoRepository_UpsertGeneralConfiguration(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	configName := mongo.ConfigurationName("general")
-	filter := bson.D{primitive.E{Key: "name", Value: configName}}
+	filter := bson.D{bson.E{Key: "name", Value: configName}}
 	t.Run("general configuration upserted successfully", func(t *testing.T) {
 		const expectedLog = "INSERT interaction with db: {Signed:{Value:{RskConfirmations:map[1:2 3:4] BtcConfirmations:map[5:6 7:8] PublicLiquidityCheck:false MaxLiquidity:123 ReimbursementWindowBlocks:100 ExcessTolerance:{IsFixed:true PercentageValue:10 FixedValue:555}} Signature:general signature Hash:general hash} Name:general}"
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
@@ -303,7 +301,7 @@ func TestLpMongoRepository_UpsertGeneralConfiguration(t *testing.T) {
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.GeneralConfiguration]{
 			Signed: *generalTestConfig,
 			Name:   configName,
-		}, options.Replace().SetUpsert(true)).
+		}, withUpsert()).
 			Return(nil, nil).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.UpsertGeneralConfiguration(context.Background(), *generalTestConfig)
@@ -322,14 +320,14 @@ func TestLpMongoRepository_UpsertGeneralConfiguration(t *testing.T) {
 func TestLpMongoRepository_UpsertCredentials(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	configName := mongo.ConfigurationName("credentials")
-	filter := bson.D{primitive.E{Key: "name", Value: configName}}
+	filter := bson.D{bson.E{Key: "name", Value: configName}}
 	t.Run("credentials upserted successfully", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.HashedCredentials]{
 			Signed: *testCredentials,
 			Name:   configName,
-		}, options.Replace().SetUpsert(true)).
+		}, withUpsert()).
 			Return(nil, nil).Once()
 		defer test.AssertNoLog(t)()
 		err := repo.UpsertCredentials(context.Background(), *testCredentials)
@@ -346,7 +344,7 @@ func TestLpMongoRepository_UpsertCredentials(t *testing.T) {
 }
 
 func TestLpMongoRepository_GetStateConfiguration(t *testing.T) {
-	filter := bson.D{primitive.E{Key: "name", Value: mongo.ConfigurationName("state")}}
+	filter := bson.D{bson.E{Key: "name", Value: mongo.ConfigurationName("state")}}
 	log.SetLevel(log.DebugLevel)
 	t.Run("state configuration read successfully", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
@@ -381,14 +379,14 @@ func TestLpMongoRepository_GetStateConfiguration(t *testing.T) {
 func TestLpMongoRepository_UpsertStateConfiguration(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	configName := mongo.ConfigurationName("state")
-	filter := bson.D{primitive.E{Key: "name", Value: configName}}
+	filter := bson.D{bson.E{Key: "name", Value: configName}}
 	t.Run("state configuration upserted successfully", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.LiquidityProviderCollection)
 		repo := mongo.NewLiquidityProviderRepository(mongo.NewConnection(client, time.Duration(1)))
 		collection.On("ReplaceOne", mock.Anything, filter, mongo.StoredConfiguration[liquidity_provider.StateConfiguration]{
 			Signed: *testStateConfig,
 			Name:   configName,
-		}, options.Replace().SetUpsert(true)).
+		}, withUpsert()).
 			Return(nil, nil).Once()
 		err := repo.UpsertStateConfiguration(context.Background(), *testStateConfig)
 		require.NoError(t, err)

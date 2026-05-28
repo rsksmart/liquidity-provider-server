@@ -458,6 +458,29 @@ mock.On("Run", mock.Anything).Return(expectedResult, nil)
 > "we have the mockery library to create the repos in a specific folder so
 > this is not needed" — PR #676
 
+#### Mockery setup in this repo
+
+Configuration lives in `.mockery.yaml` at the repo root. Key conventions from that file:
+
+- **Output directory**: `test/mocks/`
+- **File name**: `{{ .InterfaceName | snakecase }}_mock.go` → e.g. `summary_use_case_mock.go`
+- **Struct name**: `{{ .InterfaceName | firstUpper }}Mock` → e.g. `SummaryUseCaseMock`
+- **Constructor**: `mocks.NewSummaryUseCaseMock(t)`
+
+To regenerate all mocks after changing an interface:
+
+```bash
+mockery
+```
+
+Run from the repo root. Requires the pinned version to be installed:
+
+```bash
+go install github.com/vektra/mockery/v2@v2.53.1
+```
+
+When you add a **new interface** that needs a mock, register it in `.mockery.yaml` under its package before running mockery. Never add the interface to an arbitrary package entry — it must go under the package where the interface is defined.
+
 Use `AssertNotCalled` for functions that shouldn't execute in error paths,
 not just `AssertExpectations`.
 
