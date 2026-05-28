@@ -36,6 +36,68 @@ func IndexKeysContainField(keys any, field string) bool {
 	}
 }
 
+// IndexKeysIsSingleFieldAscending reports whether keys is exactly {field: 1} —
+// catches accidental compound indexes or descending shapes that IndexKeysContainField
+// would silently accept.
+func IndexKeysIsSingleFieldAscending(keys any, field string) bool {
+	switch typed := keys.(type) {
+	case map[string]any:
+		return mapIsSingleFieldAscending(typed, field)
+	case bson.M:
+		return mapIsSingleFieldAscending(map[string]any(typed), field)
+	case bson.D:
+		return len(typed) == 1 && typed[0].Key == field && isAscending(typed[0].Value)
+	default:
+		return sliceOfKeyedElementsIsSingleFieldAscending(keys, field)
+	}
+}
+
+func mapIsSingleFieldAscending(m map[string]any, field string) bool {
+	if len(m) != 1 {
+		return false
+	}
+	v, ok := m[field]
+	return ok && isAscending(v)
+}
+
+func sliceOfKeyedElementsIsSingleFieldAscending(keys any, field string) bool {
+	val := reflect.ValueOf(keys)
+	if val.Kind() != reflect.Slice || val.Len() != 1 {
+		return false
+	}
+	item := val.Index(0)
+	if item.Kind() == reflect.Pointer {
+		item = item.Elem()
+	}
+	if item.Kind() != reflect.Struct {
+		return false
+	}
+	keyField := item.FieldByName("Key")
+	valueField := item.FieldByName("Value")
+	if !keyField.IsValid() || keyField.Kind() != reflect.String || keyField.String() != field {
+		return false
+	}
+	if !valueField.IsValid() {
+		return false
+	}
+	return isAscending(valueField.Interface())
+}
+
+func isAscending(v any) bool {
+	switch n := v.(type) {
+	case int:
+		return n == 1
+	case int32:
+		return n == 1
+	case int64:
+		return n == 1
+	case float64:
+		return n == 1
+	default:
+		return false
+	}
+}
+
 func mapHasField(m map[string]any, field string) bool {
 	_, ok := m[field]
 	return ok
