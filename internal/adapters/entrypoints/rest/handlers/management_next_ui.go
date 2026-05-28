@@ -83,5 +83,8 @@ func (handler *ManagementNextUIHandler) serveFileBody(responseWriter http.Respon
 	}
 	defer file.Close()
 
-	_, _ = io.Copy(responseWriter, file)
+	if _, err := io.Copy(responseWriter, file); err != nil {
+		http.Error(responseWriter, "failed to write response", http.StatusInternalServerError)
+		return
+	}
 }
