@@ -33,12 +33,22 @@ validation: lint
 	go mod verify
 	govulncheck ./... # should fail on non informational vulnerabilities
 
-COMMIT_TAG ?= $(shell git describe --exact-match --tags)
+ui-build:
+	rm -rf managementnextui/dist && \
+	cd ui && \
+	( command -v corepack >/dev/null 2>&1 && corepack enable || true ) && \
+	( command -v pnpm >/dev/null 2>&1 && pnpm install --frozen-lockfile && pnpm run build || \
+	  ( command -v corepack >/dev/null 2>&1 && corepack pnpm install --frozen-lockfile && corepack pnpm run build ) ) && \
+	cd .. && \
+	mkdir -p managementnextui && \
+	cp -R ui/dist managementnextui/dist
+
+COMMIT_TAG ?= $(shell git describe --exact-match --tags 2>/dev/null)
 COMMIT_HASH ?= $(shell git rev-parse HEAD)
 SOURCE_VERSION := $(COMMIT_HASH)
 SOURCE_TAG := $(COMMIT_TAG)
 
-build: download
+build: ui-build download
 	mkdir -p build && cd build
 	@echo "Building liquidity-provider-server $(SOURCE_TAG) ($(SOURCE_VERSION))"
 	CGO_ENABLED=0 go build -v -installsuffix 'static' \
@@ -51,19 +61,19 @@ api:
 	--handler-path ./internal/adapters/entrypoints/rest/handlers \
 	--output OpenApi.yml --schema-without-pkg --generate-yaml true
 
-coverage: clean
+coverage: ui-build clean
 	mkdir -p coverage
 	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
 	go tool cover -func "$(TEMPORAL_COVER_FILE)" && go tool cover -html="$(TEMPORAL_COVER_FILE)"
 	rm $(TEMPORAL_COVER_FILE)
 
-coverage-report: clean
+coverage-report: ui-build clean
 	mkdir -p coverage
 	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(COVER_FILE))
 
-test: clean
+test: ui-build clean
 	mkdir -p coverage
 	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE)  ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))

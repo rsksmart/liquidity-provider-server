@@ -58,6 +58,22 @@ pnpm run format                  # Prettier write
 
 **CI:** The `ui-check` job runs install, lint, test, and build before Go unit tests and lint jobs. A failing UI gate blocks the rest of the pipeline.
 
+### Embedded Vite build (management UI "next")
+
+The Vite build output (`ui/dist/`) is embedded into the Go binary and served under **`/management/next/*`** when both of these are enabled:
+
+- `ENABLE_MANAGEMENT_API=true` (existing gate)
+- `ENABLE_MANAGEMENT_UI_NEXT=true` (new gate; default off)
+
+Hashed assets under `ui/dist/assets/*` are served with `Cache-Control: public, max-age=31536000, immutable`. The HTML shell (`index.html`) is served with `Cache-Control: no-store`.
+
+Local build sequence:
+
+```sh
+make build    # runs ui build first, then go build
+make test     # runs ui build first, then go test
+```
+
 ## LPS APIs
 
 The LPS has two main APIs:
