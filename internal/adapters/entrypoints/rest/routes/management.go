@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/managementnextui"
 )
 
 const (
@@ -15,14 +16,16 @@ const (
 	UiPath     = "/management"
 	StaticPath = "/static/{file}"
 	IconPath   = "/favicon.ico"
+
+	NextUiPath = "/management/next/{path:.*}"
 )
 
-var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
+var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath, NextUiPath}
 
 // nolint:funlen
 func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
 	sessionManager := handlers.NewCookieSessionManager(env.Management)
-	return []Endpoint{
+	endpoints := []Endpoint{
 		{
 			Path:    "/pegin/collateral",
 			Method:  http.MethodGet,
@@ -185,4 +188,14 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewSetLiquidityRatioHandler(useCaseRegistry.SetLiquidityRatioUseCase()),
 		},
 	}
+
+	if env.Management.EnableManagementUiNext {
+		endpoints = append(endpoints, Endpoint{
+			Path:    NextUiPath,
+			Method:  http.MethodGet,
+			Handler: handlers.NewManagementNextUIHandler(managementnextui.Dist()),
+		})
+	}
+
+	return endpoints
 }

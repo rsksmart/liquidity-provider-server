@@ -217,12 +217,13 @@ type CaptchaEnv struct {
 }
 
 type ManagementEnv struct {
-	EnableManagementApi   bool   `env:"ENABLE_MANAGEMENT_API"`
-	SessionAuthKey        string `env:"MANAGEMENT_AUTH_KEY"`
-	SessionEncryptionKey  string `env:"MANAGEMENT_ENCRYPTION_KEY"`
-	SessionTokenAuthKey   string `env:"MANAGEMENT_TOKEN_AUTH_KEY"`
-	UseHttps              bool   `env:"MANAGEMENT_USE_HTTPS"`
-	EnableSecurityHeaders bool   `env:"ENABLE_SECURITY_HEADERS"`
+	EnableManagementApi    bool   `env:"ENABLE_MANAGEMENT_API"`
+	EnableManagementUiNext bool   `env:"ENABLE_MANAGEMENT_UI_NEXT"`
+	SessionAuthKey         string `env:"MANAGEMENT_AUTH_KEY"`
+	SessionEncryptionKey   string `env:"MANAGEMENT_ENCRYPTION_KEY"`
+	SessionTokenAuthKey    string `env:"MANAGEMENT_TOKEN_AUTH_KEY"`
+	UseHttps               bool   `env:"MANAGEMENT_USE_HTTPS"`
+	EnableSecurityHeaders  bool   `env:"ENABLE_SECURITY_HEADERS"`
 }
 
 type ColdWalletEnv struct {

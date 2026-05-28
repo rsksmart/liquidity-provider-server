@@ -16,6 +16,7 @@ func setUpEnv(t *testing.T) {
 		"ENABLE_SECURITY_HEADERS":              "true",
 		"MANAGEMENT_USE_HTTPS":                 "true",
 		"ENABLE_MANAGEMENT_API":                "true",
+		"ENABLE_MANAGEMENT_UI_NEXT":            "true",
 		"LBC_ADDR":                             "0x1234",
 		"ACCOUNT_NUM":                          "1",
 		"CAPTCHA_SECRET_KEY":                   "secret",
