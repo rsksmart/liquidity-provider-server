@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -36,9 +37,13 @@ func TestManagementNextUI_Headers_IndexAndAssets(t *testing.T) {
 	testServer := httptest.NewServer(router)
 	t.Cleanup(testServer.Close)
 
+	client := &http.Client{}
+
 	// Index should never be immutable cached.
 	{
-		response, err := http.Get(testServer.URL + "/management/next/")
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, testServer.URL+"/management/next/", nil)
+		require.NoError(t, err)
+		response, err := client.Do(request)
 		require.NoError(t, err)
 		defer response.Body.Close()
 		require.Equal(t, http.StatusOK, response.StatusCode)
@@ -59,7 +64,9 @@ func TestManagementNextUI_Headers_IndexAndAssets(t *testing.T) {
 		{name: "css", path: css, contentTypeSub: "text/css"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			response, err := http.Get(testServer.URL + "/management/next/" + tc.path)
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, testServer.URL+"/management/next/"+tc.path, nil)
+			require.NoError(t, err)
+			response, err := client.Do(request)
 			require.NoError(t, err)
 			defer response.Body.Close()
 			require.Equal(t, http.StatusOK, response.StatusCode)
