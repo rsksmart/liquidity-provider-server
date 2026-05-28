@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"io"
 	"io/fs"
@@ -62,8 +63,12 @@ func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
 
+	client := &http.Client{}
+
 	t.Run("index", func(t *testing.T) {
-		resp, err := http.Get(server.URL + "/management/next/")
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/", nil)
+		require.NoError(t, err)
+		resp, err := client.Do(request)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -71,7 +76,9 @@ func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T
 	})
 
 	t.Run("hashed asset immutable", func(t *testing.T) {
-		resp, err := http.Get(server.URL + "/management/next/assets/app-abc123.js")
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/assets/app-abc123.js", nil)
+		require.NoError(t, err)
+		resp, err := client.Do(request)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -79,7 +86,9 @@ func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T
 	})
 
 	t.Run("existing non-asset file no-store", func(t *testing.T) {
-		resp, err := http.Get(server.URL + "/management/next/robots.txt")
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/robots.txt", nil)
+		require.NoError(t, err)
+		resp, err := client.Do(request)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -87,7 +96,9 @@ func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T
 	})
 
 	t.Run("missing file falls back to index", func(t *testing.T) {
-		resp, err := http.Get(server.URL + "/management/next/some/client/route")
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/some/client/route", nil)
+		require.NoError(t, err)
+		resp, err := client.Do(request)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
