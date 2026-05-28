@@ -62,3 +62,48 @@ func TestGetManagementEndpoints(t *testing.T) {
 	}
 	registryMock.AssertExpectations(t)
 }
+
+func TestGetManagementEndpoints_AppendsNextUIWhenEnabled(t *testing.T) {
+	registryMock := &mocks.UseCaseRegistryMock{}
+	registryMock.EXPECT().GetPeginCollateralUseCase().Return(&pegin.GetCollateralUseCase{})
+	registryMock.EXPECT().AddPeginCollateralUseCase().Return(&pegin.AddCollateralUseCase{})
+	registryMock.EXPECT().GetPegoutCollateralUseCase().Return(&pegout.GetCollateralUseCase{})
+	registryMock.EXPECT().AddPegoutCollateralUseCase().Return(&pegout.AddCollateralUseCase{})
+	registryMock.EXPECT().ChangeStatusUseCase().Return(&liquidity_provider.ChangeStatusUseCase{})
+	registryMock.EXPECT().ResignationUseCase().Return(&liquidity_provider.ResignUseCase{})
+	registryMock.EXPECT().WithdrawCollateralUseCase().Return(&liquidity_provider.WithdrawCollateralUseCase{})
+	registryMock.EXPECT().SummariesUseCase().Return(&reports.SummariesUseCase{})
+	registryMock.EXPECT().GetConfigurationUseCase().Return(&liquidity_provider.GetConfigUseCase{})
+	registryMock.EXPECT().SetGeneralConfigUseCase().Return(&liquidity_provider.SetGeneralConfigUseCase{})
+	registryMock.EXPECT().SetPeginConfigUseCase().Return(&liquidity_provider.SetPeginConfigUseCase{})
+	registryMock.EXPECT().SetPegoutConfigUseCase().Return(&liquidity_provider.SetPegoutConfigUseCase{})
+	registryMock.EXPECT().SetCredentialsUseCase().Return(&liquidity_provider.SetCredentialsUseCase{})
+	registryMock.EXPECT().LoginUseCase().Return(&liquidity_provider.LoginUseCase{})
+	registryMock.EXPECT().GetManagementUiDataUseCase().Return(&liquidity_provider.GetManagementUiDataUseCase{})
+	registryMock.EXPECT().GetPeginReportUseCase().Return(&reports.GetPeginReportUseCase{})
+	registryMock.EXPECT().GetPegoutReportUseCase().Return(&reports.GetPegoutReportUseCase{})
+	registryMock.EXPECT().GetRevenueReportUseCase().Return(&reports.GetRevenueReportUseCase{})
+	registryMock.EXPECT().GetAssetsReportUseCase().Return(&reports.GetAssetsReportUseCase{})
+	registryMock.EXPECT().GetTransactionsReportUseCase().Return(&reports.GetTransactionsUseCase{})
+	registryMock.EXPECT().GetTrustedAccountsUseCase().Return(&liquidity_provider.GetTrustedAccountsUseCase{})
+	registryMock.EXPECT().UpdateTrustedAccountUseCase().Return(&liquidity_provider.UpdateTrustedAccountUseCase{})
+	registryMock.EXPECT().AddTrustedAccountUseCase().Return(&liquidity_provider.AddTrustedAccountUseCase{})
+	registryMock.EXPECT().DeleteTrustedAccountUseCase().Return(&liquidity_provider.DeleteTrustedAccountUseCase{})
+	registryMock.EXPECT().GetLiquidityRatioUseCase().Return(&liquidity_provider.GetLiquidityRatioUseCase{})
+	registryMock.EXPECT().SetLiquidityRatioUseCase().Return(&liquidity_provider.SetLiquidityRatioUseCase{})
+
+	env := environment.Environment{}
+	env.Management.EnableManagementUiNext = true
+	endpoints := routes.GetManagementEndpoints(env, registryMock, &mocks.StoreMock{})
+
+	require.Greater(t, len(endpoints), 29)
+	var found bool
+	for _, ep := range endpoints {
+		if ep.Path == routes.NextUiPath {
+			found = true
+			require.Equal(t, "GET", ep.Method)
+		}
+	}
+	require.True(t, found, "expected %s endpoint when ENABLE_MANAGEMENT_UI_NEXT is enabled", routes.NextUiPath)
+	registryMock.AssertExpectations(t)
+}
