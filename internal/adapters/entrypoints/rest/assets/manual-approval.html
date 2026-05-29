@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manual Approval - Management UI</title>
+    <link href="/static/Bootstrap.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="/static/management.css" rel="stylesheet" />
+    <style>
+        .bulk-actions-toolbar {
+            display: none;
+            background-color: #e7f3ff;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #b8daff;
+        }
+        .bulk-actions-toolbar.show {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .pagination-info {
+            margin-top: 10px;
+            color: #6c757d;
+        }
+        .filter-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .status-badge {
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container main-content">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h1>Manual Approval</h1>
+                    <a href="/management" class="btn btn-outline-primary btn-sm">
+                        ← Back to Dashboard
+                    </a>
+                </div>
+                <hr>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="approvalTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link active" id="pending-tab" data-bs-toggle="tab" href="#pending" role="tab" aria-controls="pending" aria-selected="true">
+                                    Pending Transactions <span class="badge bg-warning text-dark" id="pendingCount">0</span>
+                                </a>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" id="history-tab" data-bs-toggle="tab" href="#history" role="tab" aria-controls="history" aria-selected="false">
+                                    History
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="approvalTabContent">
+                            <!-- Pending Transactions Tab -->
+                            <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+                                <!-- Search/Filter Section -->
+                                <div class="filter-section">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <input type="text" class="form-control" id="pendingSearch" placeholder="Search by Transaction ID or Quote Hash...">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <button type="button" class="btn btn-primary w-100" id="pendingSearchButton">
+                                                <i class="bi bi-search"></i> Search
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Bulk Actions Toolbar -->
+                                <div class="bulk-actions-toolbar" id="bulkActionsToolbar">
+                                    <div>
+                                        <strong id="selectedCount">0</strong> transaction(s) selected
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-success btn-sm me-2" id="bulkApproveButton">
+                                            <i class="bi bi-check-circle"></i> Approve Selected
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm me-2" id="bulkDenyButton">
+                                            <i class="bi bi-x-circle"></i> Deny Selected
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="clearSelectionButton">
+                                            Clear Selection
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Pending Transactions Table -->
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="pendingTableWrapper">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 40px;">
+                                                    <input type="checkbox" class="form-check-input" id="selectAllPending">
+                                                </th>
+                                                <th>Type</th>
+                                                <th>Quote Hash</th>
+                                                <th style="cursor: pointer;" id="pendingDateHeader">
+                                                    Date <span id="pendingDateSort">↓</span>
+                                                </th>
+                                                <th>Amount</th>
+                                                <th>State</th>
+                                                <th>User Address</th>
+                                                <th style="width: 180px;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pendingTableBody">
+                                            <tr>
+                                                <td colspan="8" class="text-center">
+                                                    <div class="spinner-border spinner-border-sm" role="status">
+                                                        <span class="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    Loading pending transactions...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="pagination-info" id="pendingPaginationInfo">
+                                        Showing 0-0 of 0
+                                    </div>
+                                    <nav aria-label="Pending transactions pagination">
+                                        <ul class="pagination mb-0" id="pendingPagination">
+                                            <!-- Pagination buttons will be dynamically inserted -->
+                                        </ul>
+                                    </nav>
+                                </div>
+                            </div>
+
+                            <!-- History Tab -->
+                            <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+                                <!-- Filter Section -->
+                                <div class="filter-section">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <input type="text" class="form-control" id="historySearch" placeholder="Search by TX ID or Quote Hash...">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select" id="historyStatusFilter">
+                                                <option value="">All Decisions</option>
+                                                <option value="approved">Approved</option>
+                                                <option value="denied">Denied</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="date" class="form-control" id="historyStartDate">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="date" class="form-control" id="historyEndDate">
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-primary w-100" id="historyFilterButton">
+                                                Filter
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- History Table -->
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="historyTableWrapper">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Quote Hash</th>
+                                                <th style="cursor: pointer;" id="historyDateHeader">
+                                                    Transaction Date <span id="historyDateSort">↓</span>
+                                                </th>
+                                                <th>Amount</th>
+                                                <th>Decision</th>
+                                                <th>Decided By</th>
+                                                <th style="cursor: pointer;" id="historyDecisionDateHeader">
+                                                    Decision Date <span id="historyDecisionDateSort"></span>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="historyTableBody">
+                                            <tr>
+                                                <td colspan="7" class="text-center">
+                                                    <div class="spinner-border spinner-border-sm" role="status">
+                                                        <span class="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    Loading history...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="pagination-info" id="historyPaginationInfo">
+                                        Showing 0-0 of 0
+                                    </div>
+                                    <nav aria-label="History pagination">
+                                        <ul class="pagination mb-0" id="historyPagination">
+                                            <!-- Pagination buttons will be dynamically inserted -->
+                                        </ul>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve Modal -->
+    <div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="approveModalLabel">Confirm Approval</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <strong>Warning:</strong> This operation cannot be undone.
+                    </div>
+                    <p>You are about to approve <strong id="approveCount">0</strong> transaction(s):</p>
+                    <ul id="approveTxList" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Transaction IDs will be listed here -->
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="confirmApproveButton">
+                        <i class="bi bi-check-circle"></i> Confirm Approval
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deny Modal -->
+    <div class="modal fade" id="denyModal" tabindex="-1" aria-labelledby="denyModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="denyModalLabel">Confirm Denial</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <strong>Warning:</strong> This operation cannot be undone.
+                    </div>
+                    <p>You are about to deny <strong id="denyCount">0</strong> transaction(s):</p>
+                    <ul id="denyTxList" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Transaction IDs will be listed here -->
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDenyButton">
+                        <i class="bi bi-x-circle"></i> Confirm Denial
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-success text-white">
+                <strong class="me-auto">Success</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                Operation completed successfully!
+            </div>
+        </div>
+        <div id="errorToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-danger text-white">
+                <strong class="me-auto">Error</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                An error occurred. Please try again.
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/Bootstrap.js" crossorigin="anonymous"></script>
+    <script src="/static/decimal.js" crossorigin="anonymous"></script>
+    <script nonce="{{ .ScriptNonce }}">
+        const csrfToken = "{{ .CsrfToken }}";
+    </script>
+    <script type="module" src="/static/manual-approval.js" crossorigin="anonymous"></script>
+</body>
+</html>

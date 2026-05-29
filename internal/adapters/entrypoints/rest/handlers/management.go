@@ -31,7 +31,7 @@ type GetManagementUiDataUseCase interface {
 // @Description Serves the static site for the Management UI
 // @Success 200 object
 // @Route /management [get]
-func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions.Store, useCase GetManagementUiDataUseCase) http.HandlerFunc {
+func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions.Store, useCase GetManagementUiDataUseCase, templateOverride ...liquidity_provider.ManagementTemplateId) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		const errorGeneratingTemplate = "Error generating template: %v"
 		session, err := store.Get(req, cookies.ManagementSessionCookieName)
@@ -41,6 +41,11 @@ func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions
 			log.Errorf(errorGeneratingTemplate, err)
 			sendErrorTemplate(w)
 			return
+		}
+
+		templateName := result.Name
+		if len(templateOverride) > 0 && loggedIn {
+			templateName = templateOverride[0]
 		}
 
 		bytes, err := utils.GetRandomBytes(nonceBytes)
@@ -54,7 +59,7 @@ func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions
 		if env.EnableSecurityHeaders {
 			htmlTemplateSecurityHeaders(w, nonce)
 		}
-		tmpl := template.Must(template.ParseFS(assets.TemplateFileSystem, string(result.Name)))
+		tmpl := template.Must(template.ParseFS(assets.TemplateFileSystem, string(templateName)))
 
 		err = tmpl.Execute(w, struct {
 			liquidity_provider.ManagementTemplateData
@@ -66,7 +71,7 @@ func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions
 			ScriptNonce:            nonce,
 		})
 		if err != nil {
-			log.Errorf("Error sending %s template to client, a partial version of the template might been sent: %s", result.Name, err.Error())
+			log.Errorf("Error sending %s template to client, a partial version of the template might been sent: %s", templateName, err.Error())
 		}
 	}
 }

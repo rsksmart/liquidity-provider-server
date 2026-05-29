@@ -6,7 +6,8 @@ ARG HOME="/home/rsk"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN useradd -m -u "$UID" --home="$HOME" rsk && \
+RUN (getent passwd "$UID" && userdel -r "$(getent passwd "$UID" | cut -d: -f1)" || true) && \
+    useradd -m -u "$UID" --home="$HOME" rsk && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
       dbus debconf-utils \

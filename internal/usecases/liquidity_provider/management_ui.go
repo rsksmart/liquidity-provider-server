@@ -10,9 +10,10 @@ import (
 type ManagementTemplateId string
 
 const (
-	ManagementLoginTemplate ManagementTemplateId = "login.html"
-	ManagementUiTemplate    ManagementTemplateId = "management.html"
-	ManagementErrorTemplate ManagementTemplateId = "error.html"
+	ManagementLoginTemplate          ManagementTemplateId = "login.html"
+	ManagementUiTemplate             ManagementTemplateId = "management.html"
+	ManagementErrorTemplate          ManagementTemplateId = "error.html"
+	ManagementManualApprovalTemplate ManagementTemplateId = "manual-approval.html"
 )
 
 type GetManagementUiDataUseCase struct {
