@@ -41,7 +41,7 @@ If you want to play with the code and make modifications to it then run the foll
 
 A Vite + React + TypeScript app lives under `ui/` (scaffold for the Management UI migration epic). The legacy Management UI at `/management` is unchanged until later stories wire this app in.
 
-**Prerequisites:** Node.js 20 LTS (see `ui/.nvmrc`), [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`), then pnpm is taken from `ui/package.json` `packageManager` (pnpm 9.x).
+**Prerequisites:** Node.js 24 (see `ui/.nvmrc`), [Corepack](https://nodejs.org/api/corepack.html) enabled (`corepack enable`), then pnpm is taken from `ui/package.json` `packageManager` (pnpm 9.x).
 
 ```sh
 cd ui
