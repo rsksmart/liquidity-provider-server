@@ -312,8 +312,8 @@ func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T
 type errReadFile struct{}
 
 func (errReadFile) Stat() (fs.FileInfo, error) { return nil, errors.New("stat error") }
-func (errReadFile) Read([]byte) (int, error)  { return 0, errors.New("read error") }
-func (errReadFile) Close() error              { return nil }
+func (errReadFile) Read([]byte) (int, error)   { return 0, errors.New("read error") }
+func (errReadFile) Close() error               { return nil }
 
 type failingReadFS struct {
 	inner    fs.FS
