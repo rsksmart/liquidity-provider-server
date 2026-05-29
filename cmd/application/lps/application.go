@@ -114,7 +114,7 @@ func createExternalRpc(ctx context.Context, env environment.Environment) (regist
 	}, nil
 }
 
-func (app *Application) Run(env environment.Environment, logLevel log.Level) {
+func (app *Application) Run(ctx context.Context, env environment.Environment, logLevel log.Level) {
 	app.addRunningService(app.dbRegistry.Connection)
 	app.addRunningService(app.rskRegistry.Client)
 	app.addRunningService(app.btcRegistry.RpcConnection)
@@ -123,12 +123,15 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 	app.addRunningService(app.messagingRegistry.EventBus)
 
 	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType())
-	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(registerParams)
-	if errors.Is(err, usecases.RegistrationRejectedError) {
+	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(ctx, registerParams)
+	switch {
+	case errors.Is(err, usecases.RegistrationRejectedError):
 		log.Fatal("Registration rejected by admin. Contact an admin to approve your registration before restarting.")
-	} else if err != nil {
+	case errors.Is(err, usecases.RegistrationWithdrawnError):
+		log.Fatal("Registration was withdrawn by the LP owner; stopping LPS.")
+	case err != nil:
 		log.Fatal("Error registering provider: ", err)
-	} else {
+	default:
 		log.Info("Provider registered with ID ", id)
 	}
 

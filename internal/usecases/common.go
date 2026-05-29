@@ -98,6 +98,7 @@ var (
 	NoEnoughConfirmationsError          = errors.New("not enough confirmations for transaction")
 	InsufficientAmountError             = errors.New("insufficient amount")
 	RegistrationRejectedError           = errors.New("liquidity provider registration rejected by admin")
+	RegistrationWithdrawnError          = errors.New("liquidity provider registration withdrawn")
 	IllegalQuoteStateError              = errors.New("illegal quote state")
 	LockingCapExceededError             = errors.New("locking cap exceeded")
 	NonPositiveWeiError                 = errors.New("wei value must be positive")

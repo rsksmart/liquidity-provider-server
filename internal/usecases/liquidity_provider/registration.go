@@ -1,7 +1,8 @@
 package liquidity_provider
 
 import (
-	"time"
+	"context"
+	"fmt"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -11,20 +12,17 @@ import (
 )
 
 type RegistrationUseCase struct {
-	contracts    blockchain.RskContracts
-	provider     liquidity_provider.LiquidityProvider
-	pollInterval time.Duration
+	contracts blockchain.RskContracts
+	provider  liquidity_provider.LiquidityProvider
 }
 
 func NewRegistrationUseCase(
 	contracts blockchain.RskContracts,
 	provider liquidity_provider.LiquidityProvider,
-	pollInterval time.Duration,
 ) *RegistrationUseCase {
 	return &RegistrationUseCase{
-		contracts:    contracts,
-		provider:     provider,
-		pollInterval: pollInterval,
+		contracts: contracts,
+		provider:  provider,
 	}
 }
 
@@ -39,83 +37,70 @@ type operationalInfo struct {
 	operationalForPegout bool
 }
 
-func (useCase *RegistrationUseCase) Run(params blockchain.ProviderRegistrationParams) (int64, error) {
+func (useCase *RegistrationUseCase) Run(ctx context.Context, params blockchain.ProviderRegistrationParams) (int64, error) {
 	state, err := useCase.contracts.Discovery.GetRegistrationState(useCase.provider.RskAddress())
 	if err != nil {
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	}
-	switch state {
-	case blockchain.RegistrationStateApproved:
-		return useCase.handleApproved()
-	case blockchain.RegistrationStatePending:
-		return useCase.handlePending()
-	case blockchain.RegistrationStateRejected:
-		return useCase.handleRejected()
-	default:
-		return useCase.handleNoneOrWithdrawn(params)
-	}
-}
 
-func (useCase *RegistrationUseCase) handleApproved() (int64, error) {
-	provider, err := useCase.contracts.Discovery.GetProvider(useCase.provider.RskAddress())
-	if err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	if state == blockchain.RegistrationStateNone {
+		if err = useCase.registerForApproval(params); err != nil {
+			return 0, err
+		}
+		state = blockchain.RegistrationStatePending
 	}
-	return int64(provider.Id), nil
-}
 
-func (useCase *RegistrationUseCase) handlePending() (int64, error) {
-	log.Info("Registration pending admin approval, waiting...")
-	return useCase.waitForApproval()
-}
-
-func (useCase *RegistrationUseCase) handleRejected() (int64, error) {
-	log.Error("Registration rejected by admin. Contact an admin to approve your registration before restarting.")
-	return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.RegistrationRejectedError)
-}
-
-func (useCase *RegistrationUseCase) handleNoneOrWithdrawn(params blockchain.ProviderRegistrationParams) (int64, error) {
-	if err := usecases.CheckPauseState(useCase.contracts.Discovery, useCase.contracts.CollateralManagement); err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	}
-	if err := useCase.validateParams(params); err != nil {
-		return 0, err
-	}
-	collateral, err := useCase.getCollateralInfo()
-	if err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	}
-	operational, err := useCase.getOperationalInfo()
-	if err != nil {
-		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
-	}
-	if _, err = useCase.addPeginCollateral(params, operational, collateral); err != nil {
-		return 0, err
-	}
-	if _, err = useCase.addPegoutCollateral(params, operational, collateral); err != nil {
-		return 0, err
-	}
-	log.Debug("Registering new provider...")
-	if _, err = useCase.registerProvider(params, collateral); err != nil {
-		return 0, err
-	}
-	log.Info("Registration submitted, waiting for admin approval...")
-	return useCase.waitForApproval()
-}
-
-func (useCase *RegistrationUseCase) waitForApproval() (int64, error) {
-	for {
-		state, err := useCase.contracts.Discovery.GetRegistrationState(useCase.provider.RskAddress())
+	if state == blockchain.RegistrationStatePending {
+		state, err = useCase.contracts.Discovery.WatchRegistrationApproval(ctx, useCase.provider.RskAddress())
 		if err != nil {
 			return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 		}
-		if state == blockchain.RegistrationStateApproved {
-			return useCase.handleApproved()
-		} else if state == blockchain.RegistrationStateRejected {
-			return useCase.handleRejected()
-		}
-		time.Sleep(useCase.pollInterval)
 	}
+
+	switch state {
+	case blockchain.RegistrationStateApproved:
+		provider, providerErr := useCase.contracts.Discovery.GetProvider(useCase.provider.RskAddress())
+		if providerErr != nil {
+			return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, providerErr)
+		}
+		return int64(provider.Id), nil
+	case blockchain.RegistrationStateRejected:
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.RegistrationRejectedError)
+	case blockchain.RegistrationStateWithdrawn:
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, usecases.RegistrationWithdrawnError)
+	default:
+		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId,
+			fmt.Errorf("unexpected registration state %d", state))
+	}
+}
+
+func (useCase *RegistrationUseCase) registerForApproval(params blockchain.ProviderRegistrationParams) error {
+	if err := usecases.CheckPauseState(useCase.contracts.Discovery, useCase.contracts.CollateralManagement); err != nil {
+		return usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	}
+	if err := useCase.validateParams(params); err != nil {
+		return err
+	}
+	collateral, err := useCase.getCollateralInfo()
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	}
+	operational, err := useCase.getOperationalInfo()
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
+	}
+	if _, err = useCase.addPeginCollateral(params, operational, collateral); err != nil {
+		return err
+	}
+	if _, err = useCase.addPegoutCollateral(params, operational, collateral); err != nil {
+		return err
+	}
+	log.Debug("Registering new provider...")
+	if _, err = useCase.registerProvider(params, collateral); err != nil {
+		return err
+	}
+	log.Info("Registration submitted, waiting for admin approval...")
+	return nil
 }
 
 func (useCase *RegistrationUseCase) getCollateralInfo() (collateralInfo, error) {

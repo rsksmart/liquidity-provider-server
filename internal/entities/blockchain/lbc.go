@@ -132,6 +132,7 @@ type DiscoveryContract interface {
 	GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error)
 	IsOperational(providerType liquidity_provider.ProviderType, address string) (bool, error)
 	GetRegistrationState(address string) (RegistrationState, error)
+	WatchRegistrationApproval(ctx context.Context, address string) (RegistrationState, error)
 }
 
 type CollateralManagementContract interface {

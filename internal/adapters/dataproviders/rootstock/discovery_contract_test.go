@@ -1,6 +1,7 @@
 package rootstock_test
 
 import (
+	"context"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
@@ -68,6 +69,7 @@ func TestNewDiscoveryContractImpl(t *testing.T) {
 		&mocks.TransactionSignerMock{},
 		rootstock.RetryParams{Retries: 1, Sleep: 1},
 		time.Duration(1),
+		time.Duration(1),
 		contractBinding,
 		Abis,
 	)
@@ -75,7 +77,7 @@ func TestNewDiscoveryContractImpl(t *testing.T) {
 }
 
 func TestDiscoveryContractImpl_GetAddress(t *testing.T) {
-	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), nil, Abis)
+	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), time.Duration(1), nil, Abis)
 	assert.Equal(t, test.AnyAddress, discovery.GetAddress())
 }
 
@@ -90,6 +92,7 @@ func TestDiscoveryContractImpl_SetProviderStatus(t *testing.T) {
 		contractMock.contract,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 		time.Duration(1),
 		discoveryBinding,
 		Abis,
@@ -133,7 +136,7 @@ func TestDiscoveryContractImpl_GetProvider(t *testing.T) {
 	const invalidAddressTest = "Invalid address"
 	contractMock := createBoundContractMock()
 	discoveryBinding := bindings.NewFlyoverDiscovery()
-	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), time.Duration(1), discoveryBinding, Abis)
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
@@ -210,7 +213,7 @@ func TestDiscoveryContractImpl_GetProvider(t *testing.T) {
 func TestDiscoveryContractImpl_GetProviders(t *testing.T) {
 	contractMock := createBoundContractMock()
 	discoveryBinding := bindings.NewFlyoverDiscovery()
-	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), time.Duration(1), discoveryBinding, Abis)
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
@@ -264,6 +267,7 @@ func TestDiscoveryContractImpl_UpdateProvider(t *testing.T) {
 		signerMock,
 		rootstock.RetryParams{},
 		time.Duration(1),
+		time.Duration(1),
 		discoveryBinding,
 		Abis,
 	)
@@ -316,6 +320,7 @@ func TestDiscoveryContractImpl_RegisterProvider(t *testing.T) {
 		signerMock,
 		rootstock.RetryParams{},
 		time.Duration(1),
+		time.Duration(1),
 		discoveryBinding,
 		Abis,
 	)
@@ -367,6 +372,7 @@ func TestDiscoveryContractImpl_RegisterProvider_ErrorHandling(t *testing.T) {
 		contractMock.contract,
 		signerMock,
 		rootstock.RetryParams{},
+		time.Duration(1),
 		time.Duration(1),
 		discoveryBinding,
 		Abis,
@@ -428,7 +434,7 @@ func TestDiscoveryContractImpl_IsOperational(t *testing.T) {
 	t.Run("is operational for pegin", func(t *testing.T) {
 		contractMock := createBoundContractMock()
 		discoveryBinding := bindings.NewFlyoverDiscovery()
-		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), time.Duration(1), discoveryBinding, Abis)
 		t.Run("Success", func(t *testing.T) {
 			contractMock.caller.EXPECT().CallContract(
 				mock.Anything,
@@ -458,7 +464,7 @@ func TestDiscoveryContractImpl_IsOperational(t *testing.T) {
 	t.Run("is operational for pegout", func(t *testing.T) {
 		contractMock := createBoundContractMock()
 		discoveryBinding := bindings.NewFlyoverDiscovery()
-		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), time.Duration(1), discoveryBinding, Abis)
 		t.Run("Success", func(t *testing.T) {
 			contractMock.caller.EXPECT().CallContract(
 				mock.Anything,
@@ -489,7 +495,7 @@ func TestDiscoveryContractImpl_IsOperational(t *testing.T) {
 	t.Run("is operational for both", func(t *testing.T) {
 		contractMock := createBoundContractMock()
 		discoveryBinding := bindings.NewFlyoverDiscovery()
-		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), time.Duration(1), discoveryBinding, Abis)
 		t.Run("Success", func(t *testing.T) {
 			contractMock.caller.EXPECT().CallContract(
 				mock.Anything,
@@ -521,7 +527,7 @@ func TestDiscoveryContractImpl_IsOperational(t *testing.T) {
 func TestDiscoveryContractImpl_PausedStatus(t *testing.T) {
 	contractMock := createBoundContractMock()
 	discoveryBinding := bindings.NewFlyoverDiscovery()
-	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), time.Duration(1), discoveryBinding, Abis)
 	t.Run("should return pause status result", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
@@ -549,7 +555,7 @@ func TestDiscoveryContractImpl_PausedStatus(t *testing.T) {
 func TestDiscoveryContractImpl_GetRegistrationState(t *testing.T) {
 	contractMock := createBoundContractMock()
 	discoveryBinding := bindings.NewFlyoverDiscovery()
-	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), discoveryBinding, Abis)
+	discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), time.Duration(1), discoveryBinding, Abis)
 	callData, err := discoveryBinding.TryPackGetRegistrationState(parsedAddress)
 	require.NoError(t, err)
 
@@ -590,6 +596,115 @@ func TestDiscoveryContractImpl_GetRegistrationState(t *testing.T) {
 	t.Run("Invalid address", func(t *testing.T) {
 		result, err := discovery.GetRegistrationState(test.AnyString)
 		require.ErrorIs(t, err, blockchain.InvalidAddressError)
+		assert.Equal(t, blockchain.RegistrationStateNone, result)
+	})
+}
+
+// nolint:funlen
+func TestDiscoveryContractImpl_WatchRegistrationApproval(t *testing.T) {
+	const pollInterval = 5 * time.Millisecond
+	discoveryBinding := bindings.NewFlyoverDiscovery()
+	callData, err := discoveryBinding.TryPackGetRegistrationState(parsedAddress)
+	require.NoError(t, err)
+
+	nonPendingCases := []struct {
+		name  string
+		state blockchain.RegistrationState
+	}{
+		{"None", blockchain.RegistrationStateNone},
+		{"Approved", blockchain.RegistrationStateApproved},
+		{"Rejected", blockchain.RegistrationStateRejected},
+		{"Withdrawn", blockchain.RegistrationStateWithdrawn},
+	}
+	for _, tc := range nonPendingCases {
+		t.Run("Returns "+tc.name+" on first poll", func(t *testing.T) {
+			contractMock := createBoundContractMock()
+			discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pollInterval, discoveryBinding, Abis)
+			contractMock.caller.EXPECT().CallContract(
+				mock.Anything,
+				matchCallData(callData),
+				mock.Anything,
+			).Return(mustPackUint8(t, uint8(tc.state)), nil).Once()
+			result, err := discovery.WatchRegistrationApproval(context.Background(), parsedAddress.String())
+			require.NoError(t, err)
+			assert.Equal(t, tc.state, result)
+			contractMock.caller.AssertExpectations(t)
+		})
+	}
+	terminalCases := []struct {
+		name  string
+		state blockchain.RegistrationState
+	}{
+		{"Approved", blockchain.RegistrationStateApproved},
+		{"Rejected", blockchain.RegistrationStateRejected},
+		{"Withdrawn", blockchain.RegistrationStateWithdrawn},
+	}
+	for _, tc := range terminalCases {
+		t.Run("Pending then "+tc.name, func(t *testing.T) {
+			contractMock := createBoundContractMock()
+			discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pollInterval, discoveryBinding, Abis)
+			contractMock.caller.EXPECT().CallContract(
+				mock.Anything,
+				matchCallData(callData),
+				mock.Anything,
+			).Return(mustPackUint8(t, uint8(blockchain.RegistrationStatePending)), nil).Once()
+			contractMock.caller.EXPECT().CallContract(
+				mock.Anything,
+				matchCallData(callData),
+				mock.Anything,
+			).Return(mustPackUint8(t, uint8(tc.state)), nil).Once()
+			result, err := discovery.WatchRegistrationApproval(context.Background(), parsedAddress.String())
+			require.NoError(t, err)
+			assert.Equal(t, tc.state, result)
+			contractMock.caller.AssertExpectations(t)
+		})
+	}
+
+	t.Run("Error on initial GetRegistrationState", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pollInterval, discoveryBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(callData),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		result, err := discovery.WatchRegistrationApproval(context.Background(), parsedAddress.String())
+		require.Error(t, err)
+		assert.Equal(t, blockchain.RegistrationStateNone, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+
+	t.Run("Error on subsequent GetRegistrationState", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pollInterval, discoveryBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(callData),
+			mock.Anything,
+		).Return(mustPackUint8(t, uint8(blockchain.RegistrationStatePending)), nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(callData),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		result, err := discovery.WatchRegistrationApproval(context.Background(), parsedAddress.String())
+		require.Error(t, err)
+		assert.Equal(t, blockchain.RegistrationStateNone, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+
+	t.Run("Context cancelled while pending", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), 1*time.Hour, discoveryBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(callData),
+			mock.Anything,
+		).Return(mustPackUint8(t, uint8(blockchain.RegistrationStatePending)), nil).Once()
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		result, err := discovery.WatchRegistrationApproval(ctx, parsedAddress.String())
+		require.ErrorIs(t, err, context.Canceled)
 		assert.Equal(t, blockchain.RegistrationStateNone, result)
 	})
 }

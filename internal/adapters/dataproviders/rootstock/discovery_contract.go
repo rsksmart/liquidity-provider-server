@@ -1,6 +1,7 @@
 package rootstock
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
@@ -14,6 +15,8 @@ import (
 	"time"
 )
 
+const defaultRegistrationPollInterval = 30 * time.Second
+
 type discoveryContractImpl struct {
 	client        RpcClientBinding
 	address       string
@@ -21,6 +24,7 @@ type discoveryContractImpl struct {
 	signer        TransactionSigner
 	retryParams   RetryParams
 	miningTimeout time.Duration
+	pollInterval  time.Duration
 	abis          *FlyoverABIs
 	binding       *bindings.FlyoverDiscovery
 }
@@ -32,6 +36,7 @@ func NewDiscoveryContractImpl(
 	signer TransactionSigner,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
+	pollInterval time.Duration,
 	binding *bindings.FlyoverDiscovery,
 	abis *FlyoverABIs,
 ) blockchain.DiscoveryContract {
@@ -42,6 +47,7 @@ func NewDiscoveryContractImpl(
 		signer:        signer,
 		retryParams:   retryParams,
 		miningTimeout: miningTimeout,
+		pollInterval:  pollInterval,
 		binding:       binding,
 		abis:          abis,
 	}
@@ -281,6 +287,29 @@ func (discovery *discoveryContractImpl) GetRegistrationState(address string) (bl
 		return blockchain.RegistrationStateNone, fmt.Errorf("error getting registration state: %w", err)
 	}
 	return blockchain.RegistrationState(raw), nil
+}
+
+func (discovery *discoveryContractImpl) WatchRegistrationApproval(ctx context.Context, address string) (blockchain.RegistrationState, error) {
+	pollInterval := discovery.pollInterval
+	if pollInterval <= 0 {
+		pollInterval = defaultRegistrationPollInterval
+	}
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return blockchain.RegistrationStateNone, ctx.Err()
+		case <-ticker.C:
+			state, err := discovery.GetRegistrationState(address)
+			if err != nil {
+				return blockchain.RegistrationStateNone, fmt.Errorf("polling registration state: %w", err)
+			}
+			if state != blockchain.RegistrationStatePending {
+				return state, nil
+			}
+		}
+	}
 }
 
 func (discovery *discoveryContractImpl) toContractProviderType(providerType liquidity_provider.ProviderType) (uint8, error) {
