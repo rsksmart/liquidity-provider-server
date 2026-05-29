@@ -1,4 +1,4 @@
-.PHONY: test all clean utils test-integration-db generate-fixtures
+.PHONY: test all clean utils test-integration-db generate-fixtures ensure-gotestsum
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
@@ -22,6 +22,12 @@ tools: download
 	go install github.com/ethereum/go-ethereum/cmd/abigen@be4dc0c4be2fe316dbdd0a73e48421f64978232f # v1.17.2
 	go install github.com/vektra/mockery/v2@v2.53.1  	# ensures mockery version 2.53.1 is installed
 	go install gotest.tools/gotestsum@v1.13.0          # Apache 2.0; dev-only tool, not added to go.mod
+
+ensure-gotestsum:
+	@command -v gotestsum >/dev/null 2>&1 || { \
+		echo "Error: gotestsum not found in PATH. Run 'make tools' to install it."; \
+		exit 1; \
+	}
 
 download:
 	go mod download
@@ -52,19 +58,19 @@ api:
 	--handler-path ./internal/adapters/entrypoints/rest/handlers \
 	--output OpenApi.yml --schema-without-pkg --generate-yaml true
 
-coverage: clean
+coverage: clean ensure-gotestsum
 	mkdir -p coverage
 	gotestsum --format testname -- -timeout 30m -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
 	go tool cover -func "$(TEMPORAL_COVER_FILE)" && go tool cover -html="$(TEMPORAL_COVER_FILE)"
 	rm $(TEMPORAL_COVER_FILE)
 
-coverage-report: clean
+coverage-report: clean ensure-gotestsum
 	mkdir -p coverage
 	gotestsum --format testname -- -timeout 30m -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(COVER_FILE))
 
-test: clean
+test: clean ensure-gotestsum
 	mkdir -p coverage
 	gotestsum --format testname -- -timeout 30m -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
