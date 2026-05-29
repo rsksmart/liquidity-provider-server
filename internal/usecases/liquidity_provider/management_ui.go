@@ -51,18 +51,20 @@ type ManagementTemplate struct {
 	Data ManagementTemplateData
 }
 
+type ManagementColdWallet struct {
+	BtcAddress string `json:"BtcAddress"`
+	RskAddress string `json:"RskAddress"`
+	Label      string `json:"Label"`
+}
+
 type ManagementTemplateData struct {
-	CredentialsSet bool
-	BaseUrl        string
-	BtcAddress     string
-	RskAddress     string
-	ProviderData   liquidity_provider.RegisteredLiquidityProvider
-	ColdWallet     struct {
-		BtcAddress string
-		RskAddress string
-		Label      string
-	}
-	Configuration FullConfiguration
+	CredentialsSet bool                                           `json:"CredentialsSet"`
+	BaseUrl        string                                         `json:"BaseUrl"`
+	BtcAddress     string                                         `json:"BtcAddress"`
+	RskAddress     string                                         `json:"RskAddress"`
+	ProviderData   liquidity_provider.RegisteredLiquidityProvider `json:"ProviderData"`
+	ColdWallet     ManagementColdWallet                           `json:"ColdWallet"`
+	Configuration  FullConfiguration                              `json:"Configuration"`
 }
 
 func (useCase *GetManagementUiDataUseCase) Run(ctx context.Context, loggedIn bool) (*ManagementTemplate, error) {
@@ -106,11 +108,7 @@ func (useCase *GetManagementUiDataUseCase) getManagementTemplateData(ctx context
 			BtcAddress:     useCase.lp.BtcAddress(),
 			RskAddress:     rskAddress,
 			ProviderData:   providerInfo,
-			ColdWallet: struct {
-				BtcAddress string
-				RskAddress string
-				Label      string
-			}{
+			ColdWallet: ManagementColdWallet{
 				BtcAddress: useCase.coldWallet.GetBtcAddress(),
 				RskAddress: useCase.coldWallet.GetRskAddress(),
 				Label:      useCase.coldWallet.GetLabel(),

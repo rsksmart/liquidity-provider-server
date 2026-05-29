@@ -49,7 +49,7 @@ const nextUiIndexMissingNonce = `<!doctype html>
   </body>
 </html>`
 
-func newNextUIHandlerTestFixtures(t *testing.T, indexHTML string, enableSecurityHeaders bool) (*ManagementNextUIHandler, *mocks.StoreMock, *mocks.GetManagementUiDataUseCaseMock) {
+func newNextUIHandlerTestFixtures(t *testing.T, indexHTML string) (*ManagementNextUIHandler, *mocks.StoreMock, *mocks.GetManagementUiDataUseCaseMock) {
 	t.Helper()
 
 	dist := fstest.MapFS{
@@ -58,7 +58,7 @@ func newNextUIHandlerTestFixtures(t *testing.T, indexHTML string, enableSecurity
 		"assets/app-abc123.css": &fstest.MapFile{Data: []byte("body{}")},
 	}
 
-	env := environment.ManagementEnv{EnableSecurityHeaders: enableSecurityHeaders}
+	env := environment.ManagementEnv{EnableSecurityHeaders: false}
 	mockStore := new(mocks.StoreMock)
 	mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
 
@@ -74,26 +74,24 @@ func newNextUIHandlerTestFixtures(t *testing.T, indexHTML string, enableSecurity
 		Data: templateData,
 	}, nil)
 
-	handler := NewManagementNextUIHandler(dist, env, mockStore, mockUseCase).(*ManagementNextUIHandler)
+	handler, ok := NewManagementNextUIHandler(dist, env, mockStore, mockUseCase).(*ManagementNextUIHandler)
+	require.True(t, ok)
 	return handler, mockStore, mockUseCase
 }
 
-func serveNextUIIndex(t *testing.T, handler http.Handler) *http.Response {
+func serveNextUIIndex(t *testing.T, handler http.Handler) *httptest.ResponseRecorder {
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodGet, "/management/next/", nil)
 	request = mux.SetURLVars(request, map[string]string{"path": ""})
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
-
-	response := recorder.Result()
-	t.Cleanup(func() { _ = response.Body.Close() })
-	return response
+	return recorder
 }
 
-func readResponseBody(t *testing.T, response *http.Response) string {
+func readResponseBody(t *testing.T, recorder *httptest.ResponseRecorder) string {
 	t.Helper()
-	body, err := io.ReadAll(response.Body)
+	body, err := io.ReadAll(recorder.Body)
 	require.NoError(t, err)
 	return string(body)
 }
@@ -138,13 +136,13 @@ func assertEveryScriptAndStyleHasNonce(t *testing.T, html string, expectedNonce 
 }
 
 func TestManagementNextUIHandler_TemplatedIndexNonceCsrfAndInitialData(t *testing.T) {
-	handler, mockStore, mockUseCase := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate, false)
-	response := serveNextUIIndex(t, handler)
-	body := readResponseBody(t, response)
+	handler, mockStore, mockUseCase := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
+	recorder := serveNextUIIndex(t, handler)
+	body := readResponseBody(t, recorder)
 
-	require.Equal(t, http.StatusOK, response.StatusCode)
-	require.Contains(t, response.Header.Get("Content-Type"), "text/html")
-	require.Contains(t, response.Header.Get("Cache-Control"), "no-store")
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Contains(t, recorder.Header().Get("Content-Type"), "text/html")
+	require.Contains(t, recorder.Header().Get("Cache-Control"), "no-store")
 
 	csrfToken := csrf.Token(httptest.NewRequest(http.MethodGet, "/", nil))
 	require.Contains(t, body, `<meta name="csrf-token" content="`+csrfToken+`"`)
@@ -192,32 +190,32 @@ func TestManagementNextUIHandler_SecurityHeadersMatchLegacy(t *testing.T) {
 
 	nextDist := fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte(nextUiIndexTemplate)}}
 	nextHandler := NewManagementNextUIHandler(nextDist, env, mockStore, mockUseCase)
-	nextResponse := serveNextUIIndex(t, nextHandler)
+	nextRecorder := serveNextUIIndex(t, nextHandler)
 
-	require.Equal(t, http.StatusOK, nextResponse.StatusCode)
+	require.Equal(t, http.StatusOK, nextRecorder.Code)
 
 	legacyCSP := normalizeCSP(legacyRecorder.Header().Get("Content-Security-Policy"))
-	nextCSP := normalizeCSP(nextResponse.Header.Get("Content-Security-Policy"))
+	nextCSP := normalizeCSP(nextRecorder.Header().Get("Content-Security-Policy"))
 	assert.Equal(t, legacyCSP, nextCSP)
-	assert.Equal(t, legacyRecorder.Header().Get("Strict-Transport-Security"), nextResponse.Header.Get("Strict-Transport-Security"))
-	assert.Equal(t, legacyRecorder.Header().Get("X-Frame-Options"), nextResponse.Header.Get("X-Frame-Options"))
-	assert.Equal(t, legacyRecorder.Header().Get("X-Content-Type-Options"), nextResponse.Header.Get("X-Content-Type-Options"))
+	assert.Equal(t, legacyRecorder.Header().Get("Strict-Transport-Security"), nextRecorder.Header().Get("Strict-Transport-Security"))
+	assert.Equal(t, legacyRecorder.Header().Get("X-Frame-Options"), nextRecorder.Header().Get("X-Frame-Options"))
+	assert.Equal(t, legacyRecorder.Header().Get("X-Content-Type-Options"), nextRecorder.Header().Get("X-Content-Type-Options"))
 }
 
 func TestManagementNextUIHandler_SecurityHeadersDisabled(t *testing.T) {
-	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate, false)
-	response := serveNextUIIndex(t, handler)
+	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
+	recorder := serveNextUIIndex(t, handler)
 
-	assert.Empty(t, response.Header.Get("Content-Security-Policy"))
-	assert.Empty(t, response.Header.Get("Strict-Transport-Security"))
-	assert.Empty(t, response.Header.Get("X-Frame-Options"))
-	assert.Empty(t, response.Header.Get("X-Content-Type-Options"))
+	assert.Empty(t, recorder.Header().Get("Content-Security-Policy"))
+	assert.Empty(t, recorder.Header().Get("Strict-Transport-Security"))
+	assert.Empty(t, recorder.Header().Get("X-Frame-Options"))
+	assert.Empty(t, recorder.Header().Get("X-Content-Type-Options"))
 }
 
 func TestManagementNextUIHandler_NonceRegressionGuard(t *testing.T) {
-	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexMissingNonce, false)
-	response := serveNextUIIndex(t, handler)
-	body := readResponseBody(t, response)
+	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexMissingNonce)
+	recorder := serveNextUIIndex(t, handler)
+	body := readResponseBody(t, recorder)
 
 	scriptNonceRe := regexp.MustCompile(`nonce="([a-f0-9]+)"`)
 	nonceMatches := scriptNonceRe.FindAllStringSubmatch(body, -1)
@@ -236,15 +234,15 @@ func TestManagementNextUIHandler_UseCaseErrorUsesErrorTemplate(t *testing.T) {
 	mockUseCase.On("Run", mock.Anything, false).Return(nil, errors.New("database error"))
 
 	handler := NewManagementNextUIHandler(dist, env, mockStore, mockUseCase)
-	response := serveNextUIIndex(t, handler)
-	body := readResponseBody(t, response)
+	recorder := serveNextUIIndex(t, handler)
+	body := readResponseBody(t, recorder)
 
-	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, http.StatusOK, recorder.Code)
 	assert.Contains(t, body, "Error opening management UI")
 }
 
 func TestManagementNextUIHandler_NormalizesTraversalToSafePath(t *testing.T) {
-	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate, false)
+	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
 
 	request := httptest.NewRequest(http.MethodGet, "/management/next/../secrets.txt", nil)
 	request = mux.SetURLVars(request, map[string]string{"path": "../secrets.txt"})
@@ -258,7 +256,7 @@ func TestManagementNextUIHandler_NormalizesTraversalToSafePath(t *testing.T) {
 }
 
 func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T) {
-	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate, false)
+	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
 
 	router := mux.NewRouter()
 	router.Path("/management/next/{path:.*}").Methods(http.MethodGet).Handler(handler)
@@ -333,7 +331,7 @@ func TestManagementNextUIHandler_PropagatesCopyError(t *testing.T) {
 		"assets/broken.js": &fstest.MapFile{Data: []byte("x")},
 	}
 	dist := failingReadFS{inner: inner, failPath: "assets/broken.js"}
-	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate, false)
+	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
 	handler.dist = dist
 
 	request := httptest.NewRequest(http.MethodGet, "/management/next/assets/broken.js", nil)
