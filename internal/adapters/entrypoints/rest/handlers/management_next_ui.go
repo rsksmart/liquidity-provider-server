@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/hex"
+	"encoding/json"
+	"html/template"
 	"io"
 	"io/fs"
 	"mime"
@@ -8,15 +12,48 @@ import (
 	"path"
 	"strings"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	log "github.com/sirupsen/logrus"
 )
 
-type ManagementNextUIHandler struct {
-	dist fs.FS
+type nextUiIndexData struct {
+	CsrfToken       string
+	ScriptNonce     string
+	InitialDataJSON template.JS
 }
 
-func NewManagementNextUIHandler(dist fs.FS) http.Handler {
-	return &ManagementNextUIHandler{dist: dist}
+type ManagementNextUIHandler struct {
+	dist      fs.FS
+	env       environment.ManagementEnv
+	store     sessions.Store
+	useCase   GetManagementUiDataUseCase
+	indexTmpl *template.Template
+}
+
+func NewManagementNextUIHandler(
+	dist fs.FS,
+	env environment.ManagementEnv,
+	store sessions.Store,
+	useCase GetManagementUiDataUseCase,
+) http.Handler {
+	indexBytes, err := fs.ReadFile(dist, "index.html")
+	if err != nil {
+		panic("management next UI: missing embedded index.html: " + err.Error())
+	}
+	indexTmpl := template.Must(template.New("index.html").Parse(string(indexBytes)))
+
+	return &ManagementNextUIHandler{
+		dist:      dist,
+		env:       env,
+		store:     store,
+		useCase:   useCase,
+		indexTmpl: indexTmpl,
+	}
 }
 
 func (handler *ManagementNextUIHandler) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request) {
@@ -53,9 +90,49 @@ func (handler *ManagementNextUIHandler) ServeHTTP(responseWriter http.ResponseWr
 }
 
 func (handler *ManagementNextUIHandler) serveIndex(responseWriter http.ResponseWriter, request *http.Request) {
+	const errorGeneratingTemplate = "Error generating template: %v"
+
+	session, err := handler.store.Get(request, cookies.ManagementSessionCookieName)
+	loggedIn := err == nil && !session.IsNew
+	result, err := handler.useCase.Run(request.Context(), loggedIn)
+	if err != nil {
+		log.Errorf(errorGeneratingTemplate, err)
+		sendErrorTemplate(responseWriter)
+		return
+	}
+
+	nonceBytes, err := utils.GetRandomBytes(nonceBytes)
+	if err != nil {
+		log.Errorf(errorGeneratingTemplate, err)
+		sendErrorTemplate(responseWriter)
+		return
+	}
+	nonce := hex.EncodeToString(nonceBytes)
+
+	var jsonBuf bytes.Buffer
+	encoder := json.NewEncoder(&jsonBuf)
+	encoder.SetEscapeHTML(true)
+	if err := encoder.Encode(result.Data); err != nil {
+		log.Errorf(errorGeneratingTemplate, err)
+		sendErrorTemplate(responseWriter)
+		return
+	}
+
 	responseWriter.Header().Set("Cache-Control", "no-store")
 	responseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
-	handler.serveFileBody(responseWriter, request, "index.html")
+	if handler.env.EnableSecurityHeaders {
+		htmlTemplateSecurityHeaders(responseWriter, nonce)
+	}
+
+	data := nextUiIndexData{
+		CsrfToken:       csrf.Token(request),
+		ScriptNonce:     nonce,
+		InitialDataJSON: template.JS(strings.TrimSpace(jsonBuf.String())),
+	}
+
+	if err := handler.indexTmpl.Execute(responseWriter, data); err != nil {
+		log.Errorf("Error executing next UI index template: %s", err.Error())
+	}
 }
 
 func (handler *ManagementNextUIHandler) serveFile(responseWriter http.ResponseWriter, request *http.Request, filePath string, immutable bool) {
