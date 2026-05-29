@@ -30,7 +30,7 @@ const CONFIG_REQUESTS = {
                     "8000000000000000000": 40
                 },
                 publicLiquidityCheck: true,
-                maxLiquidity: "10000000000000000000",
+                maxLiquidity: "2000000000000000000000",
                 reimbursementWindowBlocks: 100,
                 excessTolerance: {
                     isFixed: false,

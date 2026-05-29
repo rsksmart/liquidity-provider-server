@@ -35,7 +35,10 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	bridge := &mocks.BridgeMock{}
 	bridge.On("GetAddress").Return(test.AnyAddress)
 	mutexes := environment.NewApplicationMutexes()
-	handler := pegout.NewAllAtOnceHandler(pegoutRepository, rskWallet, blockchain.RskContracts{Bridge: bridge}, mutexes.RskWalletMutex())
+	noRejectionParser := func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+		return false, blockchain.RejectedPegoutReasonUnknown, nil
+	}
+	handler := pegout.NewAllAtOnceHandler(pegoutRepository, rskWallet, blockchain.RskContracts{Bridge: bridge}, mutexes.RskWalletMutex(), noRejectionParser)
 	bridgeUseCase := pegout.NewBridgePegoutUseCase(providerMock, handler)
 	getUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
 	bridgeWatcher := watcher.NewPegoutBridgeWatcher(getUseCase, bridgeUseCase, ticker)

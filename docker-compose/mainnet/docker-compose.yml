@@ -13,7 +13,7 @@ services:
     networks:
       - net_lps
   mongodb:
-    image: mongo:4
+    image: mongo:8.0
     restart: on-failure
     container_name: mongo01
     hostname: mongo01
@@ -44,7 +44,7 @@ services:
       test:
         - "CMD-SHELL"
         - >-
-          mongo --quiet
+          mongosh --quiet
           -u "$$MONGO_INITDB_ROOT_USERNAME"
           -p "$$MONGO_INITDB_ROOT_PASSWORD"
           --authenticationDatabase admin
@@ -54,7 +54,7 @@ services:
       retries: 30
       start_period: 60s
   mongo-rs-init:
-    image: mongo:4
+    image: mongo:8.0
     container_name: mongo-rs-init
     restart: "no"
     depends_on:
