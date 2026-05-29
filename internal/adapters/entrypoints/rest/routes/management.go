@@ -193,7 +193,12 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 		endpoints = append(endpoints, Endpoint{
 			Path:    NextUiPath,
 			Method:  http.MethodGet,
-			Handler: handlers.NewManagementNextUIHandler(managementnextui.Dist()),
+			Handler: handlers.NewManagementNextUIHandler(
+				managementnextui.Dist(),
+				env.Management,
+				store,
+				useCaseRegistry.GetManagementUiDataUseCase(),
+			),
 		})
 	}
 
