@@ -191,8 +191,8 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 
 	if env.Management.EnableManagementUiNext {
 		endpoints = append(endpoints, Endpoint{
-			Path:    NextUiPath,
-			Method:  http.MethodGet,
+			Path:   NextUiPath,
+			Method: http.MethodGet,
 			Handler: handlers.NewManagementNextUIHandler(
 				managementnextui.Dist(),
 				env.Management,
