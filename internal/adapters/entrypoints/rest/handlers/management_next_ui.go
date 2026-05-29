@@ -125,9 +125,10 @@ func (handler *ManagementNextUIHandler) serveIndex(responseWriter http.ResponseW
 	}
 
 	data := nextUiIndexData{
-		CsrfToken:       csrf.Token(request),
-		ScriptNonce:     nonce,
-		InitialDataJSON: template.JS(strings.TrimSpace(jsonBuf.String())),
+		CsrfToken:   csrf.Token(request),
+		ScriptNonce: nonce,
+		// JSON is server-generated with SetEscapeHTML; template.JS marks safe for application/json script block.
+		InitialDataJSON: template.JS(strings.TrimSpace(jsonBuf.String())), //nolint:gosec // G203
 	}
 
 	if err := handler.indexTmpl.Execute(responseWriter, data); err != nil {
