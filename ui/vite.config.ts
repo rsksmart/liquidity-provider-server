@@ -5,7 +5,21 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
   base: '/management/next/',
-  plugins: [react(), tsconfigPaths()],
+  plugins: [
+    react(),
+    tsconfigPaths(),
+    {
+      name: 'go-template-nonce',
+      transformIndexHtml: {
+        order: 'post',
+        handler(html) {
+          return html
+            .replace(/<script/g, '<script nonce="{{ .ScriptNonce }}"')
+            .replace(/<style/g, '<style nonce="{{ .ScriptNonce }}"')
+        },
+      },
+    },
+  ],
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +11,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
+	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/managementnextui"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,9 +29,28 @@ func TestManagementNextUI_EmbeddedFSShape(t *testing.T) {
 	require.NotEmpty(t, findFirstAssetPath(assets, ".js"), "expected at least one .js under dist/assets/")
 }
 
+func newManagementNextUIHandlerForRouteTest(t *testing.T, dist fs.FS) http.Handler {
+	t.Helper()
+
+	mockStore := new(mocks.StoreMock)
+	mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
+	mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
+	mockUseCase.On("Run", mock.Anything, false).Return(&liquidity_provider.ManagementTemplate{
+		Name: liquidity_provider.ManagementLoginTemplate,
+		Data: liquidity_provider.ManagementTemplateData{BaseUrl: "http://localhost:8080"},
+	}, nil)
+
+	return handlers.NewManagementNextUIHandler(
+		dist,
+		environment.ManagementEnv{EnableSecurityHeaders: false},
+		mockStore,
+		mockUseCase,
+	)
+}
+
 func TestManagementNextUI_Headers_IndexAndAssets(t *testing.T) {
 	dist := managementnextui.Dist()
-	handler := handlers.NewManagementNextUIHandler(dist)
+	handler := newManagementNextUIHandlerForRouteTest(t, dist)
 
 	router := mux.NewRouter()
 	router.Path(NextUiPath).Methods(http.MethodGet).Handler(handler)
