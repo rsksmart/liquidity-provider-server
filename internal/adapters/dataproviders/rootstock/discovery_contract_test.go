@@ -607,16 +607,15 @@ func TestDiscoveryContractImpl_WatchRegistrationApproval(t *testing.T) {
 	callData, err := discoveryBinding.TryPackGetRegistrationState(parsedAddress)
 	require.NoError(t, err)
 
-	nonPendingCases := []struct {
+	terminalFirstPollCases := []struct {
 		name  string
 		state blockchain.RegistrationState
 	}{
-		{"None", blockchain.RegistrationStateNone},
 		{"Approved", blockchain.RegistrationStateApproved},
 		{"Rejected", blockchain.RegistrationStateRejected},
 		{"Withdrawn", blockchain.RegistrationStateWithdrawn},
 	}
-	for _, tc := range nonPendingCases {
+	for _, tc := range terminalFirstPollCases {
 		t.Run("Returns "+tc.name+" on first poll", func(t *testing.T) {
 			contractMock := createBoundContractMock()
 			discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pollInterval, discoveryBinding, Abis)
@@ -659,6 +658,30 @@ func TestDiscoveryContractImpl_WatchRegistrationApproval(t *testing.T) {
 			contractMock.caller.AssertExpectations(t)
 		})
 	}
+
+	t.Run("None and Pending keep polling until terminal", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		discovery := rootstock.NewDiscoveryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pollInterval, discoveryBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(callData),
+			mock.Anything,
+		).Return(mustPackUint8(t, uint8(blockchain.RegistrationStateNone)), nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(callData),
+			mock.Anything,
+		).Return(mustPackUint8(t, uint8(blockchain.RegistrationStatePending)), nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(callData),
+			mock.Anything,
+		).Return(mustPackUint8(t, uint8(blockchain.RegistrationStateApproved)), nil).Once()
+		result, err := discovery.WatchRegistrationApproval(context.Background(), parsedAddress.String())
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.RegistrationStateApproved, result)
+		contractMock.caller.AssertExpectations(t)
+	})
 
 	t.Run("Error on initial GetRegistrationState", func(t *testing.T) {
 		contractMock := createBoundContractMock()

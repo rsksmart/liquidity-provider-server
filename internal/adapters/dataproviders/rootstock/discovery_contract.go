@@ -305,7 +305,8 @@ func (discovery *discoveryContractImpl) WatchRegistrationApproval(ctx context.Co
 			if err != nil {
 				return blockchain.RegistrationStateNone, fmt.Errorf("polling registration state: %w", err)
 			}
-			if state != blockchain.RegistrationStatePending {
+
+			if state != blockchain.RegistrationStatePending && state != blockchain.RegistrationStateNone {
 				return state, nil
 			}
 		}
