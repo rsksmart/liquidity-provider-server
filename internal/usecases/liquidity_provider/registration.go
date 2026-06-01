@@ -57,11 +57,15 @@ func (useCase *RegistrationUseCase) Run(ctx context.Context, params blockchain.P
 		}
 	}
 
+	return useCase.resolveFinalState(state)
+}
+
+func (useCase *RegistrationUseCase) resolveFinalState(state blockchain.RegistrationState) (int64, error) {
 	switch state {
 	case blockchain.RegistrationStateApproved:
-		provider, providerErr := useCase.contracts.Discovery.GetProvider(useCase.provider.RskAddress())
-		if providerErr != nil {
-			return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, providerErr)
+		provider, err := useCase.contracts.Discovery.GetProvider(useCase.provider.RskAddress())
+		if err != nil {
+			return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 		}
 		return int64(provider.Id), nil
 	case blockchain.RegistrationStateRejected:
