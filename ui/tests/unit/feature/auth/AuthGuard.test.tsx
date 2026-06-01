@@ -1,9 +1,7 @@
 import { AuthGuard } from '@feature/auth/components/AuthGuard'
-import { resetInitialDataCacheForTests } from '@shared/utils/initial-data'
 import { render, screen } from '@testing-library/react'
-import { loggedInFixture } from '@tests/fixtures/logged-in'
-import { loggedOutFixture } from '@tests/fixtures/logged-out'
-import { seedInitialData } from '@tests/helpers/seed-initial-data'
+import { loggedInFixture, loggedOutFixture } from '@tests/fixtures'
+import { seedInitialData } from '@tests/utils'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -12,8 +10,7 @@ const managementRoute = '/management'
 
 function renderGuardedRoute(path: string, requireAuth: boolean, label: string) {
   return render(
-    // MemoryRouter needs a fresh initialEntries per call; no re-render loop in one-shot test renders.
-    // eslint-disable-next-line react-perf/jsx-no-new-array-as-prop -- perf rule targets production re-renders, not RTL setup
+    // eslint-disable-next-line react-perf/jsx-no-new-array-as-prop -- RTL setup, not production re-renders
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route
@@ -34,7 +31,6 @@ function renderGuardedRoute(path: string, requireAuth: boolean, label: string) {
 describe('AuthGuard', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
-    resetInitialDataCacheForTests()
   })
 
   it('redirects unauthenticated users away from /management', () => {

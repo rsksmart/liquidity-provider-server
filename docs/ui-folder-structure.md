@@ -15,8 +15,8 @@ ui/
 │   └── main.tsx
 ├── tests/               # All test code — never colocate *.test.* under src/
 │   ├── unit/            # Vitest + RTL; mirrors src/ layout by feature
-│   ├── fixtures/        # Shared test data
-│   ├── helpers/         # Test-only utilities (e.g. DOM seeding)
+│   ├── fixtures/        # Shared test data (`index.ts`)
+│   ├── utils/           # Test-only utilities (e.g. DOM seeding, render helpers)
 │   └── setup/           # Vitest global setup
 ├── docs/                # (this file lives in repo-root docs/)
 └── …config files
@@ -92,7 +92,7 @@ tests/
 │   ├── api/<client>/        # Mirrors src/api/<client>/
 │   └── shared/              # Mirrors src/shared/
 ├── fixtures/                # Typed payloads shared across unit tests
-├── helpers/                 # Test-only helpers (DOM seeding, render wrappers)
+├── utils/                   # Test-only utilities (`index.tsx`: seeding, render helpers)
 └── setup/                   # vitest-setup.ts (global beforeAll hooks)
 ```
 
@@ -109,7 +109,7 @@ tests/
 | `@feature/*` | `src/feature/*` |
 | `@lib/*` | `src/lib/*` |
 | `@api/*` | `src/api/*` |
-| `@tests/*` | `tests/*` (unit tests and helpers only; `tsconfig.test.json`) |
+| `@tests/*` | `tests/*` (unit tests and utils only; `tsconfig.test.json`) |
 
 Prefer aliases over deep relative imports (`../../`).
 
