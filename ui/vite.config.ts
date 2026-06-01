@@ -27,6 +27,8 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: 'v8',
+      reportsDirectory: './coverage',
+      reporter: ['text', 'json', 'lcov'],
       include: [
         'src/shared/utils/initial-data.ts',
         'src/api/management/**',

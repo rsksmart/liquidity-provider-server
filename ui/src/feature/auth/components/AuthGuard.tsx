@@ -9,6 +9,10 @@ interface AuthGuardProps {
 
 // Server session + csrf.Protect remain the authoritative access boundary.
 // This guard only routes placeholder screens for operator UX.
+//
+// Redirect uses <Navigate> (declarative) rather than useNavigate() in an effect:
+// React Router resolves the target route during render, which matches guard semantics
+// and keeps tests deterministic under MemoryRouter.
 export function AuthGuard({ requireAuth, children }: AuthGuardProps) {
   const { loggedIn } = useInitialData()
 
