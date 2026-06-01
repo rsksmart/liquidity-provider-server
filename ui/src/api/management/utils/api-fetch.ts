@@ -1,16 +1,17 @@
 import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
 import { getInitialData } from '@shared/utils/initial-data'
 
+/**
+ * Thin fetch wrapper for management API calls: resolves URLs against server BaseUrl,
+ * attaches X-CSRF-Token on mutating methods (gorilla/csrf parity with legacy management.js),
+ * and maps non-2xx responses to ApiFetchError.
+ */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 function resolveRequestUrl(input: string): string {
-  if (/^https?:\/\//i.test(input)) {
-    return input
-  }
-
-  const baseUrl = getInitialData().data.BaseUrl.replace(/\/$/, '')
-  const path = input.startsWith('/') ? input : `/${input}`
-  return `${baseUrl}${path}`
+  const baseUrl = getInitialData().data.BaseUrl
+  const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+  return new URL(input, base).href
 }
 
 function readCsrfToken(): string {
@@ -23,15 +24,21 @@ function readCsrfToken(): string {
 }
 
 async function readErrorBody(response: Response): Promise<unknown> {
-  const contentType = response.headers.get('content-type') ?? ''
-  if (contentType.includes('application/json')) {
-    try {
-      return await response.json()
-    } catch {
-      return await response.text()
-    }
+  const text = await response.text()
+  if (!text) {
+    return text
   }
-  return await response.text()
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.includes('application/json')) {
+    return text
+  }
+
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return text
+  }
 }
 
 export async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {

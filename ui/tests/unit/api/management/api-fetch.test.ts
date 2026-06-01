@@ -1,8 +1,8 @@
 import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
 import { apiFetch } from '@api/management/utils/api-fetch'
 import { resetInitialDataCacheForTests } from '@shared/utils/initial-data'
-import { loggedOutFixture } from '@tests/fixtures/logged-out'
-import { seedInitialData } from '@tests/helpers/seed-initial-data'
+import { loggedOutFixture } from '@tests/fixtures'
+import { seedInitialData } from '@tests/utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('apiFetch', () => {
@@ -69,6 +69,21 @@ describe('apiFetch', () => {
     } satisfies Partial<ApiFetchError>)
   })
 
+  it('falls back to raw text when JSON content-type body is not valid JSON', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    vi.mocked(fetch).mockResolvedValue(
+      new Response('not-json', {
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(apiFetch('/management/login', { method: 'POST' })).rejects.toMatchObject({
+      body: 'not-json',
+    } satisfies Partial<ApiFetchError>)
+  })
+
   it('resolves relative URLs against BaseUrl from initial data', async () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
     const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
@@ -76,5 +91,14 @@ describe('apiFetch', () => {
     await apiFetch('/management/pegin/configuration')
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe('http://localhost:8080/management/pegin/configuration')
+  })
+
+  it('leaves absolute http(s) URLs unchanged', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    await apiFetch('https://example.com/management/status')
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://example.com/management/status')
   })
 })
