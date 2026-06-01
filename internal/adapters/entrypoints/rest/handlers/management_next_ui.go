@@ -18,6 +18,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,6 +26,11 @@ type nextUiIndexData struct {
 	CsrfToken       string
 	ScriptNonce     string
 	InitialDataJSON template.JS
+}
+
+type nextUiInitialData struct {
+	LoggedIn bool                                      `json:"loggedIn"`
+	Data     liquidity_provider.ManagementTemplateData `json:"data"`
 }
 
 type ManagementNextUIHandler struct {
@@ -112,7 +118,7 @@ func (handler *ManagementNextUIHandler) serveIndex(responseWriter http.ResponseW
 	var jsonBuf bytes.Buffer
 	encoder := json.NewEncoder(&jsonBuf)
 	encoder.SetEscapeHTML(true)
-	if err := encoder.Encode(result.Data); err != nil {
+	if err := encoder.Encode(nextUiInitialData{LoggedIn: loggedIn, Data: result.Data}); err != nil {
 		log.Errorf(errorGeneratingTemplate, err)
 		sendErrorTemplate(responseWriter)
 		return

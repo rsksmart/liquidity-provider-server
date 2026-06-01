@@ -15,6 +15,7 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -48,6 +49,46 @@ const nextUiIndexMissingNonce = `<!doctype html>
     <script>alert(1)</script>
   </body>
 </html>`
+
+var nextUIInitialDataScriptRe = regexp.MustCompile(`(?s)<script id="initial-data"[^>]*>(.*?)</script>`)
+
+func parseNextUIInitialDataFromHTML(t *testing.T, html string) nextUiInitialData {
+	t.Helper()
+
+	matches := nextUIInitialDataScriptRe.FindStringSubmatch(html)
+	require.Len(t, matches, 2)
+
+	var parsed nextUiInitialData
+	require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(matches[1])), &parsed))
+	return parsed
+}
+
+func newNextUIHandlerWithLoggedInSession(
+	t *testing.T,
+	templateData liquidity_provider.ManagementTemplateData,
+) (*ManagementNextUIHandler, *mocks.StoreMock, *mocks.GetManagementUiDataUseCaseMock) {
+	t.Helper()
+
+	dist := fstest.MapFS{
+		"index.html": &fstest.MapFile{Data: []byte(nextUiIndexTemplate)},
+	}
+	env := environment.ManagementEnv{EnableSecurityHeaders: false}
+
+	mockStore := new(mocks.StoreMock)
+	validSession := sessions.NewSession(mockStore, "lp-session")
+	validSession.IsNew = false
+	mockStore.On("Get", mock.Anything, "lp-session").Return(validSession, nil)
+
+	mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
+	mockUseCase.On("Run", mock.Anything, true).Return(&liquidity_provider.ManagementTemplate{
+		Name: liquidity_provider.ManagementUiTemplate,
+		Data: templateData,
+	}, nil)
+
+	handler, ok := NewManagementNextUIHandler(dist, env, mockStore, mockUseCase).(*ManagementNextUIHandler)
+	require.True(t, ok)
+	return handler, mockStore, mockUseCase
+}
 
 func newNextUIHandlerTestFixtures(t *testing.T, indexHTML string) (*ManagementNextUIHandler, *mocks.StoreMock, *mocks.GetManagementUiDataUseCaseMock) {
 	t.Helper()
@@ -153,16 +194,33 @@ func TestManagementNextUIHandler_TemplatedIndexNonceCsrfAndInitialData(t *testin
 	expectedNonce := nonceMatches[0][1]
 	assertEveryScriptAndStyleHasNonce(t, body, expectedNonce)
 
-	initialDataRe := regexp.MustCompile(`(?s)<script id="initial-data"[^>]*>(.*?)</script>`)
-	initialMatches := initialDataRe.FindStringSubmatch(body)
-	require.Len(t, initialMatches, 2)
+	parsed := parseNextUIInitialDataFromHTML(t, body)
+	assert.False(t, parsed.LoggedIn)
+	assert.Equal(t, "http://localhost:8080", parsed.Data.BaseUrl)
+	assert.True(t, parsed.Data.CredentialsSet)
+	assert.Equal(t, "tb1qexample", parsed.Data.BtcAddress)
+	assert.Equal(t, "0xabc", parsed.Data.RskAddress)
 
-	var parsed liquidity_provider.ManagementTemplateData
-	require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(initialMatches[1])), &parsed))
-	assert.Equal(t, "http://localhost:8080", parsed.BaseUrl)
-	assert.True(t, parsed.CredentialsSet)
-	assert.Equal(t, "tb1qexample", parsed.BtcAddress)
-	assert.Equal(t, "0xabc", parsed.RskAddress)
+	mockStore.AssertExpectations(t)
+	mockUseCase.AssertExpectations(t)
+}
+
+func TestManagementNextUIHandler_TemplatedIndexLoggedInInitialData(t *testing.T) {
+	templateData := liquidity_provider.ManagementTemplateData{
+		CredentialsSet: true,
+		BaseUrl:        "http://localhost:8080",
+		BtcAddress:     "tb1qloggedin",
+		RskAddress:     "0xloggedin",
+	}
+	handler, mockStore, mockUseCase := newNextUIHandlerWithLoggedInSession(t, templateData)
+	recorder := serveNextUIIndex(t, handler)
+	body := readResponseBody(t, recorder)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	parsed := parseNextUIInitialDataFromHTML(t, body)
+	assert.True(t, parsed.LoggedIn)
+	assert.Equal(t, "tb1qloggedin", parsed.Data.BtcAddress)
 
 	mockStore.AssertExpectations(t)
 	mockUseCase.AssertExpectations(t)

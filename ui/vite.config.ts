@@ -22,7 +22,17 @@ export default defineConfig({
   ],
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./tests/setup/vitest-setup.ts'],
+    include: ['tests/unit/**/*.test.{ts,tsx}'],
     globals: true,
+    coverage: {
+      provider: 'v8',
+      include: [
+        'src/shared/utils/initial-data.ts',
+        'src/api/management/**',
+        'src/feature/auth/**',
+      ],
+      thresholds: { lines: 90 },
+    },
   },
 })
