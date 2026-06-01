@@ -81,6 +81,10 @@ jobs:
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@v1.13.0
 
+      - name: Run UI unit tests with coverage
+        run: pnpm test:coverage
+        working-directory: ui
+
       - name: Run unit tests with coverage
         run: make coverage-report
 
@@ -88,7 +92,7 @@ jobs:
         uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/cover.out
+          files: ./coverage/cover.out,./ui/coverage/lcov.info
           fail_ci_if_error: true
 
   integration-db-tests:

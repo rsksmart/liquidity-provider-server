@@ -4,9 +4,8 @@ import {
   useInitialData,
 } from '@shared/utils/initial-data'
 import { renderHook } from '@testing-library/react'
-import { loggedInFixture } from '@tests/fixtures/logged-in'
-import { loggedOutFixture } from '@tests/fixtures/logged-out'
-import { seedInitialData } from '@tests/helpers/seed-initial-data'
+import { loggedInFixture, loggedOutFixture } from '@tests/fixtures'
+import { seedInitialData } from '@tests/utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('useInitialData', () => {
