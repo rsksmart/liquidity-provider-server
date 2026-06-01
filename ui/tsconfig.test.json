@@ -16,7 +16,8 @@
     "tests/unit/**/*.ts",
     "tests/unit/**/*.tsx",
     "tests/fixtures/**/*.ts",
-    "tests/helpers/**/*.ts",
+    "tests/utils/**/*.ts",
+    "tests/utils/**/*.tsx",
     "tests/setup/**/*.ts",
     "tests/setup/**/*.d.ts"
   ]
