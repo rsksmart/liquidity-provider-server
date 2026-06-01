@@ -3,6 +3,7 @@ package pegin
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"sync"
 
@@ -55,7 +56,6 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	var retainedQuote *quote.RetainedPeginQuote
 	var creationData quote.PeginCreationData
 	var trustedAccount liquidity_provider.TrustedAccountDetails
-	var foundTrustedAccount bool
 
 	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
@@ -65,14 +65,15 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		return quote.AcceptedQuote{}, err
 	}
 
-	if trustedAccount, foundTrustedAccount, err = useCase.getTrustedAccount(ctx, signature, peginQuote); err != nil {
+	trustedAccount, err = useCase.getTrustedAccount(ctx, signature, peginQuote)
+	if err != nil && !errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
 		return quote.AcceptedQuote{}, err
 	}
 
 	useCase.peginLiquidityMutex.Lock()
 	defer useCase.peginLiquidityMutex.Unlock()
 
-	if foundTrustedAccount {
+	if err == nil {
 		if err = useCase.validateTrustedAccount(ctx, trustedAccount, peginQuote); err != nil {
 			return quote.AcceptedQuote{}, err
 		}
@@ -109,15 +110,15 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	}, nil
 }
 
-func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, signature string, peginQuote quote.PeginQuote) (liquidity_provider.TrustedAccountDetails, bool, error) {
+func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, signature string, peginQuote quote.PeginQuote) (liquidity_provider.TrustedAccountDetails, error) {
 	if signature == "" {
-		return liquidity_provider.TrustedAccountDetails{}, false, nil
+		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.TrustedAccountNotFoundError
 	}
 	trustedAccount, err := useCase.recoverTrustedAccount(ctx, peginQuote, useCase.lp.GetSigner(), signature)
 	if err != nil {
-		return liquidity_provider.TrustedAccountDetails{}, false, err
+		return liquidity_provider.TrustedAccountDetails{}, err
 	}
-	return trustedAccount, true, nil
+	return trustedAccount, nil
 }
 
 func (useCase *AcceptQuoteUseCase) validateTrustedAccount(
@@ -125,11 +126,7 @@ func (useCase *AcceptQuoteUseCase) validateTrustedAccount(
 	trustedAccount liquidity_provider.TrustedAccountDetails,
 	peginQuote quote.PeginQuote,
 ) error {
-	var err error
-	if err = useCase.checkLockingCap(ctx, trustedAccount, peginQuote); err != nil {
-		return err
-	}
-	return nil
+	return useCase.checkLockingCap(ctx, trustedAccount, peginQuote)
 }
 
 func (useCase *AcceptQuoteUseCase) getQuote(ctx context.Context, quoteHash string) (quote.PeginQuote, error) {
@@ -167,7 +164,9 @@ func (useCase *AcceptQuoteUseCase) recoverTrustedAccount(ctx context.Context, pe
 	trustedAccount, err := liquidity_provider.ValidateConfiguration(signer, useCase.hashFunction, func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 		return useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
 	})
-	if err != nil {
+	if err != nil && errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
+		return liquidity_provider.TrustedAccountDetails{}, err
+	} else if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.TamperedTrustedAccountError
 	}
 	return trustedAccount.Value, nil
