@@ -1,8 +1,35 @@
+import { AuthGuard } from '@feature/auth/components/AuthGuard'
+import { LoginPlaceholder } from '@feature/auth/components/LoginPlaceholder'
+import { ErrorPlaceholder } from '@feature/error/components/ErrorPlaceholder'
+import { ManagementPlaceholder } from '@feature/management/components/ManagementPlaceholder'
+import { useInitialData } from '@shared/utils/initial-data'
+import { Navigate, Route, Routes } from 'react-router-dom'
+
 export function App() {
+  const { loggedIn } = useInitialData()
+  const defaultRoute = loggedIn ? '/management' : '/login'
+
   return (
-    <main>
-      <h1>LPS Management UI</h1>
-      <p>Scaffold placeholder — feature migration follows in later epic stories.</p>
-    </main>
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <AuthGuard requireAuth={false}>
+            <LoginPlaceholder />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path="/management"
+        element={
+          <AuthGuard requireAuth={true}>
+            <ManagementPlaceholder />
+          </AuthGuard>
+        }
+      />
+      <Route path="/error" element={<ErrorPlaceholder />} />
+      <Route path="/" element={<Navigate to={defaultRoute} replace />} />
+      <Route path="*" element={<Navigate to={defaultRoute} replace />} />
+    </Routes>
   )
 }
