@@ -67,6 +67,10 @@ var bridgePegoutTestWatchedQuotes = []quote.WatchedPegoutQuote{
 	},
 }
 
+func noRejectionParser(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+	return false, blockchain.RejectedPegoutReasonUnknown, nil
+}
+
 func TestBridgePegoutUseCase_Run(t *testing.T) {
 	t.Run("make bridge pegout successfully", func(t *testing.T) {
 		testBridgePegoutUseCaseSuccess(t)
@@ -88,6 +92,9 @@ func TestBridgePegoutUseCase_Run(t *testing.T) {
 	})
 	t.Run("quotes update fails", func(t *testing.T) {
 		testBridgePegoutUseCaseUpdateFails(t)
+	})
+	t.Run("bridge rejected release", func(t *testing.T) {
+		testBridgePegoutUseCaseBridgeRejected(t)
 	})
 }
 
@@ -117,7 +124,7 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
-	bridge.On("GetAddress").Return(test.AnyAddress).Once()
+	bridge.On("GetAddress").Return(test.AnyAddress).Twice()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
@@ -132,7 +139,7 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 		}
 		return true
 	})).Return(nil).Once()
-	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -158,7 +165,7 @@ func testBridgePegoutUseCaseValueBelowMinimum(t *testing.T) {
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(5000),
 	}).Once()
-	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -183,7 +190,7 @@ func testBridgePegoutUseCaseQuotesNotRefunded(t *testing.T) {
 	wallet := &mocks.RskWalletMock{}
 	mutex := &mocks.MutexMock{}
 	bridge := &mocks.BridgeMock{}
-	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 	err := useCase.Run(context.Background(), bridgePegoutTestWatchedQuotes...)
 	require.ErrorContains(t, err, "not all quotes were refunded successfully")
 	pegoutRepository.AssertNotCalled(t, "UpdateRetainedQuote")
@@ -207,7 +214,7 @@ func testBridgePegoutUseCaseWalletBalanceError(t *testing.T) {
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
-	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -237,7 +244,7 @@ func testBridgePegoutUseCaseWalletWithoutBalance(t *testing.T) {
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
-	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -281,7 +288,7 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 		}
 		return true
 	})).Return(nil).Once()
-	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -320,12 +327,12 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
-	bridge.On("GetAddress").Return(test.AnyAddress).Once()
+	bridge.On("GetAddress").Return(test.AnyAddress).Twice()
 	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
 		BridgeTransactionMin: entities.NewWei(550),
 	}).Once()
 	pegoutRepository.On("UpdateRetainedQuotes", mock.Anything, mock.Anything).Return(errors.New("update error")).Once()
-	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex)
+	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
 	copy(testQuotes, bridgePegoutTestWatchedQuotes)
 	err := useCase.Run(
@@ -335,6 +342,57 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 		testQuotes[4],
 	)
 	require.ErrorContains(t, err, "update error")
+	pegoutRepository.AssertExpectations(t)
+	pegoutLp.AssertExpectations(t)
+	wallet.AssertExpectations(t)
+	mutex.AssertExpectations(t)
+	bridge.AssertExpectations(t)
+}
+
+func testBridgePegoutUseCaseBridgeRejected(t *testing.T) {
+	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
+	pegoutLp := &mocks.ProviderMock{}
+	wallet := &mocks.RskWalletMock{}
+	walletBalance := new(entities.Wei).Add(entities.NewWei(1000), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
+	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
+	successReceipt := blockchain.TransactionReceipt{
+		TransactionHash: test.AnyHash,
+		GasUsed:         big.NewInt(21000),
+		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
+	}
+	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(successReceipt, nil).Once()
+	mutex := &mocks.MutexMock{}
+	mutex.On("Lock").Return().Once()
+	mutex.On("Unlock").Return().Once()
+	bridge := &mocks.BridgeMock{}
+	bridge.On("GetAddress").Return(test.AnyAddress).Twice()
+	pegoutLp.On("PegoutConfiguration", mock.Anything).Return(liquidity_provider.PegoutConfiguration{
+		BridgeTransactionMin: entities.NewWei(550),
+	}).Once()
+	pegoutRepository.On("UpdateRetainedQuotes", mock.Anything, mock.MatchedBy(func(quotes []quote.RetainedPegoutQuote) bool {
+		for _, q := range quotes {
+			if !(q.State == quote.PegoutStateBridgeTxFailed &&
+				q.BridgeRefundTxHash == test.AnyHash) {
+				return false
+			}
+		}
+		return true
+	})).Return(nil).Once()
+
+	rejectionParser := func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+		return true, blockchain.RejectedPegoutReasonUnknown, nil
+	}
+	useCase := pegout.NewBridgePegoutUseCase(pegoutRepository, pegoutLp, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, rejectionParser)
+	testQuotes := make([]quote.WatchedPegoutQuote, len(bridgePegoutTestWatchedQuotes))
+	copy(testQuotes, bridgePegoutTestWatchedQuotes)
+	err := useCase.Run(
+		context.Background(),
+		testQuotes[1],
+		testQuotes[2],
+		testQuotes[4],
+	)
+	require.ErrorIs(t, err, pegout.ErrBridgeReleaseRejected)
+	require.ErrorContains(t, err, "reason=unknown")
 	pegoutRepository.AssertExpectations(t)
 	pegoutLp.AssertExpectations(t)
 	wallet.AssertExpectations(t)

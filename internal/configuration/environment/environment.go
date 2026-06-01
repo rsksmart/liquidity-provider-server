@@ -10,6 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const secretMask = "********"
+
 type Environment struct {
 	LpsStage         string   `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
 	Port             uint     `env:"SERVER_PORT" validate:"required"`
@@ -197,4 +199,26 @@ func LoadEnv() *Environment {
 	}
 
 	return env
+}
+
+// String returns a fmt-style representation of the Environment with secret
+// fields masked, so that the value is safe to log.
+func (env Environment) String() string {
+	type plain Environment
+	redacted := plain(env)
+	redacted.Mongo.Password = maskSecret(redacted.Mongo.Password)
+	redacted.Rsk.KeystorePassword = maskSecret(redacted.Rsk.KeystorePassword)
+	redacted.Btc.Password = maskSecret(redacted.Btc.Password)
+	redacted.Captcha.SecretKey = maskSecret(redacted.Captcha.SecretKey)
+	redacted.Management.SessionAuthKey = maskSecret(redacted.Management.SessionAuthKey)
+	redacted.Management.SessionEncryptionKey = maskSecret(redacted.Management.SessionEncryptionKey)
+	redacted.Management.SessionTokenAuthKey = maskSecret(redacted.Management.SessionTokenAuthKey)
+	return fmt.Sprintf("%+v", redacted)
+}
+
+func maskSecret(value string) string {
+	if value == "" {
+		return ""
+	}
+	return secretMask
 }

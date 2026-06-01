@@ -70,10 +70,27 @@ services:
       [
         "--${LPS_STAGE}",
       ]
+  mongo-keyfile-init:
+    image: alpine:3.20
+    container_name: mongo-keyfile-init
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - apk add --no-cache openssl >/dev/null && sh /keyfile-init.sh
+    volumes:
+      - ../mongo/keyfile-init.sh:/keyfile-init.sh:ro
+      - mongo_keyfile:/keyfile
+    networks:
+      - net_lps
   mongodb:
-    image: mongo:4
+    image: mongo:8.0
     restart: on-failure
     container_name: mongo01
+    hostname: mongo01
+    depends_on:
+      mongo-keyfile-init:
+        condition: service_completed_successfully
     environment:
       - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
       - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
@@ -82,10 +99,54 @@ services:
       - 27017:27017
     volumes:
       - ${MONGO_HOME:-./volumes/mongo}/logs:/data/db
+      - mongo_keyfile:/etc/mongo:ro
     expose:
       - 27017
     networks:
       - net_lps
+    command:
+      - mongod
+      - --replSet
+      - rs0
+      - --bind_ip_all
+      - --keyFile
+      - /etc/mongo/mongo-keyfile
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - >-
+          mongosh --quiet
+          -u "$$MONGO_INITDB_ROOT_USERNAME"
+          -p "$$MONGO_INITDB_ROOT_PASSWORD"
+          --authenticationDatabase admin
+          --eval 'rs.isMaster().ismaster' | grep -q true
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+  mongo-rs-init:
+    image: mongo:8.0
+    container_name: mongo-rs-init
+    restart: "no"
+    depends_on:
+      mongo-keyfile-init:
+        condition: service_completed_successfully
+      mongodb:
+        condition: service_started
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
+      - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
+      - MONGO_HOST=mongo01
+      - MONGO_PORT=27017
+      - REPLICA_SET=rs0
+    volumes:
+      - ../mongo/init-replica-set.sh:/init-replica-set.sh:ro
+    networks:
+      - net_lps
+    entrypoint: ["bash", "/init-replica-set.sh"]
+
+volumes:
+  mongo_keyfile:
 
 networks:
   net_lps:

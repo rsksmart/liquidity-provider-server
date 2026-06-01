@@ -16,7 +16,7 @@ jobs:
     permissions:
       checks: write
       contents: read
-      pull-requests: read
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -33,8 +33,15 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Run unit test
-        run: make test
+      - name: Run unit tests with coverage
+        run: make coverage-report
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/cover.out
+          fail_ci_if_error: true
 
   code-lint:
     name: Source code format validation
@@ -57,4 +64,5 @@ jobs:
         uses: golangci/golangci-lint-action@ec5d18412c0aeab7936cb16880d708ba2a64e1ae #v6.2.0
         with:
           version: v1.63.4
+          install-mode: goinstall
           skip-cache: true

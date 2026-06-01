@@ -7,6 +7,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -55,6 +56,7 @@ const (
 	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
 	UpdateTrustedAccountId     UseCaseId = "UpdateTrustedAccountUseCase"
 	AddTrustedAccountId        UseCaseId = "AddTrustedAccountUseCase"
+	GetTrustedAccountId        UseCaseId = "GetTrustedAccountUseCase"
 	DeleteTrustedAccountId     UseCaseId = "DeleteTrustedAccountUseCase"
 	LoginId                    UseCaseId = "Login"
 	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
@@ -97,6 +99,22 @@ var (
 	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
 )
 
+// InsufficientLiquidityError is returned when available liquidity is below required.
+// It wraps NoLiquidityError for errors.Is compatibility.
+type InsufficientLiquidityError struct {
+	Available *entities.Wei
+	Required  *entities.Wei
+}
+
+func (e *InsufficientLiquidityError) Error() string {
+	missing := new(entities.Wei).Sub(e.Required.Copy(), e.Available.Copy())
+	return fmt.Errorf("%w, missing %s satoshi", NoLiquidityError, missing.ToSatoshi().String()).Error()
+}
+
+func (e *InsufficientLiquidityError) Is(target error) bool {
+	return target == NoLiquidityError
+}
+
 type RecommendedOperationResult struct {
 	RecommendedQuoteValue *entities.Wei
 	EstimatedCallFee      *entities.Wei
@@ -131,6 +149,18 @@ func WrapUseCaseErrorArgs(useCase UseCaseId, err error, args ErrorArgs) error {
 	} else {
 		return fmt.Errorf("%s: %w. Args: %v", useCase, err, args)
 	}
+}
+
+func NormalizeTrustedAccountAddress(useCase UseCaseId, addr string) (string, error) {
+	normalized, err := blockchain.NormalizeRskAddress(addr)
+	if err != nil {
+		return "", WrapUseCaseError(useCase, errors.Join(
+			liquidity_provider.InvalidTrustedAccountAddressError,
+			blockchain.InvalidAddressError,
+			err,
+		))
+	}
+	return normalized, nil
 }
 
 func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {
@@ -249,7 +279,7 @@ func RecoverSignerAddress(signature string, getHashFunction func() ([]byte, erro
 		return "", errors.New("error unmarshalling public key: " + err.Error())
 	}
 
-	address := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
+	address := strings.ToLower(crypto.PubkeyToAddress(*pubKeyECDSA).Hex())
 	return address, nil
 }
 
