@@ -43,7 +43,6 @@ func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.Trans
 		to = tx.To().String()
 	}
 
-	
 	if receipt.EffectiveGasPrice == nil {
 		receipt.EffectiveGasPrice = tx.GasPrice()
 	}

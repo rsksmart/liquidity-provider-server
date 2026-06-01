@@ -42,7 +42,7 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 }
 
 func createIndexes(ctx context.Context, db *mongo.Database) error {
-	indexes := []struct {
+	uniqueIndexes := []struct {
 		collection string
 		field      string
 	}{
@@ -50,16 +50,40 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: TrustedAccountCollection, field: "address"},
 		{collection: BatchPegOutEventsCollection, field: "transaction_hash"},
 	}
-	for _, idx := range indexes {
+	for _, idx := range uniqueIndexes {
 		if err := createUniqueIndex(ctx, db, idx.collection, idx.field); err != nil {
 			return fmt.Errorf("error creating unique index on %s.%s: %w", idx.collection, idx.field, err)
 		}
 		log.Infof("Created unique index on %s.%s", idx.collection, idx.field)
 	}
-	if err := createIndex(ctx, db, RetainedPegoutQuoteCollection, "bridge_rebalances.tx_hash"); err != nil {
-		return fmt.Errorf("error creating index on %s.bridge_rebalances.tx_hash: %w", RetainedPegoutQuoteCollection, err)
+	nonUniqueIndexes := []struct {
+		collection string
+		field      string
+	}{
+		{collection: RetainedPegoutQuoteCollection, field: "bridge_rebalances.tx_hash"},
+		{collection: RetainedPeginQuoteCollection, field: "state"},
+		{collection: RetainedPegoutQuoteCollection, field: "state"},
+		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
+		// range filter — two quotes issued in the same second is a legitimate insert.
+		{collection: PeginQuoteCollection, field: "agreement_timestamp"},
+		{collection: PegoutQuoteCollection, field: "agreement_timestamp"},
+		// quote_hash is semantically one-to-one with a quote, but InsertRetainedQuote does
+		// not enforce uniqueness; a unique build would fail and block startup on any pre-
+		// existing duplicate, with no read-perf gain.
+		{collection: RetainedPeginQuoteCollection, field: "quote_hash"},
+		{collection: RetainedPegoutQuoteCollection, field: "quote_hash"},
+		// hash is the quote's content hash and effectively its PK, but InsertQuote performs a
+		// plain insert with no duplicate check; a unique build would block startup on any
+		// pre-existing duplicate (legacy data, replayed insert) with no read-perf gain.
+		{collection: PeginQuoteCollection, field: "hash"},
+		{collection: PegoutQuoteCollection, field: "hash"},
 	}
-	log.Infof("Created index on %s.bridge_rebalances.tx_hash", RetainedPegoutQuoteCollection)
+	for _, idx := range nonUniqueIndexes {
+		if err := createIndex(ctx, db, idx.collection, idx.field); err != nil {
+			return fmt.Errorf("error creating index on %s.%s: %w", idx.collection, idx.field, err)
+		}
+		log.Infof("Created index on %s.%s", idx.collection, idx.field)
+	}
 	return nil
 }
 
