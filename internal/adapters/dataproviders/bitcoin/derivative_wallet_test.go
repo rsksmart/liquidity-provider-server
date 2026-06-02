@@ -510,6 +510,7 @@ func testSendWithOpReturn(t *testing.T, rskAccount *account.RskAccount, addressI
 		FeeRate:         btcjson.Float64(feeRate),
 		Replaceable:     btcjson.Bool(true),
 	}, (*bool)(nil)).Return(&btcjson.FundRawTransactionResult{Transaction: tx, Fee: 50, ChangePosition: 2}, nil).Once()
+	client.On("LockUnspent", true, mock.Anything).Return(nil).Once()
 	client.On("SendRawTransaction", tx, false).Return(chainhash.NewHashFromStr(testnetTestTxHash)).Once()
 	client.On("SignRawTransactionWithKey", tx, mock.MatchedBy(func(pks []string) bool {
 		return len(pks) == 1 && pks[0] != ""
@@ -626,6 +627,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
 				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
 				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: rawTx, Fee: 50, ChangePosition: 2}, nil).Once()
+				client.On("LockUnspent", true, mock.Anything).Return(nil).Once()
 				client.On("SignRawTransactionWithKey", mock.Anything, mock.Anything).Return(nil, false, assert.AnError).Once()
 				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 				require.NoError(t, err)
@@ -642,6 +644,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
 				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
 				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: rawTx, Fee: 50, ChangePosition: 2}, nil).Once()
+				client.On("LockUnspent", true, mock.Anything).Return(nil).Once()
 				client.On("SignRawTransactionWithKey", mock.Anything, mock.Anything).Return(rawTx, true, nil).Once()
 				client.On("SendRawTransaction", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
@@ -659,6 +662,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
 				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
 				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: rawTx, Fee: 50, ChangePosition: 2}, nil).Once()
+				client.On("LockUnspent", true, mock.Anything).Return(nil).Once()
 				client.On("SignRawTransactionWithKey", mock.Anything, mock.Anything).Return(rawTx, false, nil).Once()
 				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 				require.NoError(t, err)
@@ -666,6 +670,28 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				require.Error(t, err)
 				assert.Empty(t, result.Hash)
 				assert.Nil(t, result.Fee)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "unlocking outputs fails and logs error",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.EXPECT().CreateRawTransaction(mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
+				client.EXPECT().EstimateSmartFee(mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
+				client.EXPECT().FundRawTransaction(mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: rawTx, Fee: 50, ChangePosition: 2}, nil).Once()
+				client.EXPECT().LockUnspent(true, mock.Anything).Return(assert.AnError).Once()
+				client.EXPECT().SignRawTransactionWithKey(mock.Anything, mock.Anything).Return(rawTx, true, nil).Once()
+				client.EXPECT().SendRawTransaction(mock.Anything, mock.Anything).Return(chainhash.NewHashFromStr(testnetTestTxHash)).Once()
+
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+
+				defer test.AssertLogContains(t, "error unlocking utxos for transaction")
+				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
+				require.NoError(t, err)
+				assert.NotEmpty(t, result.Hash)
+				assert.NotNil(t, result.Fee)
+
 				client.AssertExpectations(t)
 			},
 		},
