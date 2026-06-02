@@ -11,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
 )
 
 type AcceptQuoteUseCase struct {
@@ -57,23 +58,41 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	var creationData quote.PeginCreationData
 	var trustedAccount liquidity_provider.TrustedAccountDetails
 
+	log.WithFields(log.Fields{
+		"quoteHash":    quoteHash,
+		"hasSignature": signature != "",
+	}).Debug("Accepting pegin quote")
+
 	if err = usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
+		log.WithFields(log.Fields{
+			"quoteHash": quoteHash,
+		}).WithError(err).Warn("Accept pegin rejected: contract paused")
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 
 	if peginQuote, err = useCase.quoteRepository.GetQuote(ctx, quoteHash); err != nil {
+		log.WithFields(log.Fields{
+			"quoteHash": quoteHash,
+		}).WithError(err).Error("Accept pegin: failed to load quote")
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	} else if peginQuote == nil {
+		log.WithFields(log.Fields{
+			"quoteHash": quoteHash,
+		}).Warn("Accept pegin rejected: quote not found")
 		errorArgs["quoteHash"] = quoteHash
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, usecases.QuoteNotFoundError, errorArgs)
 	}
 
 	if peginQuote.IsExpired() {
+		log.WithFields(log.Fields{
+			"quoteHash":  quoteHash,
+			"expireTime": peginQuote.ExpireTime(),
+		}).Warn("Accept pegin rejected: quote expired")
 		errorArgs["quoteHash"] = quoteHash
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, usecases.ExpiredQuoteError, errorArgs)
 	}
 
-	trustedAccount, err = useCase.handleTrustedAccountSignature(ctx, signature, *peginQuote)
+	trustedAccount, err = useCase.handleTrustedAccountSignature(ctx, quoteHash, signature, *peginQuote)
 	if err != nil {
 		return quote.AcceptedQuote{}, err
 	}
@@ -112,7 +131,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	}, nil
 }
 
-func (useCase *AcceptQuoteUseCase) handleTrustedAccountSignature(ctx context.Context, signature string, peginQuote quote.PeginQuote) (liquidity_provider.TrustedAccountDetails, error) {
+func (useCase *AcceptQuoteUseCase) handleTrustedAccountSignature(ctx context.Context, quoteHash, signature string, peginQuote quote.PeginQuote) (liquidity_provider.TrustedAccountDetails, error) {
 	if signature == "" {
 		return liquidity_provider.TrustedAccountDetails{}, nil
 	}
@@ -120,7 +139,7 @@ func (useCase *AcceptQuoteUseCase) handleTrustedAccountSignature(ctx context.Con
 	if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
-	if err = useCase.checkLockingCap(ctx, trustedAccount, peginQuote); err != nil {
+	if err = useCase.checkLockingCap(ctx, quoteHash, trustedAccount, peginQuote); err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
 	return trustedAccount, nil
@@ -147,7 +166,7 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, peginQ
 	return trustedAccount.Value, nil
 }
 
-func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedAccount liquidity_provider.TrustedAccountDetails, peginQuote quote.PeginQuote) error {
+func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, quoteHash string, trustedAccount liquidity_provider.TrustedAccountDetails, peginQuote quote.PeginQuote) error {
 	errorArgs := usecases.NewErrorArgs()
 
 	activeQuotesStates := []quote.PeginState{
@@ -173,6 +192,14 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedA
 
 	// Check if the sum exceeds the locking cap
 	if totalWithNewQuote.Cmp(trustedAccount.RbtcLockingCap) > 0 {
+		newQuoteValue := new(entities.Wei).Add(peginQuote.Value, peginQuote.GasFee)
+		log.WithFields(log.Fields{
+			"quoteHash":      quoteHash,
+			"trustedAccount": trustedAccount.Address,
+			"currentLocked":  totalLocked.String(),
+			"lockingCap":     trustedAccount.RbtcLockingCap.String(),
+			"newQuoteValue":  newQuoteValue.String(),
+		}).Warn("Accept pegin rejected: locking cap exceeded")
 		errorArgs["address"] = trustedAccount.Address
 		errorArgs["currentLocked"] = totalLocked.String()
 		errorArgs["lockingCap"] = trustedAccount.RbtcLockingCap.String()
