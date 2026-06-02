@@ -116,18 +116,11 @@ services:
     volumes:
       - ./lps/configurations:/configurations
       - ./lps/lps_configuration_data:/lps_configuration_data
-    command:
-      - sh
-      - -c
-      - |
-        echo "Waiting for LPS to be healthy..."
-        until wget -q --spider http://lps:8080/health 2>/dev/null; do sleep 3; done
-        echo "LPS is healthy, running configuration..."
-        node /configurations/index.js
+    command: ["node", "/configurations/index.js"]
     depends_on:
       lps:
         condition: service_started
-    restart: on-failure:5
+    restart: "no"
     container_name: lps-configurer
     environment:
       - TRUSTED_ACCOUNT_ADDRESS

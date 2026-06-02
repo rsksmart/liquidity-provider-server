@@ -84,14 +84,17 @@ if [[ "$CREATE_POWPEG" == "true" ]]; then
 fi
 
 ### LPS (always runs) ###
-docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d --wait || true
-
-# On first boot, lps01 briefly crashes for a BTC wallet rescan. If lps-configurer
-# ended up stuck in "created" state before lps01 recovered, start it explicitly.
-if [ "$(docker inspect --format='{{.State.Status}}' lps-configurer 2>/dev/null)" = "created" ]; then
-  echo "lps-configurer missed lps01 startup window, starting it now..."
-  docker start lps-configurer
+# lps01 may briefly crash on first boot during a BTC
+# wallet rescan. lps-configurer polls /health internally and signals completion via
+# its exit code
+docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d
+echo "Configuring LPS..."
+EXIT_CODE=$(docker wait lps-configurer)
+if [ "$EXIT_CODE" != "0" ]; then
+  echo "ERROR: LPS configuration failed (exit code $EXIT_CODE)"
+  exit 1
 fi
+echo "LPS configured"
 
 if [[ "$CREATE_MONITORING" == "true" ]]; then
   docker compose -f docker-compose.yml -f monitoring/docker-compose.monitoring.yml --env-file "$ENV_FILE" up --wait
