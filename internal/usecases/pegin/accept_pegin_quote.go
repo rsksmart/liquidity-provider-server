@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"strings"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -52,7 +51,7 @@ func NewAcceptQuoteUseCase(
 }
 
 func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature string) (quote.AcceptedQuote, error) {
-	logger := log.WithField("quoteHash", quoteHash)
+	logger := log.WithField("quoteHash", usecases.SafeLogStr(quoteHash))
 	logger.WithField("hasSignature", signature != "").Debug("Accepting pegin quote")
 
 	peginQuote, err := useCase.loadValidQuote(ctx, quoteHash, logger)
@@ -197,11 +196,9 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, quoteHas
 	// Check if the sum exceeds the locking cap
 	if totalWithNewQuote.Cmp(trustedAccount.RbtcLockingCap) > 0 {
 		newQuoteValue := new(entities.Wei).Add(peginQuote.Value, peginQuote.GasFee)
-		sanitizedQuoteHash := strings.ReplaceAll(quoteHash, "\n", "")
-		sanitizedQuoteHash = strings.ReplaceAll(sanitizedQuoteHash, "\r", "")
 		log.WithFields(log.Fields{
-			"quoteHash":      sanitizedQuoteHash,
-			"trustedAccount": trustedAccount.Address,
+			"quoteHash":      usecases.SafeLogStr(quoteHash),
+			"trustedAccount": usecases.SafeLogStr(trustedAccount.Address),
 			"currentLocked":  totalLocked.String(),
 			"lockingCap":     trustedAccount.RbtcLockingCap.String(),
 			"newQuoteValue":  newQuoteValue.String(),

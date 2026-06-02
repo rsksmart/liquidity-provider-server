@@ -7,6 +7,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -154,6 +155,14 @@ func (args ErrorArgs) String() string {
 
 func WrapUseCaseError(useCase UseCaseId, err error) error {
 	return WrapUseCaseErrorArgs(useCase, err, make(ErrorArgs, 0))
+}
+
+// SafeLogStr strips CR/LF from a user-controlled string before it is included
+// in a structured log field, preventing log forging (CWE-117).
+func SafeLogStr(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	return s
 }
 
 func WrapUseCaseErrorArgs(useCase UseCaseId, err error, args ErrorArgs) error {
