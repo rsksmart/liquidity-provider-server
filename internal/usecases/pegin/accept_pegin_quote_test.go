@@ -260,6 +260,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	})
 
 	t.Run("locking cap exceeded", func(t *testing.T) {
+		checkLog := test.AssertLogContains(t, "Accept pegin rejected: locking cap exceeded")
 		// Create two existing quotes that together with the new quote will exceed the locking cap
 		existingQuote1 := quote.RetainedPeginQuote{
 			QuoteHash:           "existing-hash-1",
@@ -298,6 +299,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorIs(t, err, usecases.LockingCapExceededError)
 		assert.Empty(t, result)
+		assert.True(t, checkLog())
 	})
 	t.Run("error hashing quote for signature verification", func(t *testing.T) {
 		repo := new(mocks.PeginQuoteRepositoryMock)
@@ -362,6 +364,8 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 }
 
 func TestAcceptQuoteUseCase_Run_Paused(t *testing.T) {
+	checkLog := test.AssertLogContains(t, "Accept pegin rejected: contract paused")
+
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	bridge := new(mocks.BridgeMock)
 	btc := new(mocks.BtcRpcMock)
@@ -379,9 +383,12 @@ func TestAcceptQuoteUseCase_Run_Paused(t *testing.T) {
 	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
 	assert.Empty(t, result)
 	require.ErrorIs(t, err, blockchain.ContractPausedError)
+	assert.True(t, checkLog())
 }
 
 func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
+	checkLog := test.AssertLogContains(t, "Accept pegin rejected: quote not found")
+
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(nil, nil)
 
@@ -411,9 +418,12 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	mutex.AssertNotCalled(t, "Lock")
 	require.ErrorIs(t, err, usecases.QuoteNotFoundError)
 	assert.Empty(t, result)
+	assert.True(t, checkLog())
 }
 
 func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
+	checkLog := test.AssertLogContains(t, "Accept pegin rejected: quote expired")
+
 	expiredQuote := testPeginQuote
 	expiredQuote.AgreementTimestamp = uint32(time.Now().Unix()) - 1000
 	expiredQuote.TimeForDeposit = 500
@@ -446,6 +456,36 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	mutex.AssertNotCalled(t, "Lock")
 	require.ErrorIs(t, err, usecases.ExpiredQuoteError)
 	assert.Empty(t, result)
+	assert.True(t, checkLog())
+}
+
+func TestAcceptQuoteUseCase_Run_GetQuoteError(t *testing.T) {
+	checkLog := test.AssertLogContains(t, "Accept pegin: failed to load quote")
+
+	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
+	quoteRepository.On("GetQuote", test.AnyCtx, acceptPeginQuoteHash).Return(nil, assert.AnError)
+
+	bridge := new(mocks.BridgeMock)
+	btc := new(mocks.BtcRpcMock)
+	lp := new(mocks.ProviderMock)
+	eventBus := new(mocks.EventBusMock)
+	mutex := new(mocks.MutexMock)
+	rsk := new(mocks.RootstockRpcServerMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+
+	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
+	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
+	useCase := pegin.NewAcceptQuoteUseCase(quoteRepository, contracts, rpc, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
+	result, err := useCase.Run(context.Background(), acceptPeginQuoteHash, "")
+
+	quoteRepository.AssertExpectations(t)
+	eventBus.AssertNotCalled(t, "Publish")
+	mutex.AssertNotCalled(t, "Lock")
+	mutex.AssertNotCalled(t, "Unlock")
+	require.Error(t, err)
+	assert.Empty(t, result)
+	assert.True(t, checkLog())
 }
 
 func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
