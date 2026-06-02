@@ -1,6 +1,6 @@
 const { CONSTANTS } = require('./constants');
 
-const HEALTH_RETRIES = 30;
+const HEALTH_RETRIES = 80;
 const HEALTH_INTERVAL_MS = 5000;
 
 async function waitForHealth() {
