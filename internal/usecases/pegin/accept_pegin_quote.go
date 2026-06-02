@@ -66,17 +66,15 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	}
 
 	trustedAccount, err = useCase.getTrustedAccount(ctx, signature, peginQuote)
-	if err != nil && !errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
+	if err != nil && !errors.Is(err, liquidity_provider.NoSignatureError) {
 		return quote.AcceptedQuote{}, err
 	}
 
 	useCase.peginLiquidityMutex.Lock()
 	defer useCase.peginLiquidityMutex.Unlock()
 
-	if err == nil {
-		if err = useCase.validateTrustedAccount(ctx, trustedAccount, peginQuote); err != nil {
-			return quote.AcceptedQuote{}, err
-		}
+	if err = useCase.validateTrustedAccountIfFound(ctx, trustedAccount, peginQuote, err); err != nil {
+		return quote.AcceptedQuote{}, err
 	}
 
 	if retainedQuote, err = useCase.quoteRepository.GetRetainedQuote(ctx, quoteHash); err != nil {
@@ -110,23 +108,27 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	}, nil
 }
 
+func (useCase *AcceptQuoteUseCase) validateTrustedAccountIfFound(
+	ctx context.Context,
+	trustedAccount liquidity_provider.TrustedAccountDetails,
+	peginQuote quote.PeginQuote,
+	lookupErr error,
+) error {
+	if errors.Is(lookupErr, liquidity_provider.NoSignatureError) {
+		return nil
+	}
+	return useCase.checkLockingCap(ctx, trustedAccount, peginQuote)
+}
+
 func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, signature string, peginQuote quote.PeginQuote) (liquidity_provider.TrustedAccountDetails, error) {
 	if signature == "" {
-		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.TrustedAccountNotFoundError
+		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.NoSignatureError
 	}
 	trustedAccount, err := useCase.recoverTrustedAccount(ctx, peginQuote, useCase.lp.GetSigner(), signature)
 	if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
 	return trustedAccount, nil
-}
-
-func (useCase *AcceptQuoteUseCase) validateTrustedAccount(
-	ctx context.Context,
-	trustedAccount liquidity_provider.TrustedAccountDetails,
-	peginQuote quote.PeginQuote,
-) error {
-	return useCase.checkLockingCap(ctx, trustedAccount, peginQuote)
 }
 
 func (useCase *AcceptQuoteUseCase) getQuote(ctx context.Context, quoteHash string) (quote.PeginQuote, error) {
