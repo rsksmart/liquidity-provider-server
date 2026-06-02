@@ -68,7 +68,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 			mt := newMockCollectT(collect)
 			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunc())
+		assert.Eventually(t, checkFunc, time.Second, 10*time.Millisecond)
 	})
 	const quoteHash = "0102"
 	t.Run("should log error sending tx to the bridge", func(t *testing.T) {
@@ -89,7 +89,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 			providerMock.AssertExpectations(mt)
 			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunc())
+		assert.Eventually(t, checkFunc, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should send tx to the bridge successfully", func(t *testing.T) {
 		tickerChannel, pegoutRepository, providerMock, rskWallet := setup()
