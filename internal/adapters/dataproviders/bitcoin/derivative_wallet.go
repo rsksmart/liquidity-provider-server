@@ -358,11 +358,14 @@ func (wallet *DerivativeWallet) unlockUtxos(tx *wire.MsgTx) {
 	if tx == nil {
 		return
 	}
-	outpoints := make([]*wire.OutPoint, 0)
+	outpoints := make([]*wire.OutPoint, 0, len(tx.TxIn))
 	for _, input := range tx.TxIn {
 		if input != nil {
 			outpoints = append(outpoints, &input.PreviousOutPoint)
 		}
+	}
+	if len(outpoints) == 0 {
+		return
 	}
 	err := wallet.conn.client.LockUnspent(true, outpoints)
 	if err == nil || btcclient.IsLockUnspentAlreadyUnlocked(err) {
