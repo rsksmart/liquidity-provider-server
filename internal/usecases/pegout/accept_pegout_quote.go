@@ -49,7 +49,6 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	var err error
 	var pegoutQuote quote.PegoutQuote
 	var retainedQuote *quote.RetainedPegoutQuote
-	var quoteSignature string
 	var requiredLiquidity *entities.Wei
 	var trustedAccount liquidity_provider.TrustedAccountDetails
 
@@ -61,12 +60,17 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		return quote.AcceptedQuote{}, err
 	}
 
-	if trustedAccount, err = useCase.handleTrustedAccountSignature(ctx, signature, pegoutQuote); err != nil {
+	trustedAccount, err = useCase.getTrustedAccount(ctx, signature, pegoutQuote)
+	if err != nil && !errors.Is(err, liquidity_provider.NoSignatureError) {
 		return quote.AcceptedQuote{}, err
 	}
 
 	useCase.pegoutLiquidityMutex.Lock()
 	defer useCase.pegoutLiquidityMutex.Unlock()
+
+	if err = useCase.validateTrustedAccountIfFound(ctx, trustedAccount, pegoutQuote, err); err != nil {
+		return quote.AcceptedQuote{}, err
+	}
 
 	if retainedQuote, err = useCase.quoteRepository.GetRetainedQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
@@ -80,6 +84,20 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, pegoutQuote); err != nil {
 		return quote.AcceptedQuote{}, err
 	}
+
+	return useCase.constructResult(ctx, quoteHash, pegoutQuote, requiredLiquidity, trustedAccount)
+}
+
+func (useCase *AcceptQuoteUseCase) constructResult(
+	ctx context.Context,
+	quoteHash string,
+	pegoutQuote quote.PegoutQuote,
+	requiredLiquidity *entities.Wei,
+	trustedAccount liquidity_provider.TrustedAccountDetails,
+) (quote.AcceptedQuote, error) {
+	var retainedQuote *quote.RetainedPegoutQuote
+	var quoteSignature string
+	var err error
 
 	if quoteSignature, err = useCase.lp.SignPegoutQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
@@ -123,21 +141,30 @@ func (useCase *AcceptQuoteUseCase) getQuote(ctx context.Context, quoteHash strin
 	return *pegoutQuote, nil
 }
 
-func (useCase *AcceptQuoteUseCase) handleTrustedAccountSignature(ctx context.Context, signature string, pegoutQuote quote.PegoutQuote) (liquidity_provider.TrustedAccountDetails, error) {
+func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, signature string, pegoutQuote quote.PegoutQuote) (liquidity_provider.TrustedAccountDetails, error) {
 	if signature == "" {
-		return liquidity_provider.TrustedAccountDetails{}, nil
+		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.NoSignatureError
 	}
-	trustedAccount, err := useCase.getTrustedAccount(ctx, pegoutQuote, useCase.lp.GetSigner(), signature)
+	trustedAccount, err := useCase.recoverTrustedAccount(ctx, pegoutQuote, useCase.lp.GetSigner(), signature)
 	if err != nil {
-		return liquidity_provider.TrustedAccountDetails{}, err
-	}
-	if err = useCase.checkLockingCap(ctx, trustedAccount, pegoutQuote); err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
 	return trustedAccount, nil
 }
 
-func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, pegoutQuote quote.PegoutQuote, signer entities.Signer, signature string) (liquidity_provider.TrustedAccountDetails, error) {
+func (useCase *AcceptQuoteUseCase) validateTrustedAccountIfFound(
+	ctx context.Context,
+	trustedAccount liquidity_provider.TrustedAccountDetails,
+	pegoutQuote quote.PegoutQuote,
+	lookupErr error,
+) error {
+	if errors.Is(lookupErr, liquidity_provider.NoSignatureError) {
+		return nil
+	}
+	return useCase.checkLockingCap(ctx, trustedAccount, pegoutQuote)
+}
+
+func (useCase *AcceptQuoteUseCase) recoverTrustedAccount(ctx context.Context, pegoutQuote quote.PegoutQuote, signer entities.Signer, signature string) (liquidity_provider.TrustedAccountDetails, error) {
 	address, err := usecases.RecoverSignerAddress(signature, func() ([]byte, error) {
 		if hash, err := useCase.contracts.PegOut.HashPegoutQuoteEIP712(pegoutQuote); err != nil {
 			return nil, err
@@ -152,7 +179,9 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, pegout
 	trustedAccount, err := liquidity_provider.ValidateConfiguration(signer, useCase.hashFunction, func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 		return useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
 	})
-	if err != nil {
+	if err != nil && errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
+		return liquidity_provider.TrustedAccountDetails{}, err
+	} else if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.TamperedTrustedAccountError
 	}
 	return trustedAccount.Value, nil
