@@ -36,7 +36,7 @@ set +a
 set_defaults
 
 ### Create base (always runs) ###
-docker compose --env-file "$ENV_FILE" up -d --wait
+docker compose --progress plain --env-file "$ENV_FILE" up -d --wait
 
 ### Funding wallets ###
 if [[ "$FUND_WALLETS" == "true" ]]; then
@@ -84,7 +84,14 @@ if [[ "$CREATE_POWPEG" == "true" ]]; then
 fi
 
 ### LPS (always runs) ###
-docker compose -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d --wait
+docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d --wait || true
+
+# On first boot, lps01 briefly crashes for a BTC wallet rescan. If lps-configurer
+# ended up stuck in "created" state before lps01 recovered, start it explicitly.
+if [ "$(docker inspect --format='{{.State.Status}}' lps-configurer 2>/dev/null)" = "created" ]; then
+  echo "lps-configurer missed lps01 startup window, starting it now..."
+  docker start lps-configurer
+fi
 
 if [[ "$CREATE_MONITORING" == "true" ]]; then
   docker compose -f docker-compose.yml -f monitoring/docker-compose.monitoring.yml --env-file "$ENV_FILE" up --wait
