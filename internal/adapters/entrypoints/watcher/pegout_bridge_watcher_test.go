@@ -26,36 +26,38 @@ import (
 
 // nolint:funlen
 func TestPegoutBridgeWatcher_Start(t *testing.T) {
-	ticker := &mocks.TickerMock{}
-	tickerChannel := make(chan time.Time)
-	ticker.EXPECT().C().Return(tickerChannel)
-	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-	providerMock := &mocks.ProviderMock{}
-	rskWallet := &mocks.RskWalletMock{}
-	bridge := &mocks.BridgeMock{}
-	bridge.On("GetAddress").Return(test.AnyAddress)
-	mutexes := environment.NewApplicationMutexes()
-	bridgeUseCase := pegout.NewBridgePegoutUseCase(
-		pegoutRepository, providerMock, rskWallet,
-		blockchain.RskContracts{Bridge: bridge},
-		mutexes.RskWalletMutex(),
-		func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
-			return false, blockchain.RejectedPegoutReasonUnknown, nil
-		},
-	)
-	getUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
-	bridgeWatcher := watcher.NewPegoutBridgeWatcher(getUseCase, bridgeUseCase, ticker)
-	resetMocks := func() {
-		pegoutRepository.Calls = []mock.Call{}
-		pegoutRepository.ExpectedCalls = []*mock.Call{}
-		providerMock.Calls = []mock.Call{}
-		providerMock.ExpectedCalls = []*mock.Call{}
-		rskWallet.Calls = []mock.Call{}
-		rskWallet.ExpectedCalls = []*mock.Call{}
+	setup := func() (chan time.Time, *mocks.PegoutQuoteRepositoryMock, *mocks.ProviderMock, *mocks.RskWalletMock) {
+		ticker := &mocks.TickerMock{}
+		tickerChannel := make(chan time.Time)
+		ticker.EXPECT().C().Return(tickerChannel)
+		ticker.EXPECT().Stop()
+		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
+		providerMock := &mocks.ProviderMock{}
+		rskWallet := &mocks.RskWalletMock{}
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetAddress").Return(test.AnyAddress)
+		mutexes := environment.NewApplicationMutexes()
+		bridgeUseCase := pegout.NewBridgePegoutUseCase(
+			pegoutRepository, providerMock, rskWallet,
+			blockchain.RskContracts{Bridge: bridge},
+			mutexes.RskWalletMutex(),
+			func(blockchain.TransactionReceipt, string) (bool, blockchain.RejectedPegoutReason, error) {
+				return false, blockchain.RejectedPegoutReasonUnknown, nil
+			},
+		)
+		getUseCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
+		bridgeWatcher := watcher.NewPegoutBridgeWatcher(getUseCase, bridgeUseCase, ticker)
+		go bridgeWatcher.Start()
+		t.Cleanup(func() {
+			shutdownChannel := make(chan bool, 1)
+			bridgeWatcher.Shutdown(shutdownChannel)
+			<-shutdownChannel
+		})
+		return tickerChannel, pegoutRepository, providerMock, rskWallet
 	}
-	go bridgeWatcher.Start()
+
 	t.Run("should handle error getting quotes", func(t *testing.T) {
-		resetMocks()
+		tickerChannel, pegoutRepository, _, _ := setup()
 		checkFunc := test.AssertLogContains(t, "error getting pegout quotes")
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
@@ -67,7 +69,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	})
 	const quoteHash = "0102"
 	t.Run("should log error sending tx to the bridge", func(t *testing.T) {
-		resetMocks()
+		tickerChannel, pegoutRepository, providerMock, rskWallet := setup()
 		checkFunc := test.AssertLogContains(t, "error sending pegout to bridge")
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateRefundPegOutSucceeded).Return([]quote.RetainedPegoutQuote{
 			{QuoteHash: quoteHash, State: quote.PegoutStateRefundPegOutSucceeded},
@@ -86,7 +88,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 		assert.True(t, checkFunc())
 	})
 	t.Run("should send tx to the bridge successfully", func(t *testing.T) {
-		resetMocks()
+		tickerChannel, pegoutRepository, providerMock, rskWallet := setup()
 		log.SetLevel(log.DebugLevel)
 		checkFunc := test.AssertLogContains(t, "transaction sent to the bridge successfully")
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateRefundPegOutSucceeded).Return([]quote.RetainedPegoutQuote{
