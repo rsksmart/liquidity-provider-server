@@ -29,7 +29,14 @@ const CONFIG_REQUESTS = {
                     "4000000000000000000": 20,
                     "8000000000000000000": 40
                 },
-                publicLiquidityCheck: true
+                publicLiquidityCheck: true,
+                maxLiquidity: "2000000000000000000000",
+                reimbursementWindowBlocks: 100,
+                excessTolerance: {
+                    isFixed: false,
+                    percentageValue: 15,
+                    fixedValue: "0"
+                }
             }
         }
     },

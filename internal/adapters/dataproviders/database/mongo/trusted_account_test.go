@@ -12,9 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	mongoDb "go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongoDb "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 var testAccount = liquidity_provider.TrustedAccountDetails{
@@ -112,9 +111,8 @@ func TestLpMongoRepository_UpdateTrustedAccount(t *testing.T) {
 		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(&testAccount, nil, nil)).Once()
 		filter := bson.M{"address": signedTestAccount.Value.Address}
-		opts := options.Update()
 		update := bson.M{"$set": signedTestAccount}
-		collection.On("UpdateOne", mock.Anything, filter, update, opts).Return(&mongoDb.UpdateResult{}, nil).Once()
+		collection.On("UpdateOne", mock.Anything, filter, update, mock.Anything).Return(&mongoDb.UpdateResult{}, nil).Once()
 		defer assertDbInteractionLog(t, expectedLog)()
 		err := repo.UpdateTrustedAccount(context.Background(), signedTestAccount)
 		require.NoError(t, err)
@@ -142,9 +140,8 @@ func TestLpMongoRepository_UpdateTrustedAccount(t *testing.T) {
 		collection.On("FindOne", mock.Anything, bson.M{"address": signedTestAccount.Value.Address}).
 			Return(mongoDb.NewSingleResultFromDocument(&testAccount, nil, nil)).Once()
 		filter := bson.M{"address": signedTestAccount.Value.Address}
-		opts := options.Update()
 		update := bson.M{"$set": signedTestAccount}
-		collection.On("UpdateOne", mock.Anything, filter, update, opts).Return(nil, assert.AnError).Once()
+		collection.On("UpdateOne", mock.Anything, filter, update, mock.Anything).Return(nil, assert.AnError).Once()
 		err := repo.UpdateTrustedAccount(context.Background(), signedTestAccount)
 		require.Error(t, err)
 	})
@@ -195,7 +192,7 @@ func TestLpMongoRepository_AddTrustedAccount(t *testing.T) {
 func TestLpMongoRepository_DeleteTrustedAccount(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	t.Run("trusted account deleted successfully", func(t *testing.T) {
-		const expectedLog = "DELETE interaction with db: map[address:0x1234567890abcdef1234567890abcdef12345678]"
+		const expectedLog = `DELETE interaction with db: {\"address\":\"0x1234567890abcdef1234567890abcdef12345678\"}`
 		client, collection := getClientAndCollectionMocks(mongo.TrustedAccountCollection)
 		repo := mongo.NewTrustedAccountRepository(mongo.NewConnection(client, time.Duration(1)))
 		filter := bson.M{"address": testAccount.Address}

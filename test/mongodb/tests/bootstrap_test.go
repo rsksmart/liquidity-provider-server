@@ -4,6 +4,7 @@ package mongodb_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -12,39 +13,55 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	mongodrv "go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodrv "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func TestBootstrap_IndexesCreated(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	indexedCollections := map[string]string{
-		mongo.DepositEventsCollection:     "tx_hash",
-		mongo.TrustedAccountCollection:    "address",
-		mongo.BatchPegOutEventsCollection: "transaction_hash",
+	type expectedIndex struct {
+		collection string
+		field      string
+		unique     bool
+	}
+	expectedIndexes := []expectedIndex{
+		{collection: mongo.DepositEventsCollection, field: "tx_hash", unique: true},
+		{collection: mongo.TrustedAccountCollection, field: "address", unique: true},
+		{collection: mongo.BatchPegOutEventsCollection, field: "transaction_hash", unique: true},
+		{collection: mongo.RetainedPegoutQuoteCollection, field: "bridge_rebalances.tx_hash", unique: false},
+		{collection: mongo.RetainedPeginQuoteCollection, field: "state", unique: false},
+		{collection: mongo.RetainedPegoutQuoteCollection, field: "state", unique: false},
+		{collection: mongo.PeginQuoteCollection, field: "agreement_timestamp", unique: false},
+		{collection: mongo.PegoutQuoteCollection, field: "agreement_timestamp", unique: false},
+		{collection: mongo.RetainedPeginQuoteCollection, field: "quote_hash", unique: false},
+		{collection: mongo.RetainedPegoutQuoteCollection, field: "quote_hash", unique: false},
+		{collection: mongo.PeginQuoteCollection, field: "hash", unique: false},
+		{collection: mongo.PegoutQuoteCollection, field: "hash", unique: false},
 	}
 
-	for collName, field := range indexedCollections {
-		t.Run(collName, func(t *testing.T) {
+	for _, expected := range expectedIndexes {
+		t.Run(expected.collection+"."+expected.field, func(t *testing.T) {
 			db := mongoClient.Database(testDbName)
-			cursor, err := db.Collection(collName).Indexes().List(ctx)
-			require.NoError(t, err, "listing indexes for %s", collName)
+			cursor, err := db.Collection(expected.collection).Indexes().List(ctx)
+			require.NoError(t, err, "listing indexes for %s", expected.collection)
 			defer func() { _ = cursor.Close(ctx) }()
 
 			var indexes []map[string]any
 			require.NoError(t, cursor.All(ctx, &indexes))
 
-			found := false
-			for _, idx := range indexes {
-				if utils.IndexKeysContainField(idx["key"], field) {
-					unique, _ := idx["unique"].(bool)
-					assert.True(t, unique, "index on %s.%s should be unique", collName, field)
-					found = true
-				}
-			}
-			require.True(t, found, "unique index on %s.%s not found", collName, field)
+			i := slices.IndexFunc(indexes, func(idx map[string]any) bool {
+				return utils.IndexKeysContainField(idx["key"], expected.field)
+			})
+			require.GreaterOrEqual(t, i, 0, "index on %s.%s not found", expected.collection, expected.field)
+
+			idx := indexes[i]
+			assert.True(t,
+				utils.IndexKeysIsSingleFieldAscending(idx["key"], expected.field),
+				"index on %s.%s must be single-field ascending, got key=%v", expected.collection, expected.field, idx["key"])
+			unique, _ := idx["unique"].(bool)
+			assert.Equal(t, expected.unique, unique, "unique flag on %s.%s", expected.collection, expected.field)
 		})
 	}
 }

@@ -7,8 +7,8 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
-	"go.mongodb.org/mongo-driver/bson"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodriver "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type mongoConfig struct {
@@ -32,7 +32,7 @@ func loadConfigFromEnv() (mongoConfig, error) {
 }
 
 func connectMongo(ctx context.Context, cfg mongoConfig) (*mongodriver.Client, error) {
-	client, err := mongo.Connect(ctx, defaultMongoTimeout, cfg.username, cfg.password, cfg.host, cfg.port)
+	client, err := mongo.Connect(ctx, defaultMongoTimeout, cfg.username, cfg.password, cfg.host, cfg.port, true)
 	if err != nil {
 		return nil, fmt.Errorf("connect to mongo: %w", err)
 	}

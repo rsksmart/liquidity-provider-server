@@ -30,5 +30,8 @@ build/
 
 /coverage/
 
+/.cursor/
+
+/.claude/
 docker-compose/local/lps/lps_configuration_data/*
 !docker-compose/local/lps/lps_configuration_data/.gitkeep

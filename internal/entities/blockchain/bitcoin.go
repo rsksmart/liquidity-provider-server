@@ -118,6 +118,7 @@ type BitcoinWallet interface {
 	entities.Closeable
 	EstimateTxFees(toAddress string, value *entities.Wei) (BtcFeeEstimation, error)
 	GetBalance() (*entities.Wei, error)
+	Send(address string, value *entities.Wei) (BitcoinTransactionResult, error)
 	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (BitcoinTransactionResult, error)
 	CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error)
 	ImportAddress(address string) error

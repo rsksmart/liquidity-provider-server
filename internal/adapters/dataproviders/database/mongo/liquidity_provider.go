@@ -5,10 +5,9 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const (
@@ -22,6 +21,7 @@ const (
 	pegoutConfigId  ConfigurationName = "pegout"
 	generalConfigId ConfigurationName = "general"
 	credentialsId   ConfigurationName = "credentials"
+	stateConfigId   ConfigurationName = "state"
 )
 
 type lpMongoRepository struct {
@@ -101,6 +101,22 @@ func (repo *lpMongoRepository) UpsertCredentials(ctx context.Context, credential
 	return upsertConfiguration(dbCtx, repo, configToStore, false)
 }
 
+func (repo *lpMongoRepository) GetStateConfiguration(ctx context.Context) (*entities.Signed[liquidity_provider.StateConfiguration], error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+	return getConfigurationVerbose[liquidity_provider.StateConfiguration](dbCtx, repo, stateConfigId)
+}
+
+func (repo *lpMongoRepository) UpsertStateConfiguration(ctx context.Context, configuration entities.Signed[liquidity_provider.StateConfiguration]) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+	configToStore := StoredConfiguration[liquidity_provider.StateConfiguration]{
+		Signed: configuration,
+		Name:   stateConfigId,
+	}
+	return upsertConfigurationVerbose(dbCtx, repo, configToStore)
+}
+
 func upsertConfigurationVerbose[C liquidity_provider.ConfigurationType](
 	ctx context.Context,
 	repo *lpMongoRepository,
@@ -125,7 +141,7 @@ func upsertConfiguration[C liquidity_provider.ConfigurationType](
 ) error {
 	collection := repo.conn.Collection(LiquidityProviderCollection)
 	opts := options.Replace().SetUpsert(true)
-	filter := bson.D{primitive.E{Key: "name", Value: config.Name}}
+	filter := bson.D{bson.E{Key: "name", Value: config.Name}}
 	_, err := collection.ReplaceOne(ctx, filter, config, opts)
 	if err != nil {
 		return err
@@ -144,7 +160,7 @@ func getConfiguration[C liquidity_provider.ConfigurationType](
 ) (*entities.Signed[C], error) {
 	config := &StoredConfiguration[C]{}
 	collection := repo.conn.Collection(LiquidityProviderCollection)
-	filter := bson.D{primitive.E{Key: "name", Value: name}}
+	filter := bson.D{bson.E{Key: "name", Value: name}}
 
 	err := collection.FindOne(ctx, filter).Decode(config)
 	if errors.Is(err, mongo.ErrNoDocuments) {

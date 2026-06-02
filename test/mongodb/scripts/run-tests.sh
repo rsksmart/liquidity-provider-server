@@ -11,6 +11,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if ! command -v gotestsum >/dev/null 2>&1; then
+  echo "Error: gotestsum not found in PATH. Run 'make tools' to install it."
+  exit 1
+fi
+
 # Start MongoDB
 echo "Starting MongoDB..."
 docker compose -f "$COMPOSE_FILE" up -d --wait
@@ -22,4 +27,4 @@ MONGODB_HOST=localhost \
 MONGODB_PORT=27018 \
 MONGODB_USER=test \
 MONGODB_PASSWORD=test \
-go test -v -tags integration -timeout 5m ./test/mongodb/...
+gotestsum --format testname -- -tags integration -timeout 5m ./test/mongodb/...

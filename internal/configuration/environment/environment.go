@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -9,6 +10,8 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 )
+
+const secretMask = "********"
 
 type Environment struct {
 	LpsStage         string   `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
@@ -28,14 +31,16 @@ type Environment struct {
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
 	Eclipse          EclipseEnv
+	ColdWallet       ColdWalletEnv
 	NodeReorg        NodeReorgEnv
 }
 
 type MongoEnv struct {
-	Username string `env:"MONGODB_USER" validate:"required"`
-	Password string `env:"MONGODB_PASSWORD" validate:"required"`
-	Host     string `env:"MONGODB_HOST" validate:"required"`
-	Port     uint   `env:"MONGODB_PORT" validate:"required"`
+	Username      string `env:"MONGODB_USER" validate:"required"`
+	Password      string `env:"MONGODB_PASSWORD" validate:"required"`
+	Host          string `env:"MONGODB_HOST" validate:"required"`
+	Port          uint   `env:"MONGODB_PORT" validate:"required"`
+	RunMigrations bool   `env:"RUN_DB_MIGRATIONS"`
 }
 
 type RskEnv struct {
@@ -51,10 +56,10 @@ type RskEnv struct {
 	UseSegwitFederation         bool     `env:"USE_SEGWIT_FEDERATION"`
 	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
 	// Only if secret source is aws & wallet is native
-	EncryptedJsonSecret         string `env:"KEY_SECRET"`
-	EncryptedJsonPasswordSecret string `env:"PASSWORD_SECRET"`
+	WalletSecret   string `env:"WALLET_SECRET"`
+	PasswordSecret string `env:"PASSWORD_SECRET"`
 	// Only if secret source is env & wallet is native
-	KeystoreFile     string   `env:"KEYSTORE_FILE"`
+	WalletFile       string   `env:"WALLET_FILE"`
 	KeystorePassword string   `env:"KEYSTORE_PWD"`
 	RskExtraSources  []string `env:"RSK_EXTRA_SOURCES"`
 	MaxReorgDepth    uint64   `env:"RSK_MAX_REORG_DEPTH"`
@@ -200,6 +205,7 @@ type PegoutEnv struct {
 	DepositCacheStartBlock      uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
 	BtcReleaseWatcherStartBlock uint64 `env:"BTC_RELEASE_WATCHER_START_BLOCK"`
 	BtcReleaseWatcherPageSize   uint64 `env:"BTC_RELEASE_WATCHER_PAGE_SIZE"`
+	RebalanceStrategy           string `env:"REBALANCE_STRATEGY" validate:"oneof=ALL_AT_ONCE UTXO_SPLIT"`
 }
 
 type CaptchaEnv struct {
@@ -219,6 +225,33 @@ type ManagementEnv struct {
 	EnableSecurityHeaders bool   `env:"ENABLE_SECURITY_HEADERS"`
 }
 
+type ColdWalletEnv struct {
+	BtcMinTransferFeeMultiplier   uint64 `env:"BTC_MIN_TRANSFER_FEE_MULTIPLIER"`
+	RbtcMinTransferFeeMultiplier  uint64 `env:"RBTC_MIN_TRANSFER_FEE_MULTIPLIER"`
+	ForceTransferAfterSeconds     uint64 `env:"COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS"`
+	HotWalletLowLiquidityWarning  uint64 `env:"HOT_WALLET_LOW_LIQUIDITY_WARNING"`
+	HotWalletLowLiquidityCritical uint64 `env:"HOT_WALLET_LOW_LIQUIDITY_CRITICAL"`
+}
+
+func (env *ColdWalletEnv) FillWithDefaults() *ColdWalletEnv {
+	defaults := ColdWalletEnv{
+		BtcMinTransferFeeMultiplier:   5,
+		RbtcMinTransferFeeMultiplier:  100,
+		ForceTransferAfterSeconds:     1209600, // 2 weeks (14 days * 24 hours * 60 minutes * 60 seconds)
+		HotWalletLowLiquidityWarning:  3,
+		HotWalletLowLiquidityCritical: 1,
+	}
+	env.BtcMinTransferFeeMultiplier = utils.FirstNonZero(env.BtcMinTransferFeeMultiplier, defaults.BtcMinTransferFeeMultiplier)
+	env.RbtcMinTransferFeeMultiplier = utils.FirstNonZero(env.RbtcMinTransferFeeMultiplier, defaults.RbtcMinTransferFeeMultiplier)
+	env.ForceTransferAfterSeconds = utils.FirstNonZero(env.ForceTransferAfterSeconds, defaults.ForceTransferAfterSeconds)
+	env.HotWalletLowLiquidityWarning = utils.FirstNonZero(env.HotWalletLowLiquidityWarning, defaults.HotWalletLowLiquidityWarning)
+	env.HotWalletLowLiquidityCritical = utils.FirstNonZero(env.HotWalletLowLiquidityCritical, defaults.HotWalletLowLiquidityCritical)
+	if env.HotWalletLowLiquidityCritical >= env.HotWalletLowLiquidityWarning {
+		log.Fatal("HOT_WALLET_LOW_LIQUIDITY_CRITICAL must be less than HOT_WALLET_LOW_LIQUIDITY_WARNING")
+	}
+	return env
+}
+
 func LoadEnv() *Environment {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	env := &Environment{}
@@ -229,4 +262,26 @@ func LoadEnv() *Environment {
 	}
 
 	return env
+}
+
+// String returns a fmt-style representation of the Environment with secret
+// fields masked, so that the value is safe to log.
+func (env Environment) String() string {
+	type plain Environment
+	redacted := plain(env)
+	redacted.Mongo.Password = maskSecret(redacted.Mongo.Password)
+	redacted.Rsk.KeystorePassword = maskSecret(redacted.Rsk.KeystorePassword)
+	redacted.Btc.Password = maskSecret(redacted.Btc.Password)
+	redacted.Captcha.SecretKey = maskSecret(redacted.Captcha.SecretKey)
+	redacted.Management.SessionAuthKey = maskSecret(redacted.Management.SessionAuthKey)
+	redacted.Management.SessionEncryptionKey = maskSecret(redacted.Management.SessionEncryptionKey)
+	redacted.Management.SessionTokenAuthKey = maskSecret(redacted.Management.SessionTokenAuthKey)
+	return fmt.Sprintf("%+v", redacted)
+}
+
+func maskSecret(value string) string {
+	if value == "" {
+		return ""
+	}
+	return secretMask
 }

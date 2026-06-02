@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 
+	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,7 +23,7 @@ func (_m *NodePeerCheckUseCaseMock) EXPECT() *NodePeerCheckUseCaseMock_Expecter 
 }
 
 // Run provides a mock function with given fields: ctx, nodeType
-func (_m *NodePeerCheckUseCaseMock) Run(ctx context.Context, nodeType string) error {
+func (_m *NodePeerCheckUseCaseMock) Run(ctx context.Context, nodeType entities.NodeType) error {
 	ret := _m.Called(ctx, nodeType)
 
 	if len(ret) == 0 {
@@ -30,7 +31,7 @@ func (_m *NodePeerCheckUseCaseMock) Run(ctx context.Context, nodeType string) er
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, entities.NodeType) error); ok {
 		r0 = rf(ctx, nodeType)
 	} else {
 		r0 = ret.Error(0)
@@ -46,14 +47,14 @@ type NodePeerCheckUseCaseMock_Run_Call struct {
 
 // Run is a helper method to define mock.On call
 //   - ctx context.Context
-//   - nodeType string
+//   - nodeType entities.NodeType
 func (_e *NodePeerCheckUseCaseMock_Expecter) Run(ctx interface{}, nodeType interface{}) *NodePeerCheckUseCaseMock_Run_Call {
 	return &NodePeerCheckUseCaseMock_Run_Call{Call: _e.mock.On("Run", ctx, nodeType)}
 }
 
-func (_c *NodePeerCheckUseCaseMock_Run_Call) Run(run func(ctx context.Context, nodeType string)) *NodePeerCheckUseCaseMock_Run_Call {
+func (_c *NodePeerCheckUseCaseMock_Run_Call) Run(run func(ctx context.Context, nodeType entities.NodeType)) *NodePeerCheckUseCaseMock_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(entities.NodeType))
 	})
 	return _c
 }
@@ -63,7 +64,7 @@ func (_c *NodePeerCheckUseCaseMock_Run_Call) Return(_a0 error) *NodePeerCheckUse
 	return _c
 }
 
-func (_c *NodePeerCheckUseCaseMock_Run_Call) RunAndReturn(run func(context.Context, string) error) *NodePeerCheckUseCaseMock_Run_Call {
+func (_c *NodePeerCheckUseCaseMock_Run_Call) RunAndReturn(run func(context.Context, entities.NodeType) error) *NodePeerCheckUseCaseMock_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

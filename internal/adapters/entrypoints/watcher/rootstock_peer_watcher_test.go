@@ -33,9 +33,11 @@ func TestRootstockPeerWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go watcher.Shutdown(closeChannel)
 		<-closeChannel
-		assert.Eventually(t, func() bool {
-			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
-		}, time.Second, 100*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertExpectations(mt)
+			ticker.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
 	})
 
 	t.Run("should continue running on use case error", func(t *testing.T) {
@@ -53,8 +55,10 @@ func TestRootstockPeerWatcher_Start(t *testing.T) {
 		tickerChannel <- time.Now()
 		go watcher.Shutdown(closeChannel)
 		<-closeChannel
-		assert.Eventually(t, func() bool {
-			return ticker.AssertExpectations(t) && useCase.AssertExpectations(t)
-		}, time.Second, 100*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			ticker.AssertExpectations(mt)
+			useCase.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
 	})
 }

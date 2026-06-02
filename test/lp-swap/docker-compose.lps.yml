@@ -8,7 +8,8 @@ services:
         COMMIT_TAG: "${COMMIT_TAG}"
     image: lps:latest
     depends_on:
-    - mongodb
+      mongodb:
+        condition: service_healthy
     volumes:
       - ./:/mnt
     environment:
@@ -32,7 +33,7 @@ services:
       - ERP_KEYS
       - USE_SEGWIT_FEDERATION
       - ACCOUNT_NUM
-      - KEY_SECRET
+      - WALLET_SECRET
       - PASSWORD_SECRET
       - BTC_NETWORK
       - BTC_USERNAME
@@ -86,6 +87,13 @@ services:
       - BTC_RELEASE_WATCHER_START_BLOCK
       - BTC_RELEASE_WATCHER_PAGE_SIZE
       - BTC_RELEASE_CHECK_TIMEOUT
+      - BTC_MIN_TRANSFER_FEE_MULTIPLIER
+      - RBTC_MIN_TRANSFER_FEE_MULTIPLIER
+      - COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS
+      - HOT_WALLET_LOW_LIQUIDITY_WARNING
+      - HOT_WALLET_LOW_LIQUIDITY_CRITICAL
+      - REBALANCE_STRATEGY
+      - RUN_DB_MIGRATIONS
       - RSK_MAX_REORG_DEPTH
       - BITCOIN_MAX_REORG_DEPTH
     ports:
@@ -93,9 +101,25 @@ services:
     networks:
       - lp-swap-network
     command: ["liquidity-provider-server"]
+  mongo-keyfile-init:
+    image: alpine:3.20
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - apk add --no-cache openssl >/dev/null && sh /keyfile-init.sh
+    volumes:
+      - ../../docker-compose/mongo/keyfile-init.sh:/keyfile-init.sh:ro
+      - mongo_keyfile:/keyfile
+    networks:
+      - lp-swap-network
   mongodb:
-    image: mongo:4
+    image: mongo:8.0
     restart: on-failure
+    hostname: mongodb
+    depends_on:
+      mongo-keyfile-init:
+        condition: service_completed_successfully
     environment:
       - MONGO_INITDB_ROOT_USERNAME=flyover-user
       - MONGO_INITDB_ROOT_PASSWORD=flyover-password
@@ -104,8 +128,51 @@ services:
       - "27017-27018:27017"
     expose:
       - 27017
+    volumes:
+      - mongo_keyfile:/etc/mongo:ro
     networks:
       - lp-swap-network
+    command:
+      - mongod
+      - --replSet
+      - rs0
+      - --bind_ip_all
+      - --keyFile
+      - /etc/mongo/mongo-keyfile
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - >-
+          mongosh --quiet
+          -u "$$MONGO_INITDB_ROOT_USERNAME"
+          -p "$$MONGO_INITDB_ROOT_PASSWORD"
+          --authenticationDatabase admin
+          --eval 'rs.isMaster().ismaster' | grep -q true
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+  mongo-rs-init:
+    image: mongo:8.0
+    restart: "no"
+    depends_on:
+      mongo-keyfile-init:
+        condition: service_completed_successfully
+      mongodb:
+        condition: service_started
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=flyover-user
+      - MONGO_INITDB_ROOT_PASSWORD=flyover-password
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
+      - REPLICA_SET=rs0
+    volumes:
+      - ../../docker-compose/mongo/init-replica-set.sh:/init-replica-set.sh:ro
+    networks:
+      - lp-swap-network
+    entrypoint: ["bash", "/init-replica-set.sh"]
+volumes:
+  mongo_keyfile:
 networks:
   lp-swap-network:
     driver: "bridge"

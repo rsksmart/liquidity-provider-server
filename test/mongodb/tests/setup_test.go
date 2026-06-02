@@ -21,7 +21,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	mongoDriver "go.mongodb.org/mongo-driver/mongo"
+	mongoDriver "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 var (
@@ -57,7 +57,7 @@ func TestMain(m *testing.M) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, 10*time.Second, username, password, host, port)
+	client, err := mongo.Connect(ctx, 10*time.Second, username, password, host, port, true)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to connect to MongoDB: %v\n", err)
 		os.Exit(1)
