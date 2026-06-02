@@ -38,7 +38,11 @@ func NewAddTrustedAccountHandler(useCase *lpuc.AddTrustedAccountUseCase) http.Ha
 			RbtcLockingCap: entities.NewBigWei(request.RbtcLockingCap),
 		}
 		err = useCase.Run(req.Context(), accountDetails)
-		if errors.Is(err, lp.DuplicateTrustedAccountError) {
+		if errors.Is(err, lp.InvalidTrustedAccountAddressError) {
+			jsonErr := rest.NewErrorResponseWithDetails(lp.InvalidTrustedAccountAddressError.Error(), rest.DetailsFromError(err), true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		} else if errors.Is(err, lp.DuplicateTrustedAccountError) {
 			jsonErr := rest.NewErrorResponse(lp.DuplicateTrustedAccountError.Error(), true)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
