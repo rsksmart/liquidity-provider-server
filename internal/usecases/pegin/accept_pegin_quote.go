@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"strings"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -196,8 +197,10 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, quoteHas
 	// Check if the sum exceeds the locking cap
 	if totalWithNewQuote.Cmp(trustedAccount.RbtcLockingCap) > 0 {
 		newQuoteValue := new(entities.Wei).Add(peginQuote.Value, peginQuote.GasFee)
+		sanitizedQuoteHash := strings.ReplaceAll(quoteHash, "\n", "")
+		sanitizedQuoteHash = strings.ReplaceAll(sanitizedQuoteHash, "\r", "")
 		log.WithFields(log.Fields{
-			"quoteHash":      quoteHash,
+			"quoteHash":      sanitizedQuoteHash,
 			"trustedAccount": trustedAccount.Address,
 			"currentLocked":  totalLocked.String(),
 			"lockingCap":     trustedAccount.RbtcLockingCap.String(),
