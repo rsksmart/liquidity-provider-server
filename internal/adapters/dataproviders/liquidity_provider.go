@@ -105,12 +105,10 @@ func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requir
 	}
 	if availableLiquidity.Cmp(requiredLiquidity) >= 0 {
 		return nil
-	} else {
-		return fmt.Errorf(
-			"%w, missing %s satoshi",
-			usecases.NoLiquidityError,
-			requiredLiquidity.Sub(requiredLiquidity, availableLiquidity).ToSatoshi().String(),
-		)
+	}
+	return &usecases.InsufficientLiquidityError{
+		Available: availableLiquidity.Copy(),
+		Required:  requiredLiquidity.Copy(),
 	}
 }
 

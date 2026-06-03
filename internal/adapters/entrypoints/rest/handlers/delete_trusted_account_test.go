@@ -14,12 +14,14 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+const deleteTestAddr = "0x1234567890123456789012345678901234567890"
+
 func TestNewDeleteTrustedAccountHandler(t *testing.T) {
 	t.Run("should return 204 on success", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address=0x123", nil)
+		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address="+deleteTestAddr, nil)
 		repo := &mocks.TrustedAccountRepositoryMock{}
-		repo.On("DeleteTrustedAccount", mock.Anything, "0x123").Return(nil)
+		repo.On("DeleteTrustedAccount", mock.Anything, deleteTestAddr).Return(nil)
 		useCase := lpuc.NewDeleteTrustedAccountUseCase(repo)
 		handler := http.HandlerFunc(handlers.NewDeleteTrustedAccountHandler(useCase))
 		handler.ServeHTTP(recorder, request)
@@ -37,20 +39,31 @@ func TestNewDeleteTrustedAccountHandler(t *testing.T) {
 	})
 	t.Run("should return 404 when account not found", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address=0x123", nil)
+		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address="+deleteTestAddr, nil)
 		repo := &mocks.TrustedAccountRepositoryMock{}
-		repo.On("DeleteTrustedAccount", mock.Anything, "0x123").Return(lp.TrustedAccountNotFoundError)
+		repo.On("DeleteTrustedAccount", mock.Anything, deleteTestAddr).Return(lp.TrustedAccountNotFoundError)
 		useCase := lpuc.NewDeleteTrustedAccountUseCase(repo)
 		handler := http.HandlerFunc(handlers.NewDeleteTrustedAccountHandler(useCase))
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusNotFound, recorder.Code)
 		repo.AssertExpectations(t)
 	})
+	t.Run("should return 400 on invalid trusted account address", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address=not-a-valid-address", nil)
+		repo := &mocks.TrustedAccountRepositoryMock{}
+		useCase := lpuc.NewDeleteTrustedAccountUseCase(repo)
+		handler := http.HandlerFunc(handlers.NewDeleteTrustedAccountHandler(useCase))
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assertInvalidTrustedAccountAddressResponse(t, recorder)
+		repo.AssertNotCalled(t, "DeleteTrustedAccount")
+	})
 	t.Run("should return 500 on unexpected error", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address=0x123", nil)
+		request := httptest.NewRequest("DELETE", "/management/trusted-accounts?address="+deleteTestAddr, nil)
 		repo := &mocks.TrustedAccountRepositoryMock{}
-		repo.On("DeleteTrustedAccount", mock.Anything, "0x123").Return(errors.New("database error"))
+		repo.On("DeleteTrustedAccount", mock.Anything, deleteTestAddr).Return(errors.New("database error"))
 		useCase := lpuc.NewDeleteTrustedAccountUseCase(repo)
 		handler := http.HandlerFunc(handlers.NewDeleteTrustedAccountHandler(useCase))
 		handler.ServeHTTP(recorder, request)
