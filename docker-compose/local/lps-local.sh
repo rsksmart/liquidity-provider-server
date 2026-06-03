@@ -87,6 +87,7 @@ fi
 # lps01 may briefly crash on first boot during a BTC
 # wallet rescan. lps-configurer polls /health internally and signals completion via
 # its exit code
+# TODO: Change the fatal.log when lps01 crashes
 docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d
 echo "Configuring LPS..."
 EXIT_CODE=$(docker wait lps-configurer)
