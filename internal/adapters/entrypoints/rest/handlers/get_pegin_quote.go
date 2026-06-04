@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
@@ -48,7 +49,7 @@ func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
 
 		result, err = useCase.Run(req.Context(), peginRequest)
 		if err != nil {
-			HandleGetQuoteError(w, err)
+			handleGetPeginQuoteError(w, err)
 			return
 		}
 		quoteDto := pkg.ToPeginQuoteDTO(result.PeginQuote)
@@ -57,5 +58,15 @@ func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
 			QuoteHash: result.Hash,
 		}} // to keep compatibility with legacy API
 		rest.JsonResponseWithBody(w, http.StatusOK, &responseBody)
+	}
+}
+
+func handleGetPeginQuoteError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, pegin.DataCapExceededError):
+		jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+	default:
+		handleGetQuoteError(w, err)
 	}
 }

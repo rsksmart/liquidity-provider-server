@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
@@ -39,7 +41,7 @@ func NewGetPegoutQuoteHandler(useCase GetPegoutQuoteUseCase) http.HandlerFunc {
 
 		result, err = useCase.Run(req.Context(), pegoutRequest)
 		if err != nil {
-			HandleGetQuoteError(w, err)
+			handleGetPegoutQuoteError(w, err)
 			return
 		}
 		quoteDto := pkg.ToPegoutQuoteDTO(result.PegoutQuote)
@@ -48,5 +50,15 @@ func NewGetPegoutQuoteHandler(useCase GetPegoutQuoteUseCase) http.HandlerFunc {
 			QuoteHash: result.Hash,
 		}} // to keep compatibility with legacy API
 		rest.JsonResponseWithBody(w, http.StatusOK, &responseBody)
+	}
+}
+
+func handleGetPegoutQuoteError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, usecases.NoLiquidityError):
+		jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+	default:
+		handleGetQuoteError(w, err)
 	}
 }

@@ -37,7 +37,7 @@ func NewAcceptPegoutQuoteHandler(useCase AcceptPegoutQuoteUseCase) http.HandlerF
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, "")
 		if err != nil {
-			HandleAcceptQuoteError(w, err)
+			handleCommonAcceptQuoteError(w, err)
 			return
 		}
 

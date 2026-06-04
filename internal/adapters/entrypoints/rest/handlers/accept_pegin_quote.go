@@ -37,7 +37,7 @@ func NewAcceptPeginQuoteHandler(useCase AcceptQuoteUseCase) http.HandlerFunc {
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, "")
 		if err != nil {
-			HandleAcceptQuoteError(w, err)
+			handleCommonAcceptQuoteError(w, err)
 			return
 		}
 

@@ -35,7 +35,7 @@ func NewAcceptPegoutAuthenticatedQuoteHandler(useCase AcceptQuoteUseCase) http.H
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, acceptRequest.Signature)
 		if err != nil {
-			HandleAcceptQuoteError(w, err)
+			HandleAuthenticatedAcceptQuoteError(w, err)
 			return
 		}
 

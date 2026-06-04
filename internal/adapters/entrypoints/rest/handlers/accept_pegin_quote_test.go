@@ -242,7 +242,7 @@ func TestAcceptPeginQuoteHandlerErrorCases(t *testing.T) {
 		assert.Equal(t, "not enough liquidity", errorResponse["message"])
 	})
 
-	t.Run("should return 409 when locking cap exceeded", func(t *testing.T) {
+	t.Run("should return 500 when locking cap exceeded on public endpoint", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
 		reqBody := pkg.AcceptQuoteRequest{
@@ -263,7 +263,7 @@ func TestAcceptPeginQuoteHandlerErrorCases(t *testing.T) {
 
 		handler.ServeHTTP(recorder, request)
 
-		assert.Equal(t, http.StatusConflict, recorder.Code)
+		assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 
 		mockUseCase.AssertExpectations(t)
 
@@ -271,10 +271,10 @@ func TestAcceptPeginQuoteHandlerErrorCases(t *testing.T) {
 		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
 		require.NoError(t, err)
 		assert.Contains(t, errorResponse, "message")
-		assert.Equal(t, "locking cap exceeded", errorResponse["message"])
+		assert.Equal(t, handlers.UnknownErrorMessage, errorResponse["message"])
 	})
 
-	t.Run("should return 500 when trusted account is tampered", func(t *testing.T) {
+	t.Run("should return 500 when trusted account is tampered on public endpoint", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
 		reqBody := pkg.AcceptQuoteRequest{
@@ -303,7 +303,7 @@ func TestAcceptPeginQuoteHandlerErrorCases(t *testing.T) {
 		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
 		require.NoError(t, err)
 		assert.Contains(t, errorResponse, "message")
-		assert.Equal(t, "error fetching trusted account", errorResponse["message"])
+		assert.Equal(t, handlers.UnknownErrorMessage, errorResponse["message"])
 	})
 
 	t.Run("should return 200 with already retained quote", func(t *testing.T) {

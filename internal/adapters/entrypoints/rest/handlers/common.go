@@ -2,18 +2,30 @@ package handlers
 
 import (
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 )
 
 const UnknownErrorMessage = "unknown error"
 
-func HandleAcceptQuoteError(w http.ResponseWriter, err error) {
+func HandleAuthenticatedAcceptQuoteError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, usecases.LockingCapExceededError):
+		jsonErr := rest.NewErrorResponseWithDetails("locking cap exceeded", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+	case errors.Is(err, liquidity_provider.TamperedTrustedAccountError):
+		jsonErr := rest.NewErrorResponseWithDetails("error fetching trusted account", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+	default:
+		handleCommonAcceptQuoteError(w, err)
+	}
+}
+
+func handleCommonAcceptQuoteError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, usecases.QuoteNotFoundError):
 		jsonErr := rest.NewErrorResponseWithDetails("quote not found", rest.DetailsFromError(err), true)
@@ -24,12 +36,6 @@ func HandleAcceptQuoteError(w http.ResponseWriter, err error) {
 	case errors.Is(err, usecases.NoLiquidityError):
 		jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
 		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
-	case errors.Is(err, usecases.LockingCapExceededError):
-		jsonErr := rest.NewErrorResponseWithDetails("locking cap exceeded", rest.DetailsFromError(err), true)
-		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
-	case errors.Is(err, liquidity_provider.TamperedTrustedAccountError):
-		jsonErr := rest.NewErrorResponseWithDetails("error fetching trusted account", rest.DetailsFromError(err), true)
-		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 	case errors.Is(err, blockchain.ContractPausedError):
 		jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
 		rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
@@ -39,14 +45,11 @@ func HandleAcceptQuoteError(w http.ResponseWriter, err error) {
 	}
 }
 
-func HandleGetQuoteError(w http.ResponseWriter, err error) {
+func handleGetQuoteError(w http.ResponseWriter, err error) {
 	switch {
 	case isGetQuoteBadRequest(err):
 		jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
 		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-	case errors.Is(err, usecases.NoLiquidityError):
-		jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
-		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
 	case errors.Is(err, blockchain.ContractPausedError):
 		jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
 		rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
@@ -61,6 +64,5 @@ func isGetQuoteBadRequest(err error) bool {
 		errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
 		errors.Is(err, usecases.RskAddressNotSupportedError) ||
 		errors.Is(err, usecases.TxBelowMinimumError) ||
-		errors.Is(err, pegin.DataCapExceededError) ||
 		errors.Is(err, liquidity_provider.AmountOutOfRangeError)
 }
