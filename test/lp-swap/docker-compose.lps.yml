@@ -18,6 +18,7 @@ services:
       - LOG_LEVEL
       - LOG_FILE
       - ENABLE_MANAGEMENT_API
+      - ENABLE_MANAGEMENT_UI_NEXT
       - MONGODB_USER
       - MONGODB_PASSWORD
       - MONGODB_HOST
