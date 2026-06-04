@@ -313,7 +313,7 @@ func TestGetPegoutQuoteHandlerErrorCases(t *testing.T) {
 		var errorResponse map[string]interface{}
 		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
 		require.NoError(t, err)
-		assert.Equal(t, "no enough liquidity", errorResponse["message"])
+		assert.Equal(t, "not enough liquidity", errorResponse["message"])
 	})
 
 	t.Run("should return 500 on unexpected errors", func(t *testing.T) {

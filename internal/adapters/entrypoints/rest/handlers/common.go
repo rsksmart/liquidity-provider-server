@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 )
 
 const UnknownErrorMessage = "unknown error"
@@ -36,4 +37,30 @@ func HandleAcceptQuoteError(w http.ResponseWriter, err error) {
 		jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
 		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
 	}
+}
+
+func HandleGetQuoteError(w http.ResponseWriter, err error) {
+	switch {
+	case isGetQuoteBadRequest(err):
+		jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+	case errors.Is(err, usecases.NoLiquidityError):
+		jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+	case errors.Is(err, blockchain.ContractPausedError):
+		jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
+	default:
+		jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
+		rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+	}
+}
+
+func isGetQuoteBadRequest(err error) bool {
+	return errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
+		errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
+		errors.Is(err, usecases.RskAddressNotSupportedError) ||
+		errors.Is(err, usecases.TxBelowMinimumError) ||
+		errors.Is(err, pegin.DataCapExceededError) ||
+		errors.Is(err, liquidity_provider.AmountOutOfRangeError)
 }
