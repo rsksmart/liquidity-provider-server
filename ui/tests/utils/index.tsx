@@ -11,8 +11,12 @@ export function seedInitialData(
   payload: InitialDataPayload,
   options?: { csrfToken?: string },
 ): void {
+  document.querySelector('meta[name="csrf-token"]')?.remove()
   if (options?.csrfToken) {
-    document.head.innerHTML = `<meta name="csrf-token" content="${options.csrfToken}" />`
+    document.head.insertAdjacentHTML(
+      'beforeend',
+      `<meta name="csrf-token" content="${options.csrfToken}" />`,
+    )
   }
 
   document.body.innerHTML = `<script id="initial-data" type="application/json">${JSON.stringify(payload)}</script>`

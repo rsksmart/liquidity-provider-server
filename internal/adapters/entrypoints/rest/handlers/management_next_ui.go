@@ -88,7 +88,11 @@ func (handler *ManagementNextUIHandler) ServeHTTP(responseWriter http.ResponseWr
 
 	// For client-side routes like /management/next/providers, serve index.html.
 	// For any other file, attempt to serve it, otherwise fall back to index.html.
-	if _, err := fs.Stat(handler.dist, cleanPath); err == nil {
+	if info, err := fs.Stat(handler.dist, cleanPath); err == nil {
+		if info.IsDir() {
+			handler.serveIndex(responseWriter, request)
+			return
+		}
 		handler.serveFile(responseWriter, request, cleanPath, false)
 		return
 	}

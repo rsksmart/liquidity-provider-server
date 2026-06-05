@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -340,12 +341,22 @@ func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T
 	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
 
 	router := mux.NewRouter()
-	router.Path("/management/next/{path:.*}").Methods(http.MethodGet).Handler(handler)
+	router.Path(routes.NextUiPath).Methods(http.MethodGet).Handler(handler)
 
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
 
 	client := &http.Client{}
+
+	t.Run("index without trailing slash", func(t *testing.T) {
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next", nil)
+		require.NoError(t, err)
+		resp, err := client.Do(request)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Contains(t, resp.Header.Get("Cache-Control"), "no-store")
+	})
 
 	t.Run("index", func(t *testing.T) {
 		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/", nil)
@@ -379,6 +390,16 @@ func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T
 
 	t.Run("missing file falls back to index", func(t *testing.T) {
 		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/some/client/route", nil)
+		require.NoError(t, err)
+		resp, err := client.Do(request)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+	})
+
+	t.Run("directory path falls back to index", func(t *testing.T) {
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/assets", nil)
 		require.NoError(t, err)
 		resp, err := client.Do(request)
 		require.NoError(t, err)
