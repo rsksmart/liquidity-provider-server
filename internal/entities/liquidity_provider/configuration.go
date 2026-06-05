@@ -67,9 +67,9 @@ func (config PegoutConfiguration) GetFeePercentage() *utils.BigFloat {
 }
 
 func (config PegoutConfiguration) ValidateExpiryAgainstConfirmations(general GeneralConfiguration) error {
-	maxRskConfirmations := uint64(general.RskConfirmations.Max())
-	maxBtcConfirmations := uint64(general.BtcConfirmations.Max())
-	estimatedConfirmationTimeSec := (maxRskConfirmations * AvgRskBlockTimeSec) + (maxBtcConfirmations * AvgBtcBlockTimeSec)
+	rskConfirmations := uint64(general.RskConfirmations.ForValue(config.MaxValue))
+	btcConfirmations := uint64(general.BtcConfirmations.ForValue(config.MaxValue))
+	estimatedConfirmationTimeSec := (rskConfirmations * AvgRskBlockTimeSec) + (btcConfirmations * AvgBtcBlockTimeSec)
 	estimatedExpireBlocksTimeSec := config.ExpireBlocks * AvgRskBlockTimeSec
 
 	if estimatedConfirmationTimeSec >= uint64(config.ExpireTime) {
