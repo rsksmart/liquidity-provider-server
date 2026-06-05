@@ -84,9 +84,9 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 	checkLiquidityUseCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, alertSenderMock, test.AnyString)
 	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, alertSenderMock, test.AnyString, 3, 1)
 	w := watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1))
+	checkFunc := test.AssertLogContains(t, assert.AnError.Error())
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	defer test.AssertLogContains(t, assert.AnError.Error())
 	go func() {
 		defer wg.Done()
 		w.Start()
@@ -98,6 +98,7 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 	tickerChannel <- time.Now()
 	w.Shutdown(closeChannel)
 	wg.Wait()
+	assert.Eventually(t, checkFunc, time.Second, 10*time.Millisecond)
 	bridgeMock.AssertExpectations(t)
 }
 
