@@ -130,7 +130,14 @@ func AssertNoLog(t *testing.T) (assertFunc func()) {
 
 func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
 	buff := new(ThreadSafeBuffer)
+	previousOutput := log.StandardLogger().Out
 	log.SetOutput(buff)
+
+	t.Cleanup(func() {
+		log.SetOutput(previousOutput)
+		assert.Contains(t, buff.String(), expected, "Expected log message not found")
+	})
+
 	return func() bool {
 		return strings.Contains(buff.String(), expected)
 	}

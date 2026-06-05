@@ -305,6 +305,23 @@ func TestManagementNextUIHandler_UseCaseErrorUsesErrorTemplate(t *testing.T) {
 	assert.Contains(t, body, "Error opening management UI")
 }
 
+func TestManagementNextUIHandler_ServesTemplatedIndexForExplicitIndexHTMLPath(t *testing.T) {
+	handler, mockStore, mockUseCase := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
+
+	request := httptest.NewRequest(http.MethodGet, "/management/next/index.html", nil)
+	request = mux.SetURLVars(request, map[string]string{"path": "index.html"})
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	body := readResponseBody(t, recorder)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Contains(t, recorder.Header().Get("Content-Type"), "text/html")
+	require.Contains(t, body, `<meta name="csrf-token"`)
+	require.Contains(t, body, `<script id="initial-data"`)
+	mockStore.AssertExpectations(t)
+	mockUseCase.AssertExpectations(t)
+}
+
 func TestManagementNextUIHandler_NormalizesTraversalToSafePath(t *testing.T) {
 	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
 

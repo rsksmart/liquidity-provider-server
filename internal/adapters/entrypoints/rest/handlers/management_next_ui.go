@@ -74,8 +74,8 @@ func (handler *ManagementNextUIHandler) ServeHTTP(responseWriter http.ResponseWr
 		return
 	}
 
-	// Default doc (and SPA entrypoint fallback).
-	if cleanPath == "" || cleanPath == "." {
+	// Default doc (and SPA entrypoint fallback). index.html is a Go template and must not be served raw.
+	if cleanPath == "" || cleanPath == "." || cleanPath == "index.html" {
 		handler.serveIndex(responseWriter, request)
 		return
 	}
@@ -107,13 +107,13 @@ func (handler *ManagementNextUIHandler) serveIndex(responseWriter http.ResponseW
 		return
 	}
 
-	nonceBytes, err := utils.GetRandomBytes(nonceBytes)
+	nonceRaw, err := utils.GetRandomBytes(nonceBytes)
 	if err != nil {
 		log.Errorf(errorGeneratingTemplate, err)
 		sendErrorTemplate(responseWriter)
 		return
 	}
-	nonce := hex.EncodeToString(nonceBytes)
+	nonce := hex.EncodeToString(nonceRaw)
 
 	var jsonBuf bytes.Buffer
 	encoder := json.NewEncoder(&jsonBuf)
