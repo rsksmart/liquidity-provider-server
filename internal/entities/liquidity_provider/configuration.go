@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	AmountOutOfRangeError                      = errors.New("amount out of range")
+	AmountOutOfRangeError                     = errors.New("amount out of range")
 	PegoutExpiryTooShortForConfirmationsError = errors.New("pegout expiry too short for required confirmations")
-	InvalidConfigurationError = errors.New("invalid configuration")
+	InvalidConfigurationError                 = errors.New("invalid configuration")
 )
 
 // ConfirmationsPerAmount the key represents the amount in wei serialized as a string, and the value represents the number of confirmations required for that amount.

@@ -166,6 +166,8 @@ func TestPegoutConfiguration_ValidateExpiryAgainstConfirmations(t *testing.T) {
 		require.ErrorIs(t, err, liquidity_provider.PegoutExpiryTooShortForConfirmationsError)
 		require.Contains(t, err.Error(), "expireBlocks")
 	})
+}
+
 func TestExcessTolerance_Normalize(t *testing.T) {
 	table := test.Table[liquidity_provider.ExcessTolerance, liquidity_provider.ExcessTolerance]{
 		{
