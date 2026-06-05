@@ -178,7 +178,7 @@ func TestSetPegoutConfigUseCase_Run_ZeroFixedFee(t *testing.T) {
 	lpRepository.AssertExpectations(t)
 }
 
-func TestSetPegoutConfigUseCase_Run_ValidateExpiryAgainstConfirmations(t *testing.T) {
+func TestSetPegoutConfigUseCase_Run_ValidateExpiryAgainstConfirmationsExpireTime(t *testing.T) {
 	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 	walletMock := &mocks.RskWalletMock{}
 	hashMock := &mocks.HashMock{}
@@ -205,6 +205,39 @@ func TestSetPegoutConfigUseCase_Run_ValidateExpiryAgainstConfirmations(t *testin
 	err := useCase.Run(context.Background(), cfg)
 
 	require.ErrorIs(t, err, lp.PegoutExpiryTooShortForConfirmationsError)
+	require.Contains(t, err.Error(), "expireTime")
+	lpRepository.AssertNotCalled(t, "UpsertPegoutConfiguration", mock.Anything, mock.Anything)
+	walletMock.AssertNotCalled(t, "SignBytes", mock.Anything)
+}
+
+func TestSetPegoutConfigUseCase_Run_ValidateExpiryAgainstConfirmationsExpireBlocks(t *testing.T) {
+	lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+	walletMock := &mocks.RskWalletMock{}
+	hashMock := &mocks.HashMock{}
+
+	cfg := lp.PegoutConfiguration{
+		TimeForDeposit:       1,
+		ExpireTime:           10000,
+		PenaltyFee:           entities.NewWei(3),
+		FixedFee:             entities.NewWei(4),
+		FeePercentage:        utils.NewBigFloat64(4.5),
+		MaxValue:             entities.NewWei(1),
+		MinValue:             entities.NewWei(1),
+		ExpireBlocks:         160,
+		BridgeTransactionMin: entities.NewWei(5),
+	}
+
+	lpRepository.On("GetGeneralConfiguration", test.AnyCtx).Return(signedGeneralConfigMock(80, 4), nil)
+
+	bridge := &mocks.BridgeMock{}
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(1), nil)
+	contracts := blockchain.RskContracts{Bridge: bridge}
+
+	useCase := liquidity_provider.NewSetPegoutConfigUseCase(lpRepository, walletMock, hashMock.Hash, contracts)
+	err := useCase.Run(context.Background(), cfg)
+
+	require.ErrorIs(t, err, lp.PegoutExpiryTooShortForConfirmationsError)
+	require.Contains(t, err.Error(), "expireBlocks")
 	lpRepository.AssertNotCalled(t, "UpsertPegoutConfiguration", mock.Anything, mock.Anything)
 	walletMock.AssertNotCalled(t, "SignBytes", mock.Anything)
 }

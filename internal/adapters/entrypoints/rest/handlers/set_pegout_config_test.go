@@ -129,7 +129,7 @@ func TestSetPegoutConfigHandler(t *testing.T) {
 		assert.Contains(t, w.Body.String(), "unknown error")
 	})
 
-	t.Run("should return bad request when expiry is too short for required confirmations", func(t *testing.T) {
+	t.Run("should return bad request when expire time is too short for required confirmations", func(t *testing.T) {
 		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
 		lpRepository.On("GetGeneralConfiguration", mock.Anything).Return(signedGeneralConfigForHandlerTest(1, 1), nil)
 		walletMock := &mocks.RskWalletMock{}
@@ -147,5 +147,27 @@ func TestSetPegoutConfigHandler(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "Validation error")
 		assert.Contains(t, w.Body.String(), entities_lp.PegoutExpiryTooShortForConfirmationsError.Error())
+		assert.Contains(t, w.Body.String(), "expireTime")
+	})
+
+	t.Run("should return bad request when expire blocks window is too short for required confirmations", func(t *testing.T) {
+		lpRepository := &mocks.LiquidityProviderRepositoryMock{}
+		lpRepository.On("GetGeneralConfiguration", mock.Anything).Return(signedGeneralConfigForHandlerTest(80, 4), nil)
+		walletMock := &mocks.RskWalletMock{}
+		hashMock := &mocks.HashMock{}
+		bridge := &mocks.BridgeMock{}
+		bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(100), nil)
+		contracts := blockchain.RskContracts{Bridge: bridge}
+		useCase := uc_lp.NewSetPegoutConfigUseCase(lpRepository, walletMock, hashMock.Hash, contracts)
+		handler := handlers.NewSetPegoutConfigHandler(useCase)
+		reqBody := `{"configuration": {"timeForDeposit": 600, "expireTime": 10000, "penaltyFee": "1000", "fixedFee": "500", "feePercentage": 1.5, "maxValue": "1", "minValue": "1", "expireBlocks": 160, "bridgeTransactionMin": "5000"}}`
+		req := httptest.NewRequest(http.MethodPost, "/pegout/configuration", strings.NewReader(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Validation error")
+		assert.Contains(t, w.Body.String(), entities_lp.PegoutExpiryTooShortForConfirmationsError.Error())
+		assert.Contains(t, w.Body.String(), "expireBlocks")
 	})
 }

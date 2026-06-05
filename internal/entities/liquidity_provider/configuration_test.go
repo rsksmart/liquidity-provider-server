@@ -137,6 +137,7 @@ func TestPegoutConfiguration_ValidateExpiryAgainstConfirmations(t *testing.T) {
 
 	t.Run("should pass when expire time and blocks are enough", func(t *testing.T) {
 		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(5),
 			ExpireTime:   5000,
 			ExpireBlocks: 200,
 		}
@@ -147,6 +148,7 @@ func TestPegoutConfiguration_ValidateExpiryAgainstConfirmations(t *testing.T) {
 
 	t.Run("should fail when expire time equals estimated confirmations", func(t *testing.T) {
 		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(1),
 			ExpireTime:   4800,
 			ExpireBlocks: 1000,
 		}
@@ -158,6 +160,7 @@ func TestPegoutConfiguration_ValidateExpiryAgainstConfirmations(t *testing.T) {
 
 	t.Run("should fail when expire blocks time equals estimated confirmations", func(t *testing.T) {
 		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(1),
 			ExpireTime:   10000,
 			ExpireBlocks: 160,
 		}
