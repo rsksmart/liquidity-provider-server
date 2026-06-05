@@ -17,7 +17,7 @@ const (
 	StaticPath = "/static/{file}"
 	IconPath   = "/favicon.ico"
 
-	NextUiPath = "/management/next/{path:.*}"
+	NextUiPath = "/management/next{path:.*}"
 )
 
 var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath, NextUiPath}

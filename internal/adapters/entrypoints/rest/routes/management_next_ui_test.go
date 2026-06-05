@@ -62,6 +62,16 @@ func TestManagementNextUI_Headers_IndexAndAssets(t *testing.T) {
 
 	// Index should never be immutable cached.
 	{
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, testServer.URL+"/management/next", nil)
+		require.NoError(t, err)
+		response, err := client.Do(request)
+		require.NoError(t, err)
+		defer response.Body.Close()
+		require.Equal(t, http.StatusOK, response.StatusCode)
+		require.Contains(t, response.Header.Get("Cache-Control"), "no-store")
+		require.Contains(t, response.Header.Get("Content-Type"), "text/html")
+	}
+	{
 		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, testServer.URL+"/management/next/", nil)
 		require.NoError(t, err)
 		response, err := client.Do(request)
