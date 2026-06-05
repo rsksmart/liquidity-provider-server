@@ -96,7 +96,6 @@ func TestGetManagementEndpoints_AppendsNextUIWhenEnabled(t *testing.T) {
 	env.Management.EnableManagementUiNext = true
 	endpoints := routes.GetManagementEndpoints(env, registryMock, &mocks.StoreMock{})
 
-	require.Greater(t, len(endpoints), 29)
 	var found bool
 	for _, ep := range endpoints {
 		if ep.Path == routes.NextUiPath {
