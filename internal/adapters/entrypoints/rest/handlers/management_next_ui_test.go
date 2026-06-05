@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -23,6 +24,11 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+type nextUiInitialData struct {
+	LoggedIn bool                                      `json:"loggedIn"`
+	Data     liquidity_provider.ManagementTemplateData `json:"data"`
+}
 
 const nextUiIndexTemplate = `<!doctype html>
 <html lang="en">
@@ -66,7 +72,7 @@ func parseNextUIInitialDataFromHTML(t *testing.T, html string) nextUiInitialData
 func newNextUIHandlerWithLoggedInSession(
 	t *testing.T,
 	templateData liquidity_provider.ManagementTemplateData,
-) (*ManagementNextUIHandler, *mocks.StoreMock, *mocks.GetManagementUiDataUseCaseMock) {
+) (*handlers.ManagementNextUIHandler, *mocks.StoreMock, *mocks.GetManagementUiDataUseCaseMock) {
 	t.Helper()
 
 	dist := fstest.MapFS{
@@ -85,12 +91,12 @@ func newNextUIHandlerWithLoggedInSession(
 		Data: templateData,
 	}, nil)
 
-	handler, ok := NewManagementNextUIHandler(dist, env, mockStore, mockUseCase).(*ManagementNextUIHandler)
+	handler, ok := handlers.NewManagementNextUIHandler(dist, env, mockStore, mockUseCase).(*handlers.ManagementNextUIHandler)
 	require.True(t, ok)
 	return handler, mockStore, mockUseCase
 }
 
-func newNextUIHandlerTestFixtures(t *testing.T, indexHTML string) (*ManagementNextUIHandler, *mocks.StoreMock, *mocks.GetManagementUiDataUseCaseMock) {
+func newNextUIHandlerTestFixtures(t *testing.T, indexHTML string) (*handlers.ManagementNextUIHandler, *mocks.StoreMock, *mocks.GetManagementUiDataUseCaseMock) {
 	t.Helper()
 
 	dist := fstest.MapFS{
@@ -115,7 +121,7 @@ func newNextUIHandlerTestFixtures(t *testing.T, indexHTML string) (*ManagementNe
 		Data: templateData,
 	}, nil)
 
-	handler, ok := NewManagementNextUIHandler(dist, env, mockStore, mockUseCase).(*ManagementNextUIHandler)
+	handler, ok := handlers.NewManagementNextUIHandler(dist, env, mockStore, mockUseCase).(*handlers.ManagementNextUIHandler)
 	require.True(t, ok)
 	return handler, mockStore, mockUseCase
 }
@@ -243,11 +249,11 @@ func TestManagementNextUIHandler_SecurityHeadersMatchLegacy(t *testing.T) {
 	env := environment.ManagementEnv{EnableSecurityHeaders: true}
 	request := httptest.NewRequest(http.MethodGet, "/management", nil)
 	legacyRecorder := httptest.NewRecorder()
-	legacyHandler := NewManagementInterfaceHandler(env, mockStore, mockUseCase)
+	legacyHandler := handlers.NewManagementInterfaceHandler(env, mockStore, mockUseCase)
 	legacyHandler(legacyRecorder, request)
 
 	nextDist := fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte(nextUiIndexTemplate)}}
-	nextHandler := NewManagementNextUIHandler(nextDist, env, mockStore, mockUseCase)
+	nextHandler := handlers.NewManagementNextUIHandler(nextDist, env, mockStore, mockUseCase)
 	nextRecorder := serveNextUIIndex(t, nextHandler)
 
 	require.Equal(t, http.StatusOK, nextRecorder.Code)
@@ -291,7 +297,7 @@ func TestManagementNextUIHandler_UseCaseErrorUsesErrorTemplate(t *testing.T) {
 	mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
 	mockUseCase.On("Run", mock.Anything, false).Return(nil, errors.New("database error"))
 
-	handler := NewManagementNextUIHandler(dist, env, mockStore, mockUseCase)
+	handler := handlers.NewManagementNextUIHandler(dist, env, mockStore, mockUseCase)
 	recorder := serveNextUIIndex(t, handler)
 	body := readResponseBody(t, recorder)
 
@@ -389,8 +395,18 @@ func TestManagementNextUIHandler_PropagatesCopyError(t *testing.T) {
 		"assets/broken.js": &fstest.MapFile{Data: []byte("x")},
 	}
 	dist := failingReadFS{inner: inner, failPath: "assets/broken.js"}
-	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
-	handler.dist = dist
+	env := environment.ManagementEnv{EnableSecurityHeaders: false}
+	mockStore := new(mocks.StoreMock)
+	mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
+	mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
+	mockUseCase.On("Run", mock.Anything, false).Return(&liquidity_provider.ManagementTemplate{
+		Name: liquidity_provider.ManagementUiTemplate,
+		Data: liquidity_provider.ManagementTemplateData{
+			CredentialsSet: true,
+			BaseUrl:        "http://localhost:8080",
+		},
+	}, nil)
+	handler := handlers.NewManagementNextUIHandler(dist, env, mockStore, mockUseCase)
 
 	request := httptest.NewRequest(http.MethodGet, "/management/next/assets/broken.js", nil)
 	request = mux.SetURLVars(request, map[string]string{"path": "assets/broken.js"})
