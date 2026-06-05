@@ -144,6 +144,26 @@ func readResponseBody(t *testing.T, recorder *httptest.ResponseRecorder) string 
 	return string(body)
 }
 
+func newNextUIRouterTestServer(t *testing.T, handler http.Handler) (string, *http.Client) {
+	t.Helper()
+
+	router := mux.NewRouter()
+	router.Path(routes.NextUiPath).Methods(http.MethodGet).Handler(handler)
+	server := httptest.NewServer(router)
+	t.Cleanup(server.Close)
+	return server.URL, &http.Client{}
+}
+
+func getNextUIAt(t *testing.T, client *http.Client, baseURL, path string) *http.Response {
+	t.Helper()
+
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, baseURL+path, nil)
+	require.NoError(t, err)
+	resp, err := client.Do(request)
+	require.NoError(t, err)
+	return resp
+}
+
 func extractNonceFromCSP(csp string) string {
 	re := regexp.MustCompile(`'nonce-([^']+)'`)
 	matches := re.FindStringSubmatch(csp)
@@ -339,70 +359,45 @@ func TestManagementNextUIHandler_NormalizesTraversalToSafePath(t *testing.T) {
 
 func TestManagementNextUIHandler_ServesEmbeddedAssetsAndSpaFallback(t *testing.T) {
 	handler, _, _ := newNextUIHandlerTestFixtures(t, nextUiIndexTemplate)
-
-	router := mux.NewRouter()
-	router.Path(routes.NextUiPath).Methods(http.MethodGet).Handler(handler)
-
-	server := httptest.NewServer(router)
-	t.Cleanup(server.Close)
-
-	client := &http.Client{}
+	baseURL, client := newNextUIRouterTestServer(t, handler)
 
 	t.Run("index without trailing slash", func(t *testing.T) {
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next", nil)
-		require.NoError(t, err)
-		resp, err := client.Do(request)
-		require.NoError(t, err)
+		resp := getNextUIAt(t, client, baseURL, "/management/next")
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Contains(t, resp.Header.Get("Cache-Control"), "no-store")
 	})
 
 	t.Run("index", func(t *testing.T) {
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/", nil)
-		require.NoError(t, err)
-		resp, err := client.Do(request)
-		require.NoError(t, err)
+		resp := getNextUIAt(t, client, baseURL, "/management/next/")
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Contains(t, resp.Header.Get("Cache-Control"), "no-store")
 	})
 
 	t.Run("hashed asset immutable", func(t *testing.T) {
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/assets/app-abc123.js", nil)
-		require.NoError(t, err)
-		resp, err := client.Do(request)
-		require.NoError(t, err)
+		resp := getNextUIAt(t, client, baseURL, "/management/next/assets/app-abc123.js")
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Equal(t, "public, max-age=31536000, immutable", resp.Header.Get("Cache-Control"))
 	})
 
 	t.Run("existing non-asset file no-store", func(t *testing.T) {
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/robots.txt", nil)
-		require.NoError(t, err)
-		resp, err := client.Do(request)
-		require.NoError(t, err)
+		resp := getNextUIAt(t, client, baseURL, "/management/next/robots.txt")
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Contains(t, resp.Header.Get("Cache-Control"), "no-store")
 	})
 
 	t.Run("missing file falls back to index", func(t *testing.T) {
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/some/client/route", nil)
-		require.NoError(t, err)
-		resp, err := client.Do(request)
-		require.NoError(t, err)
+		resp := getNextUIAt(t, client, baseURL, "/management/next/some/client/route")
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
 	})
 
 	t.Run("directory path falls back to index", func(t *testing.T) {
-		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, server.URL+"/management/next/assets", nil)
-		require.NoError(t, err)
-		resp, err := client.Do(request)
-		require.NoError(t, err)
+		resp := getNextUIAt(t, client, baseURL, "/management/next/assets")
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
