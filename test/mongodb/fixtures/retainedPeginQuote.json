@@ -1,0 +1,97 @@
+[
+  {
+    "register_pegin_tx_hash": "0xregtx11111111",
+    "call_for_user_gas_price": "60000000",
+    "register_pegin_gas_used": {
+      "$numberLong": "80000"
+    },
+    "register_pegin_gas_price": "60000000",
+    "deposit_address": "2N6RWTxbUem64JxLxMJ2V43erUDfKjSKqjm",
+    "signature": "0xsignature_pegin_11111111",
+    "required_liquidity": "600000000000000000",
+    "state": "WaitingForDeposit",
+    "user_btc_tx_hash": "btctx11111111",
+    "call_for_user_tx_hash": "0xcalltx11111111",
+    "call_for_user_gas_used": {
+      "$numberLong": "50000"
+    },
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678",
+    "quote_hash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  {
+    "user_btc_tx_hash": "btctx22222222",
+    "call_for_user_gas_used": {
+      "$numberLong": "50000"
+    },
+    "call_for_user_gas_price": "60000000",
+    "register_pegin_gas_used": {
+      "$numberLong": "80000"
+    },
+    "register_pegin_gas_price": "60000000",
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678",
+    "deposit_address": "2N6RWTxbUem64JxLxMJ2V43erUDfKjSKqjm",
+    "required_liquidity": "600000000000000000",
+    "state": "CallForUserSucceeded",
+    "call_for_user_tx_hash": "0xcalltx22222222",
+    "register_pegin_tx_hash": "0xregtx22222222",
+    "quote_hash": "2222222222222222222222222222222222222222222222222222222222222222",
+    "signature": "0xsignature_pegin_22222222"
+  },
+  {
+    "signature": "0xsignature_pegin_33333333",
+    "user_btc_tx_hash": "btctx33333333",
+    "call_for_user_tx_hash": "0xcalltx33333333",
+    "register_pegin_tx_hash": "0xregtx33333333",
+    "call_for_user_gas_used": {
+      "$numberLong": "50000"
+    },
+    "call_for_user_gas_price": "60000000",
+    "required_liquidity": "600000000000000000",
+    "state": "RegisterPegInSucceeded",
+    "register_pegin_gas_used": {
+      "$numberLong": "80000"
+    },
+    "register_pegin_gas_price": "60000000",
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678",
+    "quote_hash": "3333333333333333333333333333333333333333333333333333333333333333",
+    "deposit_address": "2N6RWTxbUem64JxLxMJ2V43erUDfKjSKqjm"
+  },
+  {
+    "required_liquidity": "600000000000000000",
+    "call_for_user_tx_hash": "0xcalltx44444444",
+    "call_for_user_gas_used": {
+      "$numberLong": "50000"
+    },
+    "call_for_user_gas_price": "60000000",
+    "register_pegin_gas_used": {
+      "$numberLong": "80000"
+    },
+    "deposit_address": "2N6RWTxbUem64JxLxMJ2V43erUDfKjSKqjm",
+    "state": "CallForUserFailed",
+    "user_btc_tx_hash": "btctx44444444",
+    "register_pegin_tx_hash": "0xregtx44444444",
+    "register_pegin_gas_price": "60000000",
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678",
+    "quote_hash": "4444444444444444444444444444444444444444444444444444444444444444",
+    "signature": "0xsignature_pegin_44444444"
+  },
+  {
+    "deposit_address": "2N6RWTxbUem64JxLxMJ2V43erUDfKjSKqjm",
+    "user_btc_tx_hash": "btctx55555555",
+    "register_pegin_tx_hash": "0xregtx55555555",
+    "call_for_user_gas_price": "60000000",
+    "register_pegin_gas_price": "60000000",
+    "signature": "0xsignature_pegin_55555555",
+    "required_liquidity": "600000000000000000",
+    "state": "TimeForDepositElapsed",
+    "call_for_user_tx_hash": "0xcalltx55555555",
+    "call_for_user_gas_used": {
+      "$numberLong": "50000"
+    },
+    "register_pegin_gas_used": {
+      "$numberLong": "80000"
+    },
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678",
+    "quote_hash": "5555555555555555555555555555555555555555555555555555555555555555"
+  }
+]

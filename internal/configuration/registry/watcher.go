@@ -2,7 +2,6 @@ package registry
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -21,8 +20,16 @@ type WatcherRegistry struct {
 	BitcoinEclipseWatcher      *watcher.EclipseWatcher
 	RskEclipseWatcher          *watcher.EclipseWatcher
 	BtcReleaseWatcher          *watcher.BtcReleaseWatcher
+	BitcoinPeerWatcher         *watcher.BitcoinPeerWatcher
+	RootstockPeerWatcher       *watcher.RootstockPeerWatcher
 	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
+	PeerMetricsWatcher         *monitoring.PeerMetricsWatcher
 	AssetReportWatcher         *monitoring.AssetReportWatcher
+	TransferColdWalletWatcher  *watcher.TransferColdWalletWatcher
+	ColdWalletMetricsWatcher   *monitoring.ColdWalletMetricsWatcher
+	BitcoinReorgWatcher        *watcher.BitcoinReorgWatcher
+	RootstockReorgWatcher      *watcher.RootstockReorgWatcher
+	ReorgMetricsWatcher        *monitoring.ReorgMetricsWatcher
 }
 
 // nolint:funlen
@@ -31,7 +38,7 @@ func NewWatcherRegistry(
 	useCaseRegistry *UseCaseRegistry,
 	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
-	liquidityProvider *dataproviders.LocalLiquidityProvider,
+	lpRegistry *LiquidityProvider,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,
@@ -71,7 +78,7 @@ func NewWatcherRegistry(
 				useCaseRegistry.updatePegoutDepositUseCase,
 				useCaseRegistry.initPegoutDepositCacheUseCase,
 			),
-			liquidityProvider,
+			lpRegistry.LiquidityProvider,
 			messaging.Rpc,
 			rskRegistry.Contracts,
 			messaging.EventBus,
@@ -88,6 +95,7 @@ func NewWatcherRegistry(
 		),
 		LiquidityCheckWatcher: watcher.NewLiquidityCheckWatcher(
 			useCaseRegistry.liquidityCheckUseCase,
+			useCaseRegistry.lowLiquidityAlertUseCase,
 			tickers.LiquidityCheckTicker,
 			timeouts.WatcherValidation.Seconds(),
 		),
@@ -123,15 +131,52 @@ func NewWatcherRegistry(
 			env.Pegout.BtcReleaseWatcherPageSize,
 			timeouts.BtcReleaseCheck.Seconds(),
 		),
+		BitcoinPeerWatcher: watcher.NewBitcoinPeerWatcher(
+			useCaseRegistry.nodePeerCheckUseCase,
+			tickers.BitcoinPeerWatcherTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
+		RootstockPeerWatcher: watcher.NewRootstockPeerWatcher(
+			useCaseRegistry.nodePeerCheckUseCase,
+			tickers.RootstockPeerWatcherTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
 		QuoteMetricsWatcher: monitoring.NewQuoteMetricsWatcher(
 			appMetrics,
 			messaging.EventBus,
 			useCaseRegistry.GetServerInfoUseCase(),
 		),
+		PeerMetricsWatcher: monitoring.NewPeerMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
+		),
 		AssetReportWatcher: monitoring.NewAssetReportWatcher(
 			appMetrics,
 			useCaseRegistry.GetAssetsReportUseCase(),
 			tickers.AssetReportTicker,
+		),
+		TransferColdWalletWatcher: watcher.NewTransferColdWalletWatcher(
+			useCaseRegistry.TransferExcessToColdWalletUseCase(),
+			tickers.TransferColdWalletTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
+		ColdWalletMetricsWatcher: monitoring.NewColdWalletMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
+		),
+		BitcoinReorgWatcher: watcher.NewBitcoinReorgWatcher(
+			useCaseRegistry.btcReorgCheckUseCase,
+			tickers.BitcoinReorgWatcherTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
+		RootstockReorgWatcher: watcher.NewRootstockReorgWatcher(
+			useCaseRegistry.rskReorgCheckUseCase,
+			tickers.RootstockReorgWatcherTicker,
+			timeouts.WatcherValidation.Seconds(),
+		),
+		ReorgMetricsWatcher: monitoring.NewReorgMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
 		),
 	}
 }

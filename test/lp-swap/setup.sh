@@ -54,7 +54,7 @@ sed -e 's/SECRET_SRC=aws/SECRET_SRC=env/g' \
   -e "s/LBC_ADDR=/$LBC_ADDRESS/g" \
   -e "s/BTC_ENDPOINT=bitcoind:5555/BTC_ENDPOINT=btc01:5555/g" \
   -e "s/ENABLE_MANAGEMENT_API=false/ENABLE_MANAGEMENT_API=true/g" \
-  -e 's/KEYSTORE_FILE=geth_keystore\/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c/KEYSTORE_FILE=\/mnt\/lp1-key.json/g' \
+  -e 's/WALLET_FILE=geth_keystore\/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c/WALLET_FILE=\/mnt\/lp1-key.json/g' \
   ../../sample-config.env > lp1.env
 
 sed -e 's/SECRET_SRC=aws/SECRET_SRC=env/g' \
@@ -67,7 +67,7 @@ sed -e 's/SECRET_SRC=aws/SECRET_SRC=env/g' \
   -e "s/BASE_URL=\"http:\/\/localhost:8080\"/BASE_URL=\"http:\/\/localhost:8081\"/g" \
   -e "s/BTC_ENDPOINT=bitcoind:5555/BTC_ENDPOINT=btc02:5555/g" \
   -e "s/ENABLE_MANAGEMENT_API=false/ENABLE_MANAGEMENT_API=true/g" \
-  -e 's/KEYSTORE_FILE=geth_keystore\/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c/KEYSTORE_FILE=\/mnt\/lp2-key.json/g' \
+  -e 's/WALLET_FILE=geth_keystore\/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c/WALLET_FILE=\/mnt\/lp2-key.json/g' \
   ../../sample-config.env > lp2.env
 
 docker compose --project-name lp-swap -f docker-compose.lps.yml --env-file=lp1.env up -d

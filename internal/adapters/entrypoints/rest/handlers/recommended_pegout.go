@@ -42,6 +42,11 @@ func NewRecommendedPegoutHandler(useCase RecommendedPegoutUseCase) http.HandlerF
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
 		}
+		if parsedAmount.Sign() <= 0 {
+			jsonErr := rest.NewErrorResponse("parameter amount must be greater than zero", true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
 		if destinationType != "" {
 			parsedDestinationType, err = blockchain.BtcAddressTypeFromString(destinationType)
 		}

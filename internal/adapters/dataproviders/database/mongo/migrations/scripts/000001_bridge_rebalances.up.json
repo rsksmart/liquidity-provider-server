@@ -1,0 +1,32 @@
+[
+  {
+    "update": "retainedPegoutQuote",
+    "updates": [
+      {
+        "q": {
+          "bridge_refund_tx_hash": {"$ne": ""},
+          "$or": [
+            {"bridge_rebalances": {"$exists": false}},
+            {"bridge_rebalances": {"$size": 0}},
+            {"bridge_rebalances": null}
+          ]
+        },
+        "u": [
+          {
+            "$set": {
+              "remaining_to_refund": {"$numberLong": "0"},
+              "bridge_rebalances": [
+                {
+                  "tx_hash": "$bridge_refund_tx_hash",
+                  "gas_used": "$bridge_refund_gas_used",
+                  "gas_price": "$bridge_refund_gas_price"
+                }
+              ]
+            }
+          }
+        ],
+        "multi": true
+      }
+    ]
+  }
+]

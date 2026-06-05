@@ -42,7 +42,7 @@ Both scripts reuse the base input flags from `cmd/utils/scripts`:
 - `--secret-src` (required): `env` or `aws`
 - `--keystore-file`: required when `--secret-src=env`
 - `--keystore-secret` and `--password-secret`: required when `--secret-src=aws`
---lbc-address`: optional override for custom LBC contract address
+- `--lbc-address`: optional override for custom LBC contract address
 ### Default regtest env file
 
 If you want to run the utilities with minimal flags (for example `./utils/resign_utils --resign`), you can provide defaults via an env file:

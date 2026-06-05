@@ -1,0 +1,112 @@
+[
+  {
+    "user_rsk_tx_hash": "0xusertxaaaaaaaa",
+    "btc_release_tx_hash": "btcreleaseaaaaaaaa",
+    "refund_pegout_gas_price": "60000000",
+    "deposit_address": "0xdeposit1234567890abcdef1234567890abcdef",
+    "signature": "0xsignature_pegout_aaaaaaaa",
+    "bridge_refund_gas_used": {
+      "$numberLong": "60000"
+    },
+    "refund_pegout_gas_used": {
+      "$numberLong": "70000"
+    },
+    "required_liquidity": "1200000000000000000",
+    "state": "WaitingForDeposit",
+    "lp_btc_tx_hash": "btctxaaaaaaaa",
+    "refund_pegout_tx_hash": "0xrefundtxaaaaaaaa",
+    "quote_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bridge_refund_tx_hash": "0xbridgetxaaaaaaaa",
+    "bridge_refund_gas_price": "60000000",
+    "send_pegout_btc_fee": "15000",
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678"
+  },
+  {
+    "bridge_refund_gas_used": {
+      "$numberLong": "60000"
+    },
+    "bridge_refund_gas_price": "60000000",
+    "refund_pegout_gas_price": "60000000",
+    "signature": "0xsignature_pegout_bbbbbbbb",
+    "refund_pegout_tx_hash": "0xrefundtxbbbbbbbb",
+    "bridge_refund_tx_hash": "0xbridgetxbbbbbbbb",
+    "quote_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "deposit_address": "0xdeposit1234567890abcdef1234567890abcdef",
+    "refund_pegout_gas_used": {
+      "$numberLong": "70000"
+    },
+    "send_pegout_btc_fee": "15000",
+    "required_liquidity": "1200000000000000000",
+    "state": "SendPegoutSucceeded",
+    "user_rsk_tx_hash": "0xusertxbbbbbbbb",
+    "lp_btc_tx_hash": "btctxbbbbbbbb",
+    "btc_release_tx_hash": "btcreleasebbbbbbbb",
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678"
+  },
+  {
+    "signature": "0xsignature_pegout_cccccccc",
+    "user_rsk_tx_hash": "0xusertxcccccccc",
+    "refund_pegout_tx_hash": "0xrefundtxcccccccc",
+    "bridge_refund_gas_price": "60000000",
+    "refund_pegout_gas_price": "60000000",
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678",
+    "quote_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "bridge_refund_gas_used": {
+      "$numberLong": "60000"
+    },
+    "btc_release_tx_hash": "btcreleasecccccccc",
+    "required_liquidity": "1200000000000000000",
+    "lp_btc_tx_hash": "btctxcccccccc",
+    "refund_pegout_gas_used": {
+      "$numberLong": "70000"
+    },
+    "send_pegout_btc_fee": "15000",
+    "deposit_address": "0xdeposit1234567890abcdef1234567890abcdef",
+    "state": "BridgeTxSucceeded",
+    "bridge_refund_tx_hash": "0xbridgetxcccccccc"
+  },
+  {
+    "lp_btc_tx_hash": "btctxdddddddd",
+    "refund_pegout_tx_hash": "0xrefundtxdddddddd",
+    "bridge_refund_gas_price": "60000000",
+    "send_pegout_btc_fee": "15000",
+    "refund_pegout_gas_used": {
+      "$numberLong": "70000"
+    },
+    "refund_pegout_gas_price": "60000000",
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678",
+    "state": "SendPegoutFailed",
+    "user_rsk_tx_hash": "0xusertxdddddddd",
+    "deposit_address": "0xdeposit1234567890abcdef1234567890abcdef",
+    "signature": "0xsignature_pegout_dddddddd",
+    "required_liquidity": "1200000000000000000",
+    "bridge_refund_tx_hash": "0xbridgetxdddddddd",
+    "bridge_refund_gas_used": {
+      "$numberLong": "60000"
+    },
+    "btc_release_tx_hash": "btcreleasedddddddd",
+    "quote_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  {
+    "quote_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "state": "BtcReleased",
+    "refund_pegout_gas_used": {
+      "$numberLong": "70000"
+    },
+    "btc_release_tx_hash": "btcreleaseeeeeeeee",
+    "lp_btc_tx_hash": "btctxeeeeeeee",
+    "refund_pegout_tx_hash": "0xrefundtxeeeeeeee",
+    "bridge_refund_gas_used": {
+      "$numberLong": "60000"
+    },
+    "signature": "0xsignature_pegout_eeeeeeee",
+    "required_liquidity": "1200000000000000000",
+    "bridge_refund_gas_price": "60000000",
+    "send_pegout_btc_fee": "15000",
+    "deposit_address": "0xdeposit1234567890abcdef1234567890abcdef",
+    "user_rsk_tx_hash": "0xusertxeeeeeeee",
+    "bridge_refund_tx_hash": "0xbridgetxeeeeeeee",
+    "refund_pegout_gas_price": "60000000",
+    "owner_account_address": "0x1234567890abcdef1234567890abcdef12345678"
+  }
+]

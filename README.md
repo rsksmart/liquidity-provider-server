@@ -2,6 +2,7 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/liquidity-provider-server/badge?branch=master)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/liquidity-provider-server)
 [![CodeQL](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/codeql.yml?query=branch%3Amaster)
 [![Unit Tests](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/rsksmart/liquidity-provider-server/actions/workflows/ci.yml?query=branch%3Amaster)
+[![codecov](https://codecov.io/gh/rsksmart/liquidity-provider-server/branch/master/graph/badge.svg)](https://codecov.io/gh/rsksmart/liquidity-provider-server)
 
 The Liquidity Provider Server (LPS) is a server that interacts with a [Liquidity Bridge Contract (LBC)](https://github.com/rsksmart/liquidity-bridge-contract) to provide liquidity for users as part of the Flyover protocol. This server performs all the necessary operations to play the role of the Liquidity Provider, involving transactions in both Rootstock and Bitcoin networks.
 
@@ -22,8 +23,7 @@ To run the project locally you can follow these steps:
 
 1. `git clone git@github.com:rsksmart/liquidity-provider-server.git`
 2. `cd docker-compose/local`
-3. `export LPS_STAGE=regtest`
-4. `./lps-env.sh up`
+3. `./lps-local.sh`
 
 This will set up a local environment, please keep in mind that a productive set-up could vary in multiple aspects.
 
@@ -141,12 +141,12 @@ The option to select of the following can be set through the value of the `SECRE
 
 ### AWS Secrets Manager
 In this option the LPS will get the secrets from [AWS secrets manager service](https://aws.amazon.com/secrets-manager/), this means that the LPS will need to be provided with the AWS keys in any of the ways that the AWS client allows (through a file in home directory, environment variables, etc). In this case, the LPS should receive the name of the secrets to use through the environment variables (that are listed below). This is the recommended option for production environments.
-1. KEY_SECRET
+1. WALLET_SECRET
 2. PASSWORD_SECRET
 
 ### Environment (Not recommended)
 In this option the LPS will get the required secrets from the environment (this might include the path to existing files in the filesystem). This option is not recommended to be used in production environments as it was developed only for testing purposes. The env vars that need to be set if this option is used are the following:
-1. KEYSTORE_FILE
+1. WALLET_FILE
 2. KEYSTORE_PWD
 
 ### Technical clarifications

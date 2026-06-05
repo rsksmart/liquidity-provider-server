@@ -177,3 +177,17 @@ pre {
 #pegoutSummary th {
     width: 60%;
 }
+
+.badge-deficit {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-excess {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-withinTolerance {
+    background-color: #198754;
+}

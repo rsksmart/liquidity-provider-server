@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"regexp"
 	"strings"
@@ -26,6 +27,7 @@ var (
 	WaitingForBridgeError = errors.New("waiting for rootstock bridge")
 	InvalidAddressError   = errors.New("invalid rootstock address")
 	ContractPausedError   = errors.New("contract is paused")
+	TxFailedError         = errors.New("transaction failed")
 )
 
 type RskContracts struct {
@@ -41,6 +43,15 @@ func DecodeStringTrimPrefix(hexString string) ([]byte, error) {
 }
 func IsRskAddress(address string) bool {
 	return rskAddressRegex.MatchString(address)
+}
+
+// NormalizeRskAddress returns the canonical lowercase 0x-prefixed 40-hex form for RSK account addresses.
+func NormalizeRskAddress(addr string) (string, error) {
+	trimmed := strings.TrimSpace(addr)
+	if !IsRskAddress(trimmed) {
+		return "", fmt.Errorf("%w: %q", InvalidAddressError, addr)
+	}
+	return strings.ToLower(trimmed), nil
 }
 
 type TransactionConfig struct {
@@ -80,10 +91,11 @@ type ParsedLog[E any] struct {
 }
 
 type BlockInfo struct {
-	Hash      string
-	Number    uint64
-	Timestamp time.Time
-	Nonce     uint64
+	Hash       string
+	ParentHash string
+	Number     uint64
+	Timestamp  time.Time
+	Nonce      uint64
 }
 
 func NewTransactionConfig(value *entities.Wei, gasLimit uint64, gasPrice *entities.Wei) TransactionConfig {
@@ -103,9 +115,20 @@ type RootstockRpcServer interface {
 	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
 	GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (BlockInfo, error)
 	ChainId(ctx context.Context) (uint64, error)
+	PeerCount(ctx context.Context) (uint64, error)
 }
 
 type RootstockWallet interface {
 	SendRbtc(ctx context.Context, config TransactionConfig, toAddress string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context) (*entities.Wei, error)
 }
+
+// RejectedPegoutReason is a display label decoded from the Bridge release_request_rejected event.
+type RejectedPegoutReason string
+
+const (
+	RejectedPegoutReasonUnknown        RejectedPegoutReason = "unknown"
+	RejectedPegoutReasonLowAmount      RejectedPegoutReason = "low_amount"
+	RejectedPegoutReasonCallerContract RejectedPegoutReason = "caller_contract"
+	RejectedPegoutReasonFeeAboveValue  RejectedPegoutReason = "fee_above_value"
+)

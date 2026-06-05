@@ -118,6 +118,7 @@ type BitcoinWallet interface {
 	entities.Closeable
 	EstimateTxFees(toAddress string, value *entities.Wei) (BtcFeeEstimation, error)
 	GetBalance() (*entities.Wei, error)
+	Send(address string, value *entities.Wei) (BitcoinTransactionResult, error)
 	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (BitcoinTransactionResult, error)
 	CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error)
 	ImportAddress(address string) error
@@ -140,6 +141,15 @@ type BitcoinNetwork interface {
 	NetworkName() string
 	GetBlockchainInfo() (BitcoinBlockchainInfo, error)
 	GetZeroAddress(addressType BtcAddressType) (string, error)
+	GetBlockHashAtHeight(height int64) (string, error)
+	GetBlockHeaderVerbose(blockHash string) (BitcoinBlockHeaderInfo, error)
+	GetConnectionCount() (int64, error)
+}
+
+type BitcoinBlockHeaderInfo struct {
+	Hash         string
+	Height       uint64
+	PreviousHash string
 }
 
 type BitcoinTransactionInformation struct {

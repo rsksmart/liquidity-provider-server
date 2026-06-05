@@ -144,7 +144,7 @@ func (useCase *GetQuoteUseCase) validateRequest(configuration liquidity_provider
 		return args, err
 	}
 	if len(request.callContractArguments) > MaxPeginDataSize {
-		args["size"] = request.callEoaOrContractAddress
+		args["size"] = strconv.Itoa(len(request.callContractArguments))
 		args["limit"] = strconv.Itoa(MaxPeginDataSize)
 		return args, DataCapExceededError
 	}

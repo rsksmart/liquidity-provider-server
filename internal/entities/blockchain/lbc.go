@@ -93,11 +93,11 @@ type PeginContract interface {
 	Pausable
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
-	Withdraw(amount *entities.Wei) error
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
 	HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error)
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
 	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
+	Withdraw(amount *entities.Wei) error
 }
 
 type PegoutContract interface {

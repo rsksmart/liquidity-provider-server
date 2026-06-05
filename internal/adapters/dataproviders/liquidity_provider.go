@@ -105,12 +105,10 @@ func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requir
 	}
 	if availableLiquidity.Cmp(requiredLiquidity) >= 0 {
 		return nil
-	} else {
-		return fmt.Errorf(
-			"%w, missing %s satoshi",
-			usecases.NoLiquidityError,
-			requiredLiquidity.Sub(requiredLiquidity, availableLiquidity).ToSatoshi().String(),
-		)
+	}
+	return &usecases.InsufficientLiquidityError{
+		Available: availableLiquidity.Copy(),
+		Required:  requiredLiquidity.Copy(),
 	}
 }
 
@@ -226,6 +224,16 @@ func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquid
 		return liquidity_provider.DefaultPeginConfiguration()
 	}
 	return configuration.Value
+}
+
+func (lp *LocalLiquidityProvider) StateConfiguration(ctx context.Context) (liquidity_provider.StateConfiguration, error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.StateConfiguration], error) {
+		return lp.lpRepository.GetStateConfiguration(ctx)
+	})
+	if err != nil {
+		return liquidity_provider.StateConfiguration{}, err
+	}
+	return configuration.Value, nil
 }
 
 func (lp *LocalLiquidityProvider) GetSigner() entities.Signer {
