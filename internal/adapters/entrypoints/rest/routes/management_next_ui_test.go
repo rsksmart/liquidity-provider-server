@@ -20,11 +20,8 @@ func TestManagementNextUI_EmbeddedFSShape(t *testing.T) {
 	_, err := fs.Stat(dist, "index.html")
 	require.NoError(t, err, "expected dist/index.html to be embedded (run `cd ui && pnpm run build` before go test/build)")
 
-	js := findFirstAsset(t, dist, ".js")
-	css := findFirstAsset(t, dist, ".css")
-
-	require.NotEmpty(t, js)
-	require.NotEmpty(t, css)
+	assets := listEmbeddedAssets(t, dist)
+	require.NotEmpty(t, findFirstAssetPath(assets, ".js"), "expected at least one .js under dist/assets/")
 }
 
 func TestManagementNextUI_Headers_IndexAndAssets(t *testing.T) {
@@ -51,35 +48,28 @@ func TestManagementNextUI_Headers_IndexAndAssets(t *testing.T) {
 		require.Contains(t, response.Header.Get("Content-Type"), "text/html")
 	}
 
-	js := findFirstAsset(t, dist, ".js")
-	css := findFirstAsset(t, dist, ".css")
-
-	// Hashed assets should be immutable cached + correct MIME.
-	for _, tc := range []struct {
-		name           string
-		path           string
-		contentTypeSub string
-	}{
-		{name: "js", path: js, contentTypeSub: "javascript"},
-		{name: "css", path: css, contentTypeSub: "text/css"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, testServer.URL+"/management/next/"+tc.path, nil)
+	for _, assetPath := range listEmbeddedAssets(t, dist) {
+		contentTypeSub, ok := assetContentTypeSub(assetPath)
+		if !ok {
+			continue
+		}
+		t.Run(assetPath, func(t *testing.T) {
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, testServer.URL+"/management/next/"+assetPath, nil)
 			require.NoError(t, err)
 			response, err := client.Do(request)
 			require.NoError(t, err)
 			defer response.Body.Close()
 			require.Equal(t, http.StatusOK, response.StatusCode)
 			require.Equal(t, "public, max-age=31536000, immutable", response.Header.Get("Cache-Control"))
-			require.Contains(t, strings.ToLower(response.Header.Get("Content-Type")), tc.contentTypeSub)
+			require.Contains(t, strings.ToLower(response.Header.Get("Content-Type")), contentTypeSub)
 		})
 	}
 }
 
-func findFirstAsset(t *testing.T, dist fs.FS, ext string) string {
+func listEmbeddedAssets(t *testing.T, dist fs.FS) []string {
 	t.Helper()
 
-	var out string
+	var paths []string
 	require.NoError(t, fs.WalkDir(dist, "assets", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -87,12 +77,28 @@ func findFirstAsset(t *testing.T, dist fs.FS, ext string) string {
 		if d.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(p, ext) {
-			out = p
-			return fs.SkipAll
-		}
+		paths = append(paths, p)
 		return nil
 	}))
-	require.NotEmpty(t, out, "expected at least one %s under dist/assets/", ext)
-	return out
+	return paths
+}
+
+func findFirstAssetPath(paths []string, ext string) string {
+	for _, p := range paths {
+		if strings.HasSuffix(p, ext) {
+			return p
+		}
+	}
+	return ""
+}
+
+func assetContentTypeSub(path string) (string, bool) {
+	switch {
+	case strings.HasSuffix(path, ".js"):
+		return "javascript", true
+	case strings.HasSuffix(path, ".css"):
+		return "text/css", true
+	default:
+		return "", false
+	}
 }
