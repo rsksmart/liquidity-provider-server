@@ -34,7 +34,7 @@ func TestTrusted_Get_NotFound(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	_, err := trustedRepo.GetTrustedAccount(ctx, "0xnonexistent")
+	_, err := trustedRepo.GetTrustedAccount(ctx, "0x9999222233334444555566667777888899990009")
 	require.ErrorIs(t, err, liquidity_provider.TrustedAccountNotFoundError)
 }
 
@@ -95,7 +95,7 @@ func TestTrusted_Update_NotFound(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	account := utils.NewTestTrustedAccount("0xnonexistent000000000000000000000000000000")
+	account := utils.NewTestTrustedAccount("0x9999222233334444555566667777888899990008")
 	err := trustedRepo.UpdateTrustedAccount(ctx, account)
 	require.ErrorIs(t, err, liquidity_provider.TrustedAccountNotFoundError)
 }
@@ -118,6 +118,6 @@ func TestTrusted_Delete_NotFound(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
 
-	err := trustedRepo.DeleteTrustedAccount(ctx, "0xnonexistent000000000000000000000000000000")
+	err := trustedRepo.DeleteTrustedAccount(ctx, "0x9999222233334444555566667777888899990007")
 	require.ErrorIs(t, err, liquidity_provider.TrustedAccountNotFoundError)
 }

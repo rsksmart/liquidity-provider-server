@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -12,6 +13,21 @@ import (
 )
 
 const TrustedAccountCollection = "trustedAccounts"
+
+func trustedAccountAddressFilter(address string) (bson.M, error) {
+	normalized, err := blockchain.NormalizeRskAddress(address)
+	if err != nil {
+		return nil, errors.Join(liquidity_provider.InvalidTrustedAccountAddressError, blockchain.InvalidAddressError, err)
+	}
+	return bson.M{
+		"$expr": bson.M{
+			"$eq": []interface{}{
+				bson.M{"$toLower": "$address"},
+				normalized,
+			},
+		},
+	}, nil
+}
 
 type trustedAccountMongoRepository struct {
 	conn *Connection
@@ -26,8 +42,11 @@ func (repo *trustedAccountMongoRepository) GetTrustedAccount(ctx context.Context
 	defer cancel()
 	signedAccount := &entities.Signed[liquidity_provider.TrustedAccountDetails]{}
 	collection := repo.conn.Collection(TrustedAccountCollection)
-	filter := bson.M{"address": address}
-	err := collection.FindOne(dbCtx, filter).Decode(signedAccount)
+	filter, err := trustedAccountAddressFilter(address)
+	if err != nil {
+		return nil, err
+	}
+	err = collection.FindOne(dbCtx, filter).Decode(signedAccount)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, liquidity_provider.TrustedAccountNotFoundError
 	} else if err != nil {
@@ -80,7 +99,10 @@ func (repo *trustedAccountMongoRepository) UpdateTrustedAccount(ctx context.Cont
 	if err != nil {
 		return err
 	}
-	filter := bson.M{"address": account.Value.Address}
+	filter, err := trustedAccountAddressFilter(account.Value.Address)
+	if err != nil {
+		return err
+	}
 	opts := options.UpdateOne()
 	update := bson.M{"$set": account}
 	_, err = collection.UpdateOne(dbCtx, filter, update, opts)
@@ -95,7 +117,10 @@ func (repo *trustedAccountMongoRepository) DeleteTrustedAccount(ctx context.Cont
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 	collection := repo.conn.Collection(TrustedAccountCollection)
-	filter := bson.M{"address": address}
+	filter, err := trustedAccountAddressFilter(address)
+	if err != nil {
+		return err
+	}
 	result, err := collection.DeleteOne(dbCtx, filter)
 	if err != nil {
 		return err

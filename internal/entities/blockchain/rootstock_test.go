@@ -71,6 +71,35 @@ func TestDecodeStringTrimPrefix(t *testing.T) {
 	})
 }
 
+func TestNormalizeRskAddress(t *testing.T) {
+	const wantLower = "0xd839c223634b224327430bb7062858109c850bf9"
+	t.Run("lowercase input unchanged", func(t *testing.T) {
+		got, err := blockchain.NormalizeRskAddress(wantLower)
+		require.NoError(t, err)
+		assert.Equal(t, wantLower, got)
+	})
+	t.Run("EIP-55 input becomes lowercase", func(t *testing.T) {
+		got, err := blockchain.NormalizeRskAddress("0xD839C223634b224327430Bb7062858109C850bf9")
+		require.NoError(t, err)
+		assert.Equal(t, wantLower, got)
+	})
+	t.Run("uppercase hex becomes lowercase", func(t *testing.T) {
+		got, err := blockchain.NormalizeRskAddress("0xD839C223634B224327430BB7062858109C850BF9")
+		require.NoError(t, err)
+		assert.Equal(t, wantLower, got)
+	})
+	t.Run("invalid address rejected", func(t *testing.T) {
+		_, err := blockchain.NormalizeRskAddress("not-an-address")
+		require.Error(t, err)
+		require.ErrorIs(t, err, blockchain.InvalidAddressError)
+	})
+	t.Run("too short hex rejected", func(t *testing.T) {
+		_, err := blockchain.NormalizeRskAddress("0x1234")
+		require.Error(t, err)
+		require.ErrorIs(t, err, blockchain.InvalidAddressError)
+	})
+}
+
 func TestDecodeStringTrim_Fail(t *testing.T) {
 	badAddresses := []string{
 		"mwtKGvtdDno6zzoioQHgWbV9A2i2kbfWcX",

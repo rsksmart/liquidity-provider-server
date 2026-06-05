@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -67,6 +68,24 @@ func TestNewUpdateTrustedAccountHandler(t *testing.T) {
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusBadRequest, recorder.Code)
 	})
+	t.Run("should return 400 on invalid trusted account address", func(t *testing.T) {
+		request := createValidRequest()
+		recorder := httptest.NewRecorder()
+		repo := &mocks.TrustedAccountRepositoryMock{}
+		signer := &mocks.TransactionSignerMock{}
+		hashMock := &mocks.HashMock{}
+		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
+		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
+		repo.On("UpdateTrustedAccount", mock.Anything, mock.Anything).Return(liquidity_provider.InvalidTrustedAccountAddressError)
+		useCase := lpuc.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		handler := http.HandlerFunc(handlers.NewUpdateTrustedAccountHandler(useCase))
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assertInvalidTrustedAccountAddressResponse(t, recorder)
+		repo.AssertExpectations(t)
+		signer.AssertExpectations(t)
+		hashMock.AssertExpectations(t)
+	})
 	t.Run("should return 404 when account not found", func(t *testing.T) {
 		request := createValidRequest()
 		recorder := httptest.NewRecorder()
@@ -80,6 +99,23 @@ func TestNewUpdateTrustedAccountHandler(t *testing.T) {
 		handler := http.HandlerFunc(handlers.NewUpdateTrustedAccountHandler(useCase))
 		handler.ServeHTTP(recorder, request)
 		assert.Equal(t, http.StatusNotFound, recorder.Code)
+		repo.AssertExpectations(t)
+		signer.AssertExpectations(t)
+		hashMock.AssertExpectations(t)
+	})
+	t.Run("should return 500 on unexpected error", func(t *testing.T) {
+		request := createValidRequest()
+		recorder := httptest.NewRecorder()
+		repo := &mocks.TrustedAccountRepositoryMock{}
+		signer := &mocks.TransactionSignerMock{}
+		hashMock := &mocks.HashMock{}
+		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
+		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
+		repo.On("UpdateTrustedAccount", mock.Anything, mock.Anything).Return(errors.New("database error"))
+		useCase := lpuc.NewUpdateTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		handler := http.HandlerFunc(handlers.NewUpdateTrustedAccountHandler(useCase))
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 		repo.AssertExpectations(t)
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)

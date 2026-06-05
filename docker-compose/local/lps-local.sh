@@ -36,7 +36,7 @@ set +a
 set_defaults
 
 ### Create base (always runs) ###
-docker compose --env-file "$ENV_FILE" up -d --wait
+docker compose --progress plain --env-file "$ENV_FILE" up -d --wait
 
 ### Funding wallets ###
 if [[ "$FUND_WALLETS" == "true" ]]; then
@@ -84,7 +84,18 @@ if [[ "$CREATE_POWPEG" == "true" ]]; then
 fi
 
 ### LPS (always runs) ###
-docker compose -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d --wait
+# lps01 may briefly crash on first boot during a BTC
+# wallet rescan. lps-configurer polls /health internally and signals completion via
+# its exit code
+# TODO: Change the fatal.log when lps01 crashes
+docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d
+echo "Configuring LPS..."
+EXIT_CODE=$(docker wait lps-configurer)
+if [ "$EXIT_CODE" != "0" ]; then
+  echo "ERROR: LPS configuration failed (exit code $EXIT_CODE)"
+  exit 1
+fi
+echo "LPS configured"
 
 if [[ "$CREATE_MONITORING" == "true" ]]; then
   docker compose -f docker-compose.yml -f monitoring/docker-compose.monitoring.yml --env-file "$ENV_FILE" up --wait

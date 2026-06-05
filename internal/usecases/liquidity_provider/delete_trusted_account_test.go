@@ -12,24 +12,32 @@ import (
 )
 
 func TestDeleteTrustedAccountUseCase_Run(t *testing.T) {
+	const addr = "0x1234567890123456789012345678901234567890"
 	t.Run("Success case", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
-		address := "0x123456"
-		repo.On("DeleteTrustedAccount", mock.Anything, address).Return(nil)
+		repo.On("DeleteTrustedAccount", mock.Anything, addr).Return(nil)
 		useCase := lp.NewDeleteTrustedAccountUseCase(repo)
-		err := useCase.Run(context.Background(), address)
+		err := useCase.Run(context.Background(), addr)
 		require.NoError(t, err)
 		repo.AssertExpectations(t)
 	})
 
 	t.Run("Not found error", func(t *testing.T) {
 		repo := &mocks.TrustedAccountRepositoryMock{}
-		address := "0x123456"
-		repo.On("DeleteTrustedAccount", mock.Anything, address).Return(liquidity_provider.TrustedAccountNotFoundError)
+		repo.On("DeleteTrustedAccount", mock.Anything, addr).Return(liquidity_provider.TrustedAccountNotFoundError)
 		useCase := lp.NewDeleteTrustedAccountUseCase(repo)
-		err := useCase.Run(context.Background(), address)
+		err := useCase.Run(context.Background(), addr)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), liquidity_provider.TrustedAccountNotFoundError.Error())
 		repo.AssertExpectations(t)
+	})
+
+	t.Run("invalid address", func(t *testing.T) {
+		repo := &mocks.TrustedAccountRepositoryMock{}
+		useCase := lp.NewDeleteTrustedAccountUseCase(repo)
+		err := useCase.Run(context.Background(), "bad-address")
+		require.Error(t, err)
+		require.ErrorIs(t, err, liquidity_provider.InvalidTrustedAccountAddressError)
+		repo.AssertNotCalled(t, "DeleteTrustedAccount")
 	})
 }

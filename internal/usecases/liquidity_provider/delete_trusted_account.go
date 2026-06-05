@@ -20,7 +20,11 @@ func NewDeleteTrustedAccountUseCase(
 }
 
 func (useCase *DeleteTrustedAccountUseCase) Run(ctx context.Context, address string) error {
-	err := useCase.trustedAccountRepository.DeleteTrustedAccount(ctx, address)
+	normalized, err := usecases.NormalizeTrustedAccountAddress(usecases.DeleteTrustedAccountId, address)
+	if err != nil {
+		return err
+	}
+	err = useCase.trustedAccountRepository.DeleteTrustedAccount(ctx, normalized)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.DeleteTrustedAccountId, err)
 	}
