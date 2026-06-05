@@ -123,6 +123,54 @@ func TestPegoutConfiguration_ValidateAmount(t *testing.T) {
 	}
 }
 
+func TestPegoutConfiguration_ValidateExpiryAgainstConfirmations(t *testing.T) {
+	generalConfig := liquidity_provider.GeneralConfiguration{
+		RskConfirmations: liquidity_provider.ConfirmationsPerAmount{
+			"1":  80,
+			"10": 10,
+		},
+		BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
+			"1":  4,
+			"10": 2,
+		},
+	}
+
+	t.Run("should pass when expire time and blocks are enough", func(t *testing.T) {
+		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(5),
+			ExpireTime:   5000,
+			ExpireBlocks: 200,
+		}
+
+		err := config.ValidateExpiryAgainstConfirmations(generalConfig)
+		require.NoError(t, err)
+	})
+
+	t.Run("should fail when expire time equals estimated confirmations", func(t *testing.T) {
+		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(1),
+			ExpireTime:   4800,
+			ExpireBlocks: 1000,
+		}
+
+		err := config.ValidateExpiryAgainstConfirmations(generalConfig)
+		require.ErrorIs(t, err, liquidity_provider.PegoutExpiryTooShortForConfirmationsError)
+		require.Contains(t, err.Error(), "expireTime")
+	})
+
+	t.Run("should fail when expire blocks time equals estimated confirmations", func(t *testing.T) {
+		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(1),
+			ExpireTime:   10000,
+			ExpireBlocks: 160,
+		}
+
+		err := config.ValidateExpiryAgainstConfirmations(generalConfig)
+		require.ErrorIs(t, err, liquidity_provider.PegoutExpiryTooShortForConfirmationsError)
+		require.Contains(t, err.Error(), "expireBlocks")
+	})
+}
+
 func TestExcessTolerance_Normalize(t *testing.T) {
 	table := test.Table[liquidity_provider.ExcessTolerance, liquidity_provider.ExcessTolerance]{
 		{

@@ -26,6 +26,8 @@ func NewSetPegoutConfigUseCase(
 }
 
 func (useCase *SetPegoutConfigUseCase) Run(ctx context.Context, config liquidity_provider.PegoutConfiguration) error {
+	var generalConfig liquidity_provider.GeneralConfiguration
+
 	if err := usecases.ValidatePositiveWeiValues(
 		usecases.SetPegoutConfigId,
 		config.PenaltyFee,
@@ -40,6 +42,17 @@ func (useCase *SetPegoutConfigUseCase) Run(ctx context.Context, config liquidity
 	var err error
 	if err = usecases.ValidateMinLockValue(usecases.SetPegoutConfigId, useCase.contracts.Bridge, config.BridgeTransactionMin); err != nil {
 		return err
+	}
+
+	signedGeneralConfig, err := useCase.lpRepository.GetGeneralConfiguration(ctx)
+	if err != nil || signedGeneralConfig == nil {
+		generalConfig = liquidity_provider.DefaultGeneralConfiguration()
+	} else {
+		generalConfig = signedGeneralConfig.Value
+	}
+
+	if err = config.ValidateExpiryAgainstConfirmations(generalConfig); err != nil {
+		return usecases.WrapUseCaseError(usecases.SetPegoutConfigId, err)
 	}
 
 	signedConfig, err := usecases.SignConfiguration(usecases.SetPegoutConfigId, useCase.signer, useCase.hashFunc, config)
