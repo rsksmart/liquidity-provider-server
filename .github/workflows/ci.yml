@@ -81,6 +81,10 @@ jobs:
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@v1.13.0
 
+      - name: Install UI dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ui
+
       - name: Run UI unit tests with coverage
         run: pnpm test:coverage
         working-directory: ui
