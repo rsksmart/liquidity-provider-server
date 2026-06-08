@@ -41,7 +41,7 @@ repos:
         always_run: true
       - id: go-build-check
         name: Go Build Check
-        entry: go build ./...
+        entry: make build
         language: system
         pass_filenames: false
         stages: [pre-push]

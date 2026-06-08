@@ -1,4 +1,4 @@
-package routes
+package routes_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/managementnextui"
@@ -53,7 +54,7 @@ func TestManagementNextUI_Headers_IndexAndAssets(t *testing.T) {
 	handler := newManagementNextUIHandlerForRouteTest(t, dist)
 
 	router := mux.NewRouter()
-	router.Path(NextUiPath).Methods(http.MethodGet).Handler(handler)
+	router.Path(routes.NextUiPath).Methods(http.MethodGet).Handler(handler)
 
 	testServer := httptest.NewServer(router)
 	t.Cleanup(testServer.Close)
@@ -98,6 +99,23 @@ func TestManagementNextUI_Headers_IndexAndAssets(t *testing.T) {
 			require.Contains(t, strings.ToLower(response.Header.Get("Content-Type")), contentTypeSub)
 		})
 	}
+}
+
+func TestManagementNextUI_NextUiPathDoesNotMatchUnrelatedUrls(t *testing.T) {
+	router := mux.NewRouter()
+	router.Path(routes.NextUiPath).Methods(http.MethodGet).Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	testServer := httptest.NewServer(router)
+	t.Cleanup(testServer.Close)
+
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, testServer.URL+"/management/nextfoo", nil)
+	require.NoError(t, err)
+	response, err := http.DefaultClient.Do(request)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
 }
 
 func listEmbeddedAssets(t *testing.T, dist fs.FS) []string {

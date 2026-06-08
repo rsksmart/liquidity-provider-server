@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
@@ -25,6 +26,7 @@ import (
 type nextUiIndexData struct {
 	CsrfToken       string
 	ScriptNonce     string
+	StyleNonce      string
 	InitialDataJSON template.JS
 }
 
@@ -66,7 +68,7 @@ func (handler *ManagementNextUIHandler) ServeHTTP(responseWriter http.ResponseWr
 	routeVars := mux.Vars(request)
 	requestedPath := routeVars["path"]
 
-	// Normalize and block traversal attempts.
+	// Normalize the requested path so it can't escape the embedded dist/ root.
 	cleanPath := path.Clean("/" + requestedPath)
 	cleanPath = strings.TrimPrefix(cleanPath, "/")
 	if cleanPath == ".." || strings.HasPrefix(cleanPath, "../") {
@@ -117,7 +119,15 @@ func (handler *ManagementNextUIHandler) serveIndex(responseWriter http.ResponseW
 		sendErrorTemplate(responseWriter)
 		return
 	}
-	nonce := hex.EncodeToString(nonceRaw)
+	scriptNonce := hex.EncodeToString(nonceRaw)
+
+	styleNonceRaw, err := utils.GetRandomBytes(nonceBytes)
+	if err != nil {
+		log.Errorf(errorGeneratingTemplate, err)
+		sendErrorTemplate(responseWriter)
+		return
+	}
+	styleNonce := hex.EncodeToString(styleNonceRaw)
 
 	var jsonBuf bytes.Buffer
 	encoder := json.NewEncoder(&jsonBuf)
@@ -131,12 +141,13 @@ func (handler *ManagementNextUIHandler) serveIndex(responseWriter http.ResponseW
 	responseWriter.Header().Set("Cache-Control", "no-store")
 	responseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if handler.env.EnableSecurityHeaders {
-		htmlTemplateSecurityHeaders(responseWriter, nonce)
+		nextUiSecurityHeaders(responseWriter, scriptNonce, styleNonce)
 	}
 
 	data := nextUiIndexData{
 		CsrfToken:   csrf.Token(request),
-		ScriptNonce: nonce,
+		ScriptNonce: scriptNonce,
+		StyleNonce:  styleNonce,
 		// JSON is server-generated with SetEscapeHTML; template.JS marks safe for application/json script block.
 		InitialDataJSON: template.JS(strings.TrimSpace(jsonBuf.String())), //nolint:gosec // G203
 	}
@@ -175,4 +186,15 @@ func (handler *ManagementNextUIHandler) serveFileBody(responseWriter http.Respon
 		http.Error(responseWriter, "failed to write response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func nextUiSecurityHeaders(w http.ResponseWriter, scriptNonce, styleNonce string) {
+	cspHeader := fmt.Sprintf(
+		"default-src 'self'; font-src 'self' data:; style-src 'self' 'nonce-%s'; object-src 'none'; frame-src 'self'; script-src 'self' 'nonce-%s'; img-src 'self' data:; connect-src 'self';",
+		styleNonce, scriptNonce,
+	)
+	w.Header().Set("Content-Security-Policy", cspHeader)
+	w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 }
