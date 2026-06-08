@@ -253,7 +253,7 @@ func TestManagementNextUIHandler_TemplatedIndexLoggedInInitialData(t *testing.T)
 	mockUseCase.AssertExpectations(t)
 }
 
-func TestManagementNextUIHandler_SecurityHeadersMatchLegacy(t *testing.T) {
+func TestManagementNextUIHandler_SecurityHeadersUseNextUiPolicy(t *testing.T) {
 	mockStore := new(mocks.StoreMock)
 	mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
 
@@ -279,9 +279,11 @@ func TestManagementNextUIHandler_SecurityHeadersMatchLegacy(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, nextRecorder.Code)
 
-	legacyCSP := normalizeCSP(legacyRecorder.Header().Get("Content-Security-Policy"))
-	nextCSP := normalizeCSP(nextRecorder.Header().Get("Content-Security-Policy"))
-	assert.Equal(t, legacyCSP, nextCSP)
+	nextCSP := nextRecorder.Header().Get("Content-Security-Policy")
+	require.Contains(t, nextCSP, "style-src 'self' 'nonce-")
+	require.Contains(t, nextCSP, "script-src 'self' 'nonce-")
+	require.NotContains(t, nextCSP, "sha256-yr5DcAJJmu0m4Rv1KfUyA8AJj1t0kAJ1D2JuSBIT1DU=")
+
 	assert.Equal(t, legacyRecorder.Header().Get("Strict-Transport-Security"), nextRecorder.Header().Get("Strict-Transport-Security"))
 	assert.Equal(t, legacyRecorder.Header().Get("X-Frame-Options"), nextRecorder.Header().Get("X-Frame-Options"))
 	assert.Equal(t, legacyRecorder.Header().Get("X-Content-Type-Options"), nextRecorder.Header().Get("X-Content-Type-Options"))

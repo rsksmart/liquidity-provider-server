@@ -1,4 +1,10 @@
-export type ProviderType = string
+export type ProviderType = 0 | 1 | 2
+
+export type ConfirmationsPerAmount = Record<string, number>
+
+export type WeiValue = string
+
+export type BigFloatValue = string
 
 export interface RegisteredLiquidityProvider {
   id: number
@@ -15,10 +21,47 @@ export interface ManagementColdWallet {
   Label: string
 }
 
+export interface ExcessTolerance {
+  isFixed: boolean
+  percentageValue: BigFloatValue
+  fixedValue: WeiValue
+}
+
+export interface GeneralConfiguration {
+  rskConfirmations: ConfirmationsPerAmount
+  btcConfirmations: ConfirmationsPerAmount
+  publicLiquidityCheck: boolean
+  maxLiquidity: WeiValue | null
+  reimbursementWindowBlocks: number
+  excessTolerance: ExcessTolerance
+}
+
+export interface PeginConfiguration {
+  timeForDeposit: number
+  callTime: number
+  penaltyFee: WeiValue
+  fixedFee: WeiValue
+  feePercentage: BigFloatValue
+  maxValue: WeiValue
+  minValue: WeiValue
+}
+
+export interface PegoutConfiguration {
+  timeForDeposit: number
+  expireTime: number
+  penaltyFee: WeiValue
+  fixedFee: WeiValue
+  feePercentage: BigFloatValue
+  maxValue: WeiValue
+  minValue: WeiValue
+  expireBlocks: number
+  bridgeTransactionMin: WeiValue
+}
+
 export interface FullConfiguration {
-  general: Record<string, unknown>
-  pegin: Record<string, unknown>
-  pegout: Record<string, unknown>
+  general: GeneralConfiguration
+  pegin: PeginConfiguration
+  pegout: PegoutConfiguration
 }
 
 export interface ManagementTemplateData {

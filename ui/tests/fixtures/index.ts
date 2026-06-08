@@ -1,4 +1,43 @@
-import type { InitialDataPayload } from '@shared/types/initial-data'
+import type {
+  FullConfiguration,
+  InitialDataPayload,
+  ProviderType,
+} from '@shared/types/initial-data'
+
+const emptyConfiguration: FullConfiguration = {
+  general: {
+    rskConfirmations: {},
+    btcConfirmations: {},
+    publicLiquidityCheck: false,
+    maxLiquidity: null,
+    reimbursementWindowBlocks: 0,
+    excessTolerance: {
+      isFixed: false,
+      percentageValue: '0',
+      fixedValue: '0',
+    },
+  },
+  pegin: {
+    timeForDeposit: 0,
+    callTime: 0,
+    penaltyFee: '0',
+    fixedFee: '0',
+    feePercentage: '0',
+    maxValue: '0',
+    minValue: '0',
+  },
+  pegout: {
+    timeForDeposit: 0,
+    expireTime: 0,
+    penaltyFee: '0',
+    fixedFee: '0',
+    feePercentage: '0',
+    maxValue: '0',
+    minValue: '0',
+    expireBlocks: 0,
+    bridgeTransactionMin: '0',
+  },
+}
 
 export const loggedInFixture: InitialDataPayload = {
   loggedIn: true,
@@ -13,18 +52,14 @@ export const loggedInFixture: InitialDataPayload = {
       name: 'Test LP',
       apiBaseUrl: 'http://localhost:8080',
       status: true,
-      providerType: 'pegin',
+      providerType: 0 as ProviderType,
     },
     ColdWallet: {
       BtcAddress: 'tb1qcold',
       RskAddress: '0xcold',
       Label: 'cold',
     },
-    Configuration: {
-      general: {},
-      pegin: {},
-      pegout: {},
-    },
+    Configuration: emptyConfiguration,
   },
 }
 
@@ -41,17 +76,13 @@ export const loggedOutFixture: InitialDataPayload = {
       name: '',
       apiBaseUrl: '',
       status: false,
-      providerType: '',
+      providerType: 0 as ProviderType,
     },
     ColdWallet: {
       BtcAddress: '',
       RskAddress: '',
       Label: '',
     },
-    Configuration: {
-      general: {},
-      pegin: {},
-      pegout: {},
-    },
+    Configuration: emptyConfiguration,
   },
 }
