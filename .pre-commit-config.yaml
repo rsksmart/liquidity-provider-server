@@ -37,6 +37,7 @@ repos:
         name: UI Build
         entry: make ui-build
         language: system
+        pass_filenames: false
         stages: [pre-push]
         always_run: true
       - id: go-build-check
