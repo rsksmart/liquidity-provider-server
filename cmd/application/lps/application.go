@@ -126,9 +126,9 @@ func (app *Application) Run(ctx context.Context, env environment.Environment, lo
 	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(ctx, registerParams)
 	switch {
 	case errors.Is(err, usecases.RegistrationRejectedError):
-		log.Fatal("Registration rejected by admin. Contact an admin to approve your registration before restarting.")
+		log.Fatal("Registration rejected by admin while waiting for approval; stopping LPS. Restart to submit a new registration request.")
 	case errors.Is(err, usecases.RegistrationWithdrawnError):
-		log.Fatal("Registration was withdrawn by the LP owner; stopping LPS.")
+		log.Fatal("Registration was withdrawn by the LP owner while waiting for approval; stopping LPS. Restart to submit a new registration request.")
 	case err != nil:
 		log.Fatal("Error registering provider: ", err)
 	default:

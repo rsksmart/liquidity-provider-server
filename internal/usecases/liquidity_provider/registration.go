@@ -43,7 +43,7 @@ func (useCase *RegistrationUseCase) Run(ctx context.Context, params blockchain.P
 		return 0, usecases.WrapUseCaseError(usecases.ProviderRegistrationId, err)
 	}
 
-	if state == blockchain.RegistrationStateNone {
+	if state.AllowsRegistration() {
 		if err = useCase.registerForApproval(params); err != nil {
 			return 0, err
 		}

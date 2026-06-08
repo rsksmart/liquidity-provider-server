@@ -94,6 +94,15 @@ const (
 	RegistrationStateWithdrawn RegistrationState = 4
 )
 
+func (s RegistrationState) AllowsRegistration() bool {
+	switch s {
+	case RegistrationStateNone, RegistrationStateRejected, RegistrationStateWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
 type Pausable interface {
 	GetAddress() string
 	PausedStatus() (PauseStatus, error)

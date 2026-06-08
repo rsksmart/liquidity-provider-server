@@ -64,46 +64,44 @@ func TestRegistrationUseCase_Run_Approved_GetProviderError(t *testing.T) {
 	require.Error(t, err)
 }
 
-// Boot state: Rejected
+func TestRegistrationUseCase_Run_RejectedOrWithdrawn_ReRegisters(t *testing.T) {
+	for _, bootState := range []blockchain.RegistrationState{blockchain.RegistrationStateRejected, blockchain.RegistrationStateWithdrawn} {
+		discovery := new(mocks.DiscoveryContractMock)
+		collateral := new(mocks.CollateralManagementContractMock)
+		provider := &mocks.ProviderMock{}
 
-func TestRegistrationUseCase_Run_Rejected(t *testing.T) {
-	discovery := new(mocks.DiscoveryContractMock)
-	provider := &mocks.ProviderMock{}
+		provider.On("RskAddress").Return(testRskAddress)
+		discovery.EXPECT().GetRegistrationState(testRskAddress).Return(bootState, nil)
+		discovery.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+		collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+		collateral.On("GetMinimumCollateral").Return(entities.NewWei(1000), nil)
+		collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+		collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+		discovery.EXPECT().IsOperational(lp.PeginProvider, mock.Anything).Return(false, nil)
+		discovery.EXPECT().IsOperational(lp.PegoutProvider, mock.Anything).Return(false, nil)
+		discovery.On(
+			"RegisterProvider",
+			mock.AnythingOfType("blockchain.TransactionConfig"),
+			mock.AnythingOfType("ProviderRegistrationParams"),
+		).Return(int64(1), nil)
+		discovery.EXPECT().WatchRegistrationApproval(mock.Anything, testRskAddress).
+			Return(blockchain.RegistrationStateApproved, nil).Once()
+		discovery.EXPECT().GetProvider(testRskAddress).Return(lp.RegisteredLiquidityProvider{
+			Id: 1, Address: testRskAddress, Name: test.AnyString,
+			ApiBaseUrl: test.AnyUrl, Status: true, ProviderType: lp.FullProvider,
+		}, nil)
 
-	provider.On("RskAddress").Return(testRskAddress)
-	discovery.EXPECT().GetRegistrationState(testRskAddress).Return(blockchain.RegistrationStateRejected, nil)
+		contracts := blockchain.RskContracts{Discovery: discovery, CollateralManagement: collateral}
+		useCase := newRegistrationUseCase(contracts, provider)
+		id, err := useCase.Run(context.Background(), blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, lp.FullProvider))
 
-	contracts := blockchain.RskContracts{Discovery: discovery, CollateralManagement: new(mocks.CollateralManagementContractMock)}
-	useCase := newRegistrationUseCase(contracts, provider)
-	id, err := useCase.Run(context.Background(), blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, lp.FullProvider))
-
-	discovery.AssertExpectations(t)
-	discovery.AssertNotCalled(t, "WatchRegistrationApproval")
-	discovery.AssertNotCalled(t, "RegisterProvider")
-	discovery.AssertNotCalled(t, "GetProvider")
-	assert.Equal(t, int64(0), id)
-	require.ErrorIs(t, err, usecases.RegistrationRejectedError)
-}
-
-// Boot state: Withdrawn — LP owner backed out; LPS stops waiting (no re-register).
-
-func TestRegistrationUseCase_Run_Withdrawn(t *testing.T) {
-	discovery := new(mocks.DiscoveryContractMock)
-	provider := &mocks.ProviderMock{}
-
-	provider.On("RskAddress").Return(testRskAddress)
-	discovery.EXPECT().GetRegistrationState(testRskAddress).Return(blockchain.RegistrationStateWithdrawn, nil)
-
-	contracts := blockchain.RskContracts{Discovery: discovery, CollateralManagement: new(mocks.CollateralManagementContractMock)}
-	useCase := newRegistrationUseCase(contracts, provider)
-	id, err := useCase.Run(context.Background(), blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, lp.FullProvider))
-
-	discovery.AssertExpectations(t)
-	discovery.AssertNotCalled(t, "WatchRegistrationApproval")
-	discovery.AssertNotCalled(t, "RegisterProvider")
-	discovery.AssertNotCalled(t, "GetProvider")
-	assert.Equal(t, int64(0), id)
-	require.ErrorIs(t, err, usecases.RegistrationWithdrawnError)
+		discovery.AssertExpectations(t)
+		collateral.AssertExpectations(t)
+		collateral.AssertNotCalled(t, "AddCollateral")
+		collateral.AssertNotCalled(t, "AddPegoutCollateral")
+		assert.Equal(t, int64(1), id)
+		require.NoError(t, err)
+	}
 }
 
 // Boot state: Pending (e.g., LPS restarted mid-wait) — goes straight to WatchRegistrationApproval.
@@ -409,6 +407,120 @@ func TestRegistrationUseCase_Run_None_AddPegoutCollateral(t *testing.T) {
 	collateral.AssertExpectations(t)
 	collateral.AssertNotCalled(t, "AddCollateral")
 	require.NoError(t, err)
+}
+
+// nolint:funlen
+func registrationErrorSetups() []struct {
+	name  string
+	setup func(collateral *mocks.CollateralManagementContractMock, discovery *mocks.DiscoveryContractMock)
+} {
+	return []struct {
+		name  string
+		setup func(collateral *mocks.CollateralManagementContractMock, discovery *mocks.DiscoveryContractMock)
+	}{
+		{
+			name: "GetMinimumCollateral error",
+			setup: func(collateral *mocks.CollateralManagementContractMock, _ *mocks.DiscoveryContractMock) {
+				collateral.On("GetMinimumCollateral").Return(entities.NewWei(0), assert.AnError)
+			},
+		},
+		{
+			name: "GetCollateral error",
+			setup: func(collateral *mocks.CollateralManagementContractMock, _ *mocks.DiscoveryContractMock) {
+				collateral.On("GetMinimumCollateral").Return(entities.NewWei(1000), nil)
+				collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(0), assert.AnError)
+			},
+		},
+		{
+			name: "GetPegoutCollateral error",
+			setup: func(collateral *mocks.CollateralManagementContractMock, _ *mocks.DiscoveryContractMock) {
+				collateral.On("GetMinimumCollateral").Return(entities.NewWei(1000), nil)
+				collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(0), assert.AnError)
+			},
+		},
+		{
+			name: "IsOperational pegin error",
+			setup: func(collateral *mocks.CollateralManagementContractMock, discovery *mocks.DiscoveryContractMock) {
+				collateral.On("GetMinimumCollateral").Return(entities.NewWei(1000), nil)
+				collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				discovery.EXPECT().IsOperational(lp.PeginProvider, mock.Anything).Return(false, assert.AnError)
+			},
+		},
+		{
+			name: "IsOperational pegout error",
+			setup: func(collateral *mocks.CollateralManagementContractMock, discovery *mocks.DiscoveryContractMock) {
+				collateral.On("GetMinimumCollateral").Return(entities.NewWei(1000), nil)
+				collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				discovery.EXPECT().IsOperational(lp.PeginProvider, mock.Anything).Return(false, nil)
+				discovery.EXPECT().IsOperational(lp.PegoutProvider, mock.Anything).Return(false, assert.AnError)
+			},
+		},
+		{
+			name: "AddCollateral error",
+			setup: func(collateral *mocks.CollateralManagementContractMock, discovery *mocks.DiscoveryContractMock) {
+				collateral.On("GetMinimumCollateral").Return(entities.NewWei(1000), nil)
+				collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(900), nil)
+				collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				discovery.EXPECT().IsOperational(lp.PeginProvider, mock.Anything).Return(false, nil)
+				discovery.EXPECT().IsOperational(lp.PegoutProvider, mock.Anything).Return(false, nil)
+				collateral.On("AddCollateral", mock.Anything).Return(assert.AnError)
+			},
+		},
+		{
+			name: "AddPegoutCollateral error",
+			setup: func(collateral *mocks.CollateralManagementContractMock, discovery *mocks.DiscoveryContractMock) {
+				collateral.On("GetMinimumCollateral").Return(entities.NewWei(1000), nil)
+				collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(900), nil)
+				discovery.EXPECT().IsOperational(lp.PeginProvider, mock.Anything).Return(false, nil)
+				discovery.EXPECT().IsOperational(lp.PegoutProvider, mock.Anything).Return(false, nil)
+				collateral.On("AddPegoutCollateral", mock.Anything).Return(assert.AnError)
+			},
+		},
+		{
+			name: "RegisterProvider error",
+			setup: func(collateral *mocks.CollateralManagementContractMock, discovery *mocks.DiscoveryContractMock) {
+				collateral.On("GetMinimumCollateral").Return(entities.NewWei(1000), nil)
+				collateral.On("GetCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				collateral.On("GetPegoutCollateral", mock.Anything).Return(entities.NewWei(0), nil)
+				discovery.EXPECT().IsOperational(lp.PeginProvider, mock.Anything).Return(false, nil)
+				discovery.EXPECT().IsOperational(lp.PegoutProvider, mock.Anything).Return(false, nil)
+				discovery.On(
+					"RegisterProvider",
+					mock.AnythingOfType("blockchain.TransactionConfig"),
+					mock.AnythingOfType("ProviderRegistrationParams"),
+				).Return(int64(0), assert.AnError)
+			},
+		},
+	}
+}
+
+func TestRegistrationUseCase_Run_RegisterForApproval_ErrorPaths(t *testing.T) {
+	for _, tc := range registrationErrorSetups() {
+		t.Run(tc.name, func(t *testing.T) {
+			discovery := new(mocks.DiscoveryContractMock)
+			collateral := new(mocks.CollateralManagementContractMock)
+			provider := &mocks.ProviderMock{}
+
+			provider.On("RskAddress").Return(testRskAddress)
+			discovery.EXPECT().GetRegistrationState(testRskAddress).Return(blockchain.RegistrationStateNone, nil)
+			discovery.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+			collateral.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+			tc.setup(collateral, discovery)
+
+			contracts := blockchain.RskContracts{Discovery: discovery, CollateralManagement: collateral}
+			useCase := newRegistrationUseCase(contracts, provider)
+			id, err := useCase.Run(context.Background(), blockchain.NewProviderRegistrationParams("name", test.AnyUrl, true, lp.FullProvider))
+
+			discovery.AssertNotCalled(t, "WatchRegistrationApproval")
+			discovery.AssertNotCalled(t, "GetProvider")
+			assert.Equal(t, int64(0), id)
+			require.Error(t, err)
+		})
+	}
 }
 
 // GetRegistrationState error at boot.
