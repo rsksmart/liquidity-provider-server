@@ -36,9 +36,8 @@ export interface GeneralConfiguration {
   excessTolerance: ExcessTolerance
 }
 
-export interface PeginConfiguration {
+interface QuoteConfigurationBase {
   timeForDeposit: number
-  callTime: number
   penaltyFee: WeiValue
   fixedFee: WeiValue
   feePercentage: BigFloatValue
@@ -46,14 +45,12 @@ export interface PeginConfiguration {
   minValue: WeiValue
 }
 
-export interface PegoutConfiguration {
-  timeForDeposit: number
+export interface PeginConfiguration extends QuoteConfigurationBase {
+  callTime: number
+}
+
+export interface PegoutConfiguration extends QuoteConfigurationBase {
   expireTime: number
-  penaltyFee: WeiValue
-  fixedFee: WeiValue
-  feePercentage: BigFloatValue
-  maxValue: WeiValue
-  minValue: WeiValue
   expireBlocks: number
   bridgeTransactionMin: WeiValue
 }

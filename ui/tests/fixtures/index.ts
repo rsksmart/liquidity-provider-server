@@ -1,8 +1,4 @@
-import type {
-  FullConfiguration,
-  InitialDataPayload,
-  ProviderType,
-} from '@shared/types/initial-data'
+import type { FullConfiguration, InitialDataPayload } from '@shared/types/initial-data'
 
 const emptyConfiguration: FullConfiguration = {
   general: {
@@ -52,7 +48,7 @@ export const loggedInFixture: InitialDataPayload = {
       name: 'Test LP',
       apiBaseUrl: 'http://localhost:8080',
       status: true,
-      providerType: 0 as ProviderType,
+      providerType: 0,
     },
     ColdWallet: {
       BtcAddress: 'tb1qcold',
@@ -76,7 +72,7 @@ export const loggedOutFixture: InitialDataPayload = {
       name: '',
       apiBaseUrl: '',
       status: false,
-      providerType: 0 as ProviderType,
+      providerType: 0,
     },
     ColdWallet: {
       BtcAddress: '',
