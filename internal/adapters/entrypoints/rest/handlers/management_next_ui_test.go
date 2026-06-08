@@ -164,23 +164,6 @@ func getNextUIAt(t *testing.T, client *http.Client, baseURL, path string) *http.
 	return resp
 }
 
-func extractNonceFromCSP(csp string) string {
-	re := regexp.MustCompile(`'nonce-([^']+)'`)
-	matches := re.FindStringSubmatch(csp)
-	if len(matches) < 2 {
-		return ""
-	}
-	return matches[1]
-}
-
-func normalizeCSP(csp string) string {
-	nonce := extractNonceFromCSP(csp)
-	if nonce == "" {
-		return csp
-	}
-	return strings.ReplaceAll(csp, nonce, "NONCE")
-}
-
 func validateEveryScriptAndStyleHasNonce(html string, expectedNonce string) error {
 	scriptTags := regexp.MustCompile(`(?i)<script[^>]*>`).FindAllString(html, -1)
 	for _, tag := range scriptTags {
