@@ -1,6 +1,8 @@
 package registry
 
 import (
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
@@ -111,6 +113,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				wallet,
 				rootstock.DefaultRetryParams,
 				timeouts.MiningWait.Seconds(),
+				time.Duration(env.Provider.FillWithDefaults().RegistrationPollIntervalSeconds)*time.Second,
 				contractBindings.discovery,
 				abis,
 			),
