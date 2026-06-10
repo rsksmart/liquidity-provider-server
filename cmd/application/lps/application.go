@@ -7,6 +7,7 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap"
@@ -67,10 +68,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 		log.Fatal(err)
 	}
 
-	btcRegistry, err := registry.NewBitcoinRegistry(walletFactory, btcConnection)
-	if err != nil {
-		log.Fatal("Error creating BTC registry:", err)
-	}
+	btcRegistry := newBitcoinRegistry(walletFactory, btcConnection)
 	dbRegistry := registry.NewDatabaseRegistry(dbConnection)
 	rootstockRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactory, timeouts)
 	if err != nil {
@@ -112,6 +110,17 @@ func createExternalRpc(ctx context.Context, env environment.Environment) (regist
 		RskExternalRpc: externalRskSources,
 		BtcExternalRpc: externalBtcSources,
 	}, nil
+}
+
+func newBitcoinRegistry(walletFactory wallet.AbstractFactory, btcConnection *bitcoin.Connection) *registry.Bitcoin {
+	btcRegistry, err := registry.NewBitcoinRegistry(walletFactory, btcConnection)
+	if errors.Is(err, bitcoin.ErrWalletScanning) {
+		log.Info("Bitcoin wallet rescan in progress. The server will start once the rescan completes. Exiting cleanly.")
+		os.Exit(0)
+	} else if err != nil {
+		log.Fatal("Error creating BTC registry:", err)
+	}
+	return btcRegistry
 }
 
 func (app *Application) Run(env environment.Environment, logLevel log.Level) {
