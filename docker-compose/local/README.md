@@ -29,7 +29,7 @@ To keep the local bootstrap fully automated, the contract-deployment step starts
 It is healthy as soon as it is running, so the deploy step's `up -d --wait` does not block while it polls for the (later-starting) LPS.
 
 * **Approve path (default):** the LPS becomes healthy once approved, and `lps-configurer` runs as usual.
-* **Reject path (negative testing):** set `LP_REGISTRATION_DECISION=reject` (e.g. `LP_REGISTRATION_DECISION=reject ./lps-local.sh`). The approver rejects the request and the LPS exits by design with a fatal log.
+* **Reject path (negative testing):** set `LP_REGISTRATION_DECISION=reject` in your env file (`.env.regtest`, or in `sample-config.env` before the first run copies it), then run `./lps-local.sh`. The approver rejects the request and the LPS exits by design with a fatal log.
 
 Inspect the decision with `docker logs lps-approver`.
 
