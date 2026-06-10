@@ -62,7 +62,7 @@ services:
       - WALLET
       - SECRET_SRC
       - ALLOWED_ORIGINS
-      - KEYSTORE_FILE
+      - WALLET_FILE
       - KEYSTORE_PWD
       - BOOTSTRAP_TIMEOUT
       - WATCHER_PREPARATION_TIMEOUT
@@ -120,7 +120,7 @@ services:
     command: ["node", "/configurations/index.js"]
     depends_on:
       lps:
-        condition: service_healthy
+        condition: service_started
     restart: "no"
     container_name: lps-configurer
     environment:

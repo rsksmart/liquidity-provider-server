@@ -6,6 +6,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 type GetTrustedAccountUseCase struct {
@@ -27,10 +28,14 @@ func NewGetTrustedAccountUseCase(
 }
 
 func (useCase *GetTrustedAccountUseCase) Run(ctx context.Context, address string) (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
+	normalized, err := usecases.NormalizeTrustedAccountAddress(usecases.GetTrustedAccountId, address)
+	if err != nil {
+		return nil, err
+	}
 	readFunction := func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
-		signedAccount, err := useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
-		if err != nil {
-			return nil, err
+		signedAccount, getErr := useCase.trustedAccountRepository.GetTrustedAccount(ctx, normalized)
+		if getErr != nil {
+			return nil, getErr
 		}
 		if signedAccount == nil {
 			return nil, liquidity_provider.TrustedAccountNotFoundError

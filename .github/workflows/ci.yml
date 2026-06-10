@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+
       - name: Run unit tests with coverage
         run: make coverage-report
 
@@ -62,6 +65,9 @@ jobs:
 
       - name: Install dependencies
         run: go mod download
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
 
       - name: Run mongodb integration test
         run: make test-integration-db

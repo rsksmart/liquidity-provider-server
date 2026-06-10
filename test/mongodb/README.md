@@ -33,7 +33,7 @@ Equivalent script:
 ./test/mongodb/scripts/run-tests.sh
 ```
 
-The script starts MongoDB via Docker Compose, runs `go test -tags integration ./test/mongodb/...`,
+The script starts MongoDB via Docker Compose, runs `gotestsum --format testname -- -tags integration ./test/mongodb/...`,
 and always tears Mongo down on exit.
 
 ## Driver version checks (v1 and v2)

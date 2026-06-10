@@ -36,6 +36,11 @@ const (
 	PegoutBridgeTransactionMin = 15000000000000000
 )
 
+const (
+	AvgRskBlockTimeSec = 30
+	AvgBtcBlockTimeSec = 600
+)
+
 func DefaultRskConfirmationsPerAmount() ConfirmationsPerAmount {
 	return ConfirmationsPerAmount{
 		"100000000000000000":  40,
