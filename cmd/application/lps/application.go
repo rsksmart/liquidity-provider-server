@@ -114,7 +114,7 @@ func createExternalRpc(ctx context.Context, env environment.Environment) (regist
 	}, nil
 }
 
-func (app *Application) Run(env environment.Environment, logLevel log.Level) {
+func (app *Application) Run(ctx context.Context, env environment.Environment, logLevel log.Level) {
 	app.addRunningService(app.dbRegistry.Connection)
 	app.addRunningService(app.rskRegistry.Client)
 	app.addRunningService(app.btcRegistry.RpcConnection)
@@ -123,30 +123,33 @@ func (app *Application) Run(env environment.Environment, logLevel log.Level) {
 	app.addRunningService(app.messagingRegistry.EventBus)
 
 	registerParams := blockchain.NewProviderRegistrationParams(app.env.Provider.Name, app.env.Provider.ApiBaseUrl, true, app.env.Provider.ProviderType())
-	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(registerParams)
-	if errors.Is(err, usecases.AlreadyRegisteredError) {
-		log.Info("Provider already registered")
-	} else if err != nil {
+	id, err := app.useCaseRegistry.GetRegistrationUseCase().Run(ctx, registerParams)
+	switch {
+	case errors.Is(err, usecases.RegistrationRejectedError):
+		log.Fatal("Registration rejected by admin while waiting for approval; stopping LPS. Restart to submit a new registration request.")
+	case errors.Is(err, usecases.RegistrationWithdrawnError):
+		log.Fatal("Registration was withdrawn by the LP owner while waiting for approval; stopping LPS. Restart to submit a new registration request.")
+	case err != nil:
 		log.Fatal("Error registering provider: ", err)
-	} else {
+	default:
 		log.Info("Provider registered with ID ", id)
 	}
 
-	err = app.useCaseRegistry.GenerateDefaultCredentialsUseCase().Run(context.Background(), os.TempDir())
+	err = app.useCaseRegistry.GenerateDefaultCredentialsUseCase().Run(ctx, os.TempDir())
 	if err != nil {
 		log.Fatal("Error generating default password for management interface: ", err)
 	}
 
-	err = app.useCaseRegistry.InitializeStateConfigurationUseCase().Run(context.Background())
+	err = app.useCaseRegistry.InitializeStateConfigurationUseCase().Run(ctx)
 	if err != nil {
 		log.Fatal("Error initializing state configuration: ", err)
 	}
 
-	if err = app.useCaseRegistry.CheckColdWalletAddressChangeUseCase().Run(context.Background()); err != nil {
+	if err = app.useCaseRegistry.CheckColdWalletAddressChangeUseCase().Run(ctx); err != nil {
 		log.Error("Error checking cold wallet address change: ", err)
 	}
 
-	watchers, err := app.prepareWatchers()
+	watchers, err := app.prepareWatchers(ctx)
 	if err != nil {
 		log.Fatal("Error initializing watchers: ", err)
 	}
@@ -165,7 +168,7 @@ func (app *Application) addRunningService(service entities.Closeable) {
 	app.runningServices = append(app.runningServices, service)
 }
 
-func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
+func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher, error) {
 	var err error
 	watchers := []watcher.Watcher{
 		app.watcherRegistry.PeginDepositAddressWatcher,
@@ -193,10 +196,10 @@ func (app *Application) prepareWatchers() ([]watcher.Watcher, error) {
 		watchers = append(watchers, app.watcherRegistry.BitcoinEclipseWatcher)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), app.timeouts.WatcherPreparation.Seconds())
+	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
 	defer cancel()
 	for _, w := range watchers {
-		if err = w.Prepare(ctx); err != nil {
+		if err = w.Prepare(prepareCtx); err != nil {
 			return nil, err
 		}
 		app.addRunningService(w)

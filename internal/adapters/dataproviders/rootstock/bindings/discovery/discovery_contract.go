@@ -36,7 +36,7 @@ type FlyoverLiquidityProvider struct {
 
 // FlyoverDiscoveryMetaData contains all meta data concerning the FlyoverDiscovery contract.
 var FlyoverDiscoveryMetaData = bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"getProvider\",\"inputs\":[{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structFlyover.LiquidityProvider\",\"components\":[{\"name\":\"id\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"status\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getProviders\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple[]\",\"internalType\":\"structFlyover.LiquidityProvider[]\",\"components\":[{\"name\":\"id\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"status\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getProvidersId\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isOperational\",\"inputs\":[{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pauseStatus\",\"inputs\":[],\"outputs\":[{\"name\":\"isPaused\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"since\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"register\",\"inputs\":[{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"status\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"setProviderStatus\",\"inputs\":[{\"name\":\"providerId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"status\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"updateProvider\",\"inputs\":[{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ProviderStatusSet\",\"inputs\":[{\"name\":\"id\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"status\",\"type\":\"bool\",\"indexed\":true,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"ProviderUpdate\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"name\",\"type\":\"string\",\"indexed\":false,\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"indexed\":false,\"internalType\":\"string\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Register\",\"inputs\":[{\"name\":\"id\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AlreadyRegistered\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"InsufficientCollateral\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InvalidProviderData\",\"inputs\":[{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"}]},{\"type\":\"error\",\"name\":\"InvalidProviderType\",\"inputs\":[{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"}]},{\"type\":\"error\",\"name\":\"NotAuthorized\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"NotEOA\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"approveRegistration\",\"inputs\":[{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"getProvider\",\"inputs\":[{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structFlyover.LiquidityProvider\",\"components\":[{\"name\":\"id\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"status\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getProviders\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple[]\",\"internalType\":\"structFlyover.LiquidityProvider[]\",\"components\":[{\"name\":\"id\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"status\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getProvidersId\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRegistrationState\",\"inputs\":[{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint8\",\"internalType\":\"enumIFlyoverDiscovery.RegistrationState\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isOperational\",\"inputs\":[{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"},{\"name\":\"addr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"pauseStatus\",\"inputs\":[],\"outputs\":[{\"name\":\"isPaused\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"reason\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"since\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"register\",\"inputs\":[{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"status\",\"type\":\"bool\",\"internalType\":\"bool\"},{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"rejectRegistration\",\"inputs\":[{\"name\":\"providerAddress\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"setProviderStatus\",\"inputs\":[{\"name\":\"providerId\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"status\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"updateProvider\",\"inputs\":[{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"withdrawRegisterRequest\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ProviderStatusSet\",\"inputs\":[{\"name\":\"id\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"status\",\"type\":\"bool\",\"indexed\":true,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"ProviderUpdate\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"name\",\"type\":\"string\",\"indexed\":false,\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"indexed\":false,\"internalType\":\"string\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Register\",\"inputs\":[{\"name\":\"id\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"from\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"RegistrationApproved\",\"inputs\":[{\"name\":\"id\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"provider\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"RegistrationRejected\",\"inputs\":[{\"name\":\"id\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"provider\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"RegistrationWithdrawn\",\"inputs\":[{\"name\":\"id\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"provider\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AlreadyRegistered\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"InsufficientCollateral\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InvalidProviderData\",\"inputs\":[{\"name\":\"name\",\"type\":\"string\",\"internalType\":\"string\"},{\"name\":\"apiBaseUrl\",\"type\":\"string\",\"internalType\":\"string\"}]},{\"type\":\"error\",\"name\":\"InvalidProviderType\",\"inputs\":[{\"name\":\"providerType\",\"type\":\"uint8\",\"internalType\":\"enumFlyover.ProviderType\"}]},{\"type\":\"error\",\"name\":\"NotAuthorized\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"NotEOA\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"RegistrationAlreadyPending\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"RegistrationNotPending\",\"inputs\":[{\"name\":\"from\",\"type\":\"address\",\"internalType\":\"address\"}]}]",
 	ID:  "FlyoverDiscovery",
 }
 
@@ -58,6 +58,28 @@ func NewFlyoverDiscovery() *FlyoverDiscovery {
 // Use this to create the instance object passed to abigen v2 library functions Call, Transact, etc.
 func (c *FlyoverDiscovery) Instance(backend bind.ContractBackend, addr common.Address) *bind.BoundContract {
 	return bind.NewBoundContract(addr, c.abi, backend, backend, backend)
+}
+
+// PackApproveRegistration is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x5179fc49.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function approveRegistration(address providerAddress) returns()
+func (flyoverDiscovery *FlyoverDiscovery) PackApproveRegistration(providerAddress common.Address) []byte {
+	enc, err := flyoverDiscovery.abi.Pack("approveRegistration", providerAddress)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackApproveRegistration is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x5179fc49.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function approveRegistration(address providerAddress) returns()
+func (flyoverDiscovery *FlyoverDiscovery) TryPackApproveRegistration(providerAddress common.Address) ([]byte, error) {
+	return flyoverDiscovery.abi.Pack("approveRegistration", providerAddress)
 }
 
 // PackGetProvider is the Go binding used to pack the parameters required for calling
@@ -162,6 +184,41 @@ func (flyoverDiscovery *FlyoverDiscovery) UnpackGetProvidersId(data []byte) (*bi
 		return new(big.Int), err
 	}
 	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
+	return out0, nil
+}
+
+// PackGetRegistrationState is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xcda0b16e.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function getRegistrationState(address providerAddress) view returns(uint8)
+func (flyoverDiscovery *FlyoverDiscovery) PackGetRegistrationState(providerAddress common.Address) []byte {
+	enc, err := flyoverDiscovery.abi.Pack("getRegistrationState", providerAddress)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackGetRegistrationState is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xcda0b16e.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function getRegistrationState(address providerAddress) view returns(uint8)
+func (flyoverDiscovery *FlyoverDiscovery) TryPackGetRegistrationState(providerAddress common.Address) ([]byte, error) {
+	return flyoverDiscovery.abi.Pack("getRegistrationState", providerAddress)
+}
+
+// UnpackGetRegistrationState is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0xcda0b16e.
+//
+// Solidity: function getRegistrationState(address providerAddress) view returns(uint8)
+func (flyoverDiscovery *FlyoverDiscovery) UnpackGetRegistrationState(data []byte) (uint8, error) {
+	out, err := flyoverDiscovery.abi.Unpack("getRegistrationState", data)
+	if err != nil {
+		return *new(uint8), err
+	}
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
 	return out0, nil
 }
 
@@ -281,6 +338,28 @@ func (flyoverDiscovery *FlyoverDiscovery) UnpackRegister(data []byte) (*big.Int,
 	return out0, nil
 }
 
+// PackRejectRegistration is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x38265424.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function rejectRegistration(address providerAddress) returns()
+func (flyoverDiscovery *FlyoverDiscovery) PackRejectRegistration(providerAddress common.Address) []byte {
+	enc, err := flyoverDiscovery.abi.Pack("rejectRegistration", providerAddress)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackRejectRegistration is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x38265424.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function rejectRegistration(address providerAddress) returns()
+func (flyoverDiscovery *FlyoverDiscovery) TryPackRejectRegistration(providerAddress common.Address) ([]byte, error) {
+	return flyoverDiscovery.abi.Pack("rejectRegistration", providerAddress)
+}
+
 // PackSetProviderStatus is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0x72cbf4e8.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -323,6 +402,28 @@ func (flyoverDiscovery *FlyoverDiscovery) PackUpdateProvider(name string, apiBas
 // Solidity: function updateProvider(string name, string apiBaseUrl) returns()
 func (flyoverDiscovery *FlyoverDiscovery) TryPackUpdateProvider(name string, apiBaseUrl string) ([]byte, error) {
 	return flyoverDiscovery.abi.Pack("updateProvider", name, apiBaseUrl)
+}
+
+// PackWithdrawRegisterRequest is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xa3f19f75.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function withdrawRegisterRequest() returns()
+func (flyoverDiscovery *FlyoverDiscovery) PackWithdrawRegisterRequest() []byte {
+	enc, err := flyoverDiscovery.abi.Pack("withdrawRegisterRequest")
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackWithdrawRegisterRequest is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0xa3f19f75.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function withdrawRegisterRequest() returns()
+func (flyoverDiscovery *FlyoverDiscovery) TryPackWithdrawRegisterRequest() ([]byte, error) {
+	return flyoverDiscovery.abi.Pack("withdrawRegisterRequest")
 }
 
 // FlyoverDiscoveryProviderStatusSet represents a ProviderStatusSet event raised by the FlyoverDiscovery contract.
@@ -453,6 +554,135 @@ func (flyoverDiscovery *FlyoverDiscovery) UnpackRegisterEvent(log *types.Log) (*
 	return out, nil
 }
 
+// FlyoverDiscoveryRegistrationApproved represents a RegistrationApproved event raised by the FlyoverDiscovery contract.
+type FlyoverDiscoveryRegistrationApproved struct {
+	Id       *big.Int
+	Provider common.Address
+	Amount   *big.Int
+	Raw      *types.Log // Blockchain specific contextual infos
+}
+
+const FlyoverDiscoveryRegistrationApprovedEventName = "RegistrationApproved"
+
+// ContractEventName returns the user-defined event name.
+func (FlyoverDiscoveryRegistrationApproved) ContractEventName() string {
+	return FlyoverDiscoveryRegistrationApprovedEventName
+}
+
+// UnpackRegistrationApprovedEvent is the Go binding that unpacks the event data emitted
+// by contract.
+//
+// Solidity: event RegistrationApproved(uint256 indexed id, address indexed provider, uint256 indexed amount)
+func (flyoverDiscovery *FlyoverDiscovery) UnpackRegistrationApprovedEvent(log *types.Log) (*FlyoverDiscoveryRegistrationApproved, error) {
+	event := "RegistrationApproved"
+	if len(log.Topics) == 0 || log.Topics[0] != flyoverDiscovery.abi.Events[event].ID {
+		return nil, errors.New("event signature mismatch")
+	}
+	out := new(FlyoverDiscoveryRegistrationApproved)
+	if len(log.Data) > 0 {
+		if err := flyoverDiscovery.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return nil, err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range flyoverDiscovery.abi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	if err := abi.ParseTopics(out, indexed, log.Topics[1:]); err != nil {
+		return nil, err
+	}
+	out.Raw = log
+	return out, nil
+}
+
+// FlyoverDiscoveryRegistrationRejected represents a RegistrationRejected event raised by the FlyoverDiscovery contract.
+type FlyoverDiscoveryRegistrationRejected struct {
+	Id       *big.Int
+	Provider common.Address
+	Amount   *big.Int
+	Raw      *types.Log // Blockchain specific contextual infos
+}
+
+const FlyoverDiscoveryRegistrationRejectedEventName = "RegistrationRejected"
+
+// ContractEventName returns the user-defined event name.
+func (FlyoverDiscoveryRegistrationRejected) ContractEventName() string {
+	return FlyoverDiscoveryRegistrationRejectedEventName
+}
+
+// UnpackRegistrationRejectedEvent is the Go binding that unpacks the event data emitted
+// by contract.
+//
+// Solidity: event RegistrationRejected(uint256 indexed id, address indexed provider, uint256 indexed amount)
+func (flyoverDiscovery *FlyoverDiscovery) UnpackRegistrationRejectedEvent(log *types.Log) (*FlyoverDiscoveryRegistrationRejected, error) {
+	event := "RegistrationRejected"
+	if len(log.Topics) == 0 || log.Topics[0] != flyoverDiscovery.abi.Events[event].ID {
+		return nil, errors.New("event signature mismatch")
+	}
+	out := new(FlyoverDiscoveryRegistrationRejected)
+	if len(log.Data) > 0 {
+		if err := flyoverDiscovery.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return nil, err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range flyoverDiscovery.abi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	if err := abi.ParseTopics(out, indexed, log.Topics[1:]); err != nil {
+		return nil, err
+	}
+	out.Raw = log
+	return out, nil
+}
+
+// FlyoverDiscoveryRegistrationWithdrawn represents a RegistrationWithdrawn event raised by the FlyoverDiscovery contract.
+type FlyoverDiscoveryRegistrationWithdrawn struct {
+	Id       *big.Int
+	Provider common.Address
+	Amount   *big.Int
+	Raw      *types.Log // Blockchain specific contextual infos
+}
+
+const FlyoverDiscoveryRegistrationWithdrawnEventName = "RegistrationWithdrawn"
+
+// ContractEventName returns the user-defined event name.
+func (FlyoverDiscoveryRegistrationWithdrawn) ContractEventName() string {
+	return FlyoverDiscoveryRegistrationWithdrawnEventName
+}
+
+// UnpackRegistrationWithdrawnEvent is the Go binding that unpacks the event data emitted
+// by contract.
+//
+// Solidity: event RegistrationWithdrawn(uint256 indexed id, address indexed provider, uint256 indexed amount)
+func (flyoverDiscovery *FlyoverDiscovery) UnpackRegistrationWithdrawnEvent(log *types.Log) (*FlyoverDiscoveryRegistrationWithdrawn, error) {
+	event := "RegistrationWithdrawn"
+	if len(log.Topics) == 0 || log.Topics[0] != flyoverDiscovery.abi.Events[event].ID {
+		return nil, errors.New("event signature mismatch")
+	}
+	out := new(FlyoverDiscoveryRegistrationWithdrawn)
+	if len(log.Data) > 0 {
+		if err := flyoverDiscovery.abi.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return nil, err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range flyoverDiscovery.abi.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	if err := abi.ParseTopics(out, indexed, log.Topics[1:]); err != nil {
+		return nil, err
+	}
+	out.Raw = log
+	return out, nil
+}
+
 // UnpackError attempts to decode the provided error data using user-defined
 // error definitions.
 func (flyoverDiscovery *FlyoverDiscovery) UnpackError(raw []byte) (any, error) {
@@ -473,6 +703,12 @@ func (flyoverDiscovery *FlyoverDiscovery) UnpackError(raw []byte) (any, error) {
 	}
 	if bytes.Equal(raw[:4], flyoverDiscovery.abi.Errors["NotEOA"].ID.Bytes()[:4]) {
 		return flyoverDiscovery.UnpackNotEOAError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], flyoverDiscovery.abi.Errors["RegistrationAlreadyPending"].ID.Bytes()[:4]) {
+		return flyoverDiscovery.UnpackRegistrationAlreadyPendingError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], flyoverDiscovery.abi.Errors["RegistrationNotPending"].ID.Bytes()[:4]) {
+		return flyoverDiscovery.UnpackRegistrationNotPendingError(raw[4:])
 	}
 	return nil, errors.New("Unknown error")
 }
@@ -617,6 +853,54 @@ func FlyoverDiscoveryNotEOAErrorID() common.Hash {
 func (flyoverDiscovery *FlyoverDiscovery) UnpackNotEOAError(raw []byte) (*FlyoverDiscoveryNotEOA, error) {
 	out := new(FlyoverDiscoveryNotEOA)
 	if err := flyoverDiscovery.abi.UnpackIntoInterface(out, "NotEOA", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// FlyoverDiscoveryRegistrationAlreadyPending represents a RegistrationAlreadyPending error raised by the FlyoverDiscovery contract.
+type FlyoverDiscoveryRegistrationAlreadyPending struct {
+	From common.Address
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error RegistrationAlreadyPending(address from)
+func FlyoverDiscoveryRegistrationAlreadyPendingErrorID() common.Hash {
+	return common.HexToHash("0x08086c2307dc4a6604ab3cfc152d22d90f78478b2c01ede15c45a4a7611b529b")
+}
+
+// UnpackRegistrationAlreadyPendingError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error RegistrationAlreadyPending(address from)
+func (flyoverDiscovery *FlyoverDiscovery) UnpackRegistrationAlreadyPendingError(raw []byte) (*FlyoverDiscoveryRegistrationAlreadyPending, error) {
+	out := new(FlyoverDiscoveryRegistrationAlreadyPending)
+	if err := flyoverDiscovery.abi.UnpackIntoInterface(out, "RegistrationAlreadyPending", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// FlyoverDiscoveryRegistrationNotPending represents a RegistrationNotPending error raised by the FlyoverDiscovery contract.
+type FlyoverDiscoveryRegistrationNotPending struct {
+	From common.Address
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error RegistrationNotPending(address from)
+func FlyoverDiscoveryRegistrationNotPendingErrorID() common.Hash {
+	return common.HexToHash("0x71200f0a90dcaec23093cffd028a09c7341fdf8a279dd1541dab155b7db2f37a")
+}
+
+// UnpackRegistrationNotPendingError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error RegistrationNotPending(address from)
+func (flyoverDiscovery *FlyoverDiscovery) UnpackRegistrationNotPendingError(raw []byte) (*FlyoverDiscoveryRegistrationNotPending, error) {
+	out := new(FlyoverDiscoveryRegistrationNotPending)
+	if err := flyoverDiscovery.abi.UnpackIntoInterface(out, "RegistrationNotPending", raw); err != nil {
 		return nil, err
 	}
 	return out, nil
