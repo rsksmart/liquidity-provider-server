@@ -45,6 +45,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/cover.out
           fail_ci_if_error: true
+          # Pin the uploader CLI: the latest build's GPG signature fails to verify
+          # ("No public key") after a Codecov signing-key rotation.
+          version: v11.0.3
 
   integration-db-tests:
     name: MongoDB integration tests execution
