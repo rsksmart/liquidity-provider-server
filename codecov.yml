@@ -16,3 +16,4 @@ comment:
 
 ignore:
   - "internal/adapters/dataproviders/rootstock/bindings/**"
+  - "cmd/application/**"
