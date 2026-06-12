@@ -18,6 +18,18 @@ The `sample-config.env` file contains a set of flags at the end of the file that
 * `CREATE_MONITORING`: if enabled, the monitoring stack will be created. This script is idempotent.
 * `LP_REGISTRATION_DECISION`: the admin decision (`approve` or `reject`, default `approve`) automatically applied to the LP registration request. See [Two-step registration approval](#two-step-registration-approval).
 
+## MongoDB single-node replica set
+The local environment runs MongoDB as `mongo:8.0` configured as a **single-node replica set** (`rs0`) instead of a standalone instance, so the multi-document transactions used by the LPS (e.g. `pegoutMongoRepository.UpdateRetainedQuotes`) work locally instead of failing with `Transaction numbers are only allowed on a replica set member or mongos`.
+
+The setup is fully automated — no manual `mongosh` step is required:
+* `mongo-keyfile-init` (one-shot, idempotent): generates the keyfile required for replica-set internal authentication into the docker-managed `mongo_keyfile` volume.
+* `mongodb` (`mongo01`): runs `mongod --replSet rs0 --keyFile ...`; its healthcheck only reports healthy once the node is PRIMARY, so dependent services wait for a working replica set.
+* `mongo-rs-init` (one-shot, idempotent): runs `rs.initiate()` on first startup and waits for PRIMARY; on later runs it detects the existing replica set and exits.
+
+Notes:
+* **Old data volumes are incompatible.** A `volumes/mongo` directory created by the previous `mongo:4` standalone setup cannot be opened by `mongo:8.0`. Since the local environment holds no valuable data, reset it with `./lps-local.sh -r` (or remove `volumes/mongo`) and start clean.
+* **Connecting from the host:** the replica set advertises its member as `mongo01:27017`. The LPS resolves it inside the compose network; from the host use `mongosh` with `--directConnection`, or add a `127.0.0.1 mongo01` entry to `/etc/hosts` if you need replica-set-aware connections.
+
 ## Two-step registration approval
 Since FLY-2245, LP registration is split into a **request** plus an **admin approval** on the `FlyoverDiscovery` contract. On startup, the LPS calls `register()`, enters the `Pending` state and **blocks** until an admin approves (or rejects) the request — so the LPS never becomes healthy on its own in the local env.
 
