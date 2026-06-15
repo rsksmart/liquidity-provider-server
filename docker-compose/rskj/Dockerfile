@@ -19,7 +19,7 @@ RUN (getent passwd "$UID" && userdel -r "$(getent passwd "$UID" | cut -d: -f1)" 
     apt-get update && \
     echo 'rskj    shared/accepted-rsk-license-v1-1        boolean true' | debconf-set-selections && \
     echo 'rskj    shared/config   select  regtest' | debconf-set-selections && \
-    apt-get install -y rskj && \
+    apt-get install -y rskj=$RSKJ_VERSION && \
     rm -rf /var/lib/apt/lists/*
 
 COPY rsk.conf /etc/rsk/node.conf
