@@ -5,6 +5,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
 )
 
 type GetCollateralUseCase struct {
@@ -17,8 +18,13 @@ func NewGetCollateralUseCase(contracts blockchain.RskContracts, pegoutProvider l
 }
 
 func (useCase *GetCollateralUseCase) Run() (*entities.Wei, error) {
-	collateral, err := useCase.contracts.CollateralManagement.GetPegoutCollateral(useCase.pegoutProvider.RskAddress())
+	rskAddress := useCase.pegoutProvider.RskAddress()
+	collateral, err := useCase.contracts.CollateralManagement.GetPegoutCollateral(rskAddress)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"vertical":   "pegout",
+			"rskAddress": rskAddress,
+		}).WithError(err).Error("GetCollateral: read failed")
 		return nil, usecases.WrapUseCaseError(usecases.GetPegoutCollateralId, err)
 	}
 	return collateral, nil
