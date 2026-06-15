@@ -18,6 +18,22 @@ The `sample-config.env` file contains a set of flags at the end of the file that
 * `DEPLOY_CONTRACTS`: if enabled, the deploy-contracts script will be executed every time the local script is executed. This script is responsible for deploying the necessary contracts to operate in the regtest environment. This script is not idempotent.
 * `CREATE_POWPEG`: if enabled, the regtest federation nodes will be created and the powpeg will be set up. This script is idempotent.
 * `CREATE_MONITORING`: if enabled, the monitoring stack will be created. This script is idempotent.
+* `LP_REGISTRATION_DECISION`: the admin decision (`approve` or `reject`, default `approve`) automatically applied to the LP registration request. See [Two-step registration approval](#two-step-registration-approval).
+
+## Two-step registration approval
+Since FLY-2245, LP registration is split into a **request** plus an **admin approval** on the `FlyoverDiscovery` contract. On startup, the LPS calls `register()`, enters the `Pending` state and **blocks** until an admin approves (or rejects) the request — so the LPS never becomes healthy on its own in the local env.
+
+To keep the local bootstrap fully automated, the contract-deployment step starts an extra `lps-approver` container (defined in `lbc-deployer/docker-compose.lbc-deployer.yml`). It acts as the admin (the deployer account):
+1. It starts right after `lbc-deployer` completes, so the freshly-deployed `DISCOVERY_ADDRESS` is available.
+2. It polls `getRegistrationState(LP_ADDR)` and waits for the LPS to submit its request (`Pending`).
+3. It applies `LP_REGISTRATION_DECISION` — `approve` calls `approveRegistration`, `reject` calls `rejectRegistration` — then verifies the resulting state and exits.
+
+It is healthy as soon as it is running, so the deploy step's `up -d --wait` does not block while it polls for the (later-starting) LPS.
+
+* **Approve path (default):** the LPS becomes healthy once approved, and `lps-configurer` runs as usual.
+* **Reject path (negative testing):** set `LP_REGISTRATION_DECISION=reject` in your env file (`.env.regtest`, or in `sample-config.env` before the first run copies it), then run `./lps-local.sh`. The approver rejects the request and the LPS exits by design with a fatal log.
+
+Inspect the decision with `docker logs lps-approver`.
 
 ## Extending the environment
 The provided docker-compose files can be extended to include additional services or configurations as needed. The general guidelines are:

@@ -84,6 +84,25 @@ type PauseStatus struct {
 	Since    uint64
 }
 
+type RegistrationState uint8
+
+const (
+	RegistrationStateNone      RegistrationState = 0
+	RegistrationStatePending   RegistrationState = 1
+	RegistrationStateApproved  RegistrationState = 2
+	RegistrationStateRejected  RegistrationState = 3
+	RegistrationStateWithdrawn RegistrationState = 4
+)
+
+func (s RegistrationState) AllowsRegistration() bool {
+	switch s {
+	case RegistrationStateNone, RegistrationStateRejected, RegistrationStateWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
 type Pausable interface {
 	GetAddress() string
 	PausedStatus() (PauseStatus, error)
@@ -121,6 +140,8 @@ type DiscoveryContract interface {
 	GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error)
 	GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error)
 	IsOperational(providerType liquidity_provider.ProviderType, address string) (bool, error)
+	GetRegistrationState(address string) (RegistrationState, error)
+	WatchRegistrationApproval(ctx context.Context, address string) (RegistrationState, error)
 }
 
 type CollateralManagementContract interface {

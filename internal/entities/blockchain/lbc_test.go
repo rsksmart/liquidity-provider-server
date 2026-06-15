@@ -10,6 +10,19 @@ import (
 	"testing"
 )
 
+func TestRegistrationState_AllowsRegistration(t *testing.T) {
+	cases := map[blockchain.RegistrationState]bool{
+		blockchain.RegistrationStateNone:      true,
+		blockchain.RegistrationStateRejected:  true,
+		blockchain.RegistrationStateWithdrawn: true,
+		blockchain.RegistrationStatePending:   false,
+		blockchain.RegistrationStateApproved:  false,
+	}
+	for state, expected := range cases {
+		assert.Equal(t, expected, state.AllowsRegistration())
+	}
+}
+
 func TestRefundPegoutParams_String(t *testing.T) {
 	params := blockchain.RefundPegoutParams{
 		QuoteHash:          [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
