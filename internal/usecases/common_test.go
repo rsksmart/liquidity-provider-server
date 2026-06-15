@@ -418,3 +418,9 @@ func TestCheckPauseState(t *testing.T) {
 		require.Contains(t, err.Error(), "5")
 	})
 }
+
+func TestSafeLogStr(t *testing.T) {
+	assert.Equal(t, "abc", u.SafeLogStr("abc"))
+	assert.Equal(t, "a b c", u.SafeLogStr("a\nb\rc"))
+	assert.Equal(t, "hash  value", u.SafeLogStr("hash\r\nvalue"))
+}
