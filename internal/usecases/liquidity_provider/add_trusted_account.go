@@ -27,6 +27,11 @@ func NewAddTrustedAccountUseCase(
 }
 
 func (useCase *AddTrustedAccountUseCase) Run(ctx context.Context, account liquidity_provider.TrustedAccountDetails) error {
+	normalized, err := usecases.NormalizeTrustedAccountAddress(usecases.AddTrustedAccountId, account.Address)
+	if err != nil {
+		return err
+	}
+	account.Address = normalized
 	signedAccount, err := usecases.SignConfiguration(usecases.AddTrustedAccountId, useCase.signer, useCase.hashFunc, account)
 	if err != nil {
 		return err

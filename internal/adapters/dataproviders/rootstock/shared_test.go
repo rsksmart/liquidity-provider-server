@@ -128,6 +128,16 @@ func mustPackBool(t *testing.T, v bool) []byte {
 	return out
 }
 
+func mustPackUint8(t *testing.T, v uint8) []byte {
+	t.Helper()
+	uint8Type, err := abi.NewType("uint8", "", nil)
+	require.NoError(t, err)
+
+	out, err := abi.Arguments{{Type: uint8Type}}.Pack(v)
+	require.NoError(t, err)
+	return out
+}
+
 func mustPackString(t *testing.T, v string) []byte {
 	t.Helper()
 	strType, err := abi.NewType("string", "", nil)
