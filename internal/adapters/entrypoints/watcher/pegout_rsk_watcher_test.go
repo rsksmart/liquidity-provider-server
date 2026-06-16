@@ -321,7 +321,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 			rskRpc.AssertExpectations(mt)
 			pegoutContract.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("shouldn't update quote if deposit is not valid", func(t *testing.T) {
 		rskRpc.Calls = []mock.Call{}

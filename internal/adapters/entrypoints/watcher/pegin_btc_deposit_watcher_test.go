@@ -105,7 +105,7 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 			mt := newMockCollectT(collect)
 			btcWallet.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle accepted pegin quote", func(t *testing.T) {
 		defer test.AssertNoLog(t)
@@ -280,7 +280,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 				btcRpc.AssertExpectations(mt)
 				btcWallet.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
-			assert.True(t, checkFunction())
+			assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 		})
 		t.Run("should stop tracking quotes after expiring them", func(t *testing.T) {
 			resetMocks()
@@ -332,7 +332,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 				mt := newMockCollectT(collect)
 				btcWallet.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
-			assert.True(t, checkFunction())
+			assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 		})
 		t.Run("should handle error getting transaction block", func(t *testing.T) {
 			resetMocks()
@@ -349,7 +349,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 				btcWallet.AssertExpectations(mt)
 				btcRpc.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
-			assert.True(t, checkFunction())
+			assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 		})
 		t.Run("should not update quote if doesn't meet the conditions", func(t *testing.T) {
 			resetMocks()
