@@ -68,7 +68,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 		log.Fatal(err)
 	}
 
-	btcRegistry := newBitcoinRegistry(walletFactory, btcConnection)
+	btcRegistry := NewBitcoinRegistry(walletFactory, btcConnection, os.Exit)
 	dbRegistry := registry.NewDatabaseRegistry(dbConnection)
 	rootstockRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactory, timeouts)
 	if err != nil {
@@ -112,13 +112,16 @@ func createExternalRpc(ctx context.Context, env environment.Environment) (regist
 	}, nil
 }
 
-func newBitcoinRegistry(walletFactory wallet.AbstractFactory, btcConnection *bitcoin.Connection) *registry.Bitcoin {
+func NewBitcoinRegistry(walletFactory wallet.AbstractFactory, btcConnection *bitcoin.Connection, exitFn func(int)) *registry.Bitcoin {
 	btcRegistry, err := registry.NewBitcoinRegistry(walletFactory, btcConnection)
 	if errors.Is(err, bitcoin.ErrWalletScanning) {
 		log.Info("Bitcoin wallet rescan in progress. The server will start once the rescan completes. Exiting cleanly.")
-		os.Exit(0)
+		exitFn(0)
+		return nil
 	} else if err != nil {
-		log.Fatal("Error creating BTC registry:", err)
+		log.Error("Error creating BTC registry:", err)
+		exitFn(1)
+		return nil
 	}
 	return btcRegistry
 }
