@@ -2,13 +2,10 @@ package handlers
 
 import (
 	"context"
-	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"net/http"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
 
@@ -39,25 +36,8 @@ func NewAcceptPeginQuoteHandler(useCase AcceptQuoteUseCase) http.HandlerFunc {
 		}
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, "")
-		if errors.Is(err, usecases.QuoteNotFoundError) {
-			jsonErr := rest.NewErrorResponseWithDetails("quote not found", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusNotFound, jsonErr)
-			return
-		} else if errors.Is(err, usecases.ExpiredQuoteError) {
-			jsonErr := rest.NewErrorResponseWithDetails("expired quote", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusGone, jsonErr)
-			return
-		} else if errors.Is(err, usecases.NoLiquidityError) {
-			jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
-			return
-		} else if errors.Is(err, blockchain.ContractPausedError) {
-			jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
-			return
-		} else if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+		if err != nil {
+			handleCommonAcceptQuoteError(w, err)
 			return
 		}
 

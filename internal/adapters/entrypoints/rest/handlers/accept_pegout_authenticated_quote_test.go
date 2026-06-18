@@ -315,7 +315,7 @@ func TestAcceptPegoutAuthenticatedQuoteHandler_UseCaseErrors(t *testing.T) {
 
 			handler.ServeHTTP(recorder, request)
 
-			// Verify the response status and message (this indirectly tests that HandleAcceptQuoteError is working correctly)
+			// Verify the response status and message (this indirectly tests that HandleAuthenticatedAcceptQuoteError is working correctly)
 			assert.Equal(t, tc.expectedStatus, recorder.Code)
 
 			var errorResponse map[string]interface{}

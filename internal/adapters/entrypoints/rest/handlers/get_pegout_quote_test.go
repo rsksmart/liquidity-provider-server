@@ -313,7 +313,35 @@ func TestGetPegoutQuoteHandlerErrorCases(t *testing.T) {
 		var errorResponse map[string]interface{}
 		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
 		require.NoError(t, err)
-		assert.Equal(t, "no enough liquidity", errorResponse["message"])
+		assert.Equal(t, "not enough liquidity", errorResponse["message"])
+	})
+
+	t.Run("should return 503 when contract is paused", func(t *testing.T) {
+		reqBody := createValidPegoutQuoteRequest()
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegout/getQuotes", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.GetPegoutQuoteUseCaseMock)
+		mockUseCase.On("Run", mock.Anything, mock.AnythingOfType("pegout.QuoteRequest")).
+			Return(pegout.GetPegoutQuoteResult{}, blockchain.ContractPausedError)
+
+		handlerFunc := handlers.NewGetPegoutQuoteHandler(mockUseCase)
+		handler := http.HandlerFunc(handlerFunc)
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusServiceUnavailable, recorder.Code)
+
+		mockUseCase.AssertExpectations(t)
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Equal(t, "protocol is paused", errorResponse["message"])
 	})
 
 	t.Run("should return 500 on unexpected errors", func(t *testing.T) {
