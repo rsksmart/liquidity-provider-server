@@ -114,6 +114,12 @@ func (b *ThreadSafeBuffer) Len() int {
 	return b.Buffer.Len()
 }
 
+func (b *ThreadSafeBuffer) Snapshot() []byte {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+	return bytes.Clone(b.Buffer.Bytes())
+}
+
 func AssertNoLog(t *testing.T) (assertFunc func()) {
 	buff := new(bytes.Buffer)
 	log.SetOutput(buff)
@@ -133,6 +139,62 @@ func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
 		_, err := buff.Read(message)
 		require.NoError(t, err, "Error reading log message")
 		return assert.Contains(t, string(message), expected, "Expected message not found")
+	}
+}
+
+// LogKey is a temporary test-only enum of structured log field names, to be repointed at the project's slog attribute keys on adoption.
+type LogKey string
+
+const (
+	LogKeyLevel      LogKey = "level"
+	LogKeyMessage    LogKey = "msg"
+	LogKeyError      LogKey = "error"
+	LogKeyVertical   LogKey = "vertical"
+	LogKeyRskAddress LogKey = "rskAddress"
+)
+
+type LogEntry map[LogKey]any
+
+func (e LogEntry) Level() string {
+	level, ok := e[LogKeyLevel].(string)
+	if !ok {
+		return ""
+	}
+	return level
+}
+
+func (e LogEntry) Message() string {
+	message, ok := e[LogKeyMessage].(string)
+	if !ok {
+		return ""
+	}
+	return message
+}
+
+func (e LogEntry) Field(key LogKey) any {
+	return e[key]
+}
+
+// CaptureStructuredLogs routes logrus through a JSON formatter into an in-memory buffer and returns a decoder for the captured entries.
+func CaptureStructuredLogs(t *testing.T) (entries func() []LogEntry) {
+	logger := log.StandardLogger()
+	previousOutput, previousFormatter := logger.Out, logger.Formatter
+	buff := new(ThreadSafeBuffer)
+	logger.SetOutput(buff)
+	logger.SetFormatter(&log.JSONFormatter{})
+	t.Cleanup(func() {
+		logger.SetOutput(previousOutput)
+		logger.SetFormatter(previousFormatter)
+	})
+	return func() []LogEntry {
+		var decoded []LogEntry
+		decoder := json.NewDecoder(bytes.NewReader(buff.Snapshot()))
+		for decoder.More() {
+			var entry LogEntry
+			require.NoError(t, decoder.Decode(&entry), "Error decoding log entry")
+			decoded = append(decoded, entry)
+		}
+		return decoded
 	}
 }
 

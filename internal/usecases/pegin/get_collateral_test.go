@@ -6,6 +6,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,8 +33,14 @@ func TestGetCollateralUseCase_Run_Error(t *testing.T) {
 	collateral.On("GetCollateral", "rskAddress").Return(entities.NewWei(0), assert.AnError)
 	contracts := blockchain.RskContracts{CollateralManagement: collateral}
 	useCase := pegin.NewGetCollateralUseCase(contracts, lp)
+	logs := test.CaptureStructuredLogs(t)
 	result, err := useCase.Run()
 	collateral.AssertExpectations(t)
 	require.Error(t, err)
 	assert.Nil(t, result)
+	entries := logs()
+	require.Len(t, entries, 1)
+	assert.Equal(t, "GetCollateral: read failed", entries[0].Message())
+	assert.Equal(t, "pegin", entries[0].Field(test.LogKeyVertical))
+	assert.Equal(t, "rskAddress", entries[0].Field(test.LogKeyRskAddress))
 }
