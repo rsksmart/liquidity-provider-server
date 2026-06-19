@@ -18,7 +18,7 @@ services:
     networks:
       - net_lps
   lps-approver:
-    image: lbc-deployer:latest
+    image: "${LBC_IMAGE}"
     pull_policy: never
     volumes:
       - ./lbc-deployer/scripts:/scripts
