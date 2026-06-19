@@ -35,7 +35,7 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 			ticker.AssertExpectations(mt)
 			peginRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("clean quotes successfully", func(t *testing.T) {
 		checkFunction := test.AssertLogContains(t, "Cleaned 3 quotes")
@@ -62,7 +62,7 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 			peginRepository.AssertExpectations(mt)
 			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 }
 

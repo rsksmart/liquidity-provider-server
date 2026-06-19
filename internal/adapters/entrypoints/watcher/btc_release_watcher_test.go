@@ -129,7 +129,7 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 			bridge.AssertExpectations(mt)
 			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
-		assert.True(t, assertQuotesLog())
+		assert.Eventually(t, assertQuotesLog, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should run tick with a with reduce page if its too close to the latest block", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -161,7 +161,7 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 			bridge.AssertExpectations(mt)
 			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
-		assert.True(t, assertNoQuotesLog())
+		assert.Eventually(t, assertNoQuotesLog, time.Second, 10*time.Millisecond)
 	})
 }
 
@@ -213,7 +213,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 			bridge.AssertNotCalled(mt, "GetBatchPegOutCreatedEvent")
 			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
-		assert.True(t, assertErrorLog())
+		assert.Eventually(t, assertErrorLog, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should handle error getting event", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -241,7 +241,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 			bridge.AssertExpectations(mt)
 			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
-		assert.True(t, assertNoQuotesLog())
+		assert.Eventually(t, assertNoQuotesLog, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should handle error in use case", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -270,7 +270,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 			bridge.AssertExpectations(mt)
 			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
-		assert.True(t, assertNoQuotesLog())
+		assert.Eventually(t, assertNoQuotesLog, time.Second, 10*time.Millisecond)
 	})
 }
 

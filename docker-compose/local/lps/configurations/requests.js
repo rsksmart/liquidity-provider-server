@@ -61,11 +61,14 @@ const CONFIG_REQUESTS = {
         body: {
             configuration: {
                 timeForDeposit: 3600,
-                expireTime: 10800,
+                // expireTime/expireBlocks must exceed the estimated confirmation time for maxValue.
+                // At maxValue=10 ETH the general config resolves to 80 RSK + 40 BTC confirmations:
+                // 80*30 + 40*600 = 26400s. So expireTime > 26400s and expireBlocks*30 > 26400s (>880 blocks).
+                expireTime: 28800,
                 penaltyFee: "1000000000000000",
                 maxValue: "10000000000000000000",
                 minValue: "600000000000000000",
-                expireBlocks: 500,
+                expireBlocks: 1000,
                 bridgeTransactionMin: "1500000000000000000",
                 feePercentage: 0.33,
                 fixedFee: "200000000000000"
