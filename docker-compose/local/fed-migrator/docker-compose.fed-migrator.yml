@@ -13,6 +13,11 @@ services:
     environment:
       - RSK_ENDPOINT
       - ENV_FILE
+      - BTC_RPC_URL=http://bitcoind:5555
+      - BTC_RPC_USER=${BTC_USERNAME}
+      - BTC_RPC_PASSWORD=${BTC_PASSWORD}
+      - BTC_RPC_WALLET=main
+      - BTC_WALLET_PASSPHRASE=test-password
     networks:
       - net_lps
 networks:

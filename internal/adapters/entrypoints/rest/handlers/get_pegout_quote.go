@@ -7,8 +7,6 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -42,21 +40,8 @@ func NewGetPegoutQuoteHandler(useCase GetPegoutQuoteUseCase) http.HandlerFunc {
 		)
 
 		result, err = useCase.Run(req.Context(), pegoutRequest)
-		if isGetPegoutQuoteBadRequest(err) {
-			jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-			return
-		} else if errors.Is(err, usecases.NoLiquidityError) {
-			jsonErr := rest.NewErrorResponseWithDetails("no enough liquidity", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
-			return
-		} else if errors.Is(err, blockchain.ContractPausedError) {
-			jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
-			return
-		} else if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+		if err != nil {
+			handleGetPegoutQuoteError(w, err)
 			return
 		}
 		quoteDto := pkg.ToPegoutQuoteDTO(result.PegoutQuote)
@@ -68,10 +53,12 @@ func NewGetPegoutQuoteHandler(useCase GetPegoutQuoteUseCase) http.HandlerFunc {
 	}
 }
 
-func isGetPegoutQuoteBadRequest(err error) bool {
-	return errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
-		errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
-		errors.Is(err, usecases.RskAddressNotSupportedError) ||
-		errors.Is(err, usecases.TxBelowMinimumError) ||
-		errors.Is(err, liquidity_provider.AmountOutOfRangeError)
+func handleGetPegoutQuoteError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, usecases.NoLiquidityError):
+		jsonErr := rest.NewErrorResponseWithDetails("not enough liquidity", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusConflict, jsonErr)
+	default:
+		handleGetQuoteError(w, err)
+	}
 }

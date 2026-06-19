@@ -8,8 +8,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
@@ -50,17 +48,8 @@ func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
 		)
 
 		result, err = useCase.Run(req.Context(), peginRequest)
-		if isGetPeginQuoteBadRequest(err) {
-			jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
-			return
-		} else if errors.Is(err, blockchain.ContractPausedError) {
-			jsonErr := rest.NewErrorResponseWithDetails("protocol is paused", rest.DetailsFromError(err), true)
-			rest.JsonErrorResponse(w, http.StatusServiceUnavailable, jsonErr)
-			return
-		} else if err != nil {
-			jsonErr := rest.NewErrorResponseWithDetails(UnknownErrorMessage, rest.DetailsFromError(err), false)
-			rest.JsonErrorResponse(w, http.StatusInternalServerError, jsonErr)
+		if err != nil {
+			handleGetPeginQuoteError(w, err)
 			return
 		}
 		quoteDto := pkg.ToPeginQuoteDTO(result.PeginQuote)
@@ -72,11 +61,12 @@ func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
 	}
 }
 
-func isGetPeginQuoteBadRequest(err error) bool {
-	return errors.Is(err, blockchain.BtcAddressNotSupportedError) ||
-		errors.Is(err, blockchain.BtcAddressInvalidNetworkError) ||
-		errors.Is(err, usecases.RskAddressNotSupportedError) ||
-		errors.Is(err, usecases.TxBelowMinimumError) ||
-		errors.Is(err, pegin.DataCapExceededError) ||
-		errors.Is(err, liquidity_provider.AmountOutOfRangeError)
+func handleGetPeginQuoteError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, pegin.DataCapExceededError):
+		jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+	default:
+		handleGetQuoteError(w, err)
+	}
 }

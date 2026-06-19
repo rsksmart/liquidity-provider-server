@@ -86,7 +86,7 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 	w := watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1))
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	defer test.AssertLogContains(t, assert.AnError.Error())
+	defer test.AssertLogContains(t, assert.AnError.Error())()
 	go func() {
 		defer wg.Done()
 		w.Start()
