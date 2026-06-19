@@ -163,7 +163,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 			mt := newMockCollectT(collect)
 			btcRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	pegoutSentChannel <- quote.PegoutBtcSentToUserEvent{
 		Event:       entities.NewBaseEvent(quote.PegoutBtcSentEventId),
@@ -179,7 +179,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 			mt := newMockCollectT(collect)
 			btcRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("shouldn't refund pegout if transaction is not mature enough", func(t *testing.T) {
 		resetMocks()
@@ -216,7 +216,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 			pegoutRepository.AssertExpectations(mt)
 			assert.Equal(collect, quote.WatchedPegoutQuote{PegoutQuote: testPegoutQuote, RetainedQuote: testRetainedQuote}, watchedQuote)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should stop tracking quote on non-recoverable error", func(t *testing.T) {
 		resetMocks()
@@ -236,7 +236,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 			pegoutRepository.AssertExpectations(mt)
 			assert.Empty(collect, watchedQuote)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	pegoutSentChannel <- quote.PegoutBtcSentToUserEvent{
 		Event:       entities.NewBaseEvent(quote.PegoutBtcSentEventId),
