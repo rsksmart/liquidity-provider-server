@@ -23,6 +23,11 @@ func TestNewMetrics(t *testing.T) {
 		assert.NotNil(t, metrics.PegoutQuotesMetric)
 		assert.NotNil(t, metrics.ServerInfoMetric)
 		assert.NotNil(t, metrics.AssetsMetrics)
+		assert.NotNil(t, metrics.NodePeerCountMetric)
+		assert.NotNil(t, metrics.NodePeerMinThresholdMetric)
+		assert.NotNil(t, metrics.NodePeerBelowThreshold)
+		assert.NotNil(t, metrics.NodePeerCheckErrors)
+		assert.NotNil(t, metrics.NodePeerAlerts)
 
 		// Verify metric names and help text by checking descriptors
 		peginDesc := getMetricDesc(metrics.PeginQuotesMetric)
@@ -61,33 +66,33 @@ func TestMetrics_UpdateAssetsFromReport(t *testing.T) {
 		metrics.UpdateAssetsFromReport(report)
 
 		// Verify RBTC metrics are set with correct values
-		assert.InDelta(t, 9.5, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "total"), 0.0001)
-		assert.InDelta(t, 3.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "location_rsk_wallet"), 0.0001)
-		assert.InDelta(t, 1.5, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "location_lbc"), 0.0001)
-		assert.InDelta(t, 5.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "location_federation"), 0.0001)
-		assert.InDelta(t, 2.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "allocation_reserved_for_users"), 0.0001)
-		assert.InDelta(t, 0.5, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "allocation_waiting_refund"), 0.0001)
-		assert.InDelta(t, 5.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "allocation_available"), 0.0001)
+		assert.InDelta(t, 9.5, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelTotal), 0.0001)
+		assert.InDelta(t, 3.0, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelLocationRskWallet), 0.0001)
+		assert.InDelta(t, 1.5, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelLocationLbc), 0.0001)
+		assert.InDelta(t, 5.0, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelLocationFederation), 0.0001)
+		assert.InDelta(t, 2.0, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelAllocationReservedForUsers), 0.0001)
+		assert.InDelta(t, 0.5, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelAllocationWaitingRefund), 0.0001)
+		assert.InDelta(t, 5.0, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelAllocationAvailable), 0.0001)
 
 		// Verify BTC metrics are set with correct values
-		assert.InDelta(t, 9.2, getGaugeVecValue(metrics.AssetsMetrics, "btc", "total"), 0.0001)
-		assert.InDelta(t, 2.8, getGaugeVecValue(metrics.AssetsMetrics, "btc", "location_btc_wallet"), 0.0001)
-		assert.InDelta(t, 1.8, getGaugeVecValue(metrics.AssetsMetrics, "btc", "location_federation"), 0.0001)
-		assert.InDelta(t, 3.6, getGaugeVecValue(metrics.AssetsMetrics, "btc", "location_rsk_wallet"), 0.0001)
-		assert.InDelta(t, 0.1, getGaugeVecValue(metrics.AssetsMetrics, "btc", "location_lbc"), 0.0001)
-		assert.InDelta(t, 1.8, getGaugeVecValue(metrics.AssetsMetrics, "btc", "allocation_reserved_for_users"), 0.0001)
-		assert.InDelta(t, 0.1, getGaugeVecValue(metrics.AssetsMetrics, "btc", "allocation_waiting_refund"), 0.0001)
-		assert.InDelta(t, 4.5, getGaugeVecValue(metrics.AssetsMetrics, "btc", "allocation_available"), 0.0001)
+		assert.InDelta(t, 9.2, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelTotal), 0.0001)
+		assert.InDelta(t, 2.8, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelLocationBtcWallet), 0.0001)
+		assert.InDelta(t, 1.8, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelLocationFederation), 0.0001)
+		assert.InDelta(t, 3.6, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelLocationRskWallet), 0.0001)
+		assert.InDelta(t, 0.1, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelLocationLbc), 0.0001)
+		assert.InDelta(t, 1.8, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationReservedForUsers), 0.0001)
+		assert.InDelta(t, 0.1, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationWaitingRefund), 0.0001)
+		assert.InDelta(t, 4.5, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationAvailable), 0.0001)
 
 		// Verify labels are correct for RBTC metrics
-		rbtcLabels := getGaugeVecLabels(metrics.AssetsMetrics, "rbtc", "total")
-		assert.Equal(t, "rbtc", rbtcLabels["currency"])
-		assert.Equal(t, "total", rbtcLabels["type"])
+		rbtcLabels := getGaugeVecLabels(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelTotal)
+		assert.Equal(t, monitoring.MetricLabelRbtc, rbtcLabels["currency"])
+		assert.Equal(t, monitoring.MetricLabelTotal, rbtcLabels["type"])
 
 		// Verify labels are correct for BTC metrics
-		btcLabels := getGaugeVecLabels(metrics.AssetsMetrics, "btc", "location_lbc")
-		assert.Equal(t, "btc", btcLabels["currency"])
-		assert.Equal(t, "location_lbc", btcLabels["type"])
+		btcLabels := getGaugeVecLabels(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelLocationLbc)
+		assert.Equal(t, monitoring.MetricLabelBtc, btcLabels["currency"])
+		assert.Equal(t, monitoring.MetricLabelLocationLbc, btcLabels["type"])
 	})
 
 	t.Run("should handle edge case values correctly (zero, large, complex decimals)", func(t *testing.T) {
@@ -130,19 +135,19 @@ func TestMetrics_UpdateAssetsFromReport(t *testing.T) {
 		metrics.UpdateAssetsFromReport(report)
 
 		// Verify zero values
-		assert.InDelta(t, 0.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "location_lbc"), 0.0001)
-		assert.InDelta(t, 0.0, getGaugeVecValue(metrics.AssetsMetrics, "btc", "allocation_available"), 0.0001)
+		assert.InDelta(t, 0.0, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelLocationLbc), 0.0001)
+		assert.InDelta(t, 0.0, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationAvailable), 0.0001)
 
 		// Verify complex decimal values
-		assert.InDelta(t, 34.598535894857007656, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "allocation_reserved_for_users"), 1e-15)
-		assert.InDelta(t, 0.000123456789, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "allocation_waiting_refund"), 1e-15)
-		assert.InDelta(t, 7.890123456789, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "location_rsk_wallet"), 1e-12)
-		assert.InDelta(t, 56.7890123456789, getGaugeVecValue(metrics.AssetsMetrics, "btc", "allocation_reserved_for_users"), 1e-12)
-		assert.InDelta(t, 0.987654321, getGaugeVecValue(metrics.AssetsMetrics, "btc", "location_lbc"), 1e-9)
+		assert.InDelta(t, 34.598535894857007656, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelAllocationReservedForUsers), 1e-15)
+		assert.InDelta(t, 0.000123456789, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelAllocationWaitingRefund), 1e-15)
+		assert.InDelta(t, 7.890123456789, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelLocationRskWallet), 1e-12)
+		assert.InDelta(t, 56.7890123456789, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelAllocationReservedForUsers), 1e-12)
+		assert.InDelta(t, 0.987654321, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelLocationLbc), 1e-9)
 
 		// Verify large values
-		assert.InDelta(t, 1000.0, getGaugeVecValue(metrics.AssetsMetrics, "rbtc", "allocation_available"), 0.0001)
-		assert.InDelta(t, 2500.0, getGaugeVecValue(metrics.AssetsMetrics, "btc", "location_btc_wallet"), 0.0001)
+		assert.InDelta(t, 1000.0, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelRbtc, monitoring.MetricLabelAllocationAvailable), 0.0001)
+		assert.InDelta(t, 2500.0, getGaugeVecValue(metrics.AssetsMetrics, monitoring.MetricLabelBtc, monitoring.MetricLabelLocationBtcWallet), 0.0001)
 	})
 }
 
@@ -187,6 +192,18 @@ func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.Registerer
 		mock.AnythingOfType("*prometheus.CounterVec"), // PeginQuotesMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // ServerInfoMetric
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // AssetsMetrics
+		mock.AnythingOfType("*prometheus.CounterVec"), // ColdWalletTransfersMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // ColdWalletLastAmountMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgDepthMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgMaxDepthMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodeReorgAboveThresholdMetric
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodeReorgCheckErrorsMetric
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodeReorgAlertsMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerCountMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerMinThresholdMetric
+		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerBelowThreshold
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerCheckErrors
+		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerAlerts
 	).Return()
 
 	metrics := monitoring.NewMetrics(registerer)
@@ -206,4 +223,37 @@ func createWeiFromString(weiStr string) *entities.Wei {
 	val := new(big.Int)
 	val.SetString(weiStr, 10)
 	return entities.NewBigWei(val)
+}
+
+func TestMetrics_UpdateNodePeerStatus(t *testing.T) {
+	t.Run("should set peer count and threshold when below", func(t *testing.T) {
+		metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+		metrics.UpdateNodePeerStatus("bitcoin", 1, 3, true)
+		assert.InDelta(t, 1.0, getGaugeVecValue(metrics.NodePeerCountMetric, "bitcoin"), 0.0001)
+		assert.InDelta(t, 3.0, getGaugeVecValue(metrics.NodePeerMinThresholdMetric, "bitcoin"), 0.0001)
+		assert.InDelta(t, 1.0, getGaugeVecValue(metrics.NodePeerBelowThreshold, "bitcoin"), 0.0001)
+	})
+	t.Run("should set peer count and threshold when at or above", func(t *testing.T) {
+		metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+		metrics.UpdateNodePeerStatus("bitcoin", 5, 3, false)
+		assert.InDelta(t, 5.0, getGaugeVecValue(metrics.NodePeerCountMetric, "bitcoin"), 0.0001)
+		assert.InDelta(t, 3.0, getGaugeVecValue(metrics.NodePeerMinThresholdMetric, "bitcoin"), 0.0001)
+		assert.InDelta(t, 0.0, getGaugeVecValue(metrics.NodePeerBelowThreshold, "bitcoin"), 0.0001)
+	})
+}
+
+func TestMetrics_IncrementNodePeerCheckError(t *testing.T) {
+	metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+	metrics.IncrementNodePeerCheckError("bitcoin")
+	assert.InDelta(t, 1.0, getCounterVecValue(metrics.NodePeerCheckErrors, "bitcoin"), 0.0001)
+	metrics.IncrementNodePeerCheckError("bitcoin")
+	assert.InDelta(t, 2.0, getCounterVecValue(metrics.NodePeerCheckErrors, "bitcoin"), 0.0001)
+}
+
+func TestMetrics_IncrementNodePeerAlert(t *testing.T) {
+	metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+	metrics.IncrementNodePeerAlert("bitcoin")
+	assert.InDelta(t, 1.0, getCounterVecValue(metrics.NodePeerAlerts, "bitcoin"), 0.0001)
+	metrics.IncrementNodePeerAlert("bitcoin")
+	assert.InDelta(t, 2.0, getCounterVecValue(metrics.NodePeerAlerts, "bitcoin"), 0.0001)
 }

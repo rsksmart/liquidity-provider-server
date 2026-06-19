@@ -170,10 +170,11 @@ func (rpc *rskjRpcServer) GetBlockByHash(ctx context.Context, hash string) (bloc
 	}
 
 	return blockchain.BlockInfo{
-		Hash:      result.Hash().String(),
-		Number:    result.NumberU64(),
-		Timestamp: time.Unix(int64(result.Time()), 0),
-		Nonce:     result.Nonce(),
+		Hash:       result.Hash().String(),
+		ParentHash: result.ParentHash().Hex(),
+		Number:     result.NumberU64(),
+		Timestamp:  time.Unix(int64(result.Time()), 0),
+		Nonce:      result.Nonce(),
 	}, nil
 }
 
@@ -186,9 +187,32 @@ func (rpc *rskjRpcServer) GetBlockByNumber(ctx context.Context, blockNumber *big
 		return blockchain.BlockInfo{}, err
 	}
 	return blockchain.BlockInfo{
-		Hash:      result.Hash().String(),
-		Number:    result.NumberU64(),
-		Timestamp: time.Unix(int64(result.Time()), 0),
-		Nonce:     result.Nonce(),
+		Hash:       result.Hash().String(),
+		ParentHash: result.ParentHash().Hex(),
+		Number:     result.NumberU64(),
+		Timestamp:  time.Unix(int64(result.Time()), 0),
+		Nonce:      result.Nonce(),
 	}, nil
+}
+
+func (rpc *rskjRpcServer) PeerCount(ctx context.Context) (uint64, error) {
+	return rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+		func() (uint64, error) {
+			return rpc.client.PeerCount(ctx)
+		})
+}
+
+func (rpc *rskjRpcServer) ChainId(ctx context.Context) (uint64, error) {
+	result, err := rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+		func() (uint64, error) {
+			if chainId, rpcErr := rpc.client.ChainID(ctx); rpcErr != nil {
+				return 0, rpcErr
+			} else {
+				return chainId.Uint64(), nil
+			}
+		})
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
 }

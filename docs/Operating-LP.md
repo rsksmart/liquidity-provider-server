@@ -1,8 +1,10 @@
-A Liquidity Provider (LP) contributes funds in Rootstock (RBTC) and Bitcoin (BTC) to a liquidity pool. In exchange for providing this liquidity and facilitating trades between the two assets, LPs earn rewards (fees) generated from trading activity. 
+A Liquidity Provider (LP) contributes funds in Rootstock (rBTC) and Bitcoin (BTC) to a liquidity pool. In exchange for providing this liquidity and facilitating trades between the two assets, LPs earn rewards (fees) generated from trading activity. 
 
-> LPs can be individuals, institutions, exchanges, or aggregators. See [glossary](/developers/integrate/flyover/glossary/) section for explanation of terms.
+> LPs can be individuals, institutions, exchanges, or aggregators. See the [glossary](/developers/integrate/flyover/glossary/) for term definitions.
 
-This section outlines the key features and functionalities that Liquidity Providers (LPs) should be familiar with to effectively operate their Liquidity Provider Servers (LPS). The information provided encompasses both technical and operational aspects, making it a valuable resource for both LPs and those responsible for deploying the LPS environment.
+The Flyover protocol is trust-minimized, this means user funds go to the PowPeg federation (peg-in) or the Liquidity Bridge Contract (peg-out), never to the Liquidity Provider. LPs supply liquidity and are repaid by the protocol; they do not hold custody of user funds. This design matters for institutional LPs and their users.
+
+This section outlines the key features and operations that Liquidity Providers (LPs) need to run their Liquidity Provider Servers (LPS) effectively. The information provided encompasses both technical and operational aspects, making it a valuable resource for both LPs and those responsible for deploying the LPS environment.
 
 ## Requirements
 * See minimum security requirements
@@ -10,7 +12,7 @@ This section outlines the key features and functionalities that Liquidity Provid
     - LPS Wallet
     - LPS environment
 * Liquidity
-    - The minimum required is the collateral amount (regardless of the amount of liquidity), which currently is 0.06 RBTC that needs to be paid during transaction registration. See [how to get RBTC](https://rootstock.io/rbtc/).
+    - The minimum required is the collateral amount (regardless of the amount of liquidity), which currently is 0.06 rBTC that needs to be paid during transaction registration. See [how to get rBTC](https://rootstock.io/rbtc/).
 
 ### Main Dependencies
 The liquidity provider server has the following dependencies:
@@ -44,9 +46,6 @@ This fee covers the gas costs for all transactions performed by the Liquidity Pr
 
 * Call Fee:
 A fee paid to the Liquidity Provider who facilitates the transaction. This fee is configurable and can vary based on the LP's chosen settings.
-
-* Product Fee:
-This is a DAO fee that is collected by the protocol. It's calculated based on a percentage of the transaction value and is configured at the protocol level.
 
 ## Security
 See the [minimum security requirements](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md#minimum-security-requirements).

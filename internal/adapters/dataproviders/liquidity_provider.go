@@ -1,7 +1,6 @@
 package dataproviders
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -56,17 +55,41 @@ func (lp *LocalLiquidityProvider) BtcAddress() string {
 	return lp.btc.Address()
 }
 
-func (lp *LocalLiquidityProvider) SignQuote(quoteHash string) (string, error) {
-	var buf bytes.Buffer
-
-	hash, err := hex.DecodeString(quoteHash)
+func (lp *LocalLiquidityProvider) SignPeginQuote(ctx context.Context, quoteHash string) (string, error) {
+	var peginQuote *quote.PeginQuote
+	var err error
+	if peginQuote, err = lp.peginRepository.GetQuote(ctx, quoteHash); err != nil {
+		return "", err
+	} else if peginQuote == nil {
+		return "", usecases.QuoteNotFoundError
+	}
+	hash, err := lp.contracts.PegIn.HashPeginQuoteEIP712(*peginQuote)
 	if err != nil {
 		return "", err
 	}
 
-	buf.WriteString(usecases.EthereumSignedMessagePrefix)
-	buf.Write(hash)
-	signatureBytes, err := lp.signer.SignBytes(crypto.Keccak256(buf.Bytes()))
+	signatureBytes, err := lp.signer.SignBytes(hash[:])
+	if err != nil {
+		return "", err
+	}
+	signatureBytes[len(signatureBytes)-1] += 27 // v must be 27 or 28
+	return hex.EncodeToString(signatureBytes), nil
+}
+
+func (lp *LocalLiquidityProvider) SignPegoutQuote(ctx context.Context, quoteHash string) (string, error) {
+	var pegoutQuote *quote.PegoutQuote
+	var err error
+	if pegoutQuote, err = lp.pegoutRepository.GetQuote(ctx, quoteHash); err != nil {
+		return "", err
+	} else if pegoutQuote == nil {
+		return "", usecases.QuoteNotFoundError
+	}
+	hash, err := lp.contracts.PegOut.HashPegoutQuoteEIP712(*pegoutQuote)
+	if err != nil {
+		return "", err
+	}
+
+	signatureBytes, err := lp.signer.SignBytes(hash[:])
 	if err != nil {
 		return "", err
 	}
@@ -82,12 +105,10 @@ func (lp *LocalLiquidityProvider) HasPegoutLiquidity(ctx context.Context, requir
 	}
 	if availableLiquidity.Cmp(requiredLiquidity) >= 0 {
 		return nil
-	} else {
-		return fmt.Errorf(
-			"%w, missing %s satoshi",
-			usecases.NoLiquidityError,
-			requiredLiquidity.Sub(requiredLiquidity, availableLiquidity).ToSatoshi().String(),
-		)
+	}
+	return &usecases.InsufficientLiquidityError{
+		Available: availableLiquidity.Copy(),
+		Required:  requiredLiquidity.Copy(),
 	}
 }
 
@@ -203,6 +224,16 @@ func (lp *LocalLiquidityProvider) PeginConfiguration(ctx context.Context) liquid
 		return liquidity_provider.DefaultPeginConfiguration()
 	}
 	return configuration.Value
+}
+
+func (lp *LocalLiquidityProvider) StateConfiguration(ctx context.Context) (liquidity_provider.StateConfiguration, error) {
+	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.StateConfiguration], error) {
+		return lp.lpRepository.GetStateConfiguration(ctx)
+	})
+	if err != nil {
+		return liquidity_provider.StateConfiguration{}, err
+	}
+	return configuration.Value, nil
 }
 
 func (lp *LocalLiquidityProvider) GetSigner() entities.Signer {

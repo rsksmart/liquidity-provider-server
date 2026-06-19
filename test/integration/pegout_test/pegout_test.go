@@ -165,7 +165,6 @@ func (s *PegOutSuite) executeGetQuote() {
 		"expireDate",
 		"expireBlocks",
 		"gasFee",
-		"productFeeAmount",
 	}
 
 	var rawResponse []map[string]any

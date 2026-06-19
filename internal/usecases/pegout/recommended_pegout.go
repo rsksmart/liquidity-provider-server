@@ -3,21 +3,21 @@ package pegout
 import (
 	"context"
 	"fmt"
+	"math/big"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"math/big"
 )
 
 type RecommendedPegoutUseCase struct {
-	pegoutProvider      liquidity_provider.PegoutLiquidityProvider
-	contracts           blockchain.RskContracts
-	rpc                 blockchain.Rpc
-	btcWallet           blockchain.BitcoinWallet
-	scale               int64
-	feeCollectorAddress string
+	pegoutProvider liquidity_provider.PegoutLiquidityProvider
+	contracts      blockchain.RskContracts
+	rpc            blockchain.Rpc
+	btcWallet      blockchain.BitcoinWallet
+	scale          int64
 }
 
 func NewRecommendedPegoutUseCase(
@@ -26,15 +26,13 @@ func NewRecommendedPegoutUseCase(
 	rpc blockchain.Rpc,
 	btcWallet blockchain.BitcoinWallet,
 	scale int64,
-	feeCollectorAddress string,
 ) *RecommendedPegoutUseCase {
 	return &RecommendedPegoutUseCase{
-		pegoutProvider:      pegoutProvider,
-		contracts:           contracts,
-		rpc:                 rpc,
-		btcWallet:           btcWallet,
-		scale:               scale,
-		feeCollectorAddress: feeCollectorAddress,
+		pegoutProvider: pegoutProvider,
+		contracts:      contracts,
+		rpc:            rpc,
+		btcWallet:      btcWallet,
+		scale:          scale,
 	}
 }
 
@@ -50,15 +48,16 @@ func (useCase *RecommendedPegoutUseCase) Run(
 	config := useCase.pegoutProvider.PegoutConfiguration(ctx)
 	result := new(big.Int).Set(userBalance.AsBigInt())
 
-	// Percentage fees
-	scaledProductFee, err := useCase.getScaledProductFeePercentage()
-	if err != nil {
+	if err := config.ValidateAmount(userBalance); err != nil {
+		err = fmt.Errorf("provided amount %s is out of range: %w", userBalance.String(), err)
 		return usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPegoutId, err)
 	}
+
+	// Percentage fees
 	scaledCallFeePercentage := useCase.getScaledCallFeePercentage(config)
 
 	// Fixed fees
-	gasFeeEstimation, err := useCase.getGasFee(ctx, destinationType, userBalance, scaledProductFee)
+	gasFeeEstimation, err := useCase.getGasFee(destinationType, userBalance)
 	if err != nil {
 		return usecases.RecommendedOperationResult{}, usecases.WrapUseCaseError(usecases.RecommendedPegoutId, err)
 	}
@@ -66,8 +65,7 @@ func (useCase *RecommendedPegoutUseCase) Run(
 
 	// Result calculation
 	totalPercentages := big.NewInt(0)
-	totalPercentages.Add(scaledProductFee, scaledCallFeePercentage)
-	totalPercentages.Add(totalPercentages, big.NewInt(useCase.scale))
+	totalPercentages.Add(big.NewInt(useCase.scale), scaledCallFeePercentage)
 
 	result.Sub(result, gasFeeEstimation)
 	result.Sub(result, fixedCallFeeEstimation)
@@ -83,9 +81,6 @@ func (useCase *RecommendedPegoutUseCase) Run(
 		EstimatedGasFee:       entities.NewBigWei(gasFeeEstimation),
 		EstimatedCallFee: entities.NewBigWei(
 			useCase.estimateCallFee(result, fixedCallFeeEstimation, scaledCallFeePercentage),
-		),
-		EstimatedProductFee: entities.NewBigWei(
-			useCase.estimateProductFee(result, scaledProductFee),
 		),
 	}, nil
 }
@@ -105,40 +100,10 @@ func (useCase *RecommendedPegoutUseCase) getScaledCallFeePercentage(
 	return scaledPercentageFee
 }
 
-func (useCase *RecommendedPegoutUseCase) getScaledProductFeePercentage() (*big.Int, error) {
-	// should be already scaled in the contract
-	uintProductFee, err := useCase.contracts.PegOut.DaoFeePercentage()
-	if err != nil {
-		return nil, err
-	}
-	return new(big.Int).SetUint64(uintProductFee), nil
-}
-
 func (useCase *RecommendedPegoutUseCase) getGasFee(
-	ctx context.Context,
 	destinationType blockchain.BtcAddressType,
 	amount *entities.Wei,
-	scaledFeePercentage *big.Int,
 ) (*big.Int, error) {
-	daoFeeAmount := new(big.Int).Quo(
-		new(big.Int).Mul(amount.AsBigInt(), scaledFeePercentage),
-		big.NewInt(useCase.scale),
-	)
-	daoGasAmount, err := useCase.rpc.Rsk.EstimateGas(
-		ctx,
-		useCase.feeCollectorAddress,
-		entities.NewBigWei(daoFeeAmount),
-		make([]byte, 0),
-	)
-	if err != nil {
-		return nil, err
-	}
-	gasPrice, err := useCase.rpc.Rsk.GasPrice(ctx)
-	if err != nil {
-		return nil, err
-	}
-	daoGasFee := new(big.Int).Mul(daoGasAmount.AsBigInt(), gasPrice.AsBigInt())
-
 	address, err := useCase.rpc.Btc.GetZeroAddress(destinationType)
 	if err != nil {
 		return nil, err
@@ -147,7 +112,7 @@ func (useCase *RecommendedPegoutUseCase) getGasFee(
 	if err != nil {
 		return nil, err
 	}
-	return new(big.Int).Add(estimation.Value.AsBigInt(), daoGasFee), nil
+	return estimation.Value.AsBigInt(), nil
 }
 
 func (useCase *RecommendedPegoutUseCase) getFixedCallFee(
@@ -170,16 +135,6 @@ func (useCase *RecommendedPegoutUseCase) estimateCallFee(
 	)
 }
 
-func (useCase *RecommendedPegoutUseCase) estimateProductFee(
-	result *big.Int,
-	scaledProductFee *big.Int,
-) *big.Int {
-	return new(big.Int).Quo(
-		new(big.Int).Mul(result, scaledProductFee),
-		big.NewInt(useCase.scale),
-	)
-}
-
 func (useCase *RecommendedPegoutUseCase) validateRecommendedValue(
 	ctx context.Context,
 	config liquidity_provider.PegoutConfiguration,
@@ -196,9 +151,5 @@ func (useCase *RecommendedPegoutUseCase) validateRecommendedValue(
 		return usecases.WrapUseCaseError(usecases.RecommendedPegoutId, usecases.NoLiquidityError)
 	}
 
-	if err = usecases.ValidateMinLockValue(usecases.RecommendedPegoutId, useCase.contracts.Bridge, entities.NewBigWei(result)); err != nil {
-		err = fmt.Errorf("recommended amount %s is below the minimum lock value: %w", entities.NewBigWei(result).String(), err)
-		return err
-	}
 	return nil
 }

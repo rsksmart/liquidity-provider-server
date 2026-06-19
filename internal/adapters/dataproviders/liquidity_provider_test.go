@@ -1,7 +1,6 @@
 package dataproviders_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -28,9 +27,18 @@ import (
 )
 
 const (
-	rskTestAddress = "0x7c292eb881fd15605f7a85c24f4909381d36c3b9"
-	quoteHash      = "5f677ed167ea3af1205ee45c64bf9883338ba9ae51f2d4e1ada949ebbff7d179"
+	rskTestAddress        = "0x7c292eb881fd15605f7a85c24f4909381d36c3b9"
+	peginQuoteHash        = "5f677ed167ea3af1205ee45c64bf9883338ba9ae51f2d4e1ada949ebbff7d179"
+	peginQuoteEip712Hash  = "2ab5f0e021c2f788c2db2915afcdf3e6f07714f2591fbf639668b67676354b9c"
+	pegoutQuoteHash       = "8011b352d9a0a3d4a5f513816978457dbb364f17531623b5a09bf49248fea3e9"
+	pegoutQuoteEip712Hash = "7df6a4af96e3451bd468e352387c7c917ffcaa2f25174bef3a6f6b494160a14b"
+	signatureBeforeSum    = "ce55f807c9f533bdf58b0bfd072dadfdd443cb521aef104f4d4014dcf4da7db418d142dfa0a26edbd169930189ed1a23b9bd8e09c7b01f3832e26fc7855f89a900"
+	signatureAfterSum     = "ce55f807c9f533bdf58b0bfd072dadfdd443cb521aef104f4d4014dcf4da7db418d142dfa0a26edbd169930189ed1a23b9bd8e09c7b01f3832e26fc7855f89a91b"
 )
+
+var peginQuote = quote.PeginQuote{Nonce: 1}
+
+var pegoutQuote = quote.PegoutQuote{Nonce: 2}
 
 func TestLocalLiquidityProvider_BtcAddress(t *testing.T) {
 	btcWallet := new(mocks.BitcoinWalletMock)
@@ -46,41 +54,125 @@ func TestLocalLiquidityProvider_RskAddress(t *testing.T) {
 	assert.Equal(t, strings.ToLower(rskTestAddress), lp.RskAddress())
 }
 
-func TestLocalLiquidityProvider_SignQuote(t *testing.T) {
-	const (
-		signatureBeforeSum = "ce55f807c9f533bdf58b0bfd072dadfdd443cb521aef104f4d4014dcf4da7db418d142dfa0a26edbd169930189ed1a23b9bd8e09c7b01f3832e26fc7855f89a900"
-		signatureAfterSum  = "ce55f807c9f533bdf58b0bfd072dadfdd443cb521aef104f4d4014dcf4da7db418d142dfa0a26edbd169930189ed1a23b9bd8e09c7b01f3832e26fc7855f89a91b"
-	)
-	var buffer bytes.Buffer
-	hashBytes, err := hex.DecodeString(quoteHash)
+func TestLocalLiquidityProvider_SignPeginQuote(t *testing.T) {
+	eip712HashBytes, err := hex.DecodeString(peginQuoteEip712Hash)
 	require.NoError(t, err)
-	buffer.WriteString(usecases.EthereumSignedMessagePrefix)
-	buffer.Write(hashBytes)
 	signer := new(mocks.TransactionSignerMock)
 	signatureBytes, err := hex.DecodeString(signatureBeforeSum)
 	require.NoError(t, err)
-	signer.On("SignBytes", mock.MatchedBy(func(content []byte) bool {
-		return bytes.Equal(content, crypto.Keccak256(buffer.Bytes()))
-	})).Return(signatureBytes, nil)
-	lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{}, signer, nil, blockchain.RskContracts{})
-	result, err := lp.SignQuote(quoteHash)
+	signer.On("SignBytes", eip712HashBytes).Return(signatureBytes, nil)
+	peginRepo := new(mocks.PeginQuoteRepositoryMock)
+	peginContract := new(mocks.PeginContractMock)
+	peginContract.EXPECT().HashPeginQuoteEIP712(peginQuote).Return(utils.To32Bytes(eip712HashBytes), nil).Once()
+	contracts := blockchain.RskContracts{PegIn: peginContract}
+	peginRepo.EXPECT().GetQuote(mock.Anything, peginQuoteHash).Return(&peginQuote, nil).Once()
+	lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, signer, nil, contracts)
+	result, err := lp.SignPeginQuote(context.Background(), peginQuoteHash)
 	signer.AssertExpectations(t)
 	require.NoError(t, err)
 	assert.Equal(t, signatureAfterSum, result)
 }
 
-func TestLocalLiquidityProvider_SignQuote_ErrorHandling(t *testing.T) {
-	t.Run("Invalid hash", func(t *testing.T) {
-		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
-		result, err := lp.SignQuote(test.AnyString)
+func TestLocalLiquidityProvider_SignPeginQuote_ErrorHandling(t *testing.T) {
+	t.Run("Quote not found", func(t *testing.T) {
+		peginRepo := new(mocks.PeginQuoteRepositoryMock)
+		peginRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(nil, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+		result, err := lp.SignPeginQuote(context.Background(), test.AnyString)
+		require.ErrorIs(t, err, usecases.QuoteNotFoundError)
+		assert.Empty(t, result)
+	})
+	t.Run("Error getting quote from db", func(t *testing.T) {
+		peginRepo := new(mocks.PeginQuoteRepositoryMock)
+		peginRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+		result, err := lp.SignPeginQuote(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	t.Run("Error hashing quote", func(t *testing.T) {
+		peginRepo := new(mocks.PeginQuoteRepositoryMock)
+		peginRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(&peginQuote, nil).Once()
+		peginContract := new(mocks.PeginContractMock)
+		peginContract.EXPECT().HashPeginQuoteEIP712(peginQuote).Return([32]byte{}, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{PegIn: peginContract})
+		result, err := lp.SignPeginQuote(context.Background(), test.AnyString)
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
 	t.Run("Signing error", func(t *testing.T) {
+		peginRepo := new(mocks.PeginQuoteRepositoryMock)
+		peginRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(&peginQuote, nil).Once()
+		peginContract := new(mocks.PeginContractMock)
+		hashBytes, err := hex.DecodeString(peginQuoteEip712Hash)
+		require.NoError(t, err)
+		peginContract.EXPECT().HashPeginQuoteEIP712(peginQuote).Return(utils.To32Bytes(hashBytes), nil).Once()
 		signer := new(mocks.TransactionSignerMock)
 		signer.On("SignBytes", mock.Anything).Return(nil, assert.AnError).Once()
-		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{}, signer, nil, blockchain.RskContracts{})
-		result, err := lp.SignQuote(quoteHash)
+		lp := dataproviders.NewLocalLiquidityProvider(peginRepo, nil, nil, blockchain.Rpc{}, signer, nil, blockchain.RskContracts{PegIn: peginContract})
+		result, err := lp.SignPeginQuote(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+}
+
+func TestLocalLiquidityProvider_SignPegoutQuote(t *testing.T) {
+	eip712HashBytes, err := hex.DecodeString(pegoutQuoteEip712Hash)
+	require.NoError(t, err)
+	signer := new(mocks.TransactionSignerMock)
+	signatureBytes, err := hex.DecodeString(signatureBeforeSum)
+	require.NoError(t, err)
+	signer.On("SignBytes", eip712HashBytes).Return(signatureBytes, nil)
+	pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().HashPegoutQuoteEIP712(pegoutQuote).Return(utils.To32Bytes(eip712HashBytes), nil).Once()
+	contracts := blockchain.RskContracts{PegOut: pegoutContract}
+	pegoutRepo.EXPECT().GetQuote(mock.Anything, pegoutQuoteHash).Return(&pegoutQuote, nil).Once()
+	lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, signer, nil, contracts)
+	result, err := lp.SignPegoutQuote(context.Background(), pegoutQuoteHash)
+	signer.AssertExpectations(t)
+	require.NoError(t, err)
+	assert.Equal(t, signatureAfterSum, result)
+}
+
+func TestLocalLiquidityProvider_SignPegoutQuote_ErrorHandling(t *testing.T) {
+	t.Run("Quote not found", func(t *testing.T) {
+		pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(nil, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+		result, err := lp.SignPegoutQuote(context.Background(), test.AnyString)
+		require.ErrorIs(t, err, usecases.QuoteNotFoundError)
+		assert.Empty(t, result)
+	})
+	t.Run("Error getting quote from db", func(t *testing.T) {
+		pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+		result, err := lp.SignPegoutQuote(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	t.Run("Error hashing quote", func(t *testing.T) {
+		pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(&pegoutQuote, nil).Once()
+		pegoutContract := new(mocks.PegoutContractMock)
+		pegoutContract.EXPECT().HashPegoutQuoteEIP712(pegoutQuote).Return([32]byte{}, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{PegOut: pegoutContract})
+		result, err := lp.SignPegoutQuote(context.Background(), test.AnyString)
+		require.Error(t, err)
+		assert.Empty(t, result)
+	})
+	t.Run("Signing error", func(t *testing.T) {
+		pegoutRepo := new(mocks.PegoutQuoteRepositoryMock)
+		pegoutRepo.EXPECT().GetQuote(mock.Anything, test.AnyString).Return(&pegoutQuote, nil).Once()
+		pegoutContract := new(mocks.PegoutContractMock)
+		hashBytes, err := hex.DecodeString(pegoutQuoteEip712Hash)
+		require.NoError(t, err)
+		pegoutContract.EXPECT().HashPegoutQuoteEIP712(pegoutQuote).Return(utils.To32Bytes(hashBytes), nil).Once()
+		signer := new(mocks.TransactionSignerMock)
+		signer.On("SignBytes", mock.Anything).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, pegoutRepo, nil, blockchain.Rpc{}, signer, nil, blockchain.RskContracts{PegOut: pegoutContract})
+		result, err := lp.SignPegoutQuote(context.Background(), test.AnyString)
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
@@ -179,6 +271,11 @@ func TestLocalLiquidityProvider_HasPegoutLiquidity(t *testing.T) {
 		} else {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.expectedError)
+			require.ErrorIs(t, err, usecases.NoLiquidityError)
+			var insuf *usecases.InsufficientLiquidityError
+			require.ErrorAs(t, err, &insuf)
+			assert.NotNil(t, insuf.Available)
+			assert.NotNil(t, insuf.Required)
 		}
 	}
 	btcWallet.AssertExpectations(t)
@@ -667,10 +764,17 @@ func getGeneralConfigurationMock() *entities.Signed[liquidity_provider.GeneralCo
 				"8000000000000000000": 40,
 				"9000000000000000001": 45,
 			},
-			PublicLiquidityCheck: false,
+			PublicLiquidityCheck:      false,
+			MaxLiquidity:              entities.NewWei(100000000000000000),
+			ReimbursementWindowBlocks: 100,
+			ExcessTolerance: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(10),
+				FixedValue:      entities.NewWei(20),
+			},
 		},
-		Signature: "12f9530beed2220769a3867a01ad7164af2d159cc93644dc8097a736f136b4ac076227ca370de81d0d66b962ac4c6f6f13920afec2919c1f9ee17c954a8690e601",
-		Hash:      "83cb825a5f8dcf1bdd3cd33effffda7a34ed8b0d80a39445049ddc9c06ecb1a8",
+		Signature: "4aabd06dd5f7b107bb0ea15020e4b79ceab7562f53ef7767da3d2dd237958a4e3c391197a4ed3b220c3a3191b2fad665034bb07c9e9364314e11b9a4b456703a01",
+		Hash:      "ee262c3a79fd8354264c64ea240d76f0ba52dcfe3735d0af5eb1f141e8c10742",
 	}
 }
 func getPeginConfigurationMock() *entities.Signed[liquidity_provider.PeginConfiguration] {
@@ -708,4 +812,142 @@ func getPegoutConfigurationMock() *entities.Signed[liquidity_provider.PegoutConf
 		Signature: "34412a3d9d528739ca4fb06632b2b81344d693a1b63aba3540ab72450a5cd4003083efd8fb0bfd72a869ba8b07281f9c878b1d1dd66110d2f9662a2eb3e7cb7401",
 		Hash:      "40e2e3f42928a80814f19d897bb3da4119bff12e15cdb60125d9c2f82c590ea3",
 	}
+}
+
+//nolint:funlen
+func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
+	account := test.OpenWalletForTest(t, "state-configuration")
+	wallet := rootstock.NewRskWalletImpl(&rootstock.RskClient{}, account, 31, time.Duration(1))
+	lpRepository := new(mocks.LiquidityProviderRepositoryMock)
+
+	t.Run("Return signed state configuration from db", func(t *testing.T) {
+		// Create properly signed config using the test wallet
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
+		}
+
+		signedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&signedConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+		result, err := lp.StateConfiguration(context.Background())
+
+		require.NoError(t, err)
+		assert.Equal(t, stateConfigValue, result)
+		assert.NotZero(t, result.LastBtcToColdWalletTransfer)
+		assert.NotZero(t, result.LastRbtcToColdWalletTransfer)
+	})
+
+	t.Run("Return error when db doesn't have configuration", func(t *testing.T) {
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(nil, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		_, err := lp.StateConfiguration(context.Background())
+
+		require.ErrorIs(t, err, liquidity_provider.ConfigurationNotFoundError)
+	})
+
+	t.Run("Return error on db read error", func(t *testing.T) {
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(nil, errors.New("database error")).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, nil, nil, blockchain.RskContracts{})
+
+		_, err := lp.StateConfiguration(context.Background())
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "database error")
+	})
+
+	t.Run("Return error when db configuration is tampered", func(t *testing.T) {
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
+		}
+
+		tamperedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+
+		// Tamper with the data after signing
+		newUnix := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+		tamperedConfig.Value.LastBtcToColdWalletTransfer = newUnix
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&tamperedConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		_, err = lp.StateConfiguration(context.Background())
+
+		require.ErrorIs(t, err, entities.IntegrityError)
+	})
+
+	t.Run("Return error when db configuration doesn't have valid signature", func(t *testing.T) {
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
+		}
+
+		// Create config with correct hash but wrong signature
+		signedConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+		// Use a different but valid signature format (from different wallet/data)
+		signedConfig.Signature = "94530cf2d078ce7e44b4ce1d63a0cf7a225f07d4414f4dcf132f097fd027c08c7252b012ffff6855400fbc96939662904b22ce0b7a010bcb0b7a2c7db9dc26b700"
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&signedConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		_, err = lp.StateConfiguration(context.Background())
+
+		require.ErrorIs(t, err, liquidity_provider.InvalidSignatureError)
+	})
+
+	t.Run("Return error when integrity check fails", func(t *testing.T) {
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
+		}
+
+		integrityFailConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+
+		// Change hash to make integrity check fail
+		integrityFailConfig.Hash = "83cb825a5f8dcf1bdd3cd33effffda7a34ed8b0d80a39445049ddc9c06ecb1a9"
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		_, err = lp.StateConfiguration(context.Background())
+
+		require.ErrorIs(t, err, entities.IntegrityError)
+	})
+
+	t.Run("Return error when there is an unexpected error", func(t *testing.T) {
+		btcUnix := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC).Unix()
+		rbtcUnix := time.Date(2024, 1, 20, 14, 45, 0, 0, time.UTC).Unix()
+		stateConfigValue := liquidity_provider.StateConfiguration{
+			LastBtcToColdWalletTransfer:  btcUnix,
+			LastRbtcToColdWalletTransfer: rbtcUnix,
+		}
+
+		integrityFailConfig, err := usecases.SignConfiguration(usecases.InitializeStateConfigurationId, wallet, crypto.Keccak256, stateConfigValue)
+		require.NoError(t, err)
+
+		// Use invalid hash format that will fail hex decoding
+		integrityFailConfig.Hash = "an-invalid-hash"
+
+		lpRepository.On("GetStateConfiguration", test.AnyCtx).Return(&integrityFailConfig, nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, lpRepository, blockchain.Rpc{}, wallet, nil, blockchain.RskContracts{})
+
+		_, err = lp.StateConfiguration(context.Background())
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "encoding/hex: invalid byte")
+	})
 }

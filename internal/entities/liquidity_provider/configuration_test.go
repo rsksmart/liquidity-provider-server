@@ -3,6 +3,7 @@ package liquidity_provider_test
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -118,6 +119,186 @@ func TestPegoutConfiguration_ValidateAmount(t *testing.T) {
 	}
 	for _, item := range table {
 		err := config.ValidateAmount(item.Value)
+		require.ErrorIs(t, err, item.Result)
+	}
+}
+
+func TestPegoutConfiguration_ValidateExpiryAgainstConfirmations(t *testing.T) {
+	generalConfig := liquidity_provider.GeneralConfiguration{
+		RskConfirmations: liquidity_provider.ConfirmationsPerAmount{
+			"1":  80,
+			"10": 10,
+		},
+		BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
+			"1":  4,
+			"10": 2,
+		},
+	}
+
+	t.Run("should pass when expire time and blocks are enough", func(t *testing.T) {
+		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(5),
+			ExpireTime:   5000,
+			ExpireBlocks: 200,
+		}
+
+		err := config.ValidateExpiryAgainstConfirmations(generalConfig)
+		require.NoError(t, err)
+	})
+
+	t.Run("should fail when expire time equals estimated confirmations", func(t *testing.T) {
+		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(1),
+			ExpireTime:   4800,
+			ExpireBlocks: 1000,
+		}
+
+		err := config.ValidateExpiryAgainstConfirmations(generalConfig)
+		require.ErrorIs(t, err, liquidity_provider.PegoutExpiryTooShortForConfirmationsError)
+		require.Contains(t, err.Error(), "expireTime")
+	})
+
+	t.Run("should fail when expire blocks time equals estimated confirmations", func(t *testing.T) {
+		config := liquidity_provider.PegoutConfiguration{
+			MaxValue:     entities.NewWei(1),
+			ExpireTime:   10000,
+			ExpireBlocks: 160,
+		}
+
+		err := config.ValidateExpiryAgainstConfirmations(generalConfig)
+		require.ErrorIs(t, err, liquidity_provider.PegoutExpiryTooShortForConfirmationsError)
+		require.Contains(t, err.Error(), "expireBlocks")
+	})
+}
+
+func TestExcessTolerance_Normalize(t *testing.T) {
+	table := test.Table[liquidity_provider.ExcessTolerance, liquidity_provider.ExcessTolerance]{
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(5),
+				FixedValue:      entities.NewWei(1000),
+			},
+			Result: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(0),
+				FixedValue:      entities.NewWei(1000),
+			},
+		},
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(2.5),
+				FixedValue:      entities.NewWei(500),
+			},
+			Result: liquidity_provider.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(2.5),
+				FixedValue:      entities.NewWei(0),
+			},
+		},
+	}
+	for _, item := range table {
+		item.Value.Normalize()
+		require.Equal(t, item.Result, item.Value)
+	}
+}
+
+func TestExcessTolerance_ComputeThreshold(t *testing.T) {
+	type input struct {
+		tolerance liquidity_provider.ExcessTolerance
+		target    *entities.Wei
+	}
+	table := test.Table[input, *entities.Wei]{
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         true,
+					PercentageValue: utils.NewBigFloat64(0),
+					FixedValue:      entities.NewWei(200),
+				},
+				target: entities.NewWei(1000),
+			},
+			Result: entities.NewWei(1200),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         true,
+					PercentageValue: utils.NewBigFloat64(0),
+					FixedValue:      entities.NewWei(500),
+				},
+				target: entities.NewWei(0),
+			},
+			Result: entities.NewWei(500),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         false,
+					PercentageValue: utils.NewBigFloat64(20),
+					FixedValue:      entities.NewWei(0),
+				},
+				target: entities.NewWei(1000),
+			},
+			Result: entities.NewWei(1200),
+		},
+		{
+			Value: input{
+				tolerance: liquidity_provider.ExcessTolerance{
+					IsFixed:         false,
+					PercentageValue: utils.NewBigFloat64(50),
+					FixedValue:      entities.NewWei(0),
+				},
+				target: entities.NewWei(200),
+			},
+			Result: entities.NewWei(300),
+		},
+	}
+	for _, item := range table {
+		result := item.Value.tolerance.ComputeThreshold(item.Value.target)
+		require.Equal(t, item.Result.AsBigInt().String(), result.AsBigInt().String())
+	}
+}
+
+func TestExcessTolerance_Validate(t *testing.T) {
+	table := test.Table[liquidity_provider.ExcessTolerance, error]{
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(1),
+				FixedValue:      entities.NewWei(0),
+			},
+			Result: liquidity_provider.InvalidConfigurationError,
+		},
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(0),
+				FixedValue:      entities.NewWei(1),
+			},
+			Result: liquidity_provider.InvalidConfigurationError,
+		},
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         false,
+				PercentageValue: utils.NewBigFloat64(1),
+				FixedValue:      entities.NewWei(0),
+			},
+			Result: nil,
+		},
+		{
+			Value: liquidity_provider.ExcessTolerance{
+				IsFixed:         true,
+				PercentageValue: utils.NewBigFloat64(0),
+				FixedValue:      entities.NewWei(1),
+			},
+			Result: nil,
+		},
+	}
+
+	for _, item := range table {
+		err := item.Value.Validate()
 		require.ErrorIs(t, err, item.Result)
 	}
 }

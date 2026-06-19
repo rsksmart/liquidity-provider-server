@@ -5,7 +5,6 @@ sequenceDiagram
     participant lps as Liquidity Provider Server
     participant btc as Bitcoin Network
     participant rsk as Rootstock Network
-    participant feeCollector as DAO Fee Collector
     participant bridge as Rootstock Bridge
 
     activate usr
@@ -22,11 +21,6 @@ sequenceDiagram
     rsk-->>-lps: gasEstimation
     lps->>+rsk: gasPrice()
     rsk-->>-lps: gasPrice
-    lps->>+feeCollector: getFeePercentage()
-    feeCollector-->>-lps: feePercentage
-    alt is not zero
-        lps->>lps: Add product fee
-    end
     lps->>+bridge: getFederationAddress()
     bridge-->>-lps: federationAddress
     lps->>+lbc: hashQuote(quote)

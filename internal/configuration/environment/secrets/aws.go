@@ -2,6 +2,7 @@ package secrets
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,35 +17,49 @@ type AwsSecretsLoader struct {
 }
 
 func NewAwsSecretsLoader(ctx context.Context, env environment.Environment) (SecretLoader, error) {
-	awsConfiguration, err := environment.GetAwsConfig(ctx, env)
+	awsConfiguration, err := environment.GetAwsConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error loading secrets: %w", err)
 	}
+	var opts []func(*secretsmanager.Options)
+	if endpoint := environment.AwsLocalEndpoint(env); endpoint != "" {
+		opts = append(opts, func(o *secretsmanager.Options) {
+			o.BaseEndpoint = &endpoint
+		})
+	}
 	return &AwsSecretsLoader{
 		config:         awsConfiguration,
-		secretsManager: secretsmanager.NewFromConfig(awsConfiguration),
+		secretsManager: secretsmanager.NewFromConfig(awsConfiguration, opts...),
 		env:            env,
 	}, nil
 }
 
 func (loader *AwsSecretsLoader) LoadDerivativeSecrets(ctx context.Context) (DerivativeWalletSecrets, error) {
-	if loader.env.Rsk.EncryptedJsonSecret == "" || loader.env.Rsk.EncryptedJsonPasswordSecret == "" {
+	if loader.env.Rsk.WalletSecret == "" || loader.env.Rsk.PasswordSecret == "" {
 		return DerivativeWalletSecrets{}, errors.New("missing encrypted json or password secret")
 	}
-	encryptedJsonInput := &secretsmanager.GetSecretValueInput{SecretId: &loader.env.Rsk.EncryptedJsonSecret}
-	encryptedJson, err := loader.secretsManager.GetSecretValue(ctx, encryptedJsonInput)
+	walletInput := &secretsmanager.GetSecretValueInput{SecretId: &loader.env.Rsk.WalletSecret}
+	walletSecret, err := loader.secretsManager.GetSecretValue(ctx, walletInput)
 	if err != nil {
 		return DerivativeWalletSecrets{}, fmt.Errorf("error loading encrypted json: %w", err)
 	}
+	var parsedWalletSecret walletSecretLayout
+	if err = json.Unmarshal([]byte(*walletSecret.SecretString), &parsedWalletSecret); err != nil {
+		return DerivativeWalletSecrets{}, errors.New("error parsing wallet secret")
+	}
 
-	jsonPasswordInput := &secretsmanager.GetSecretValueInput{SecretId: &loader.env.Rsk.EncryptedJsonPasswordSecret}
+	jsonPasswordInput := &secretsmanager.GetSecretValueInput{SecretId: &loader.env.Rsk.PasswordSecret}
 	jsonPassword, err := loader.secretsManager.GetSecretValue(ctx, jsonPasswordInput)
 	if err != nil {
 		return DerivativeWalletSecrets{}, fmt.Errorf("error loading encrypted json password: %w", err)
 	}
 
 	return DerivativeWalletSecrets{
-		EncryptedJson:         *encryptedJson.SecretString,
+		ColdWalletConfiguration: ColdWalletConfiguration{
+			Type:          parsedWalletSecret.ColdWallet.Type,
+			Configuration: parsedWalletSecret.ColdWallet.Configuration,
+		},
+		EncryptedJson:         string(parsedWalletSecret.HotWallet),
 		EncryptedJsonPassword: *jsonPassword.SecretString,
 	}, nil
 }

@@ -221,6 +221,7 @@ func TestPegoutRskDepositWatcher_Shutdown(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	ticker.EXPECT().C().Return(make(chan time.Time))
@@ -251,10 +252,10 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 			Event: entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 			Quote: testPegoutQuote, RetainedQuote: testRetainedQuote,
 		}
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			watchedQuote, ok = depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			assert.True(t, ok)
-			return assert.Equal(t, quote.WatchedPegoutQuote{
+			assert.True(collect, ok)
+			assert.Equal(collect, quote.WatchedPegoutQuote{
 				PegoutQuote:   testPegoutQuote,
 				RetainedQuote: testRetainedQuote,
 			}, watchedQuote)
@@ -278,7 +279,11 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 	closeChannel := make(chan bool)
 	go depositWatcher.Shutdown(closeChannel)
 	<-closeChannel
-	assert.Eventually(t, func() bool { return eventBus.AssertExpectations(t) && ticker.AssertExpectations(t) }, time.Second, 10*time.Millisecond)
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		mt := newMockCollectT(collect)
+		eventBus.AssertExpectations(mt)
+		ticker.AssertExpectations(mt)
+	}, time.Second, 10*time.Millisecond)
 }
 
 // nolint:funlen
@@ -311,9 +316,12 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(5), nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(0), mock.MatchedBy(matchUinPtr(5))).Return(nil, assert.AnError)
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return rskRpc.AssertExpectations(t) && pegoutContract.AssertExpectations(t) && checkFunction()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			rskRpc.AssertExpectations(mt)
+			pegoutContract.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
+		assert.True(t, checkFunction())
 	})
 	t.Run("shouldn't update quote if deposit is not valid", func(t *testing.T) {
 		rskRpc.Calls = []mock.Call{}
@@ -359,9 +367,12 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 		}}, nil).Once()
 		tickerChannel <- time.Now()
 
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
 			watchedQuote, _ := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return pegoutContract.AssertExpectations(t) && rskRpc.AssertExpectations(t) && assert.Equal(t, quote.PegoutStateWaitingForDeposit, watchedQuote.RetainedQuote.State)
+			pegoutContract.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
+			assert.Equal(collect, quote.PegoutStateWaitingForDeposit, watchedQuote.RetainedQuote.State)
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should update state to WaitingForDepositConfirmations after checking a valid deposit", func(t *testing.T) {
@@ -394,11 +405,14 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 		rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, validDeposit.TxHash).Return(blockchain.TransactionReceipt{BlockNumber: 10}, nil).Once()
 		tickerChannel <- time.Now()
 
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
 			watchedQuote, _ := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return pegoutContract.AssertExpectations(t) && rskRpc.AssertExpectations(t) &&
-				pegoutRepository.AssertExpectations(t) && btcWallet.AssertNotCalled(t, "SendWithOpReturn") &&
-				assert.Equal(t, quote.PegoutStateWaitingForDepositConfirmations, watchedQuote.RetainedQuote.State)
+			pegoutContract.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
+			pegoutRepository.AssertExpectations(mt)
+			btcWallet.AssertNotCalled(mt, "SendWithOpReturn")
+			assert.Equal(collect, quote.PegoutStateWaitingForDepositConfirmations, watchedQuote.RetainedQuote.State)
 		}, time.Second, 10*time.Millisecond)
 	})
 }
@@ -426,7 +440,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "0102030000000000000000000000000000000000000000000000000000000000", State: quote.PegoutStateWaitingForDepositConfirmations, UserRskTxHash: test.AnyHash}
 
 	expireUseCase := pegout.NewExpiredPegoutQuoteUseCase(pegoutRepository)
-	sendPegoutUseCase := pegout.NewSendPegoutUseCase(btcWallet, pegoutRepository, rpc, eventBus, contracts, mutexes.BtcWalletMutex(), rootstock.ParseDepositEvent)
+	sendPegoutUseCase := pegout.NewSendPegoutUseCase(btcWallet, pegoutRepository, rpc, eventBus, contracts, mutexes.BtcWalletMutex(), rootstock.ParseDepositEventByQuoteHash)
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, expireUseCase, sendPegoutUseCase, nil, nil)
 	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker, time.Duration(1))
 
@@ -443,15 +457,19 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 			Quote:         expired,
 			RetainedQuote: expiredRetained,
 		}
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.True(t, ok) && assert.NotEmpty(t, q)
+			assert.True(collect, ok)
+			assert.NotEmpty(collect, q)
 		}, time.Second, 10*time.Millisecond)
 		pegoutRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.False(t, ok) && assert.Empty(t, q) && pegoutRepository.AssertExpectations(t)
+			assert.False(collect, ok)
+			assert.Empty(collect, q)
+			pegoutRepository.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 	})
 	acceptPegoutChannel <- quote.AcceptedPegoutQuoteEvent{
@@ -481,17 +499,22 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.True(t, ok) && assert.NotEmpty(t, q)
+			assert.True(collect, ok)
+			assert.NotEmpty(collect, q)
 		}, time.Second, 10*time.Millisecond)
 
 		tickerChannel <- time.Now()
 
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.True(t, ok) && assert.NotEmpty(t, q) && pegoutRepository.AssertExpectations(t) &&
-				pegoutContract.AssertExpectations(t) && rskRpc.AssertExpectations(t)
+			assert.True(collect, ok)
+			assert.NotEmpty(collect, q)
+			pegoutRepository.AssertExpectations(mt)
+			pegoutContract.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("should stop tracking on non-recoverable error when sending pegout", func(t *testing.T) {
@@ -517,17 +540,22 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(20), mock.MatchedBy(matchUinPtr(21))).Return([]quote.PegoutDeposit{}, nil).Once()
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
 		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.True(t, ok) && assert.NotEmpty(t, q)
+			assert.True(collect, ok)
+			assert.NotEmpty(collect, q)
 		}, time.Second, 10*time.Millisecond)
 
 		tickerChannel <- time.Now()
 
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.False(t, ok) && assert.Empty(t, q) && pegoutRepository.AssertExpectations(t) &&
-				pegoutContract.AssertExpectations(t) && rskRpc.AssertExpectations(t)
+			assert.False(collect, ok)
+			assert.Empty(collect, q)
+			pegoutRepository.AssertExpectations(mt)
+			pegoutContract.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 	})
 	acceptPegoutChannel <- quote.AcceptedPegoutQuoteEvent{
@@ -559,6 +587,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		pegoutRepository.EXPECT().GetQuote(mock.Anything, mock.Anything).Return(&testPegoutQuote, nil).Once()
 		pegoutRepository.EXPECT().GetPegoutCreationData(mock.Anything, testRetainedQuote.QuoteHash).Return(quote.PegoutCreationDataZeroValue()).Once()
 		pegoutRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
+		pegoutRepository.EXPECT().GetRetainedQuote(mock.Anything, testRetainedQuote.QuoteHash).Return(&testRetainedQuote, nil).Once()
 		rskRpc.EXPECT().GetBlockByHash(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Now()}, nil).Once()
 		pegoutContract.EXPECT().IsPegOutQuoteCompleted(testRetainedQuote.QuoteHash).Return(false, nil).Once()
 		btcWallet.On("CreateUnfundedTransactionWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return([]byte{0x01, 0x02}, nil).Once()
@@ -567,17 +596,23 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckQuotes(t *testing.T)
 		btcResult := blockchain.BitcoinTransactionResult{Hash: test.AnyHash, Fee: entities.NewWei(2500)}
 		btcWallet.On("SendWithOpReturn", mock.Anything, mock.Anything, mock.Anything).Return(btcResult, nil).Once()
 		pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.True(t, ok) && assert.NotEmpty(t, q)
+			assert.True(collect, ok)
+			assert.NotEmpty(collect, q)
 		}, time.Second, 10*time.Millisecond)
 
 		tickerChannel <- time.Now()
 
-		assert.Eventually(t, func() bool {
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
 			q, ok := depositWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			return assert.False(t, ok) && assert.Empty(t, q) && pegoutRepository.AssertExpectations(t) &&
-				pegoutContract.AssertExpectations(t) && rskRpc.AssertExpectations(t) && btcWallet.AssertExpectations(t)
+			assert.False(collect, ok)
+			assert.Empty(collect, q)
+			pegoutRepository.AssertExpectations(mt)
+			pegoutContract.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
+			btcWallet.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 	})
 }
@@ -586,4 +621,140 @@ func matchUinPtr(target uint64) func(uin *uint64) bool {
 	return func(uin *uint64) bool {
 		return *uin == target
 	}
+}
+
+func newPegoutCheckQuoteWatcher(t *testing.T) (
+	depositWatcher *watcher.PegoutRskDepositWatcher,
+	tickerChannel chan time.Time,
+	acceptPegoutChannel chan entities.Event,
+	rskRpc *mocks.RootstockRpcServerMock,
+	quoteRepository *mocks.PegoutQuoteRepositoryMock,
+	pegoutContract *mocks.PegoutContractMock,
+) {
+	t.Helper()
+	mutexes := environment.NewApplicationMutexes()
+	ticker := &mocks.TickerMock{}
+	btcWallet := &mocks.BitcoinWalletMock{}
+	tickerChannel = make(chan time.Time)
+	ticker.EXPECT().C().Return(tickerChannel)
+	ticker.EXPECT().Stop().Return()
+	pegoutContract = &mocks.PegoutContractMock{}
+	providerMock := &mocks.ProviderMock{}
+	contracts := blockchain.RskContracts{PegOut: pegoutContract}
+	rskRpc = &mocks.RootstockRpcServerMock{}
+	rpc := blockchain.Rpc{Rsk: rskRpc}
+	quoteRepository = &mocks.PegoutQuoteRepositoryMock{}
+	eventBus := &mocks.EventBusMock{}
+	acceptPegoutChannel = make(chan entities.Event)
+	eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return((<-chan entities.Event)(acceptPegoutChannel))
+	expireUseCase := pegout.NewExpiredPegoutQuoteUseCase(quoteRepository)
+	sendPegoutUseCase := pegout.NewSendPegoutUseCase(btcWallet, quoteRepository, rpc, eventBus, contracts, mutexes.BtcWalletMutex(), rootstock.ParseDepositEventByQuoteHash)
+	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, expireUseCase, sendPegoutUseCase, nil, nil)
+	depositWatcher = watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker, time.Duration(1))
+	return
+}
+
+// TestPegoutRskDepositWatcher_Start_CheckQuote_MultipleDeposits verifies that when a transaction
+// receipt contains multiple PegOutDeposit events, the watcher selects the event matching the
+// retained quote's hash and triggers sendPegout for it.
+func TestPegoutRskDepositWatcher_Start_CheckQuote_MultipleDeposits(t *testing.T) {
+	const (
+		lbcAddress  = "0x5678"
+		quoteHash1  = "0102030000000000000000000000000000000000000000000000000000000000"
+		quoteHash2  = "0405060000000000000000000000000000000000000000000000000000000000"
+		blockNumber = uint64(10)
+		height      = uint64(20) // blockNumber(10) + DepositConfirmations(5) = 15 < 20: confirmations satisfied
+	)
+	depositWatcher, tickerChannel, acceptPegoutChannel, rskRpc, quoteRepository, pegoutContract := newPegoutCheckQuoteWatcher(t)
+	go depositWatcher.Start()
+
+	testPegoutQuote := quote.PegoutQuote{
+		LbcAddress: lbcAddress, Nonce: 1, Value: entities.NewWei(3),
+		ExpireBlock: 100, ExpireDate: uint32(time.Now().Unix() + 600), DepositConfirmations: 5,
+	}
+	testRetainedQuote := quote.RetainedPegoutQuote{
+		QuoteHash: quoteHash1, State: quote.PegoutStateWaitingForDepositConfirmations, UserRskTxHash: test.AnyHash,
+	}
+	acceptPegoutChannel <- quote.AcceptedPegoutQuoteEvent{
+		Event: entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId), Quote: testPegoutQuote, RetainedQuote: testRetainedQuote,
+	}
+	assert.Eventually(t, func() bool {
+		_, ok := depositWatcher.GetWatchedQuote(quoteHash1)
+		return ok
+	}, time.Second, 10*time.Millisecond)
+
+	otherRetained := testRetainedQuote
+	otherRetained.QuoteHash = quoteHash2
+	receipt := &blockchain.TransactionReceipt{BlockNumber: blockNumber, From: "0x1234"}
+	receipt = test.AppendDepositLogFromQuote(t, receipt, testPegoutQuote, otherRetained)
+	receipt = test.AppendDepositLogFromQuote(t, receipt, testPegoutQuote, testRetainedQuote)
+
+	rskRpc.EXPECT().GetHeight(mock.Anything).Return(height, nil).Once()
+	rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).Return(*receipt, nil).Once()
+	pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(0), mock.Anything).Return([]quote.PegoutDeposit{}, nil).Once()
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	// GetQuote is the first repository call inside sendPegoutUseCase.Run; returning an error here
+	// proves validateDepositedPegoutQuote returned true (correct deposit found) without requiring full sendPegout setup.
+	quoteRepository.EXPECT().GetQuote(mock.Anything, quoteHash1).Return(nil, errors.New("db error")).Once()
+
+	tickerChannel <- time.Now()
+
+	assert.Eventually(t, func() bool {
+		_, ok := depositWatcher.GetWatchedQuote(quoteHash1)
+		return ok
+	}, time.Second, 10*time.Millisecond)
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		mt := newMockCollectT(collect)
+		rskRpc.AssertExpectations(mt)
+		pegoutContract.AssertExpectations(mt)
+		quoteRepository.AssertExpectations(mt)
+	}, time.Second, 10*time.Millisecond)
+}
+
+// TestPegoutRskDepositWatcher_Start_CheckQuote_InsufficientConfirmations verifies that the watcher
+// does not trigger sendPegout when the deposit block has not accumulated enough confirmations yet.
+func TestPegoutRskDepositWatcher_Start_CheckQuote_InsufficientConfirmations(t *testing.T) {
+	const (
+		lbcAddress  = "0x5678"
+		quoteHash1  = "0102030000000000000000000000000000000000000000000000000000000000"
+		blockNumber = uint64(10)
+		// height = blockNumber + DepositConfirmations = 15; condition is blockNumber+DepositConfirmations < height, so 15 < 15 is false.
+		height = uint64(15)
+	)
+	depositWatcher, tickerChannel, acceptPegoutChannel, rskRpc, quoteRepository, pegoutContract := newPegoutCheckQuoteWatcher(t)
+	go depositWatcher.Start()
+
+	testPegoutQuote := quote.PegoutQuote{
+		LbcAddress: lbcAddress, Nonce: 1, Value: entities.NewWei(3),
+		ExpireBlock: 100, ExpireDate: uint32(time.Now().Unix() + 600), DepositConfirmations: 5,
+	}
+	testRetainedQuote := quote.RetainedPegoutQuote{
+		QuoteHash: quoteHash1, State: quote.PegoutStateWaitingForDepositConfirmations, UserRskTxHash: test.AnyHash,
+	}
+	acceptPegoutChannel <- quote.AcceptedPegoutQuoteEvent{
+		Event: entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId), Quote: testPegoutQuote, RetainedQuote: testRetainedQuote,
+	}
+	assert.Eventually(t, func() bool {
+		_, ok := depositWatcher.GetWatchedQuote(quoteHash1)
+		return ok
+	}, time.Second, 10*time.Millisecond)
+
+	receipt := &blockchain.TransactionReceipt{BlockNumber: blockNumber, From: "0x1234"}
+	receipt = test.AppendDepositLogFromQuote(t, receipt, testPegoutQuote, testRetainedQuote)
+
+	rskRpc.EXPECT().GetHeight(mock.Anything).Return(height, nil).Once()
+	rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetainedQuote.UserRskTxHash).Return(*receipt, nil).Once()
+	pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(0), mock.Anything).Return([]quote.PegoutDeposit{}, nil).Once()
+
+	tickerChannel <- time.Now()
+
+	assert.Eventually(t, func() bool {
+		_, ok := depositWatcher.GetWatchedQuote(quoteHash1)
+		return ok
+	}, time.Second, 10*time.Millisecond)
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		mt := newMockCollectT(collect)
+		rskRpc.AssertExpectations(mt)
+	}, time.Second, 10*time.Millisecond)
+	quoteRepository.AssertNotCalled(t, "GetQuote")
 }

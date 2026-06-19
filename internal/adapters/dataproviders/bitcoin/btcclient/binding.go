@@ -45,11 +45,14 @@ type RpcClient interface {
 	GetRawTransactionVerbose(txHash *chainhash.Hash) (*btcjson.TxRawResult, error)
 	GetRawTransaction(txHash *chainhash.Hash) (*btcutil.Tx, error)
 	GetBlockChainInfo() (*btcjson.GetBlockChainInfoResult, error)
+	GetBlockHash(blockHeight int64) (*chainhash.Hash, error)
+	GetBlockHeaderVerbose(blockHash *chainhash.Hash) (*btcjson.GetBlockHeaderVerboseResult, error)
 	GetBlockVerbose(blockHash *chainhash.Hash) (*btcjson.GetBlockVerboseResult, error)
 	GetBlock(blockHash *chainhash.Hash) (*wire.MsgBlock, error)
 	CreateWallet(name string, opts ...rpcclient.CreateWalletOpt) (*btcjson.CreateWalletResult, error)
 	LoadWallet(walletName string) (*btcjson.LoadWalletResult, error)
 	EstimateSmartFee(confTarget int64, mode *btcjson.EstimateSmartFeeMode) (*btcjson.EstimateSmartFeeResult, error)
+	GetConnectionCount() (int64, error)
 }
 
 type ClientAdapter interface {

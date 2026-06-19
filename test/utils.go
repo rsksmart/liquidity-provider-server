@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/btcsuite/btcd/btcutil"
@@ -39,7 +40,7 @@ const (
 	AnyString     = "any value"
 	AnyHash       = "d8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb"
 	AnyUrl        = "url.com"
-	keyPath       = "../../docker-compose/localstack/local-key.json"
+	keyPath       = "../../docker-compose/local/localstack/local-key.json"
 	KeyPassword   = "test"
 )
 
@@ -122,12 +123,11 @@ func AssertNoLog(t *testing.T) (assertFunc func()) {
 }
 
 func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
-	message := make([]byte, 2048)
+	message := make([]byte, 4096)
 	buff := new(ThreadSafeBuffer)
 	log.SetOutput(buff)
 	return func() bool {
 		if buff.Len() == 0 {
-			t.Errorf("No log message found")
 			return false
 		}
 		_, err := buff.Read(message)
@@ -146,11 +146,15 @@ func OpenDerivativeWalletForTest(t *testing.T, testRef string) *account.RskAccou
 
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
+	var walletInfo struct {
+		HotWallet json.RawMessage `json:"hotWallet"`
+	}
+	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	testAccount, err := account.GetRskAccountWithDerivation(account.CreationWithDerivationArgs{
 		CreationArgs: account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(keyBytes),
+			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      KeyPassword,
 		},
 		BtcParams: &chaincfg.TestNet3Params,
@@ -172,10 +176,14 @@ func OpenWalletForTest(t *testing.T, testRef string) *account.RskAccount {
 
 	keyBytes, err := io.ReadAll(keyFile)
 	require.NoError(t, err)
+	var walletInfo struct {
+		HotWallet json.RawMessage `json:"hotWallet"`
+	}
+	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	testAccount, err := account.GetRskAccount(account.CreationArgs{
 		KeyDir:        testDir,
 		AccountNum:    0,
-		EncryptedJson: string(keyBytes),
+		EncryptedJson: string(walletInfo.HotWallet),
 		Password:      KeyPassword,
 	})
 	require.NoError(t, err)
@@ -214,12 +222,12 @@ func ResetFlagSet() {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 }
 
-func AddDepositLogFromQuote(
+func buildDepositLog(
 	t *testing.T,
 	receipt *blockchain.TransactionReceipt,
 	pegoutQuote quote.PegoutQuote,
 	retainedQuote quote.RetainedPegoutQuote,
-) *blockchain.TransactionReceipt {
+) blockchain.TransactionLog {
 	const depositTopic = "b1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"
 	parsedDepositTopic, err := hex.DecodeString(depositTopic)
 	require.NoError(t, err)
@@ -230,12 +238,10 @@ func AddDepositLogFromQuote(
 	timestampHex := fmt.Sprintf("%064x", uint64(pegoutQuote.DepositDateLimit-500))
 	timestampTopic, err := hex.DecodeString(timestampHex)
 	require.NoError(t, err)
-
 	amountHex := fmt.Sprintf("%064x", pegoutQuote.Total().AsBigInt())
 	parsedData, err := hex.DecodeString(amountHex)
 	require.NoError(t, err)
-
-	log := blockchain.TransactionLog{
+	return blockchain.TransactionLog{
 		Address: pegoutQuote.LbcAddress,
 		Topics: [][32]byte{
 			utils.To32Bytes(parsedDepositTopic),
@@ -251,7 +257,31 @@ func AddDepositLogFromQuote(
 		Index:       0,
 		Removed:     false,
 	}
-	receipt.Logs = slices.Insert(receipt.Logs, 0, log)
+}
+
+// AddDepositLogFromQuote inserts a deposit log at the beginning of the receipt's log slice.
+// Use this when the deposit log must appear before any other logs already in the receipt
+// (e.g. to simulate a real transaction where the deposit event is the first log emitted).
+func AddDepositLogFromQuote(
+	t *testing.T,
+	receipt *blockchain.TransactionReceipt,
+	pegoutQuote quote.PegoutQuote,
+	retainedQuote quote.RetainedPegoutQuote,
+) *blockchain.TransactionReceipt {
+	receipt.Logs = slices.Insert(receipt.Logs, 0, buildDepositLog(t, receipt, pegoutQuote, retainedQuote))
+	return receipt
+}
+
+// AppendDepositLogFromQuote appends a deposit log at the end of the receipt's log slice.
+// Use this when the deposit log should follow existing logs, such as when building a receipt
+// that contains multiple deposits and order matters for multi-deposit parsing tests.
+func AppendDepositLogFromQuote(
+	t *testing.T,
+	receipt *blockchain.TransactionReceipt,
+	pegoutQuote quote.PegoutQuote,
+	retainedQuote quote.RetainedPegoutQuote,
+) *blockchain.TransactionReceipt {
+	receipt.Logs = append(receipt.Logs, buildDepositLog(t, receipt, pegoutQuote, retainedQuote))
 	return receipt
 }
 
@@ -287,4 +317,14 @@ func MustParseDate(s string) time.Time {
 		panic(err)
 	}
 	return parsed
+}
+
+func MustEncode32Bytes(value string) [32]byte {
+	decoded, err := hex.DecodeString(value)
+	if err != nil {
+		panic(err)
+	}
+	var arr [32]byte
+	copy(arr[:], decoded)
+	return arr
 }

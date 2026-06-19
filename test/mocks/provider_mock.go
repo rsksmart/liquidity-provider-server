@@ -35,8 +35,13 @@ func (m *ProviderMock) HasPegoutLiquidity(ctx context.Context, amount *entities.
 	return args.Error(0)
 }
 
-func (m *ProviderMock) SignQuote(quoteHash string) (string, error) {
-	args := m.Called(quoteHash)
+func (m *ProviderMock) SignPeginQuote(ctx context.Context, quoteHash string) (string, error) {
+	args := m.Called(ctx, quoteHash)
+	return args.String(0), args.Error(1)
+}
+
+func (m *ProviderMock) SignPegoutQuote(ctx context.Context, quoteHash string) (string, error) {
+	args := m.Called(ctx, quoteHash)
 	return args.String(0), args.Error(1)
 }
 
@@ -53,6 +58,11 @@ func (m *ProviderMock) PeginConfiguration(ctx context.Context) liquidity_provide
 func (m *ProviderMock) PegoutConfiguration(ctx context.Context) liquidity_provider.PegoutConfiguration {
 	args := m.Called(ctx)
 	return args.Get(0).(liquidity_provider.PegoutConfiguration)
+}
+
+func (m *ProviderMock) StateConfiguration(ctx context.Context) (liquidity_provider.StateConfiguration, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(liquidity_provider.StateConfiguration), args.Error(1)
 }
 
 func (m *ProviderMock) AvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error) {

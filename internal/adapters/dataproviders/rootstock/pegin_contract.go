@@ -4,11 +4,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -24,20 +24,22 @@ const registerPeginGasLimit = 2500000
 type peginContractImpl struct {
 	client        RpcClientBinding
 	address       string
-	contract      PeginContractAdapter
+	contract      *bind.BoundContract
 	signer        TransactionSigner
 	retryParams   RetryParams
 	miningTimeout time.Duration
+	binding       *bindings.PeginContract
 	abis          *FlyoverABIs
 }
 
 func NewPeginContractImpl(
 	client *RskClient,
 	address string,
-	contract PeginContractAdapter,
+	contract *bind.BoundContract,
 	signer TransactionSigner,
 	retryParams RetryParams,
 	miningTimeout time.Duration,
+	binding *bindings.PeginContract,
 	abis *FlyoverABIs,
 ) blockchain.PeginContract {
 	return &peginContractImpl{
@@ -47,6 +49,7 @@ func NewPeginContractImpl(
 		signer:        signer,
 		retryParams:   retryParams,
 		miningTimeout: miningTimeout,
+		binding:       binding,
 		abis:          abis,
 	}
 }
@@ -63,24 +66,16 @@ func (peginContract *peginContractImpl) GetBalance(address string) (*entities.We
 	}
 	balance, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
 		func() (*big.Int, error) {
-			return peginContract.contract.GetBalance(&bind.CallOpts{}, parsedAddress)
+			callData, dataErr := peginContract.binding.TryPackGetBalance(parsedAddress)
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			return bind.Call(peginContract.contract, &bind.CallOpts{}, callData, peginContract.binding.UnpackGetBalance)
 		})
 	if err != nil {
 		return nil, err
 	}
 	return entities.NewBigWei(balance), nil
-}
-
-func (peginContract *peginContractImpl) DaoFeePercentage() (uint64, error) {
-	opts := bind.CallOpts{}
-	amount, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
-		func() (*big.Int, error) {
-			return peginContract.contract.GetFeePercentage(&opts)
-		})
-	if err != nil {
-		return 0, err
-	}
-	return amount.Uint64(), nil
 }
 
 func (peginContract *peginContractImpl) HashPeginQuote(peginQuote quote.PeginQuote) (string, error) {
@@ -93,12 +88,38 @@ func (peginContract *peginContractImpl) HashPeginQuote(peginQuote quote.PeginQuo
 
 	results, err = rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
 		func() ([32]byte, error) {
-			return peginContract.contract.HashPegInQuote(&bind.CallOpts{}, parsedQuote)
+			callData, dataErr := peginContract.binding.TryPackHashPegInQuote(parsedQuote)
+			if dataErr != nil {
+				return [32]byte{}, dataErr
+			}
+			return bind.Call(peginContract.contract, &bind.CallOpts{}, callData, peginContract.binding.UnpackHashPegInQuote)
 		})
 	if err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(results[:]), nil
+}
+
+func (peginContract *peginContractImpl) HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error) {
+	var result [32]byte
+
+	parsedQuote, err := parsePeginQuote(peginQuote)
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	result, err = rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
+		func() ([32]byte, error) {
+			callData, dataErr := peginContract.binding.TryPackHashPegInQuoteEIP712(parsedQuote)
+			if dataErr != nil {
+				return [32]byte{}, dataErr
+			}
+			return bind.Call(peginContract.contract, &bind.CallOpts{}, callData, peginContract.binding.UnpackHashPegInQuoteEIP712)
+		})
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return result, nil
 }
 
 func (peginContract *peginContractImpl) CallForUser(txConfig blockchain.TransactionConfig, peginQuote quote.PeginQuote) (blockchain.TransactionReceipt, error) {
@@ -118,8 +139,12 @@ func (peginContract *peginContractImpl) CallForUser(txConfig blockchain.Transact
 	receipt, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
 		func() (*geth.Receipt, error) {
 			return awaitTx(peginContract.client, peginContract.miningTimeout, "CallForUser", func() (*geth.Transaction, error) {
-				var txErr error
-				tx, txErr = peginContract.contract.CallForUser(opts, parsedQuote)
+				var dataErr, txErr error
+				callData, dataErr := peginContract.binding.TryPackCallForUser(parsedQuote)
+				if dataErr != nil {
+					return nil, dataErr
+				}
+				tx, txErr = bind.Transact(peginContract.contract, opts, callData)
 				return tx, txErr
 			})
 		})
@@ -164,25 +189,19 @@ func (peginContract *peginContractImpl) CallForUser(txConfig blockchain.Transact
 // nolint:cyclop,funlen
 func (peginContract *peginContractImpl) RegisterPegin(params blockchain.RegisterPeginParams) (blockchain.TransactionReceipt, error) {
 	const (
-		functionName          = "registerPegIn"
 		waitingForBridgeError = "NotEnoughConfirmations"
 	)
-	var res []any
 	var err error
 	var parsedQuote bindings.QuotesPegInQuote
 	if parsedQuote, err = parsePeginQuote(params.Quote); err != nil {
 		return blockchain.TransactionReceipt{}, err
 	}
 	log.Infof("Executing RegisterPegIn with params: %s\n", params.String())
-	revert := peginContract.contract.Caller().Call(
-		&bind.CallOpts{}, &res, functionName,
-		parsedQuote,
-		params.QuoteSignature,
-		params.BitcoinRawTransaction,
-		params.PartialMerkleTree,
-		params.BlockHeight,
-	)
-
+	callData, dataErr := peginContract.binding.TryPackRegisterPegIn(parsedQuote, params.QuoteSignature, params.BitcoinRawTransaction, params.PartialMerkleTree, params.BlockHeight)
+	if dataErr != nil {
+		return blockchain.TransactionReceipt{}, dataErr
+	}
+	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{}, callData)
 	parsedRevert, err := ParseRevertReason(peginContract.abis.PegIn, revert)
 	if err != nil && parsedRevert == nil {
 		return blockchain.TransactionReceipt{}, fmt.Errorf("error parsing registerPegIn result: %w", err)
@@ -203,8 +222,7 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 	var tx *geth.Transaction
 	receipt, err := awaitTx(peginContract.client, peginContract.miningTimeout, "RegisterPegIn", func() (*geth.Transaction, error) {
 		var txErr error
-		tx, txErr = peginContract.contract.RegisterPegIn(opts, parsedQuote, params.QuoteSignature,
-			params.BitcoinRawTransaction, params.PartialMerkleTree, params.BlockHeight)
+		tx, txErr = bind.Transact(peginContract.contract, opts, callData)
 		return tx, txErr
 	})
 
@@ -240,13 +258,62 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 	return transactionReceipt, nil
 }
 
+// Withdraw withdraws the specified amount from the LP's balance in the pegin contract.
+// It first performs a dry-run call to check for reverts before submitting the actual transaction.
+func (peginContract *peginContractImpl) Withdraw(amount *entities.Wei) error {
+	callData, dataErr := peginContract.binding.TryPackWithdraw(amount.AsBigInt())
+	if dataErr != nil {
+		return dataErr
+	}
+	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{}, callData)
+	parsedRevert, err := ParseRevertReason(peginContract.abis.Flyover, revert)
+	if err != nil && parsedRevert == nil {
+		return fmt.Errorf("error parsing withdraw result: %w", err)
+	} else if parsedRevert != nil {
+		return fmt.Errorf("withdraw reverted with: %s", parsedRevert.Name)
+	}
+
+	opts := &bind.TransactOpts{
+		From:   peginContract.signer.Address(),
+		Signer: peginContract.signer.Sign,
+	}
+
+	receipt, err := rskRetry(peginContract.retryParams.Retries, peginContract.retryParams.Sleep,
+		func() (*geth.Receipt, error) {
+			return awaitTx(peginContract.client, peginContract.miningTimeout, "Withdraw", func() (*geth.Transaction, error) {
+				return bind.Transact(peginContract.contract, opts, callData)
+			})
+		})
+
+	if err != nil {
+		return fmt.Errorf("withdraw error: %w", err)
+	} else if receipt == nil || receipt.Status == 0 {
+		return errors.New("withdraw error: transaction failed")
+	}
+	return nil
+}
+
 func (peginContract *peginContractImpl) PausedStatus() (blockchain.PauseStatus, error) {
 	opts := new(bind.CallOpts)
-	return rskRetry(
+	result, err := rskRetry(
 		peginContract.retryParams.Retries,
 		peginContract.retryParams.Sleep,
-		func() (blockchain.PauseStatus, error) { return peginContract.contract.PauseStatus(opts) },
+		func() (bindings.PauseStatusOutput, error) {
+			callData, dataErr := peginContract.binding.TryPackPauseStatus()
+			if dataErr != nil {
+				return bindings.PauseStatusOutput{}, dataErr
+			}
+			return bind.Call(peginContract.contract, opts, callData, peginContract.binding.UnpackPauseStatus)
+		},
 	)
+	if err != nil {
+		return blockchain.PauseStatus{}, err
+	}
+	return blockchain.PauseStatus{
+		IsPaused: result.IsPaused,
+		Reason:   result.Reason,
+		Since:    result.Since,
+	}, nil
 }
 
 // parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPegInQuote. All BTC address fields support all address types
@@ -289,6 +356,7 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, er
 		return bindings.QuotesPegInQuote{}, fmt.Errorf("error parsing data: %w", err)
 	}
 
+	chainId := new(big.Int)
 	parsedQuote.CallFee = peginQuote.CallFee.AsBigInt()
 	parsedQuote.PenaltyFee = peginQuote.PenaltyFee.AsBigInt()
 	parsedQuote.GasLimit = peginQuote.GasLimit
@@ -298,8 +366,8 @@ func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, er
 	parsedQuote.CallTime = peginQuote.LpCallTime
 	parsedQuote.DepositConfirmations = peginQuote.Confirmations
 	parsedQuote.TimeForDeposit = peginQuote.TimeForDeposit
-	parsedQuote.ProductFeeAmount = peginQuote.ProductFeeAmount.AsBigInt()
 	parsedQuote.GasFee = peginQuote.GasFee.AsBigInt()
 	parsedQuote.CallOnRegister = peginQuote.CallOnRegister
+	parsedQuote.ChainId = chainId.SetUint64(peginQuote.ChainId)
 	return parsedQuote, nil
 }

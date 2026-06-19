@@ -2,6 +2,7 @@ package pegout
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -46,9 +47,8 @@ func NewAcceptQuoteUseCase(
 
 func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature string) (quote.AcceptedQuote, error) {
 	var err error
-	var pegoutQuote *quote.PegoutQuote
+	var pegoutQuote quote.PegoutQuote
 	var retainedQuote *quote.RetainedPegoutQuote
-	var quoteSignature string
 	var requiredLiquidity *entities.Wei
 	var trustedAccount liquidity_provider.TrustedAccountDetails
 
@@ -60,12 +60,17 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		return quote.AcceptedQuote{}, err
 	}
 
-	if trustedAccount, err = useCase.handleTrustedAccountSignature(ctx, quoteHash, signature, pegoutQuote); err != nil {
+	trustedAccount, err = useCase.getTrustedAccount(ctx, signature, pegoutQuote)
+	if err != nil && !errors.Is(err, liquidity_provider.NoSignatureError) {
 		return quote.AcceptedQuote{}, err
 	}
 
 	useCase.pegoutLiquidityMutex.Lock()
 	defer useCase.pegoutLiquidityMutex.Unlock()
+
+	if err = useCase.validateTrustedAccountIfFound(ctx, trustedAccount, pegoutQuote, err); err != nil {
+		return quote.AcceptedQuote{}, err
+	}
 
 	if retainedQuote, err = useCase.quoteRepository.GetRetainedQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
@@ -76,11 +81,25 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		}, nil
 	}
 
-	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, *pegoutQuote); err != nil {
+	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, pegoutQuote); err != nil {
 		return quote.AcceptedQuote{}, err
 	}
 
-	if quoteSignature, err = useCase.lp.SignQuote(quoteHash); err != nil {
+	return useCase.constructResult(ctx, quoteHash, pegoutQuote, requiredLiquidity, trustedAccount)
+}
+
+func (useCase *AcceptQuoteUseCase) constructResult(
+	ctx context.Context,
+	quoteHash string,
+	pegoutQuote quote.PegoutQuote,
+	requiredLiquidity *entities.Wei,
+	trustedAccount liquidity_provider.TrustedAccountDetails,
+) (quote.AcceptedQuote, error) {
+	var retainedQuote *quote.RetainedPegoutQuote
+	var quoteSignature string
+	var err error
+
+	if quoteSignature, err = useCase.lp.SignPegoutQuote(ctx, quoteHash); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
 	}
 
@@ -91,6 +110,7 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		RequiredLiquidity:   requiredLiquidity,
 		State:               quote.PegoutStateWaitingForDeposit,
 		OwnerAccountAddress: trustedAccount.Address,
+		RemainingToRefund:   pegoutQuote.Total(),
 	}
 	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, quoteHash)
 	if err = useCase.publishQuote(ctx, pegoutQuote, retainedQuote, creationData); err != nil {
@@ -103,41 +123,56 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	}, nil
 }
 
-func (useCase *AcceptQuoteUseCase) getQuote(ctx context.Context, quoteHash string) (*quote.PegoutQuote, error) {
+func (useCase *AcceptQuoteUseCase) getQuote(ctx context.Context, quoteHash string) (quote.PegoutQuote, error) {
 	var pegoutQuote *quote.PegoutQuote
 	var err error
 	errorArgs := usecases.NewErrorArgs()
 
 	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, quoteHash); err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
+		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
 	} else if pegoutQuote == nil {
 		errorArgs["quoteHash"] = quoteHash
-		return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, usecases.QuoteNotFoundError, errorArgs)
+		return quote.PegoutQuote{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, usecases.QuoteNotFoundError, errorArgs)
 	}
 	if pegoutQuote.IsExpired() {
 		errorArgs["quoteHash"] = quoteHash
-		return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, usecases.ExpiredQuoteError, errorArgs)
+		return quote.PegoutQuote{}, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, usecases.ExpiredQuoteError, errorArgs)
 	}
 
-	return pegoutQuote, nil
+	return *pegoutQuote, nil
 }
 
-func (useCase *AcceptQuoteUseCase) handleTrustedAccountSignature(ctx context.Context, quoteHash string, signature string, pegoutQuote *quote.PegoutQuote) (liquidity_provider.TrustedAccountDetails, error) {
+func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, signature string, pegoutQuote quote.PegoutQuote) (liquidity_provider.TrustedAccountDetails, error) {
 	if signature == "" {
-		return liquidity_provider.TrustedAccountDetails{}, nil
+		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.NoSignatureError
 	}
-	trustedAccount, err := useCase.getTrustedAccount(ctx, quoteHash, useCase.lp.GetSigner(), signature)
+	trustedAccount, err := useCase.recoverTrustedAccount(ctx, pegoutQuote, useCase.lp.GetSigner(), signature)
 	if err != nil {
-		return liquidity_provider.TrustedAccountDetails{}, err
-	}
-	if err = useCase.checkLockingCap(ctx, trustedAccount, pegoutQuote); err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
 	return trustedAccount, nil
 }
 
-func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteHash string, signer entities.Signer, signature string) (liquidity_provider.TrustedAccountDetails, error) {
-	address, err := usecases.RecoverSignerAddress(quoteHash, signature)
+func (useCase *AcceptQuoteUseCase) validateTrustedAccountIfFound(
+	ctx context.Context,
+	trustedAccount liquidity_provider.TrustedAccountDetails,
+	pegoutQuote quote.PegoutQuote,
+	lookupErr error,
+) error {
+	if errors.Is(lookupErr, liquidity_provider.NoSignatureError) {
+		return nil
+	}
+	return useCase.checkLockingCap(ctx, trustedAccount, pegoutQuote)
+}
+
+func (useCase *AcceptQuoteUseCase) recoverTrustedAccount(ctx context.Context, pegoutQuote quote.PegoutQuote, signer entities.Signer, signature string) (liquidity_provider.TrustedAccountDetails, error) {
+	address, err := usecases.RecoverSignerAddress(signature, func() ([]byte, error) {
+		if hash, err := useCase.contracts.PegOut.HashPegoutQuoteEIP712(pegoutQuote); err != nil {
+			return nil, err
+		} else {
+			return hash[:], nil
+		}
+	})
 	if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, err
 	}
@@ -145,13 +180,15 @@ func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, quoteH
 	trustedAccount, err := liquidity_provider.ValidateConfiguration(signer, useCase.hashFunction, func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
 		return useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
 	})
-	if err != nil {
+	if err != nil && errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
+		return liquidity_provider.TrustedAccountDetails{}, err
+	} else if err != nil {
 		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.TamperedTrustedAccountError
 	}
 	return trustedAccount.Value, nil
 }
 
-func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedAccount liquidity_provider.TrustedAccountDetails, pegoutQuote *quote.PegoutQuote) error {
+func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedAccount liquidity_provider.TrustedAccountDetails, pegoutQuote quote.PegoutQuote) error {
 	errorArgs := usecases.NewErrorArgs()
 
 	activeQuotesStates := []quote.PegoutState{
@@ -162,7 +199,7 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedA
 	// Get all retained quotes for this trusted account
 	quotes, err := useCase.quoteRepository.GetRetainedQuotesForAddress(ctx, trustedAccount.Address, activeQuotesStates...)
 	if err != nil {
-		return usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+		return usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
 	}
 
 	// Sum the total value of the quotes
@@ -191,21 +228,46 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, trustedA
 }
 
 func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Context, pegoutQuote quote.PegoutQuote) (*entities.Wei, error) {
-	var err error
 	requiredLiquidity := new(entities.Wei)
-	errorArgs := usecases.NewErrorArgs()
-
 	requiredLiquidity.Add(pegoutQuote.Value, pegoutQuote.GasFee)
-	if err = useCase.pegoutLp.HasPegoutLiquidity(ctx, requiredLiquidity); err != nil {
-		errorArgs["amount"] = requiredLiquidity.String()
-		return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, usecases.NoLiquidityError, errorArgs)
+
+	err := useCase.pegoutLp.HasPegoutLiquidity(ctx, requiredLiquidity)
+	if err == nil {
+		return requiredLiquidity, nil
 	}
-	return requiredLiquidity, nil
+	if !errors.Is(err, usecases.NoLiquidityError) {
+		return nil, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
+	}
+
+	var availableForArgs *entities.Wei
+	var insuf *usecases.InsufficientLiquidityError
+	if errors.As(err, &insuf) {
+		availableForArgs = insuf.Available
+	}
+	errorArgs := newPegoutAcceptNoLiquidityErrorArgs(pegoutQuote, requiredLiquidity, availableForArgs)
+	return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPegoutQuoteId, err, errorArgs)
+}
+
+// newPegoutAcceptNoLiquidityErrorArgs builds API-facing context when accept fails for insufficient pegout liquidity.
+// available may be nil if it could not be read; missingLiquidity is omitted in that case.
+func newPegoutAcceptNoLiquidityErrorArgs(
+	q quote.PegoutQuote,
+	requiredLiquidity *entities.Wei,
+	available *entities.Wei,
+) usecases.ErrorArgs {
+	args := usecases.NewErrorArgs()
+	args["quoteValue"] = q.Value.String()
+	args["gasFee"] = q.GasFee.String()
+	args["requiredLiquidity"] = requiredLiquidity.String()
+	if available != nil && requiredLiquidity.Cmp(available) > 0 {
+		args["missingLiquidity"] = new(entities.Wei).Sub(requiredLiquidity.Copy(), available.Copy()).String()
+	}
+	return args
 }
 
 func (useCase *AcceptQuoteUseCase) publishQuote(
 	ctx context.Context,
-	pegoutQuote *quote.PegoutQuote,
+	pegoutQuote quote.PegoutQuote,
 	retainedQuote *quote.RetainedPegoutQuote,
 	creationData quote.PegoutCreationData,
 ) error {
@@ -219,7 +281,7 @@ func (useCase *AcceptQuoteUseCase) publishQuote(
 
 	useCase.eventBus.Publish(quote.AcceptedPegoutQuoteEvent{
 		Event:         entities.NewBaseEvent(quote.AcceptedPegoutQuoteEventId),
-		Quote:         *pegoutQuote,
+		Quote:         pegoutQuote,
 		RetainedQuote: *retainedQuote,
 		CreationData:  creationData,
 	})

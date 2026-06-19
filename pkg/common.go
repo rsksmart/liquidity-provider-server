@@ -41,7 +41,6 @@ type RecommendedOperationDTO struct {
 	RecommendedQuoteValue *big.Int `json:"recommendedQuoteValue" example:"100000" description:"Recommended quote value for the input amount" required:""`
 	EstimatedCallFee      *big.Int `json:"estimatedCallFee"  example:"100000" description:"Estimated call fee if a quote is created with the recommended amount" required:""`
 	EstimatedGasFee       *big.Int `json:"estimatedGasFee"  example:"100000" description:"Estimated gas fee if a quote is created with the recommended amount" required:""`
-	EstimatedProductFee   *big.Int `json:"estimatedProductFee"  example:"100000" description:"Estimated product fee if a quote is created with the recommended amount" required:""`
 }
 
 func ToRecommendedOperationDTO(domain usecases.RecommendedOperationResult) RecommendedOperationDTO {
@@ -49,6 +48,5 @@ func ToRecommendedOperationDTO(domain usecases.RecommendedOperationResult) Recom
 		RecommendedQuoteValue: domain.RecommendedQuoteValue.AsBigInt(),
 		EstimatedCallFee:      domain.EstimatedCallFee.AsBigInt(),
 		EstimatedGasFee:       domain.EstimatedGasFee.AsBigInt(),
-		EstimatedProductFee:   domain.EstimatedProductFee.AsBigInt(),
 	}
 }

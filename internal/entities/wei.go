@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 var ErrNonPositiveWei = errors.New("wei value must be positive")
@@ -56,6 +55,13 @@ func SatoshiToWei(x uint64) *Wei {
 	return w
 }
 
+func EtherToWei(x uint64) *Wei {
+	ether := new(big.Int).SetUint64(x)
+	w := new(Wei)
+	w.AsBigInt().Mul(ether, bTenPowEighteen)
+	return w
+}
+
 func (w *Wei) Copy() *Wei {
 	return NewBigWei(w.AsBigInt())
 }
@@ -74,6 +80,12 @@ func (w *Wei) Uint64() uint64 {
 
 func (w *Wei) ToRbtc() *big.Float {
 	return new(big.Float).Quo(new(big.Float).SetInt(w.AsBigInt()), new(big.Float).SetInt(bTenPowEighteen))
+}
+
+func (w *Wei) ToRbtcFloat64() float64 {
+	asRbtc := w.ToRbtc()
+	asFloat, _ := asRbtc.Float64()
+	return asFloat
 }
 
 func (w *Wei) ToSatoshi() *big.Float {
@@ -121,27 +133,29 @@ func (w *Wei) UnmarshalJSON(bytes []byte) error {
 	return w.AsBigInt().UnmarshalJSON(bytes)
 }
 
-func (w *Wei) MarshalBSONValue() (bsontype.Type, []byte, error) {
+func (w *Wei) MarshalBSONValue() (byte, []byte, error) {
 	if w == nil {
-		return bson.TypeNull, []byte{}, nil
+		return byte(bson.TypeNull), []byte{}, nil
 	}
-	return bson.MarshalValue(w.AsBigInt().String())
+	t, data, err := bson.MarshalValue(w.AsBigInt().String())
+	return byte(t), data, err
 }
 
 // nolint:cyclop
-func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
-	if bsonType == bson.TypeNull {
+func (w *Wei) UnmarshalBSONValue(bsonType byte, bytes []byte) error {
+	typ := bson.Type(bsonType)
+	if typ == bson.TypeNull {
 		return nil
 	}
 
-	supportedType := bsonType == bson.TypeInt64 || bsonType == bson.TypeString
+	supportedType := typ == bson.TypeInt64 || typ == bson.TypeString
 	if w == nil || !supportedType || len(bytes) == 0 {
 		return DeserializationError
 	}
 
-	if bsonType == bson.TypeInt64 {
+	if typ == bson.TypeInt64 {
 		var value int64
-		if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+		if err := bson.UnmarshalValue(typ, bytes, &value); err != nil {
 			return errors.Join(DeserializationError, err)
 		}
 		w.AsBigInt().SetInt64(value)
@@ -149,7 +163,7 @@ func (w *Wei) UnmarshalBSONValue(bsonType bsontype.Type, bytes []byte) error {
 	}
 
 	var value string
-	if err := bson.UnmarshalValue(bsonType, bytes, &value); err != nil {
+	if err := bson.UnmarshalValue(typ, bytes, &value); err != nil {
 		return errors.Join(DeserializationError, err)
 	}
 
@@ -186,4 +200,13 @@ func (w *Wei) Div(x, y *Wei) (*Wei, error) {
 	}
 	w.AsBigInt().Div(x.AsBigInt(), y.AsBigInt())
 	return w, nil
+}
+
+func (w *Wei) Min(x, y *Wei) *Wei {
+	if x.Cmp(y) <= 0 {
+		w.AsBigInt().Set(x.AsBigInt())
+	} else {
+		w.AsBigInt().Set(y.AsBigInt())
+	}
+	return w
 }

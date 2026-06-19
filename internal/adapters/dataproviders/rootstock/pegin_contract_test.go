@@ -2,10 +2,10 @@ package rootstock_test
 
 import (
 	"encoding/hex"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
+	bindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -39,7 +39,7 @@ var peginQuote = quote.PeginQuote{
 	Confirmations:      50,
 	CallOnRegister:     true,
 	GasFee:             entities.NewWei(100),
-	ProductFeeAmount:   entities.NewWei(500),
+	ChainId:            31,
 }
 
 var parsedPeginQuote = bindings.QuotesPegInQuote{
@@ -61,35 +61,45 @@ var parsedPeginQuote = bindings.QuotesPegInQuote{
 	CallTime:                    40,
 	DepositConfirmations:        50,
 	CallOnRegister:              true,
-	ProductFeeAmount:            big.NewInt(500),
 	GasFee:                      big.NewInt(100),
+	ChainId:                     big.NewInt(31),
 }
 
 func TestNewPeginContractImpl(t *testing.T) {
 	contract := rootstock.NewPeginContractImpl(
 		rootstock.NewRskClient(&mocks.RpcClientBindingMock{}),
 		test.AnyAddress,
-		&mocks.PeginContractAdapterMock{},
+		createBoundContractMock().contract,
 		&mocks.TransactionSignerMock{},
 		rootstock.RetryParams{Retries: 1, Sleep: 1},
 		time.Duration(1),
+		bindings.NewPeginContract(),
 		Abis,
 	)
 	test.AssertNonZeroValues(t, contract)
 }
 
 func TestPeginContractImpl_GetBalance(t *testing.T) {
-	contract := &mocks.PeginContractAdapterMock{}
-	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contract, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := createBoundContractMock()
+	peginBinding := bindings.NewPeginContract()
+	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
 	t.Run("Success", func(t *testing.T) {
-		contract.On("GetBalance", mock.Anything, parsedAddress).Return(big.NewInt(600), nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackGetBalance(parsedAddress)),
+			mock.Anything,
+		).Return(mustPackUint256(t, big.NewInt(600)), nil).Once()
 		result, err := peginContract.GetBalance(parsedAddress.String())
 		require.NoError(t, err)
 		assert.Equal(t, entities.NewWei(600), result)
-		contract.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on GetBalance call error", func(t *testing.T) {
-		contract.On("GetBalance", mock.Anything, parsedAddress).Return(nil, assert.AnError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackGetBalance(parsedAddress)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
 		result, err := peginContract.GetBalance(parsedAddress.String())
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -103,33 +113,34 @@ func TestPeginContractImpl_GetBalance(t *testing.T) {
 
 // nolint:funlen
 func TestPeginContractImpl_CallForUser(t *testing.T) {
-	contractBinding := &mocks.PeginContractAdapterMock{}
+	contractMock := createBoundContractMock()
+	peginBinding := bindings.NewPeginContract()
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
 	peginContract := rootstock.NewPeginContractImpl(
 		rootstock.NewRskClient(mockClient),
 		test.AnyAddress,
-		contractBinding,
+		contractMock.contract,
 		signerMock,
 		rootstock.RetryParams{},
 		time.Duration(1),
+		peginBinding,
 		Abis,
 	)
-	modifiers := []txModifier{valueModifier(big.NewInt(1234)), gasLimitModifier(8000)}
 	var gasLimit uint64 = 8000
 	txConfig := blockchain.TransactionConfig{Value: entities.NewWei(1234), GasLimit: &gasLimit}
-	optsMatchFunction := mock.MatchedBy(func(opts *bind.TransactOpts) bool {
-		return opts.Value.Cmp(txConfig.Value.AsBigInt()) == 0 && opts.GasLimit == *txConfig.GasLimit
-	})
 	t.Run("Success", func(t *testing.T) {
-		tx := prepareTxMocks(mockClient, signerMock, true, modifiers...)
-		contractBinding.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(tx, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), gasLimit, big.NewInt(1234), peginBinding.PackCallForUser(parsedPeginQuote)),
+		).Return(nil).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, true)
 		expectedReceipt := blockchain.TransactionReceipt{
-			TransactionHash:   tx.Hash().String(),
+			TransactionHash:   "0x" + test.AnyHash,
 			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
 			BlockNumber:       123,
 			From:              parsedAddress.String(),
-			To:                parsedAddress.String(),
+			To:                test.AnyRskAddress,
 			CumulativeGasUsed: big.NewInt(50000),
 			GasUsed:           big.NewInt(21000),
 			Value:             entities.NewBigWei(big.NewInt(1234)),
@@ -138,26 +149,34 @@ func TestPeginContractImpl_CallForUser(t *testing.T) {
 		result, err := peginContract.CallForUser(txConfig, peginQuote)
 		require.NoError(t, err)
 		assert.Equal(t, expectedReceipt, result)
-		contractBinding.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending callForUser tx", func(t *testing.T) {
-		_ = prepareTxMocks(mockClient, signerMock, true)
-		contractBinding.On("CallForUser", optsMatchFunction, parsedPeginQuote).Return(nil, assert.AnError).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), gasLimit, big.NewInt(1234), peginBinding.PackCallForUser(parsedPeginQuote)),
+		).Return(assert.AnError).Once()
+		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *geth.Transaction) (*geth.Transaction, error) {
+			return tx, nil
+		})
 		result, err := peginContract.CallForUser(txConfig, peginQuote)
 		require.Error(t, err)
 		assert.Empty(t, result.TransactionHash)
 	})
 	t.Run("Error handling (callForUser tx reverted)", func(t *testing.T) {
-		tx := prepareTxMocks(mockClient, signerMock, false, modifiers...)
-		contractBinding.On("CallForUser", mock.Anything, parsedPeginQuote).Return(tx, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), gasLimit, big.NewInt(1234), peginBinding.PackCallForUser(parsedPeginQuote)),
+		).Return(nil).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, false)
 		result, err := peginContract.CallForUser(txConfig, peginQuote)
 		require.ErrorContains(t, err, "call for user error: transaction reverted")
 		expectedReceipt := blockchain.TransactionReceipt{
-			TransactionHash:   tx.Hash().String(),
+			TransactionHash:   "0x" + test.AnyHash,
 			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
 			BlockNumber:       123,
 			From:              parsedAddress.String(),
-			To:                parsedAddress.String(),
+			To:                test.AnyRskAddress,
 			CumulativeGasUsed: big.NewInt(50000),
 			GasUsed:           big.NewInt(21000),
 			Value:             entities.NewWei(1234),
@@ -175,48 +194,40 @@ func TestPeginContractImpl_CallForUser(t *testing.T) {
 }
 
 func TestPeginContractImpl_GetAddress(t *testing.T) {
-	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), nil, Abis)
 	assert.Equal(t, test.AnyAddress, peginContract.GetAddress())
 }
 
-func TestPeginContractImpl_DaoFeePercentage(t *testing.T) {
-	contractBinding := &mocks.PeginContractAdapterMock{}
-	t.Run("Success", func(t *testing.T) {
-		contractBinding.EXPECT().GetFeePercentage(mock.Anything).Return(big.NewInt(1), nil).Once()
-		peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), Abis)
-		percentage, err := peginContract.DaoFeePercentage()
-		require.NoError(t, err)
-		require.Equal(t, uint64(1), percentage)
-	})
-	t.Run("Error handling on ProductFeePercentage call fail", func(t *testing.T) {
-		contractBinding.EXPECT().GetFeePercentage(mock.Anything).Return(nil, assert.AnError).Once()
-		peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{Retries: 0, Sleep: 0}, time.Duration(1), Abis)
-		percentage, err := peginContract.DaoFeePercentage()
-		require.Error(t, err)
-		require.Zero(t, percentage)
-	})
-}
-
 func TestPeginContractImpl_HashPeginQuote(t *testing.T) {
-	contractBinding := &mocks.PeginContractAdapterMock{}
+	contractMock := createBoundContractMock()
+	peginBinding := bindings.NewPeginContract()
 	hash := [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
 	peginContract := rootstock.NewPeginContractImpl(
 		dummyClient,
 		test.AnyAddress,
-		contractBinding,
+		contractMock.contract,
 		nil, rootstock.RetryParams{},
 		time.Duration(1),
+		peginBinding,
 		Abis,
 	)
 	t.Run("Success", func(t *testing.T) {
-		contractBinding.EXPECT().HashPegInQuote(mock.Anything, parsedPeginQuote).Return(hash, nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuote(parsedPeginQuote)),
+			mock.Anything,
+		).Return(mustPackBytes32(t, hash), nil).Once()
 		result, err := peginContract.HashPeginQuote(peginQuote)
 		require.NoError(t, err)
 		assert.Equal(t, hex.EncodeToString(hash[:]), result)
-		contractBinding.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on HashQuote call fail", func(t *testing.T) {
-		contractBinding.EXPECT().HashPegInQuote(mock.Anything, parsedPeginQuote).Return([32]byte{}, assert.AnError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuote(parsedPeginQuote)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
 		result, err := peginContract.HashPeginQuote(peginQuote)
 		require.Error(t, err)
 		assert.Empty(t, result)
@@ -224,8 +235,9 @@ func TestPeginContractImpl_HashPeginQuote(t *testing.T) {
 }
 
 func TestPeginContractImpl_HashPeginQuote_ParsingErrors(t *testing.T) {
-	contractBinding := &mocks.PeginContractAdapterMock{}
-	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := createBoundContractMock()
+	peginBinding := bindings.NewPeginContract()
+	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
 	validationFunction := func(peginQuote quote.PeginQuote) {
 		result, err := peginContract.HashPeginQuote(peginQuote)
 		require.Error(t, err)
@@ -279,16 +291,18 @@ func TestPeginContractImpl_HashPeginQuote_ParsingErrors(t *testing.T) {
 }
 
 func TestPeginContractImpl_RegisterPegin(t *testing.T) {
-	contractBinding := &mocks.PeginContractAdapterMock{}
+	contractMock := createBoundContractMock()
+	peginBinding := bindings.NewPeginContract()
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
 	peginContract := rootstock.NewPeginContractImpl(
 		rootstock.NewRskClient(mockClient),
 		test.AnyAddress,
-		contractBinding,
+		contractMock.contract,
 		signerMock,
 		rootstock.RetryParams{},
 		time.Duration(1),
+		peginBinding,
 		Abis,
 	)
 	registerParams := blockchain.RegisterPeginParams{
@@ -298,27 +312,24 @@ func TestPeginContractImpl_RegisterPegin(t *testing.T) {
 		BlockHeight:           big.NewInt(5),
 		Quote:                 peginQuote,
 	}
-	callerMock := &mocks.ContractCallerBindingMock{}
-	matchOptsFunc := func(opts *bind.TransactOpts) bool {
-		return opts.From.String() == parsedAddress.String() && opts.GasLimit == 2500000
-	}
 	t.Run("Success", func(t *testing.T) {
-		contractBinding.On("Caller").Return(callerMock).Once()
-		callerMock.On("Call", mock.Anything, mock.Anything, "registerPegIn", parsedPeginQuote,
-			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
-			registerParams.PartialMerkleTree, registerParams.BlockHeight,
+		txData := peginBinding.PackRegisterPegIn(parsedPeginQuote, registerParams.QuoteSignature, registerParams.BitcoinRawTransaction, registerParams.PartialMerkleTree, registerParams.BlockHeight)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 2500000, big.NewInt(0), txData),
 		).Return(nil).Once()
-		tx := prepareTxMocks(mockClient, signerMock, true)
-		contractBinding.On("RegisterPegIn", mock.MatchedBy(matchOptsFunc), parsedPeginQuote,
-			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
-			registerParams.PartialMerkleTree, registerParams.BlockHeight,
-		).Return(tx, nil).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, true)
 		expectedReceipt := blockchain.TransactionReceipt{
-			TransactionHash:   tx.Hash().String(),
+			TransactionHash:   "0x" + test.AnyHash,
 			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
 			BlockNumber:       123,
 			From:              parsedAddress.String(),
-			To:                parsedAddress.String(),
+			To:                test.AnyRskAddress,
 			CumulativeGasUsed: big.NewInt(50000),
 			GasUsed:           big.NewInt(21000),
 			Value:             entities.NewWei(0), // default value, no modifier applied
@@ -327,97 +338,104 @@ func TestPeginContractImpl_RegisterPegin(t *testing.T) {
 		result, err := peginContract.RegisterPegin(registerParams)
 		require.NoError(t, err)
 		assert.Equal(t, expectedReceipt, result)
-		contractBinding.AssertExpectations(t)
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
 	})
 }
 
 // nolint:funlen
 func TestPeginContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
-	contractBinding := &mocks.PeginContractAdapterMock{}
+	peginBinding := bindings.NewPeginContract()
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
-	callerMock := &mocks.ContractCallerBindingMock{}
-	peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractBinding, signerMock, rootstock.RetryParams{}, time.Duration(1), Abis)
 	registerParams := blockchain.RegisterPeginParams{QuoteSignature: []byte{7, 8, 9}, BitcoinRawTransaction: []byte{4, 5, 6}, PartialMerkleTree: []byte{1, 2, 3}, BlockHeight: big.NewInt(5), Quote: peginQuote}
-	matchOptsFunc := func(opts *bind.TransactOpts) bool {
-		return opts.From.String() == parsedAddress.String() && opts.GasLimit == 2500000
-	}
+	txData := peginBinding.PackRegisterPegIn(parsedPeginQuote, registerParams.QuoteSignature, registerParams.BitcoinRawTransaction, registerParams.PartialMerkleTree, registerParams.BlockHeight)
 	t.Run("Error handling (waiting for bridge)", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
 		e := NewRskRpcError("transaction reverted", "0xb9310b56")
-		contractBinding.EXPECT().Caller().Return(callerMock).Once()
-		callerMock.EXPECT().Call(mock.Anything, mock.Anything, "registerPegIn", parsedPeginQuote,
-			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
-			registerParams.PartialMerkleTree, registerParams.BlockHeight,
-		).Return(e).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, e).Once()
 		result, err := peginContract.RegisterPegin(registerParams)
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Empty(t, result)
-		contractBinding.AssertExpectations(t)
-		contractBinding.AssertNotCalled(t, "RegisterPegIn")
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
 	})
 	t.Run("Error handling (Call error)", func(t *testing.T) {
-		contractBinding.On("Caller").Return(callerMock).Once()
-		callerMock.On("Call", mock.Anything, mock.Anything, "registerPegIn", parsedPeginQuote,
-			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
-			registerParams.PartialMerkleTree, registerParams.BlockHeight,
-		).Return(assert.AnError).Once()
+		contractMock := createBoundContractMock()
+		peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
 		result, err := peginContract.RegisterPegin(registerParams)
 		require.Error(t, err)
 		require.NotErrorIs(t, err, blockchain.WaitingForBridgeError)
 		assert.Empty(t, result)
-		contractBinding.AssertExpectations(t)
-		contractBinding.AssertNotCalled(t, "RegisterPegIn")
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
 	})
 	t.Run("Error handling (Transaction send error)", func(t *testing.T) {
-		contractBinding.On("Caller").Return(callerMock).Once()
-		callerMock.On("Call", mock.Anything, mock.Anything, "registerPegIn", parsedPeginQuote,
-			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
-			registerParams.PartialMerkleTree, registerParams.BlockHeight,
-		).Return(nil).Once()
-		_ = prepareTxMocks(mockClient, signerMock, true)
-		contractBinding.On("RegisterPegIn", mock.MatchedBy(matchOptsFunc), parsedPeginQuote,
-			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
-			registerParams.PartialMerkleTree, registerParams.BlockHeight,
-		).Return(nil, assert.AnError).Once()
+		contractMock := createBoundContractMock()
+		peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 2500000, big.NewInt(0), txData),
+		).Return(assert.AnError).Once()
+		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *geth.Transaction) (*geth.Transaction, error) {
+			return tx, nil
+		})
+		prepareTxMocks(&contractMock, mockClient, signerMock, true)
 		result, err := peginContract.RegisterPegin(registerParams)
 		require.ErrorContains(t, err, "register pegin error")
 		assert.Empty(t, result)
-		contractBinding.AssertExpectations(t)
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling (Transaction reverted)", func(t *testing.T) {
-		contractBinding.On("Caller").Return(callerMock).Once()
-		callerMock.On("Call", mock.Anything, mock.Anything, "registerPegIn", parsedPeginQuote,
-			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
-			registerParams.PartialMerkleTree, registerParams.BlockHeight,
+		contractMock := createBoundContractMock()
+		peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 2500000, big.NewInt(0), txData),
 		).Return(nil).Once()
-		tx := prepareTxMocks(mockClient, signerMock, false)
-		contractBinding.On("RegisterPegIn", mock.MatchedBy(matchOptsFunc), parsedPeginQuote,
-			registerParams.QuoteSignature, registerParams.BitcoinRawTransaction,
-			registerParams.PartialMerkleTree, registerParams.BlockHeight,
-		).Return(tx, nil).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, false)
 		result, err := peginContract.RegisterPegin(registerParams)
 		require.ErrorContains(t, err, "register pegin error: transaction reverted")
 		// Should return populated receipt even on revert (for gas tracking)
 		expectedReceipt := blockchain.TransactionReceipt{
-			TransactionHash:   tx.Hash().String(),
+			TransactionHash:   "0x" + test.AnyHash,
 			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
 			BlockNumber:       123,
 			From:              parsedAddress.String(),
-			To:                parsedAddress.String(),
+			To:                test.AnyRskAddress,
 			CumulativeGasUsed: big.NewInt(50000),
 			GasUsed:           big.NewInt(21000),
 			Value:             entities.NewWei(0),
 			GasPrice:          entities.NewWei(20000000000),
 		}
 		assert.Equal(t, expectedReceipt, result)
-		contractBinding.AssertExpectations(t)
-		callerMock.AssertExpectations(t)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling (invalid quote)", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
 		invalid := registerParams
 		invalid.Quote.LbcAddress = ""
 		result, err := peginContract.RegisterPegin(invalid)
@@ -426,28 +444,143 @@ func TestPeginContractImpl_RegisterPegin_ErrorHandling(t *testing.T) {
 	})
 }
 
+func TestPeginContractImpl_Withdraw(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginBinding := bindings.NewPeginContract()
+	peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+	withdrawAmount := entities.NewWei(5000000000000000000)
+	t.Run("Success", func(t *testing.T) {
+		txData := peginBinding.PackWithdraw(withdrawAmount.AsBigInt())
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(txData),
+			mock.Anything,
+		).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(
+			mock.Anything,
+			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), txData),
+		).Return(nil).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, true)
+		err := peginContract.Withdraw(withdrawAmount)
+		require.NoError(t, err)
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
+	})
+}
+
+// nolint:funlen
+func TestPeginContractImpl_Withdraw_ErrorHandling(t *testing.T) {
+	contractMock := createBoundContractMock()
+	peginBinding := bindings.NewPeginContract()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+	withdrawAmount := entities.NewWei(5000000000000000000)
+	signerMock.On("Address").Return(parsedAddress)
+	t.Run("Error handling (dry-run revert NoBalance)", func(t *testing.T) {
+		e := NewRskRpcError("transaction reverted", "0x29226653")
+		contractMock.caller.EXPECT().CallContract(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.ErrorContains(t, err, "withdraw reverted with: NoBalance")
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertNotCalled(t, "Transact")
+	})
+	t.Run("Error handling (dry-run parse error)", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.ErrorContains(t, err, "error parsing withdraw result")
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertNotCalled(t, "Transact")
+	})
+	t.Run("Error handling (transaction send error)", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(mock.Anything, mock.Anything).Return(assert.AnError).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, true)
+		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *geth.Transaction) (*geth.Transaction, error) {
+			return tx, nil
+		})
+		contractMock.transactor.EXPECT().HeaderByNumber(mock.Anything, mock.Anything).Return(&geth.Header{}, nil).Once()
+		contractMock.transactor.EXPECT().SuggestGasPrice(mock.Anything).Return(big.NewInt(1), nil).Once()
+		contractMock.transactor.EXPECT().PendingNonceAt(mock.Anything, mock.Anything).Return(1, nil).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.ErrorContains(t, err, "withdraw error")
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
+	})
+	t.Run("Error handling (transaction reverted)", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once()
+		contractMock.transactor.EXPECT().SendTransaction(mock.Anything, mock.Anything).Return(nil).Once()
+		prepareTxMocks(&contractMock, mockClient, signerMock, false)
+		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *geth.Transaction) (*geth.Transaction, error) {
+			return tx, nil
+		})
+		contractMock.transactor.EXPECT().HeaderByNumber(mock.Anything, mock.Anything).Return(&geth.Header{}, nil).Once()
+		contractMock.transactor.EXPECT().SuggestGasPrice(mock.Anything).Return(big.NewInt(1), nil).Once()
+		contractMock.transactor.EXPECT().PendingNonceAt(mock.Anything, mock.Anything).Return(1, nil).Once()
+		err := peginContract.Withdraw(withdrawAmount)
+		require.ErrorContains(t, err, "withdraw error: transaction failed")
+		contractMock.caller.AssertExpectations(t)
+		contractMock.transactor.AssertExpectations(t)
+	})
+}
+
 func TestPeginContractImpl_PausedStatus(t *testing.T) {
-	contractBinding := &mocks.PeginContractAdapterMock{}
-	contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractBinding, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := createBoundContractMock()
+	peginBinding := bindings.NewPeginContract()
+	contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
 	t.Run("should return pause status result", func(t *testing.T) {
-		contractBinding.EXPECT().PauseStatus(mock.Anything).Return(struct {
-			IsPaused bool
-			Reason   string
-			Since    uint64
-		}{IsPaused: true, Reason: "test", Since: 123}, nil).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(mustPackPauseStatus(t, generalPauseStatus{IsPaused: true, Reason: "test", Since: 123}), nil).Once()
 		result, err := contract.PausedStatus()
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.PauseStatus{IsPaused: true, Reason: "test", Since: 123}, result)
 	})
 	t.Run("should handle error checking pause status", func(t *testing.T) {
-		contractBinding.EXPECT().PauseStatus(mock.Anything).Return(struct {
-			IsPaused bool
-			Reason   string
-			Since    uint64
-		}{}, assert.AnError).Once()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackPauseStatus()),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
 		result, err := contract.PausedStatus()
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
-	contractBinding.AssertExpectations(t)
+	contractMock.caller.AssertExpectations(t)
+}
+
+func TestPeginContractImpl_HashPeginQuoteEIP712(t *testing.T) {
+	t.Run("should return hash pegin quote eip712", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		peginBinding := bindings.NewPeginContract()
+		hash := [32]byte{1, 2, 3}
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuoteEIP712(parsedPeginQuote)),
+			mock.Anything,
+		).Return(mustPackBytes32(t, hash), nil).Once()
+		contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+		result, err := contract.HashPeginQuoteEIP712(peginQuote)
+		require.NoError(t, err)
+		assert.Equal(t, hash, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+	t.Run("should handle error hashing pegin quote eip712", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		peginBinding := bindings.NewPeginContract()
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(peginBinding.PackHashPegInQuoteEIP712(parsedPeginQuote)),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+		result, err := contract.HashPeginQuoteEIP712(peginQuote)
+		require.Error(t, err)
+		assert.Empty(t, result)
+		contractMock.caller.AssertExpectations(t)
+	})
 }

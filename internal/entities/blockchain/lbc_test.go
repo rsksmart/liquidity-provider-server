@@ -10,6 +10,19 @@ import (
 	"testing"
 )
 
+func TestRegistrationState_AllowsRegistration(t *testing.T) {
+	cases := map[blockchain.RegistrationState]bool{
+		blockchain.RegistrationStateNone:      true,
+		blockchain.RegistrationStateRejected:  true,
+		blockchain.RegistrationStateWithdrawn: true,
+		blockchain.RegistrationStatePending:   false,
+		blockchain.RegistrationStateApproved:  false,
+	}
+	for state, expected := range cases {
+		assert.Equal(t, expected, state.AllowsRegistration())
+	}
+}
+
 func TestRefundPegoutParams_String(t *testing.T) {
 	params := blockchain.RefundPegoutParams{
 		QuoteHash:          [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
@@ -58,7 +71,7 @@ func TestRegisterPeginParams_String(t *testing.T) {
 			Confirmations:      10,
 			CallOnRegister:     true,
 			GasFee:             entities.NewWei(1),
-			ProductFeeAmount:   entities.NewWei(11),
+			ChainId:            31,
 		},
 	}
 	assert.Equal(t,
@@ -66,5 +79,5 @@ func TestRegisterPeginParams_String(t *testing.T) {
 			"BlockHeight: 1, Quote: {FedBtcAddress:any address LbcAddress:any address LpRskAddress:any address "+
 			"BtcRefundAddress:any address RskRefundAddress:any address LpBtcAddress:any address CallFee:3 PenaltyFee:4 "+
 			"ContractAddress:any address Data:any data GasLimit:5 Nonce:6 Value:2 AgreementTimestamp:7 TimeForDeposit:8 "+
-			"LpCallTime:9 Confirmations:10 CallOnRegister:true GasFee:1 ProductFeeAmount:11} }", params.String())
+			"LpCallTime:9 Confirmations:10 CallOnRegister:true GasFee:1 ChainId:31} }", params.String())
 }

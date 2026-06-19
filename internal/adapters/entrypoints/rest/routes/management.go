@@ -201,5 +201,15 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Method:  http.MethodPost,
 			Handler: handlers.NewDenyTransactionsHandler(),
 		},
+		{
+			Path:    "/management/liquidity-ratio",
+			Method:  http.MethodGet,
+			Handler: handlers.NewGetLiquidityRatioHandler(useCaseRegistry.GetLiquidityRatioUseCase()),
+		},
+		{
+			Path:    "/management/liquidity-ratio",
+			Method:  http.MethodPost,
+			Handler: handlers.NewSetLiquidityRatioHandler(useCaseRegistry.SetLiquidityRatioUseCase()),
+		},
 	}
 }

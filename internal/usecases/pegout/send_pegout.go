@@ -11,11 +11,10 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
-type DepositParser = func(receipt blockchain.TransactionReceipt) (blockchain.ParsedLog[quote.PegoutDeposit], error)
+type DepositParser = func(receipt blockchain.TransactionReceipt, quoteHash string, lbcAddress string) (blockchain.ParsedLog[quote.PegoutDeposit], error)
 
 type SendPegoutUseCase struct {
 	btcWallet       blockchain.BitcoinWallet
@@ -70,12 +69,19 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 
 	useCase.btcWalletMutex.Lock()
 	defer useCase.btcWalletMutex.Unlock()
-
+	// revalidate quote after acquiring the mutex to prevent double spends
+	if err = useCase.revalidateRetainedQuote(ctx, retainedQuote); err != nil {
+		return err
+	}
 	if err = useCase.validateBalance(ctx, retainedQuote, pegoutQuote); err != nil {
 		return err
 	}
 
 	retainedQuote, err = useCase.performSendPegout(ctx, retainedQuote, pegoutQuote, receipt)
+	return useCase.processSendPegoutResult(ctx, retainedQuote, err)
+}
+
+func (useCase *SendPegoutUseCase) processSendPegoutResult(ctx context.Context, retainedQuote quote.RetainedPegoutQuote, err error) error {
 	// if the error is not nil and the state is not SendPegoutFailed,
 	// means that an error happened before sending the tx
 	if err != nil && retainedQuote.State != quote.PegoutStateSendPegoutFailed {
@@ -268,18 +274,26 @@ func (useCase *SendPegoutUseCase) validateRetainedQuote(ctx context.Context, ret
 	return nil
 }
 
+// revalidateRetainedQuote performs the necessary checks to ensure processing the quote still safe after acquiring the wallet mutex
+func (useCase *SendPegoutUseCase) revalidateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
+	if dbQuote, err := useCase.quoteRepository.GetRetainedQuote(ctx, retainedQuote.QuoteHash); err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
+	} else if dbQuote == nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.QuoteNotFoundError, false)
+	} else if dbQuote.State != retainedQuote.State || dbQuote.UserRskTxHash != retainedQuote.UserRskTxHash {
+		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
+	}
+	return nil
+}
+
 func (useCase *SendPegoutUseCase) validateDepositEvent(
 	receipt blockchain.TransactionReceipt,
 	retainedQuote *quote.RetainedPegoutQuote,
 	pegoutQuote *quote.PegoutQuote,
 ) error {
-	depositEvent, err := useCase.depositParser(receipt)
+	depositEvent, err := useCase.depositParser(receipt, retainedQuote.QuoteHash, pegoutQuote.LbcAddress)
 	if err != nil {
 		return err
-	} else if !strings.EqualFold(depositEvent.RawLog.Address, pegoutQuote.LbcAddress) {
-		return errors.New("invalid LBC address")
-	} else if !utils.CompareIgnore0x(depositEvent.Log.QuoteHash, retainedQuote.QuoteHash) {
-		return errors.New("deposit belongs to other quote")
 	} else if depositEvent.Log.Amount.Cmp(pegoutQuote.Total()) < 0 {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
 		return usecases.InsufficientAmountError

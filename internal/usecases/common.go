@@ -1,23 +1,19 @@
 package usecases
 
 import (
-	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"math/big"
 	"strconv"
-
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
 
 // used for error logging
@@ -27,86 +23,134 @@ type UseCaseId string
 const EthereumSignedMessagePrefix = "\x19Ethereum Signed Message:\n32"
 
 const (
-	GetPeginQuoteId            UseCaseId = "GetPeginQuote"
-	GetPegoutQuoteId           UseCaseId = "GetPegoutQuote"
-	AcceptPeginQuoteId         UseCaseId = "AcceptPeginQuote"
-	AcceptPegoutQuoteId        UseCaseId = "AcceptPegoutQuote"
-	ProviderDetailId           UseCaseId = "ProviderDetail"
-	GetProvidersId             UseCaseId = "GetProviders"
-	GetUserQuotesId            UseCaseId = "GetUserQuotes"
-	ProviderResignId           UseCaseId = "ProviderResign"
-	ChangeProviderStatusId     UseCaseId = "ChangeProviderStatus"
-	GetCollateralId            UseCaseId = "GetCollateral"
-	GetPegoutCollateralId      UseCaseId = "GetPegoutCollateral"
-	AddCollateralId            UseCaseId = "AddCollateral"
-	AddPegoutCollateralId      UseCaseId = "AddPegoutCollateral"
-	WithdrawCollateralId       UseCaseId = "WithdrawCollateral"
-	WithdrawPegoutCollateralId UseCaseId = "WithdrawPegoutCollateral"
-	CallForUserId              UseCaseId = "CallForUser"
-	RegisterPeginId            UseCaseId = "RegisterPegin"
-	SendPegoutId               UseCaseId = "SendPegout"
-	RefundPegoutId             UseCaseId = "RefundPegout"
-	ProviderRegistrationId     UseCaseId = "ProviderRegistration"
-	GetWatchedPeginQuoteId     UseCaseId = "GetWatchedPeginQuote"
-	GetWatchedPegoutQuoteId    UseCaseId = "GetWatchedPegoutQuote"
-	ExpiredPeginQuoteId        UseCaseId = "ExpiredPeginQuote"
-	ExpiredPegoutQuoteId       UseCaseId = "ExpiredPegoutQuote"
-	UpdatePegoutDepositId      UseCaseId = "UpdatePegoutDeposit"
-	InitPegoutDepositCacheId   UseCaseId = "InitPegoutDepositCache"
-	CheckLiquidityId           UseCaseId = "CheckLiquidity"
-	PenalizationId             UseCaseId = "Penalization"
-	SetPeginConfigId           UseCaseId = "SetPeginConfigUseCase"
-	SetPegoutConfigId          UseCaseId = "SetPegoutConfigUseCase"
-	SetGeneralConfigId         UseCaseId = "SetGeneralConfigUseCase"
-	UpdateTrustedAccountId     UseCaseId = "UpdateTrustedAccountUseCase"
-	AddTrustedAccountId        UseCaseId = "AddTrustedAccountUseCase"
-	DeleteTrustedAccountId     UseCaseId = "DeleteTrustedAccountUseCase"
-	LoginId                    UseCaseId = "Login"
-	ChangeCredentialsId        UseCaseId = "ChangeCredentials"
-	DefaultCredentialsId       UseCaseId = "GenerateDefaultCredentials"
-	GetManagementUiId          UseCaseId = "GetManagementUi"
-	BridgePegoutId             UseCaseId = "BridgePegout"
-	PeginQuoteStatusId         UseCaseId = "PeginQuoteStatus"
-	PegoutQuoteStatusId        UseCaseId = "PegoutQuoteStatus"
-	GetAvailableLiquidityId    UseCaseId = "GetAvailableLiquidity"
-	UpdatePeginDepositId       UseCaseId = "UpdatePeginDeposit"
-	ServerInfoId               UseCaseId = "ServerInfo"
-	SummariesUseCaseId         UseCaseId = "Summaries"
-	GetPeginReportId           UseCaseId = "GetPeginReport"
-	GetPegoutReportId          UseCaseId = "GetPegoutReport"
-	GetRevenueReportId         UseCaseId = "GetRevenueReport"
-	GetTransactionsReportId    UseCaseId = "GetTransactionsReport"
-	EclipseCheckId             UseCaseId = "EclipseCheck"
-	UpdateBtcReleaseId         UseCaseId = "UpdateBtcRelease"
-	RecommendedPegoutId        UseCaseId = "RecommendedPegout"
-	RecommendedPeginId         UseCaseId = "RecommendedPegin"
+	GetPeginQuoteId                UseCaseId = "GetPeginQuote"
+	GetPegoutQuoteId               UseCaseId = "GetPegoutQuote"
+	AcceptPeginQuoteId             UseCaseId = "AcceptPeginQuote"
+	AcceptPegoutQuoteId            UseCaseId = "AcceptPegoutQuote"
+	ProviderDetailId               UseCaseId = "ProviderDetail"
+	GetProvidersId                 UseCaseId = "GetProviders"
+	GetUserQuotesId                UseCaseId = "GetUserQuotes"
+	ProviderResignId               UseCaseId = "ProviderResign"
+	ChangeProviderStatusId         UseCaseId = "ChangeProviderStatus"
+	GetCollateralId                UseCaseId = "GetCollateral"
+	GetPegoutCollateralId          UseCaseId = "GetPegoutCollateral"
+	AddCollateralId                UseCaseId = "AddCollateral"
+	AddPegoutCollateralId          UseCaseId = "AddPegoutCollateral"
+	WithdrawCollateralId           UseCaseId = "WithdrawCollateral"
+	WithdrawPegoutCollateralId     UseCaseId = "WithdrawPegoutCollateral"
+	CallForUserId                  UseCaseId = "CallForUser"
+	RegisterPeginId                UseCaseId = "RegisterPegin"
+	SendPegoutId                   UseCaseId = "SendPegout"
+	RefundPegoutId                 UseCaseId = "RefundPegout"
+	ProviderRegistrationId         UseCaseId = "ProviderRegistration"
+	GetWatchedPeginQuoteId         UseCaseId = "GetWatchedPeginQuote"
+	GetWatchedPegoutQuoteId        UseCaseId = "GetWatchedPegoutQuote"
+	ExpiredPeginQuoteId            UseCaseId = "ExpiredPeginQuote"
+	ExpiredPegoutQuoteId           UseCaseId = "ExpiredPegoutQuote"
+	UpdatePegoutDepositId          UseCaseId = "UpdatePegoutDeposit"
+	InitPegoutDepositCacheId       UseCaseId = "InitPegoutDepositCache"
+	CheckLiquidityId               UseCaseId = "CheckLiquidity"
+	PenalizationId                 UseCaseId = "Penalization"
+	SetPeginConfigId               UseCaseId = "SetPeginConfigUseCase"
+	SetPegoutConfigId              UseCaseId = "SetPegoutConfigUseCase"
+	SetGeneralConfigId             UseCaseId = "SetGeneralConfigUseCase"
+	UpdateTrustedAccountId         UseCaseId = "UpdateTrustedAccountUseCase"
+	AddTrustedAccountId            UseCaseId = "AddTrustedAccountUseCase"
+	DeleteTrustedAccountId         UseCaseId = "DeleteTrustedAccountUseCase"
+	LoginId                        UseCaseId = "Login"
+	ChangeCredentialsId            UseCaseId = "ChangeCredentials"
+	DefaultCredentialsId           UseCaseId = "GenerateDefaultCredentials"
+	InitializeStateConfigurationId UseCaseId = "InitializeStateConfiguration"
+	GetManagementUiId              UseCaseId = "GetManagementUi"
+	BridgePegoutId                 UseCaseId = "BridgePegout"
+	PeginQuoteStatusId             UseCaseId = "PeginQuoteStatus"
+	PegoutQuoteStatusId            UseCaseId = "PegoutQuoteStatus"
+	GetAvailableLiquidityId        UseCaseId = "GetAvailableLiquidity"
+	UpdatePeginDepositId           UseCaseId = "UpdatePeginDeposit"
+	ServerInfoId                   UseCaseId = "ServerInfo"
+	SummariesUseCaseId             UseCaseId = "Summaries"
+	GetPeginReportId               UseCaseId = "GetPeginReport"
+	GetPegoutReportId              UseCaseId = "GetPegoutReport"
+	GetRevenueReportId             UseCaseId = "GetRevenueReport"
+	GetTransactionsReportId        UseCaseId = "GetTransactionsReport"
+	EclipseCheckId                 UseCaseId = "EclipseCheck"
+	UpdateBtcReleaseId             UseCaseId = "UpdateBtcRelease"
+	RecommendedPegoutId            UseCaseId = "RecommendedPegout"
+	RecommendedPeginId             UseCaseId = "RecommendedPegin"
+	TransferExcessToColdWalletId   UseCaseId = "TransferExcessToColdWallet"
+	CheckColdWalletAddressChangeId UseCaseId = "CheckColdWalletAddressChange"
+	LowLiquidityAlertId            UseCaseId = "LowLiquidityAlert"
+	GetLiquidityRatioId            UseCaseId = "GetLiquidityRatio"
+	SetLiquidityRatioId            UseCaseId = "SetLiquidityRatio"
+	NodeReorgAlertId               UseCaseId = "NodeReorgAlert"
+	NodePeerAlertId                UseCaseId = "NodePeerAlert"
+	GetTrustedAccountId            UseCaseId = "GetTrustedAccountUseCase"
 )
 
 var (
-	NonRecoverableError             = errors.New("non recoverable")
-	TxBelowMinimumError             = errors.New("requested amount should be greater than bridge's min transaction value")
-	RskAddressNotSupportedError     = errors.New("rsk address not supported")
-	QuoteNotFoundError              = errors.New("quote not found")
-	QuoteNotAcceptedError           = errors.New("quote not accepted")
-	ExpiredQuoteError               = errors.New("expired quote")
-	NoLiquidityError                = errors.New("not enough liquidity")
-	ProviderConfigurationError      = errors.New("pegin and pegout providers are not using the same account")
-	WrongStateError                 = errors.New("quote with wrong state")
-	NoEnoughConfirmationsError      = errors.New("not enough confirmations for transaction")
-	InsufficientAmountError         = errors.New("insufficient amount")
-	AlreadyRegisteredError          = errors.New("liquidity provider already registered")
-	IllegalQuoteStateError          = errors.New("illegal quote state")
-	LockingCapExceededError         = errors.New("locking cap exceeded")
-	NonPositiveWeiError             = errors.New("wei value must be positive")
-	EmptyConfirmationsMapError      = errors.New("confirmations map cannot be empty")
-	NonPositiveConfirmationKeyError = errors.New("confirmation amount key must be positive")
+	NonRecoverableError                 = errors.New("non recoverable")
+	TxBelowMinimumError                 = errors.New("requested amount should be greater than bridge's min transaction value")
+	RskAddressNotSupportedError         = errors.New("rsk address not supported")
+	QuoteNotFoundError                  = errors.New("quote not found")
+	QuoteNotAcceptedError               = errors.New("quote not accepted")
+	ExpiredQuoteError                   = errors.New("expired quote")
+	NoLiquidityError                    = errors.New("not enough liquidity")
+	ProviderConfigurationError          = errors.New("pegin and pegout providers are not using the same account")
+	WrongStateError                     = errors.New("quote with wrong state")
+	NoEnoughConfirmationsError          = errors.New("not enough confirmations for transaction")
+	InsufficientAmountError             = errors.New("insufficient amount")
+	RegistrationRejectedError           = errors.New("liquidity provider registration rejected by admin")
+	RegistrationWithdrawnError          = errors.New("liquidity provider registration withdrawn")
+	IllegalQuoteStateError              = errors.New("illegal quote state")
+	LockingCapExceededError             = errors.New("locking cap exceeded")
+	NonPositiveWeiError                 = errors.New("wei value must be positive")
+	EmptyConfirmationsMapError          = errors.New("confirmations map cannot be empty")
+	NonPositiveConfirmationKeyError     = errors.New("confirmation amount key must be positive")
+	NonPositiveReimbursementWindowError = errors.New("reimbursement window blocks must be positive")
 )
+
+type EffectiveAmountTooLowError struct {
+	EffectiveAmount    *entities.Wei
+	MinEffectiveAmount *entities.Wei
+	SuggestedAmount    *entities.Wei
+}
+
+func NewEffectiveAmountTooLowError(effectiveAmount, minEffectiveAmount, suggestedAmount *entities.Wei) *EffectiveAmountTooLowError {
+	return &EffectiveAmountTooLowError{
+		EffectiveAmount:    effectiveAmount,
+		MinEffectiveAmount: minEffectiveAmount,
+		SuggestedAmount:    suggestedAmount,
+	}
+}
+
+func (e *EffectiveAmountTooLowError) Error() string {
+	return fmt.Sprintf(
+		"Amount too low: after fees your effective amount is %s, but it must be at least %s.",
+		e.EffectiveAmount.String(),
+		e.MinEffectiveAmount.String(),
+	)
+}
+
+// InsufficientLiquidityError is returned when available liquidity is below required.
+// It wraps NoLiquidityError for errors.Is compatibility.
+type InsufficientLiquidityError struct {
+	Available *entities.Wei
+	Required  *entities.Wei
+}
+
+func (e *InsufficientLiquidityError) Error() string {
+	missing := new(entities.Wei).Sub(e.Required.Copy(), e.Available.Copy())
+	return fmt.Errorf("%w, missing %s satoshi", NoLiquidityError, missing.ToSatoshi().String()).Error()
+}
+
+func (e *InsufficientLiquidityError) Is(target error) bool {
+	return target == NoLiquidityError
+}
 
 type RecommendedOperationResult struct {
 	RecommendedQuoteValue *entities.Wei
 	EstimatedCallFee      *entities.Wei
 	EstimatedGasFee       *entities.Wei
-	EstimatedProductFee   *entities.Wei
 }
 
 type ErrorArgs map[string]string
@@ -139,32 +183,16 @@ func WrapUseCaseErrorArgs(useCase UseCaseId, err error, args ErrorArgs) error {
 	}
 }
 
-type DaoAmounts struct {
-	DaoGasAmount *entities.Wei
-	DaoFeeAmount *entities.Wei
-}
-
-func CalculateDaoAmounts(ctx context.Context, rsk blockchain.RootstockRpcServer, value *entities.Wei, daoFeePercentage uint64, feeCollectorAddress string) (DaoAmounts, error) {
-	var daoGasAmount *entities.Wei
-	daoFeeAmount := new(entities.Wei)
-	var err error
-	if daoFeePercentage == 0 {
-		return DaoAmounts{
-			DaoFeeAmount: entities.NewWei(0),
-			DaoGasAmount: entities.NewWei(0),
-		}, nil
-	}
-
-	daoFeeAmount.Mul(value, entities.NewUWei(daoFeePercentage))
-	daoFeeAmount.AsBigInt().Div(daoFeeAmount.AsBigInt(), big.NewInt(utils.Scale))
-	daoGasAmount, err = rsk.EstimateGas(ctx, feeCollectorAddress, daoFeeAmount, make([]byte, 0))
+func NormalizeTrustedAccountAddress(useCase UseCaseId, addr string) (string, error) {
+	normalized, err := blockchain.NormalizeRskAddress(addr)
 	if err != nil {
-		return DaoAmounts{}, err
+		return "", WrapUseCaseError(useCase, errors.Join(
+			liquidity_provider.InvalidTrustedAccountAddressError,
+			blockchain.InvalidAddressError,
+			err,
+		))
 	}
-	return DaoAmounts{
-		DaoFeeAmount: daoFeeAmount,
-		DaoGasAmount: daoGasAmount,
-	}, nil
+	return normalized, nil
 }
 
 func ValidateMinLockValue(useCase UseCaseId, bridge rootstock.Bridge, value *entities.Wei) error {
@@ -243,11 +271,7 @@ func ValidateBridgeUtxoMin(bridge rootstock.Bridge, transaction blockchain.Bitco
 
 // RecoverSignerAddress recovers the address from a signature. Important function for the management
 // of trusted accounts.
-func RecoverSignerAddress(quoteHash, signature string) (string, error) {
-	if quoteHash == "" {
-		return "", errors.New("empty hash provided")
-	}
-
+func RecoverSignerAddress(signature string, getHashFunction func() ([]byte, error)) (string, error) {
 	if signature == "" {
 		return "", errors.New("empty signature provided")
 	}
@@ -262,16 +286,6 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 		return "", fmt.Errorf("invalid signature length, expected 65 bytes, got %d", len(signatureBytes))
 	}
 
-	hashBytes, err := hex.DecodeString(quoteHash)
-	if err != nil {
-		return "", fmt.Errorf("error decoding hash: %w", err)
-	}
-
-	// Hash should be 32 bytes
-	if len(hashBytes) != 32 {
-		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hashBytes))
-	}
-
 	// The signature's recovery ID (v) needs to be adjusted from Ethereum's convention
 	// Ethereum uses 27 or 28 as the v value, but Ecrecover expects 0 or 1
 	v := signatureBytes[64]
@@ -279,13 +293,14 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 		signatureBytes[64] = v - 27
 	}
 
-	// Create the Ethereum prefixed message
-	var buf bytes.Buffer
-	buf.WriteString(EthereumSignedMessagePrefix)
-	buf.Write(hashBytes)
-	prefixedHash := crypto.Keccak256(buf.Bytes())
+	hash, err := getHashFunction()
+	if err != nil {
+		return "", err
+	} else if len(hash) != 32 {
+		return "", fmt.Errorf("invalid hash length, expected 32 bytes, got %d", len(hash))
+	}
 
-	pubKey, err := crypto.Ecrecover(prefixedHash, signatureBytes)
+	pubKey, err := crypto.Ecrecover(hash, signatureBytes)
 	if err != nil {
 		return "", errors.New("error recovering public key: " + err.Error())
 	}
@@ -296,7 +311,7 @@ func RecoverSignerAddress(quoteHash, signature string) (string, error) {
 		return "", errors.New("error unmarshalling public key: " + err.Error())
 	}
 
-	address := crypto.PubkeyToAddress(*pubKeyECDSA).Hex()
+	address := strings.ToLower(crypto.PubkeyToAddress(*pubKeyECDSA).Hex())
 	return address, nil
 }
 

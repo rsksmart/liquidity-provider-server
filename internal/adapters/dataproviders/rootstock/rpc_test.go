@@ -395,10 +395,11 @@ func TestRskjRpcServer_GetBlockByHash(t *testing.T) {
 	block, err := rpc.GetBlockByHash(context.Background(), blockHash)
 	require.NoError(t, err)
 	assert.Equal(t, blockchain.BlockInfo{
-		Hash:      "0xde378ac47c11cdc8182c05f10edd90899fced079aa2b141f4f548b354deac5d8",
-		Number:    123,
-		Timestamp: time.Unix(now, 0),
-		Nonce:     72623859790382856,
+		Hash:       "0xde378ac47c11cdc8182c05f10edd90899fced079aa2b141f4f548b354deac5d8",
+		ParentHash: common.Hash{}.Hex(),
+		Number:     123,
+		Timestamp:  time.Unix(now, 0),
+		Nonce:      72623859790382856,
 	}, block)
 	client.AssertExpectations(t)
 }
@@ -435,10 +436,11 @@ func TestRskjRpcServer_GetBlockByNumber(t *testing.T) {
 		result, err := rpc.GetBlockByNumber(context.Background(), number)
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.BlockInfo{
-			Hash:      testBlock.Hash().Hex(),
-			Number:    123,
-			Timestamp: time.Unix(1, 0),
-			Nonce:     72623859790382856,
+			Hash:       testBlock.Hash().Hex(),
+			ParentHash: testBlock.ParentHash().Hex(),
+			Number:     123,
+			Timestamp:  time.Unix(1, 0),
+			Nonce:      72623859790382856,
 		}, result)
 		client.AssertExpectations(t)
 	})
@@ -452,10 +454,11 @@ func TestRskjRpcServer_GetBlockByNumber(t *testing.T) {
 		assert.Equal(t, testBlock.Nonce(), result.Nonce)
 		assert.Equal(t, testBlock.NumberU64(), result.Number)
 		assert.Equal(t, blockchain.BlockInfo{
-			Hash:      testBlock.Hash().Hex(),
-			Number:    123,
-			Timestamp: time.Unix(1, 0),
-			Nonce:     72623859790382856,
+			Hash:       testBlock.Hash().Hex(),
+			ParentHash: testBlock.ParentHash().Hex(),
+			Number:     123,
+			Timestamp:  time.Unix(1, 0),
+			Nonce:      72623859790382856,
 		}, result)
 		client.AssertExpectations(t)
 	})
@@ -466,6 +469,27 @@ func TestRskjRpcServer_GetBlockByNumber(t *testing.T) {
 		result, err := rpc.GetBlockByNumber(context.Background(), big.NewInt(1234))
 		require.Error(t, err)
 		assert.Empty(t, result)
+		client.AssertExpectations(t)
+	})
+}
+
+func TestRskjRpcServer_PeerCount(t *testing.T) {
+	t.Run("should return peer count", func(t *testing.T) {
+		client := &mocks.RpcClientBindingMock{}
+		client.EXPECT().PeerCount(mock.Anything).Return(uint64(5), nil)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+		count, err := rpc.PeerCount(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, uint64(5), count)
+		client.AssertExpectations(t)
+	})
+	t.Run("should handle errors", func(t *testing.T) {
+		client := &mocks.RpcClientBindingMock{}
+		client.EXPECT().PeerCount(mock.Anything).Return(uint64(0), assert.AnError)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+		count, err := rpc.PeerCount(context.Background())
+		require.Error(t, err)
+		assert.Equal(t, uint64(0), count)
 		client.AssertExpectations(t)
 	})
 }

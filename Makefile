@@ -1,4 +1,4 @@
-.PHONY: test all clean utils
+.PHONY: test all clean utils test-integration-db generate-fixtures ensure-gotestsum
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
@@ -10,15 +10,24 @@ define utils_build
   	CGO_ENABLED=0 go build -v -o ./utils/register_pegin ./cmd/utils/register_pegin/register_pegin.go
   	CGO_ENABLED=0 go build -v -o ./utils/refund_user_pegout ./cmd/utils/refund_user_pegout/refund_user_pegout.go
   	CGO_ENABLED=0 go build -v -o ./utils/key_conversion ./cmd/utils/key_conversion/key_conversion.go
+ 	CGO_ENABLED=0 go build -v -o ./utils/resign_utils ./cmd/utils/resign_utils/resign_utils.go
+ 	CGO_ENABLED=0 go build -v -o ./utils/withdraw ./cmd/utils/withdraw/withdraw.go
 endef
 
 tools: download
 	go install github.com/parvez3019/go-swagger3@fef3d30b0707883c389261bf26297eebd10d7216 #v1.0.3
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	pip3 install pre-commit && pre-commit install
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.63.4
-	go install github.com/ethereum/go-ethereum/cmd/abigen@eb00f1694c9265f6909c19995a535eef246dcf1e # v1.14.13
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.12.1
+	go install github.com/ethereum/go-ethereum/cmd/abigen@be4dc0c4be2fe316dbdd0a73e48421f64978232f # v1.17.2
 	go install github.com/vektra/mockery/v2@v2.53.1  	# ensures mockery version 2.53.1 is installed
+	go install gotest.tools/gotestsum@v1.13.0          # Apache 2.0; dev-only tool, not added to go.mod
+
+ensure-gotestsum:
+	@command -v gotestsum >/dev/null 2>&1 || { \
+		echo "Error: gotestsum not found in PATH. Run 'make tools' to install it."; \
+		exit 1; \
+	}
 
 download:
 	go mod download
@@ -49,21 +58,21 @@ api:
 	--handler-path ./internal/adapters/entrypoints/rest/handlers \
 	--output OpenApi.yml --schema-without-pkg --generate-yaml true
 
-coverage: clean
+coverage: clean ensure-gotestsum
 	mkdir -p coverage
-	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
+	gotestsum --format testname -- -timeout 30m -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
 	go tool cover -func "$(TEMPORAL_COVER_FILE)" && go tool cover -html="$(TEMPORAL_COVER_FILE)"
 	rm $(TEMPORAL_COVER_FILE)
 
-coverage-report: clean
+coverage-report: clean ensure-gotestsum
 	mkdir -p coverage
-	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(COVER_FILE) ./pkg/... ./internal/... ./cmd/...
+	gotestsum --format testname -- -timeout 30m -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(COVER_FILE))
 
-test: clean
+test: clean ensure-gotestsum
 	mkdir -p coverage
-	go test -timeout 30m -v -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE)  ./pkg/... ./internal/... ./cmd/...
+	gotestsum --format testname -- -timeout 30m -race -covermode=atomic -coverpkg=./pkg/...,./internal/...,./cmd/... -coverprofile=$(TEMPORAL_COVER_FILE) ./pkg/... ./internal/... ./cmd/...
 	$(call filter_coverage_file, $(TEMPORAL_COVER_FILE))
 	go tool cover -func $(TEMPORAL_COVER_FILE)
 	rm $(TEMPORAL_COVER_FILE)
@@ -88,6 +97,12 @@ monitoring:
 		-p $(MONITOR_PORT):$(MONITOR_PORT) \
 		-e MONITOR_PORT=$(MONITOR_PORT) \
 		monitoring
+
+test-integration-db:
+	./test/mongodb/scripts/run-tests.sh
+
+generate-fixtures:
+	./test/mongodb/scripts/generate-fixtures.sh
 
 bindings:
 	./scripts/create-bindings.sh $(IMAGE) && echo "Bindings generated successfully"

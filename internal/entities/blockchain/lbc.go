@@ -84,6 +84,25 @@ type PauseStatus struct {
 	Since    uint64
 }
 
+type RegistrationState uint8
+
+const (
+	RegistrationStateNone      RegistrationState = 0
+	RegistrationStatePending   RegistrationState = 1
+	RegistrationStateApproved  RegistrationState = 2
+	RegistrationStateRejected  RegistrationState = 3
+	RegistrationStateWithdrawn RegistrationState = 4
+)
+
+func (s RegistrationState) AllowsRegistration() bool {
+	switch s {
+	case RegistrationStateNone, RegistrationStateRejected, RegistrationStateWithdrawn:
+		return true
+	default:
+		return false
+	}
+}
+
 type Pausable interface {
 	GetAddress() string
 	PausedStatus() (PauseStatus, error)
@@ -94,21 +113,22 @@ type PeginContract interface {
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
 	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
+	HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error)
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
 	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
-	DaoFeePercentage() (uint64, error)
+	Withdraw(amount *entities.Wei) error
 }
 
 type PegoutContract interface {
 	Pausable
 	GetAddress() string
 	HashPegoutQuote(pegoutQuote quote.PegoutQuote) (string, error)
+	HashPegoutQuoteEIP712(pegoutQuote quote.PegoutQuote) ([32]byte, error)
 	RefundUserPegOut(quoteHash string) (string, error)
 	IsPegOutQuoteCompleted(quoteHash string) (bool, error)
 	GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error)
 	RefundPegout(txConfig TransactionConfig, params RefundPegoutParams) (TransactionReceipt, error)
 	ValidatePegout(quoteHash string, btcTx []byte) error
-	DaoFeePercentage() (uint64, error)
 }
 
 type DiscoveryContract interface {
@@ -120,6 +140,8 @@ type DiscoveryContract interface {
 	GetProviders() ([]liquidity_provider.RegisteredLiquidityProvider, error)
 	GetProvider(address string) (liquidity_provider.RegisteredLiquidityProvider, error)
 	IsOperational(providerType liquidity_provider.ProviderType, address string) (bool, error)
+	GetRegistrationState(address string) (RegistrationState, error)
+	WatchRegistrationApproval(ctx context.Context, address string) (RegistrationState, error)
 }
 
 type CollateralManagementContract interface {

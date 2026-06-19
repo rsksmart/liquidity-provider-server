@@ -14,13 +14,11 @@ func TestToRecommendedOperationDTO(t *testing.T) {
 		RecommendedQuoteValue: entities.NewWei(1),
 		EstimatedCallFee:      entities.NewWei(2),
 		EstimatedGasFee:       entities.NewWei(3),
-		EstimatedProductFee:   entities.NewWei(4),
 	}
 	dto := pkg.ToRecommendedOperationDTO(domain)
 	assert.Equal(t, pkg.RecommendedOperationDTO{
 		RecommendedQuoteValue: big.NewInt(1),
 		EstimatedCallFee:      big.NewInt(2),
 		EstimatedGasFee:       big.NewInt(3),
-		EstimatedProductFee:   big.NewInt(4),
 	}, dto)
 }

@@ -170,7 +170,6 @@ func (s *PegInSuite) executeGetQuote() {
 		"lpCallTime",
 		"agreementTimestamp",
 		"lbcAddr",
-		"productFeeAmount",
 	}
 
 	var rawResponse []map[string]any
@@ -217,7 +216,6 @@ func (s *PegInSuite) sendBtcTransaction() {
 		s.QuoteResponse.Quote.Value,
 		s.QuoteResponse.Quote.GasFee,
 		s.QuoteResponse.Quote.CallFee,
-		s.QuoteResponse.Quote.ProductFeeAmount,
 	)
 	rbtcAmount, _ := entities.NewBigWei(total).ToRbtc().Float64()
 	btcAmount, err := btcutil.NewAmount(rbtcAmount)
@@ -257,7 +255,6 @@ func (s *PegInSuite) verifyRegisterPegin() {
 		s.QuoteResponse.Quote.Value,
 		s.QuoteResponse.Quote.GasFee,
 		s.QuoteResponse.Quote.CallFee,
-		s.QuoteResponse.Quote.ProductFeeAmount,
 	)
 	var bigIntSats big.Int
 	entities.NewBigWei(total).ToSatoshi().Int(&bigIntSats)

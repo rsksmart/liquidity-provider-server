@@ -87,6 +87,24 @@ func TestNewAddTrustedAccountHandler(t *testing.T) {
 		signer.AssertExpectations(t)
 		hashMock.AssertExpectations(t)
 	})
+	t.Run("should return 400 on invalid trusted account address", func(t *testing.T) {
+		request := createValidAddRequest()
+		recorder := httptest.NewRecorder()
+		repo := &mocks.TrustedAccountRepositoryMock{}
+		signer := &mocks.TransactionSignerMock{}
+		hashMock := &mocks.HashMock{}
+		hashMock.On("Hash", mock.Anything).Return([]byte{1, 2, 3, 4})
+		signer.On("SignBytes", mock.Anything).Return([]byte{4, 3, 2, 1}, nil)
+		repo.On("AddTrustedAccount", mock.Anything, mock.Anything).Return(lp.InvalidTrustedAccountAddressError)
+		useCase := lpuc.NewAddTrustedAccountUseCase(repo, signer, hashMock.Hash)
+		handler := http.HandlerFunc(handlers.NewAddTrustedAccountHandler(useCase))
+		handler.ServeHTTP(recorder, request)
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assertInvalidTrustedAccountAddressResponse(t, recorder)
+		repo.AssertExpectations(t)
+		signer.AssertExpectations(t)
+		hashMock.AssertExpectations(t)
+	})
 	t.Run("should return 500 on unexpected error", func(t *testing.T) {
 		request := createValidAddRequest()
 		recorder := httptest.NewRecorder()
@@ -564,6 +582,16 @@ func createAddressValidationHandler(expectError bool) (http.HandlerFunc, *mocks.
 	return handler, repo, signer, hashMock
 }
 
+func assertInvalidTrustedAccountAddressResponse(t *testing.T, recorder *httptest.ResponseRecorder) {
+	t.Helper()
+	var errorResponse rest.ErrorResponse
+	err := json.Unmarshal(recorder.Body.Bytes(), &errorResponse)
+	require.NoError(t, err)
+	assert.Equal(t, lp.InvalidTrustedAccountAddressError.Error(), errorResponse.Message)
+	assert.True(t, errorResponse.Recoverable)
+	assert.NotEmpty(t, errorResponse.Details)
+}
+
 // Helper function to check if there is an error in the response for a specific field
 func ValidateFieldErrorResponse(t *testing.T, body []byte, expectedSubstring string, fieldName string) {
 	var errorResponse rest.ErrorResponse
@@ -574,15 +602,15 @@ func ValidateFieldErrorResponse(t *testing.T, body []byte, expectedSubstring str
 	// Check if the specified field has the expected error
 	fieldError, exists := errorResponse.Details[fieldName]
 	if !exists {
-		require.Fail(t, "Expected field '%s' not found in error details: %+v", fieldName, errorResponse.Details)
+		require.Failf(t, "Expected field '%s' not found in error details: %+v", fieldName, errorResponse.Details)
 	}
 
 	errorStr, ok := fieldError.(string)
 	if !ok {
-		require.Fail(t, "Field '%s' error should be a string, but got: %T", fieldName, fieldError)
+		require.Failf(t, "Field '%s' error should be a string, but got: %T", fieldName, fieldError)
 	}
 
 	if !strings.Contains(errorStr, expectedSubstring) {
-		require.Fail(t, "Expected error containing '%s' in field '%s', but got: %s", expectedSubstring, fieldName, errorStr)
+		require.Failf(t, "Expected error containing '%s' in field '%s', but got: %s", expectedSubstring, fieldName, errorStr)
 	}
 }

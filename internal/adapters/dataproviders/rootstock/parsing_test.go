@@ -8,7 +8,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	geth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -133,155 +135,451 @@ func TestParseReceipt(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
+	t.Run("should not panic and leave To empty for contract-creation tx", func(t *testing.T) {
+		key, err := crypto.GenerateKey()
+		require.NoError(t, err)
+		signer := geth.NewEIP155Signer(big.NewInt(31))
+		creationTx, err := geth.SignNewTx(key, signer, &geth.LegacyTx{
+			Nonce:    1,
+			GasPrice: big.NewInt(0x18dbac0),
+			Gas:      0x2625a0,
+			To:       nil, // contract-creation tx
+			Value:    big.NewInt(0),
+		})
+		require.NoError(t, err)
+
+		receipt, err := rootstock.ParseReceipt(creationTx, rawReceipt)
+		require.NoError(t, err)
+		assert.Empty(t, receipt.To)
+	})
+	t.Run("should use receipt EffectiveGasPrice, not tx gas price", func(t *testing.T) {
+		key, err := crypto.GenerateKey()
+		require.NoError(t, err)
+		signer := geth.NewEIP155Signer(big.NewInt(31))
+		signedTx, err := geth.SignNewTx(key, signer, &geth.LegacyTx{
+			Nonce:    1,
+			GasPrice: big.NewInt(1000), // tx gas price, must be ignored
+			Gas:      0x2625a0,
+			To:       &to,
+			Value:    big.NewInt(0),
+		})
+		require.NoError(t, err)
+		effectiveGasPriceReceipt := *rawReceipt
+		effectiveGasPriceReceipt.EffectiveGasPrice = big.NewInt(2000) // the price actually paid
+
+		receipt, err := rootstock.ParseReceipt(signedTx, &effectiveGasPriceReceipt)
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(2000), receipt.GasPrice)
+	})
 }
 
 // nolint:funlen
-func TestParseDepositEvent(t *testing.T) {
+func TestParseDepositEventByQuoteHash(t *testing.T) {
 	const (
-		txHash      = "0xfba869597b09185666429924ee5adc15289e131171c5018b353343e9783236a9"
-		blockHash   = "0x450a4391a92630c83798f3814e047556b2129479ae95cce773c220884ea5e006"
-		blockNumber = 7709148
-		from        = "0xACa43E826BE4d5CbFf195797968A3fcf20cC7813"
-		to          = "0xAa9caf1e3967600578727f975F283446a3dA6612"
+		txHash         = "0xfba869597b09185666429924ee5adc15289e131171c5018b353343e9783236a9"
+		blockHash      = "0x450a4391a92630c83798f3814e047556b2129479ae95cce773c220884ea5e006"
+		blockNumber    = 7709148
+		from           = "0xACa43E826BE4d5CbFf195797968A3fcf20cC7813"
+		to             = "0xAa9caf1e3967600578727f975F283446a3dA6612"
+		quoteHashA     = "eb8a4598a3cb0b8a697206316216b791e7b16dd5a8496349a6aad6fac8f190e7"
+		quoteHashB     = "ab12ef34cd56789012345678901234567890abcdef1234567890abcdef123456"
+		lbcAddress     = "0xAa9caf1e3967600578727f975F283446a3dA6612"
+		depositTopic   = "0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f"
+		senderTopic    = "0x000000000000000000000000aca43e826be4d5cbff195797968a3fcf20cc7813"
+		timestampTopic = "0x00000000000000000000000000000000000000000000000000000000685c4f0a"
 	)
 	var (
-		amount = entities.NewWei(38805670000000000)
+		amountA = entities.NewWei(38805670000000000)
+		amountB = entities.NewWei(38805670000000001)
 	)
-	t.Run("should parse deposit correctly", func(t *testing.T) {
-		receipt := blockchain.TransactionReceipt{
-			TransactionHash:   txHash,
-			BlockHash:         blockHash,
-			BlockNumber:       blockNumber,
-			From:              from,
-			To:                to,
-			CumulativeGasUsed: big.NewInt(909304),
-			GasUsed:           big.NewInt(410230),
-			Value:             entities.NewWei(38805670000000000),
-			Logs: []blockchain.TransactionLog{
-				{
-					Address: "0xAa9caf1e3967600578727f975F283446a3dA6612",
-					Topics: [][32]byte{
-						utils.To32Bytes(hexutil.MustDecode("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f")),
-						utils.To32Bytes(hexutil.MustDecode("0xeb8a4598a3cb0b8a697206316216b791e7b16dd5a8496349a6aad6fac8f190e7")),
-						utils.To32Bytes(hexutil.MustDecode("0x000000000000000000000000aca43e826be4d5cbff195797968a3fcf20cc7813")),
-						utils.To32Bytes(hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000685c4f0a")),
-					},
-					Data:        hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000089dd8d1f9efc00"),
-					BlockNumber: blockNumber,
-					TxHash:      txHash,
-					TxIndex:     0,
-					BlockHash:   blockHash,
-					Index:       0,
-					Removed:     false,
-				},
-			},
-		}
-		deposit, err := rootstock.ParseDepositEvent(receipt)
+
+	logA := blockchain.TransactionLog{
+		Address: lbcAddress,
+		Topics: [][32]byte{
+			utils.To32Bytes(hexutil.MustDecode(depositTopic)),
+			utils.To32Bytes(hexutil.MustDecode("0x" + quoteHashA)),
+			utils.To32Bytes(hexutil.MustDecode(senderTopic)),
+			utils.To32Bytes(hexutil.MustDecode(timestampTopic)),
+		},
+		Data:        hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000089dd8d1f9efc00"),
+		BlockNumber: blockNumber,
+		TxHash:      txHash,
+		TxIndex:     0,
+		BlockHash:   blockHash,
+		Index:       0,
+		Removed:     false,
+	}
+	logB := blockchain.TransactionLog{
+		Address: lbcAddress,
+		Topics: [][32]byte{
+			utils.To32Bytes(hexutil.MustDecode(depositTopic)),
+			utils.To32Bytes(hexutil.MustDecode("0x" + quoteHashB)),
+			utils.To32Bytes(hexutil.MustDecode(senderTopic)),
+			utils.To32Bytes(hexutil.MustDecode(timestampTopic)),
+		},
+		// amount = 0x0089dd8d1f9efc01 = 38805670000000001
+		Data:        hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000089dd8d1f9efc01"),
+		BlockNumber: blockNumber,
+		TxHash:      txHash,
+		TxIndex:     0,
+		BlockHash:   blockHash,
+		Index:       1,
+		Removed:     false,
+	}
+
+	baseReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   txHash,
+		BlockHash:         blockHash,
+		BlockNumber:       blockNumber,
+		From:              from,
+		To:                to,
+		CumulativeGasUsed: big.NewInt(909304),
+		GasUsed:           big.NewInt(410230),
+		Value:             entities.NewWei(38805670000000000),
+	}
+
+	t.Run("single-event receipt returns matching event", func(t *testing.T) {
+		receipt := baseReceipt
+		receipt.Logs = []blockchain.TransactionLog{logA}
+		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, quoteHashA, lbcAddress)
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.ParsedLog[quote.PegoutDeposit]{
 			Log: quote.PegoutDeposit{
 				TxHash:      txHash,
-				QuoteHash:   "eb8a4598a3cb0b8a697206316216b791e7b16dd5a8496349a6aad6fac8f190e7",
-				Amount:      amount,
+				QuoteHash:   quoteHashA,
+				Amount:      amountA,
 				Timestamp:   time.Unix(1750880010, 0),
 				BlockNumber: blockNumber,
 				From:        from,
 			},
-			RawLog: blockchain.TransactionLog{
-				Address: "0xAa9caf1e3967600578727f975F283446a3dA6612",
-				Topics: [][32]byte{
-					utils.To32Bytes(hexutil.MustDecode("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f")),
-					utils.To32Bytes(hexutil.MustDecode("0xeb8a4598a3cb0b8a697206316216b791e7b16dd5a8496349a6aad6fac8f190e7")),
-					utils.To32Bytes(hexutil.MustDecode("0x000000000000000000000000aca43e826be4d5cbff195797968a3fcf20cc7813")),
-					utils.To32Bytes(hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000685c4f0a")),
-				},
-				Data:        hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000089dd8d1f9efc00"),
-				BlockNumber: blockNumber,
-				TxHash:      txHash,
-				TxIndex:     0,
-				BlockHash:   blockHash,
-				Index:       0,
-				Removed:     false,
-			},
+			RawLog: logA,
 		}, deposit)
 	})
-	t.Run("should return error when log is not present", func(t *testing.T) {
-		receipt := blockchain.TransactionReceipt{
-			TransactionHash:   txHash,
-			BlockHash:         blockHash,
-			BlockNumber:       blockNumber,
-			From:              from,
-			To:                to,
-			CumulativeGasUsed: big.NewInt(909304),
-			GasUsed:           big.NewInt(410230),
-			Value:             entities.NewWei(38805670000000000),
-			Logs:              []blockchain.TransactionLog{},
-		}
-		deposit, err := rootstock.ParseDepositEvent(receipt)
-		require.ErrorContains(t, err, "deposit event not found in receipt logs")
+	t.Run("two-event receipt returns second event when requested", func(t *testing.T) {
+		receipt := baseReceipt
+		receipt.Logs = []blockchain.TransactionLog{logA, logB}
+		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, quoteHashB, lbcAddress)
+		require.NoError(t, err)
+		assert.Equal(t, quoteHashB, deposit.Log.QuoteHash)
+		assert.Equal(t, amountB, deposit.Log.Amount)
+		assert.Equal(t, logB, deposit.RawLog)
+	})
+	t.Run("two-event receipt with unknown hash returns error", func(t *testing.T) {
+		receipt := baseReceipt
+		receipt.Logs = []blockchain.TransactionLog{logA, logB}
+		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, "0000000000000000000000000000000000000000000000000000000000000000", lbcAddress)
+		require.ErrorContains(t, err, "deposit event not found for quote")
 		assert.Empty(t, deposit)
 	})
-	t.Run("should return error on malformed log topics", func(t *testing.T) {
-		receipt := blockchain.TransactionReceipt{
-			TransactionHash:   txHash,
-			BlockHash:         blockHash,
-			BlockNumber:       blockNumber,
-			From:              from,
-			To:                to,
-			CumulativeGasUsed: big.NewInt(909304),
-			GasUsed:           big.NewInt(410230),
-			Value:             entities.NewWei(38805670000000000),
-			Logs: []blockchain.TransactionLog{
-				{
-					Address: "0xAa9caf1e3967600578727f975F283446a3dA6612",
-					Topics: [][32]byte{
-						utils.To32Bytes(hexutil.MustDecode("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f")),
-						utils.To32Bytes(hexutil.MustDecode("0x000000000000000000000000aca43e826be4d5cbff195797968a3fcf20cc7813")),
-					},
-					Data:        hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000089dd8d1f9efc0000000000000000000000000000000000000000000000000000000000685c4f0a"),
-					BlockNumber: blockNumber,
-					TxHash:      txHash,
-					TxIndex:     0,
-					BlockHash:   blockHash,
-					Index:       0,
-					Removed:     false,
-				},
+	t.Run("event from wrong LBC address is skipped even when hash matches", func(t *testing.T) {
+		decoyLog := blockchain.TransactionLog{
+			Address: "0xDeAdBeEf000000000000000000000000DeAdBeEf",
+			Topics: [][32]byte{
+				utils.To32Bytes(hexutil.MustDecode(depositTopic)),
+				utils.To32Bytes(hexutil.MustDecode("0x" + quoteHashA)),
+				utils.To32Bytes(hexutil.MustDecode(senderTopic)),
+				utils.To32Bytes(hexutil.MustDecode(timestampTopic)),
 			},
+			Data:        hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000089dd8d1f9efc00"),
+			BlockNumber: blockNumber,
+			TxHash:      txHash,
 		}
-		deposit, err := rootstock.ParseDepositEvent(receipt)
-		require.ErrorContains(t, err, "invalid number of topics for PegOutDeposit event")
+		receipt := baseReceipt
+		// decoy comes first - same hash, wrong address; real LBC log second
+		receipt.Logs = []blockchain.TransactionLog{decoyLog, logA}
+		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, quoteHashA, lbcAddress)
+		require.NoError(t, err)
+		assert.Equal(t, quoteHashA, deposit.Log.QuoteHash)
+		assert.Equal(t, logA, deposit.RawLog)
+	})
+	t.Run("unrelated logs with zero topics do not panic and correct event is found", func(t *testing.T) {
+		zeroTopicLog := blockchain.TransactionLog{
+			Address:     lbcAddress,
+			Topics:      [][32]byte{},
+			Data:        []byte{0x01, 0x02},
+			BlockNumber: blockNumber,
+			TxHash:      txHash,
+		}
+		receipt := baseReceipt
+		receipt.Logs = []blockchain.TransactionLog{zeroTopicLog, logA}
+		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, quoteHashA, lbcAddress)
+		require.NoError(t, err)
+		assert.Equal(t, quoteHashA, deposit.Log.QuoteHash)
+	})
+	t.Run("malformed log with wrong topic count before real event is skipped", func(t *testing.T) {
+		malformedLog := blockchain.TransactionLog{
+			Address: lbcAddress,
+			Topics: [][32]byte{
+				utils.To32Bytes(hexutil.MustDecode(depositTopic)),
+				utils.To32Bytes(hexutil.MustDecode("0x" + quoteHashA)),
+			},
+			Data:        hexutil.MustDecode("0x0000000000000000000000000000000000000000000000000089dd8d1f9efc00"),
+			BlockNumber: blockNumber,
+			TxHash:      txHash,
+		}
+		receipt := baseReceipt
+		receipt.Logs = []blockchain.TransactionLog{malformedLog, logA}
+		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, quoteHashA, lbcAddress)
+		require.NoError(t, err)
+		assert.Equal(t, quoteHashA, deposit.Log.QuoteHash)
+	})
+	t.Run("empty logs return error", func(t *testing.T) {
+		receipt := baseReceipt
+		receipt.Logs = []blockchain.TransactionLog{}
+		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, quoteHashA, lbcAddress)
+		require.ErrorContains(t, err, "deposit event not found for quote")
 		assert.Empty(t, deposit)
 	})
-	t.Run("should return error on malformed log data", func(t *testing.T) {
-		receipt := blockchain.TransactionReceipt{
-			TransactionHash:   txHash,
-			BlockHash:         blockHash,
-			BlockNumber:       blockNumber,
-			From:              from,
-			To:                to,
-			CumulativeGasUsed: big.NewInt(909304),
-			GasUsed:           big.NewInt(410230),
-			Value:             entities.NewWei(38805670000000000),
-			Logs: []blockchain.TransactionLog{
-				{
-					Address: "0xAa9caf1e3967600578727f975F283446a3dA6612",
-					Topics: [][32]byte{
-						utils.To32Bytes(hexutil.MustDecode("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f")),
-						utils.To32Bytes(hexutil.MustDecode("0xeb8a4598a3cb0b8a697206316216b791e7b16dd5a8496349a6aad6fac8f190e7")),
-						utils.To32Bytes(hexutil.MustDecode("0x000000000000000000000000aca43e826be4d5cbff195797968a3fcf20cc7813")),
-					},
-					Data:        hexutil.MustDecode("0x000000000000000000000000000000000000000000000000000089dd8d1f9efc"),
-					BlockNumber: blockNumber,
-					TxHash:      txHash,
-					TxIndex:     0,
-					BlockHash:   blockHash,
-					Index:       0,
-					Removed:     false,
-				},
+	t.Run("empty log data returns error", func(t *testing.T) {
+		emptyDataLog := blockchain.TransactionLog{
+			Address: lbcAddress,
+			Topics: [][32]byte{
+				utils.To32Bytes(hexutil.MustDecode(depositTopic)),
+				utils.To32Bytes(hexutil.MustDecode("0x" + quoteHashA)),
+				utils.To32Bytes(hexutil.MustDecode(senderTopic)),
+				utils.To32Bytes(hexutil.MustDecode(timestampTopic)),
 			},
+			Data:        []byte{},
+			BlockNumber: blockNumber,
+			TxHash:      txHash,
 		}
-		deposit, err := rootstock.ParseDepositEvent(receipt)
+		receipt := baseReceipt
+		receipt.Logs = []blockchain.TransactionLog{emptyDataLog}
+		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, quoteHashA, lbcAddress)
 		require.Error(t, err)
 		assert.Empty(t, deposit)
+	})
+}
+
+func encodeInt256TwosComplement(n *big.Int) []byte {
+	mod := new(big.Int).Lsh(big.NewInt(1), 256)
+	twos := new(big.Int).Mod(n, mod)
+	buf := make([]byte, 32)
+	twos.FillBytes(buf)
+	return buf
+}
+
+func buildReleaseRejectedData(reason *big.Int) []byte {
+	data := make([]byte, 0, 64)
+	data = append(data, make([]byte, 32)...)
+	data = append(data, encodeInt256TwosComplement(reason)...)
+	return data
+}
+
+// nolint:funlen
+func TestParseReleaseRejection(t *testing.T) {
+	const bridgeAddress = "0x0000000000000000000000000000000001000006"
+	bridgeAbi, err := bindings.IBridgeMetaData.GetAbi()
+	require.NoError(t, err)
+	topic := [32]byte(bridgeAbi.Events["release_request_rejected"].ID)
+
+	t.Run("no logs returns (false, empty reason)", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{Logs: nil}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.False(t, rejected)
+		assert.Empty(t, reason)
+	})
+
+	t.Run("only unrelated topics returns (false, empty reason)", func(t *testing.T) {
+		otherTopic := crypto.Keccak256Hash([]byte("other_event(uint256)"))
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{[32]byte(otherTopic)},
+					Data:    buildReleaseRejectedData(big.NewInt(0)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.False(t, rejected)
+		assert.Empty(t, reason)
+	})
+
+	t.Run("matching topic but wrong address returns (false, empty reason)", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: "0xDeAdBeEf000000000000000000000000DeAdBeEf",
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(-3)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.False(t, rejected)
+		assert.Empty(t, reason)
+	})
+
+	t.Run("negative reason code maps to unknown reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(-3)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonUnknown, reason)
+	})
+
+	t.Run("known reason code maps to low_amount reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(1)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonLowAmount, reason)
+	})
+
+	t.Run("reason code 2 maps to caller_contract reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(2)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonCallerContract, reason)
+	})
+
+	t.Run("reason code 3 maps to fee_above_value reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(3)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonFeeAboveValue, reason)
+	})
+
+	t.Run("unknown reason code maps to unknown reason", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(7)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonUnknown, reason)
+	})
+
+	t.Run("reason code outside int64 range maps to unknown reason", func(t *testing.T) {
+		// 2^100 exceeds math.MaxInt64; *big.Int.Int64() would silently truncate, so the guard must catch it.
+		oversizedReason := new(big.Int).Lsh(big.NewInt(1), 100)
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(oversizedReason),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonUnknown, reason)
+	})
+
+	t.Run("address match is case-insensitive and 0x-agnostic", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: "0xDeAdBeEf000000000000000000000000DeAdBeEf",
+					Topics:  [][32]byte{topic},
+					Data:    buildReleaseRejectedData(big.NewInt(7)),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, "deadbeef000000000000000000000000deadbeef")
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonUnknown, reason)
+	})
+
+	t.Run("malformed data returns an error", func(t *testing.T) {
+		receipt := blockchain.TransactionReceipt{
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics:  [][32]byte{topic},
+					Data:    make([]byte, 32),
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.Error(t, err)
+		assert.False(t, rejected)
+		assert.Empty(t, reason)
+	})
+
+	// Real testnet rejection: rootstock-testnet tx
+	// 0x4d9ee3b5c976097e074bf8f5ce9385ce475e1c7800e05a0468fc6b5e45a79f35
+	// — EOA sent 0.001 tRBTC to the Bridge precompile and the Bridge emitted
+	// release_request_rejected(sender=0x62db…d5b0, amount=100000 sat, reason=1/LOW_AMOUNT).
+	t.Run("real testnet receipt decodes to low_amount", func(t *testing.T) {
+		const (
+			txHash      = "0x4d9ee3b5c976097e074bf8f5ce9385ce475e1c7800e05a0468fc6b5e45a79f35"
+			blockHash   = "0x3432e6917b072ce4f2bcc419faf673ec24f383ae07e0e49e1ad387bf21da883f"
+			blockNumber = 0x209080
+			senderTopic = "0x00000000000000000000000062db6c4b118d7259c23692b162829e6bd5e4d5b0"
+			rejectData  = "0x00000000000000000000000000000000000000000000000000000000000186a0" +
+				"0000000000000000000000000000000000000000000000000000000000000001"
+		)
+		receipt := blockchain.TransactionReceipt{
+			TransactionHash: txHash,
+			BlockHash:       blockHash,
+			BlockNumber:     blockNumber,
+			Logs: []blockchain.TransactionLog{
+				{
+					Address: bridgeAddress,
+					Topics: [][32]byte{
+						topic,
+						utils.To32Bytes(hexutil.MustDecode(senderTopic)),
+					},
+					Data:        hexutil.MustDecode(rejectData),
+					BlockNumber: blockNumber,
+					TxHash:      txHash,
+					TxIndex:     0,
+					BlockHash:   blockHash,
+					Index:       0,
+				},
+			},
+		}
+		rejected, reason, err := rootstock.ParseReleaseRejection(receipt, bridgeAddress)
+		require.NoError(t, err)
+		assert.True(t, rejected)
+		assert.Equal(t, blockchain.RejectedPegoutReasonLowAmount, reason)
 	})
 }
