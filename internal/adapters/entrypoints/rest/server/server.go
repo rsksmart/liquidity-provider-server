@@ -3,13 +3,11 @@ package server
 import (
 	"context"
 	"errors"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/middlewares"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,7 +18,7 @@ import (
 type Server struct {
 	http            http.Server
 	logLevel        log.Level
-	router          *mux.Router
+	mux             *http.ServeMux
 	doneChannel     chan os.Signal
 	env             environment.Environment
 	useCaseRegistry registry.UseCaseRegistry
@@ -39,19 +37,15 @@ func NewServer(
 		env:             env,
 		doneChannel:     done,
 		logLevel:        logLevel,
-		router:          mux.NewRouter(),
+		mux:             http.NewServeMux(),
 		useCaseRegistry: useCaseRegistry,
 		timeouts:        timeouts,
 	}, done
 }
 
 func (s *Server) start() error {
-	routes.ConfigureRoutes(s.router, s.env, s.useCaseRegistry, routes.NewEndpointFactory())
-	w := log.StandardLogger().WriterLevel(s.logLevel)
-	h := handlers.LoggingHandler(w, s.router)
-	defer func(w *io.PipeWriter) {
-		_ = w.Close()
-	}(w)
+	routes.ConfigureRoutes(s.mux, s.env, s.useCaseRegistry, routes.NewEndpointFactory())
+	h := middlewares.NewAccessLogMiddleware(log.StandardLogger(), s.logLevel)(s.mux)
 	s.http = http.Server{
 		Addr:              ":" + strconv.FormatUint(uint64(s.env.Port), 10),
 		Handler:           h,

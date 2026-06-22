@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/middlewares"
@@ -39,35 +38,37 @@ func (f *endpointFactoryImpl) GetPrivate(env environment.Environment, useCaseReg
 	return GetManagementEndpoints(env, useCaseRegistry, store)
 }
 
-func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
-	router.Use(middlewares.NewCorsMiddleware(env.AllowedOrigins))
+func ConfigureRoutes(mux *http.ServeMux, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
+	corsMiddleware := middlewares.NewCorsMiddleware(env.AllowedOrigins)
 
 	store, err := cookies.GetSessionCookieStore(env.Management)
 	if err != nil {
 		log.Fatal("Error registering routes: ", err)
 	}
 
-	registerPublicRoutes(router, env, endpointFactory.GetPublic(useCaseRegistry))
+	registerPublicRoutes(mux, corsMiddleware, env, endpointFactory.GetPublic(useCaseRegistry))
 
 	if env.Management.EnableManagementApi {
-		registerManagementRoutes(router, env, store, endpointFactory.GetPrivate(env, useCaseRegistry, store))
+		registerManagementRoutes(mux, corsMiddleware, env, store, endpointFactory.GetPrivate(env, useCaseRegistry, store))
 	}
 
-	router.Methods(http.MethodOptions).HandlerFunc(handlers.NewOptionsHandler())
+	mux.Handle(http.MethodOptions+" /", useMiddlewares(handlers.NewOptionsHandler(), corsMiddleware))
 }
 
-func registerPublicRoutes(router *mux.Router, env environment.Environment, endpoints []PublicEndpoint) {
+func registerPublicRoutes(mux *http.ServeMux, corsMiddleware func(http.Handler) http.Handler, env environment.Environment, endpoints []PublicEndpoint) {
 	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
 	for _, endpoint := range endpoints {
-		handler := endpoint.Handler
+		appliedMiddlewares := make([]func(http.Handler) http.Handler, 0, 2)
 		if endpoint.RequiresCaptcha {
-			handler = useMiddlewares(handler, captchaMiddleware)
+			appliedMiddlewares = append(appliedMiddlewares, captchaMiddleware)
 		}
-		router.Path(endpoint.Path).Methods(endpoint.Method).Handler(handler)
+
+		appliedMiddlewares = append(appliedMiddlewares, corsMiddleware)
+		mux.Handle(endpoint.Method+" "+endpoint.Path, useMiddlewares(endpoint.Handler, appliedMiddlewares...))
 	}
 }
 
-func registerManagementRoutes(router *mux.Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
+func registerManagementRoutes(mux *http.ServeMux, corsMiddleware func(http.Handler) http.Handler, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
 	log.Warn(
 		"Server is running with the management API exposed. This interface " +
 			"includes endpoints that must remain private at all cost. Please shut down " +
@@ -78,11 +79,11 @@ func registerManagementRoutes(router *mux.Router, env environment.Environment, s
 	var handler http.Handler
 	for _, endpoint := range endpoints {
 		if slices.Contains(AllowedPaths[:], endpoint.Path) {
-			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf)
+			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf, corsMiddleware)
 		} else {
-			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf)
+			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf, corsMiddleware)
 		}
-		router.Path(endpoint.Path).Methods(endpoint.Method).Handler(handler)
+		mux.Handle(endpoint.Method+" "+endpoint.Path, handler)
 	}
 }
 
