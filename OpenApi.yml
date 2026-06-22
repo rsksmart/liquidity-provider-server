@@ -66,6 +66,13 @@ components:
           description: New Collateral Balance
           example: "100000000000"
       type: object
+    ApprovalActionResponse:
+      properties:
+        message:
+          type: string
+        success:
+          type: boolean
+      type: object
     AvailableLiquidityDTO:
       properties:
         peginLiquidityAmount:
@@ -275,6 +282,71 @@ components:
       - status
       - services
       type: object
+    HistoryRecord:
+      properties:
+        amount:
+          type: string
+        approvedOrDeniedBy:
+          type: string
+        callFee:
+          type: string
+        date:
+          type: string
+        decision:
+          type: string
+        decisionDate:
+          type: string
+        gasFee:
+          type: string
+        quoteHash:
+          type: string
+        state:
+          type: string
+        txId:
+          type: string
+        type:
+          type: string
+        userAddress:
+          type: string
+      type: object
+    HistoryResponse:
+      properties:
+        history:
+          items:
+            properties:
+              amount:
+                type: string
+              approvedOrDeniedBy:
+                type: string
+              callFee:
+                type: string
+              date:
+                type: string
+              decision:
+                type: string
+              decisionDate:
+                type: string
+              gasFee:
+                type: string
+              quoteHash:
+                type: string
+              state:
+                type: string
+              txId:
+                type: string
+              type:
+                type: string
+              userAddress:
+                type: string
+            type: object
+          type: array
+        page:
+          type: integer
+        perPage:
+          type: integer
+        totalCount:
+          type: integer
+      type: object
     LiquidityProvider:
       properties:
         apiBaseUrl:
@@ -343,6 +415,27 @@ components:
           $ref: '#/components/schemas/'
         rbtcThreshold:
           $ref: '#/components/schemas/'
+      type: object
+    ManualApprovalTransaction:
+      properties:
+        amount:
+          type: string
+        callFee:
+          type: string
+        date:
+          type: string
+        gasFee:
+          type: string
+        quoteHash:
+          type: string
+        state:
+          type: string
+        txId:
+          type: string
+        type:
+          type: string
+        userAddress:
+          type: string
       type: object
     NetworkImpact:
       properties:
@@ -680,10 +773,41 @@ components:
       - status
       - creationData
       type: object
+    PendingTransactionsResponse:
+      properties:
+        page:
+          type: integer
+        perPage:
+          type: integer
+        totalCount:
+          type: integer
+        transactions:
+          items:
+            properties:
+              amount:
+                type: string
+              callFee:
+                type: string
+              date:
+                type: string
+              gasFee:
+                type: string
+              quoteHash:
+                type: string
+              state:
+                type: string
+              txId:
+                type: string
+              type:
+                type: string
+              userAddress:
+                type: string
+            type: object
+          type: array
+      type: object
     ProviderDetail:
       properties:
         fee:
-          deprecated: true
           $ref: '#/components/schemas/'
         feePercentage:
           type: number
@@ -1129,6 +1253,57 @@ paths:
         "204":
           description: ""
       summary: Management Logout
+  /management/manual-approval:
+    get:
+      description: ' Serves the static site for the Management UI'
+      responses:
+        "200":
+          description: ""
+      summary: Management Interface
+  /management/manual-approval/approve:
+    post:
+      description: ' Approves one or more pending transactions'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalActionResponse'
+          description: ""
+      summary: Approve Transactions
+  /management/manual-approval/deny:
+    post:
+      description: ' Denies one or more pending transactions'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalActionResponse'
+          description: ""
+      summary: Deny Transactions
+  /management/manual-approval/history:
+    get:
+      description: ' Returns history of approved and denied transactions'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryResponse'
+          description: ""
+      summary: Get Approval History
+  /management/manual-approval/pending:
+    get:
+      description: ' Returns pending transactions above the approval threshold'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingTransactionsResponse'
+          description: ""
+      summary: Get Pending Transactions
   /management/trusted-accounts:
     delete:
       description: ' Deletes a trusted account'
@@ -1400,9 +1575,7 @@ paths:
   /pegout/configuration:
     post:
       description: ' Set the configuration for the Pegout service. Included in the
-        management API. The configuration is rejected when the estimated confirmation
-        wait (from max RSK and BTC confirmations in general LP configuration) is greater
-        than or equal to expireTime or to the time implied by expireBlocks.'
+        management API.'
       requestBody:
         content:
           application/json:
@@ -1410,8 +1583,6 @@ paths:
               $ref: '#/components/schemas/PegoutConfigurationRequest'
         required: true
       responses:
-        "400":
-          description: Validation error
         "204":
           description: ""
       summary: Set Pegout Config

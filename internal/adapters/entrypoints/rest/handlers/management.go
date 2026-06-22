@@ -31,6 +31,7 @@ type GetManagementUiDataUseCase interface {
 // @Description Serves the static site for the Management UI
 // @Success 200 object
 // @Route /management [get]
+// @Route /management/manual-approval [get]
 func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions.Store, useCase GetManagementUiDataUseCase, templateOverride ...liquidity_provider.ManagementTemplateId) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		const errorGeneratingTemplate = "Error generating template: %v"
