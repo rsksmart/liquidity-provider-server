@@ -198,7 +198,10 @@ func NewGetPendingTransactionsHandler() http.HandlerFunc {
 			searchLower := strings.ToLower(search)
 			for _, tx := range allTransactions {
 				if strings.Contains(strings.ToLower(tx.TxId), searchLower) ||
-					strings.Contains(strings.ToLower(tx.QuoteHash), searchLower) {
+					strings.Contains(strings.ToLower(tx.QuoteHash), searchLower) ||
+					strings.Contains(strings.ToLower(tx.Type), searchLower) ||
+					strings.Contains(strings.ToLower(tx.State), searchLower) ||
+					strings.Contains(strings.ToLower(tx.UserAddress), searchLower) {
 					filteredTransactions = append(filteredTransactions, tx)
 				}
 			}
