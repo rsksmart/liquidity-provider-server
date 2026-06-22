@@ -197,11 +197,7 @@ func NewGetPendingTransactionsHandler() http.HandlerFunc {
 		if search != "" {
 			searchLower := strings.ToLower(search)
 			for _, tx := range allTransactions {
-				if strings.Contains(strings.ToLower(tx.TxId), searchLower) ||
-					strings.Contains(strings.ToLower(tx.QuoteHash), searchLower) ||
-					strings.Contains(strings.ToLower(tx.Type), searchLower) ||
-					strings.Contains(strings.ToLower(tx.State), searchLower) ||
-					strings.Contains(strings.ToLower(tx.UserAddress), searchLower) {
+				if matchesPendingSearchFilter(tx, searchLower) {
 					filteredTransactions = append(filteredTransactions, tx)
 				}
 			}
@@ -370,6 +366,15 @@ func parseIntParam(req *http.Request, param string, defaultValue int) int {
 	}
 
 	return value
+}
+
+// matchesPendingSearchFilter checks if a pending transaction matches the search term
+func matchesPendingSearchFilter(tx ManualApprovalTransaction, searchLower string) bool {
+	return strings.Contains(strings.ToLower(tx.TxId), searchLower) ||
+		strings.Contains(strings.ToLower(tx.QuoteHash), searchLower) ||
+		strings.Contains(strings.ToLower(tx.Type), searchLower) ||
+		strings.Contains(strings.ToLower(tx.State), searchLower) ||
+		strings.Contains(strings.ToLower(tx.UserAddress), searchLower)
 }
 
 // filterHistoryRecords applies search, status, and date filters to history records
