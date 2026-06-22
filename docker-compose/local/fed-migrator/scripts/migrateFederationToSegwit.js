@@ -15,7 +15,7 @@
  *   The private keys are derived as keccak256("auth-a"), keccak256("auth-b"),
  *   keccak256("auth-c").
  *
- * SVP (RSKIP-419) flow (VETIVER / 9.0.2+):
+ * SVP (RSKIP-419) flow (VETIVER / 9.0.3+):
  *   After commitFederation the bridge requires spend-validation before the new federation
  *   activates. The federators must sign + broadcast a fund tx and a spend tx to BTC, both
  *   of which must confirm on-chain. Only then does the bridge accept the proposed federation
