@@ -52,7 +52,7 @@ func buildAccessLogLine(r *http.Request, ts time.Time, status, size int) string 
 	username := "-"
 	if r.URL.User != nil {
 		if name := r.URL.User.Username(); name != "" {
-			username = name
+			username = strconv.Quote(name)
 		}
 	}
 	uri := r.RequestURI

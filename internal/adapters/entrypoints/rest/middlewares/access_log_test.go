@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
 
 type messageOnlyFormatter struct{}
 
@@ -35,14 +34,14 @@ func TestNewAccessLogMiddleware_LogsCommonLogFormat(t *testing.T) {
 	logger, buffer := newCapturingLogger()
 	handler := middlewares.NewAccessLogMiddleware(logger, logrus.InfoLevel)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, err := w.Write([]byte("hello"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/path", nil)
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 
 	line := buffer.String()
-	assert.Regexp(t, regexp.MustCompile(`^192\.0\.2\.1 - - \[.+\] "GET /path HTTP/1\.1" 200 5\n$`), line)
+	assert.Regexp(t, `^192\.0\.2\.1 - - \[.+\] "GET /path HTTP/1\.1" 200 5\n$`, line)
 }
 
 func TestNewAccessLogMiddleware_CapturesStatusAndSize(t *testing.T) {
@@ -50,7 +49,7 @@ func TestNewAccessLogMiddleware_CapturesStatusAndSize(t *testing.T) {
 	handler := middlewares.NewAccessLogMiddleware(logger, logrus.InfoLevel)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte("nope"))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/missing", nil))
@@ -72,6 +71,22 @@ func TestNewAccessLogMiddleware_EscapesInjectedRequestTarget(t *testing.T) {
 	logged := strings.TrimSuffix(line, "\n")
 	assert.NotContains(t, logged, "\n")
 	assert.Contains(t, line, strconv.QuoteToASCII("GET /evil\"\nforged log line HTTP/1.1"))
+}
+
+func TestNewAccessLogMiddleware_EscapesInjectedUsername(t *testing.T) {
+	logger, buffer := newCapturingLogger()
+	handler := middlewares.NewAccessLogMiddleware(logger, logrus.InfoLevel)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/path", nil)
+	req.URL.User = url.User("evil\"\nforged log line")
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	line := buffer.String()
+	logged := strings.TrimSuffix(line, "\n")
+	assert.NotContains(t, logged, "\n")
+	assert.Contains(t, line, strconv.Quote("evil\"\nforged log line"))
 }
 
 func TestNewAccessLogMiddleware_UnwrapExposesUnderlyingCapabilities(t *testing.T) {
