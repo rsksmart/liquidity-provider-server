@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "types": ["vitest/globals", "@testing-library/jest-dom/vitest"],
+    "types": ["vitest/globals", "@testing-library/jest-dom/vitest", "node"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
     "paths": {
       "@/*": ["src/*"],
@@ -19,6 +19,7 @@
     "tests/utils/**/*.ts",
     "tests/utils/**/*.tsx",
     "tests/setup/**/*.ts",
-    "tests/setup/**/*.d.ts"
+    "tests/setup/**/*.d.ts",
+    "test/**/*.ts"
   ]
 }

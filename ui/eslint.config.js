@@ -8,7 +8,7 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
-const toolingFiles = ['vite.config.ts', 'eslint.config.js']
+const toolingFiles = ['vite.config.ts', 'eslint.config.js', 'playwright.config.ts']
 
 const sharedReactRules = {
   ...react.configs.recommended.rules,
@@ -34,7 +34,7 @@ const sharedReactRules = {
 }
 
 export default defineConfig(
-  { ignores: ['dist', 'node_modules', 'coverage'] },
+  { ignores: ['dist', 'node_modules', 'coverage', 'test/.auth', 'playwright-report', 'test-results'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked.map((config) => ({
     ...config,
@@ -81,6 +81,28 @@ export default defineConfig(
       'simple-import-sort': simpleImportSort,
     },
     rules: sharedReactRules,
+  },
+  {
+    files: ['test/**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+      'simple-import-sort': simpleImportSort,
+    },
+    rules: {
+      'simple-import-sort/imports': 'error',
+      'simple-import-sort/exports': 'error',
+      'no-restricted-imports': 'off',
+    },
   },
   {
     ...tseslint.configs.disableTypeChecked,

@@ -14,7 +14,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "react": "19.2.6",
@@ -22,6 +24,7 @@
     "react-router-dom": "7.16.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@eslint/js": "9.39.4",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",

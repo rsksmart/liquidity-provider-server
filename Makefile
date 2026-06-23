@@ -50,6 +50,14 @@ ui-build:
 	mkdir -p managementnextui && \
 	cp -R ui/dist managementnextui/dist
 
+E2E_PASS_FILE ?= docker-compose/local/lps/lps_configuration_data/management_password.txt
+
+ui-e2e:
+	cd ui && \
+	LPS_E2E_USER=admin \
+	LPS_E2E_PASSWORD=$$(tr -d '\n' < ../$(E2E_PASS_FILE)) \
+	pnpm test:e2e
+
 COMMIT_TAG ?= $(shell git describe --exact-match --tags 2>/dev/null)
 COMMIT_HASH ?= $(shell git rev-parse HEAD)
 SOURCE_VERSION := $(COMMIT_HASH)
