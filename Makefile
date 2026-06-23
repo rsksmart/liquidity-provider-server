@@ -1,4 +1,4 @@
-.PHONY: test all clean utils test-integration-db generate-fixtures ensure-gotestsum
+.PHONY: test all clean utils test-integration-db generate-fixtures ensure-gotestsum build-server
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
@@ -57,6 +57,14 @@ SOURCE_TAG := $(COMMIT_TAG)
 
 build: ui-build download
 	mkdir -p build && cd build
+	@echo "Building liquidity-provider-server $(SOURCE_TAG) ($(SOURCE_VERSION))"
+	CGO_ENABLED=0 go build -v -installsuffix 'static' \
+	-ldflags="-s -X 'main.BuildVersion=$(SOURCE_VERSION)' -X 'main.BuildTime=$(shell date)' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildVersion=$(SOURCE_TAG)' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildRevision=$(SOURCE_VERSION)'" \
+	-o ./build/liquidity-provider-server ./cmd/application/main.go
+
+# Docker / CI: compile LPS when managementnextui/dist is already populated (ui stage or host ui-build).
+build-server: download
+	mkdir -p build
 	@echo "Building liquidity-provider-server $(SOURCE_TAG) ($(SOURCE_VERSION))"
 	CGO_ENABLED=0 go build -v -installsuffix 'static' \
 	-ldflags="-s -X 'main.BuildVersion=$(SOURCE_VERSION)' -X 'main.BuildTime=$(shell date)' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildVersion=$(SOURCE_TAG)' -X 'github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider.BuildRevision=$(SOURCE_VERSION)'" \
