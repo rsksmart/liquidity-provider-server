@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
@@ -46,7 +47,7 @@ watcherLoop:
 			ctx, cancel := context.WithTimeout(context.Background(), watcher.timeout)
 			result, err := watcher.transferUseCase.Run(ctx)
 			if err != nil {
-				log.Error("TransferColdWalletWatcher: Error executing transfer to cold wallet: ", err)
+				log.Error(cold_wallet.LogTransferError, err)
 			} else {
 				watcher.logTransferResult(result)
 			}
@@ -62,7 +63,7 @@ watcherLoop:
 func (watcher *TransferColdWalletWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
-	log.Debug("TransferColdWalletWatcher shut down")
+	log.Debug(cold_wallet.LogTransferShutdown)
 }
 
 func (watcher *TransferColdWalletWatcher) logTransferResult(result *liquidity_provider.TransferToColdWalletResult) {
@@ -76,15 +77,14 @@ func (watcher *TransferColdWalletWatcher) logTransferResult(result *liquidity_pr
 func (watcher *TransferColdWalletWatcher) logNetworkTransferResult(network string, result liquidity_provider.NetworkTransferResult) {
 	switch result.Status {
 	case liquidity_provider.TransferStatusSuccess:
-		log.Infof("TransferColdWalletWatcher: %s transfer successful - TxHash: %s, Amount: %s, Fee: %s",
-			network, result.TxHash, result.Amount.String(), result.Fee.String())
+		log.Infof(cold_wallet.LogTransferSuccess, network, result.TxHash, result.Amount.String(), result.Fee.String())
 	case liquidity_provider.TransferStatusSkippedNoExcess:
-		log.Infof("TransferColdWalletWatcher: %s transfer skipped - no excess liquidity", network)
+		log.Infof(cold_wallet.LogTransferSkippedNoExcess, network)
 	case liquidity_provider.TransferStatusSkippedNotEconomical:
-		log.Infof("TransferColdWalletWatcher: %s transfer skipped - not economical: %s", network, result.Message)
+		log.Infof(cold_wallet.LogTransferSkippedNotEcon, network, result.Message)
 	case liquidity_provider.TransferStatusSkippedCooldown:
-		log.Infof("TransferColdWalletWatcher: %s transfer skipped - liquidity target cooldown active", network)
+		log.Infof(cold_wallet.LogTransferSkippedCooldown, network)
 	case liquidity_provider.TransferStatusFailed:
-		log.Errorf("TransferColdWalletWatcher: %s transfer failed - %s: %v", network, result.Message, result.Error)
+		log.Errorf(cold_wallet.LogTransferFailed, network, result.Message, result.Error)
 	}
 }
