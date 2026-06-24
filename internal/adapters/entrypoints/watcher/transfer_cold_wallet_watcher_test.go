@@ -268,6 +268,43 @@ func TestTransferColdWalletWatcher_Start_RskSkippedNotEconomical(t *testing.T) {
 	ticker.AssertExpectations(t)
 }
 
+func TestTransferColdWalletWatcher_Start_BtcSkippedCooldown(t *testing.T) {
+	ticker := &mocks.TickerMock{}
+	tickerChannel := make(chan time.Time)
+	ticker.EXPECT().C().Return(tickerChannel)
+	ticker.EXPECT().Stop()
+
+	result := &lp.TransferToColdWalletResult{
+		BtcResult: lp.NetworkTransferResult{
+			Status: lp.TransferStatusSkippedCooldown,
+		},
+		RskResult: lp.NetworkTransferResult{
+			Status: lp.TransferStatusSkippedNoExcess,
+		},
+	}
+	useCase := &mockTransferUseCase{result: result}
+	w := watcher.NewTransferColdWalletWatcher(useCase, ticker, testTransferTimeout)
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	closeChannel := make(chan bool)
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSkippedCooldown, "BTC"))()
+
+	go func() {
+		defer wg.Done()
+		<-closeChannel
+	}()
+	go func() {
+		defer wg.Done()
+		w.Start()
+	}()
+
+	tickerChannel <- time.Now()
+	w.Shutdown(closeChannel)
+	wg.Wait()
+	ticker.AssertExpectations(t)
+}
+
 func TestTransferColdWalletWatcher_Start_BtcFailed(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	tickerChannel := make(chan time.Time)
