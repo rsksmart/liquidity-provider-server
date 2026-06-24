@@ -1,6 +1,6 @@
-package cold_wallet
+package watcher
 
-// Log message templates for cold-wallet transfer operations.
+// Log message templates for the cold-wallet transfer watcher.
 // Format arguments are filled at the call site with logrus *f variants.
 const (
 	LogTransferError           = "TransferColdWalletWatcher: Error executing transfer to cold wallet: "

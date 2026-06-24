@@ -10,7 +10,6 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	lp "github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -59,7 +58,7 @@ func TestTransferColdWalletWatcher_Start_Error(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, cold_wallet.LogTransferError)()
+	defer test.AssertLogContains(t, watcher.LogTransferError)()
 
 	go func() {
 		defer wg.Done()
@@ -99,7 +98,7 @@ func TestTransferColdWalletWatcher_Start_BtcSuccess(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferSuccess, "BTC", "btc_tx_hash_123", "1000000", "5000"))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSuccess, "BTC", "btc_tx_hash_123", "1000000", "5000"))()
 
 	go func() {
 		defer wg.Done()
@@ -139,7 +138,7 @@ func TestTransferColdWalletWatcher_Start_RskSuccess(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferSuccess, "RSK", "rsk_tx_hash_456", "2000000", "3000"))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSuccess, "RSK", "rsk_tx_hash_456", "2000000", "3000"))()
 
 	go func() {
 		defer wg.Done()
@@ -176,7 +175,7 @@ func TestTransferColdWalletWatcher_Start_BothSkippedNoExcess(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferSkippedNoExcess, "BTC"))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSkippedNoExcess, "BTC"))()
 
 	go func() {
 		defer wg.Done()
@@ -214,7 +213,7 @@ func TestTransferColdWalletWatcher_Start_BtcSkippedNotEconomical(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferSkippedNotEcon, "BTC", "transfer amount too small"))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSkippedNotEcon, "BTC", "transfer amount too small"))()
 
 	go func() {
 		defer wg.Done()
@@ -252,7 +251,7 @@ func TestTransferColdWalletWatcher_Start_RskSkippedNotEconomical(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferSkippedNotEcon, "RSK", "gas cost too high"))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSkippedNotEcon, "RSK", "gas cost too high"))()
 
 	go func() {
 		defer wg.Done()
@@ -292,7 +291,7 @@ func TestTransferColdWalletWatcher_Start_BtcFailed(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferFailed, "BTC", "transfer failed", errors.New("insufficient funds")))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferFailed, "BTC", "transfer failed", errors.New("insufficient funds")))()
 
 	go func() {
 		defer wg.Done()
@@ -332,7 +331,7 @@ func TestTransferColdWalletWatcher_Start_RskFailed(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferFailed, "RSK", "rsk transfer failed", errors.New("gas price too low")))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferFailed, "RSK", "rsk transfer failed", errors.New("gas price too low")))()
 
 	go func() {
 		defer wg.Done()
@@ -375,7 +374,7 @@ func TestTransferColdWalletWatcher_Start_BothTransfersSuccess(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferSuccess, "BTC", "btc_tx_hash_789", "5000000", "10000"))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSuccess, "BTC", "btc_tx_hash_789", "5000000", "10000"))()
 
 	go func() {
 		defer wg.Done()
@@ -416,7 +415,7 @@ func TestTransferColdWalletWatcher_Start_BothFailed(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(cold_wallet.LogTransferFailed, "BTC", "btc error", errors.New("btc wallet unavailable")))()
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferFailed, "BTC", "btc error", errors.New("btc wallet unavailable")))()
 
 	go func() {
 		defer wg.Done()
