@@ -46,7 +46,7 @@ watcherLoop:
 			ctx, cancel := context.WithTimeout(context.Background(), watcher.timeout)
 			result, err := watcher.transferUseCase.Run(ctx)
 			if err != nil {
-				log.Error(LogTransferError, err)
+				log.Errorf(LogTransferError, err)
 			} else {
 				watcher.logTransferResult(result)
 			}
