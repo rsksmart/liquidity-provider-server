@@ -3,6 +3,7 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -91,7 +92,7 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 	go peginWatcher.Start()
 
 	t.Run("handle error importing address", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "error while importing deposit address (any address)")
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcImportAddress, testRetainedQuote.DepositAddress, assert.AnError))
 		btcWallet.On("ImportAddress", mock.Anything).Return(assert.AnError).Once()
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
@@ -132,7 +133,7 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Quote 010203 is already watched")
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcAlreadyWatched, testRetainedQuote.QuoteHash))
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 			Quote:         testPeginQuote,
@@ -141,7 +142,7 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle incorrect event sent to bus", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "trying to parse wrong event")
+		checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcWrongEvent)
 		acceptPeginChannel <- quote.PegoutQuoteCompletedEvent{
 			Event: entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
 		}
@@ -239,7 +240,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	})
 	t.Run("should handle error getting block height", func(t *testing.T) {
 		resetMocks()
-		checkFunction := test.AssertLogContains(t, assert.AnError.Error())
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcChainHeight, assert.AnError))
 		btcRpc.On("GetHeight").Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
@@ -250,7 +251,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		expiredQuote := quote.PeginQuote{Nonce: 6, AgreementTimestamp: 1}
 		t.Run("should handle error when expiring quotes", func(t *testing.T) {
 			resetMocks()
-			checkFunction := test.AssertLogContains(t, "Error updating expired quote (d8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb)")
+			checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcUpdateExpiredError, test.AnyHash, ""))
 			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(assert.AnError).Once()
 			btcRpc.On("GetHeight").Return(big.NewInt(9), nil).Once()
 			btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()

@@ -2,6 +2,7 @@ package watcher_test
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -63,7 +64,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	t.Run("should handle error getting quotes", func(t *testing.T) {
 		tickerChannel, pegoutRepository, _, _ := setup()
 		log.SetLevel(log.DebugLevel)
-		checkFunc := test.AssertLogContains(t, "error getting pegout quotes")
+		checkFunc := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutBridgeGetQuotesError, ""))
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
@@ -76,7 +77,7 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	t.Run("should log error sending tx to the bridge", func(t *testing.T) {
 		tickerChannel, pegoutRepository, providerMock, rskWallet := setup()
 		log.SetLevel(log.DebugLevel)
-		checkFunc := test.AssertLogContains(t, "error sending pegout to bridge")
+		checkFunc := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutBridgeSendError, ""))
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateRefundPegOutSucceeded).Return([]quote.RetainedPegoutQuote{
 			{QuoteHash: quoteHash, State: quote.PegoutStateRefundPegOutSucceeded},
 		}, nil).Once()

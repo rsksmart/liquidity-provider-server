@@ -45,7 +45,7 @@ watcherLoop:
 			err := watcher.peerCheckUseCase.Run(ctx, entities.NodeTypeBitcoin)
 			cancel()
 			if err != nil {
-				log.Error("BitcoinPeerWatcher: error running peer check: ", err)
+				log.Errorf(LogBitcoinPeerError, err)
 			}
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
@@ -58,5 +58,5 @@ watcherLoop:
 func (watcher *BitcoinPeerWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
-	log.Debug("BitcoinPeerWatcher shut down")
+	log.Debug(LogBitcoinPeerShutdown)
 }

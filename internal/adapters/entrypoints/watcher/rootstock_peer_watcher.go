@@ -41,7 +41,7 @@ watcherLoop:
 			err := watcher.peerCheckUseCase.Run(ctx, entities.NodeTypeRootstock)
 			cancel()
 			if err != nil {
-				log.Error("RootstockPeerWatcher: error running peer check: ", err)
+				log.Errorf(LogRootstockPeerError, err)
 			}
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
@@ -54,5 +54,5 @@ watcherLoop:
 func (watcher *RootstockPeerWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
-	log.Debug("RootstockPeerWatcher shut down")
+	log.Debug(LogRootstockPeerShutdown)
 }

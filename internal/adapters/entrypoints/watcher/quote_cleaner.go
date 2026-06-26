@@ -46,16 +46,16 @@ watcherLoop:
 func (watcher *QuoteCleanerWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
-	log.Debug("QuoteCleanerWatcher shut down")
+	log.Debug(LogQuoteCleanerShutdown)
 }
 
 func (watcher *QuoteCleanerWatcher) clean() {
 	txIds, err := watcher.cleanUseCase.Run(context.Background())
 	if err != nil {
-		log.Error("Error cleaning quotes: ", err)
+		log.Errorf(LogQuoteCleanerError, err)
 	}
-	log.Infof("Cleaned %d quotes:\n", len(txIds))
+	log.Infof(LogQuoteCleanerCleaned, len(txIds))
 	for _, id := range txIds {
-		log.Infof("Quote %s cleaned\n", id)
+		log.Infof(LogQuoteCleanerQuote, id)
 	}
 }

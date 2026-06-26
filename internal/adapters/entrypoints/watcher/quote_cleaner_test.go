@@ -2,6 +2,7 @@ package watcher_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
@@ -17,7 +18,7 @@ import (
 
 func TestQuoteCleanerWatcher_Start(t *testing.T) {
 	t.Run("handle use case error", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Error cleaning quotes")
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogQuoteCleanerError, assert.AnError))
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError)
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
@@ -38,7 +39,7 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("clean quotes successfully", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Cleaned 3 quotes")
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogQuoteCleanerCleaned, 3))
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).
 			Return([]quote.RetainedPeginQuote{{QuoteHash: "pegin1"}, {QuoteHash: "pegin2"}}, nil)

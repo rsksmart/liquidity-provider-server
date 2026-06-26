@@ -59,7 +59,7 @@ watcherLoop:
 			watcher.currentBlockMutex.Lock()
 			ctx, cancel := context.WithTimeout(context.Background(), watcher.validationTimeout)
 			if height, err = watcher.rpc.Rsk.GetHeight(ctx); err != nil {
-				log.Error("Error checking penalization events inside watcher: ", err)
+				log.Errorf(LogPenalizationError, err)
 			} else {
 				if err = watcher.penalizationAlertUseCase.Run(ctx, watcher.currentBlock, height); err == nil {
 					watcher.currentBlock = height - 1
@@ -84,5 +84,5 @@ func (watcher *PenalizationAlertWatcher) GetCurrentBlock() uint64 {
 func (watcher *PenalizationAlertWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
-	log.Debug("PenalizationAlertWatcher shut down")
+	log.Debug(LogPenalizationShutdown)
 }

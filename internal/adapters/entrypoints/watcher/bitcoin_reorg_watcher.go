@@ -45,7 +45,7 @@ watcherLoop:
 			err := watcher.reorgCheckUseCase.Run(ctx, entities.NodeTypeBitcoin)
 			cancel()
 			if err != nil {
-				log.Error("BitcoinReorgWatcher: error running reorg check: ", err)
+				log.Errorf(LogBitcoinReorgError, err)
 			}
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
@@ -58,5 +58,5 @@ watcherLoop:
 func (watcher *BitcoinReorgWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
-	log.Debug("BitcoinReorgWatcher shut down")
+	log.Debug(LogBitcoinReorgShutdown)
 }

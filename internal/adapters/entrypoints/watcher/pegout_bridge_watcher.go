@@ -11,8 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const pegoutBridgeWatcherLogPrefix = "PegoutBridgeWatcher:"
-
 // PegoutBridgeWatcher is a watcher that checks the state of the pegout quotes and creates a transaction
 // to send the value of multiple pegout quotes to the bridge to convert the refunded RBTC to BTC when
 // a threshold is reached
@@ -51,19 +49,19 @@ watcherLoop:
 func (watcher *PegoutBridgeWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
-	log.Debug(pegoutBridgeWatcherLogPrefix + " shut down")
+	log.Debug(LogPegoutBridgeShutdown)
 }
 
 func (watcher *PegoutBridgeWatcher) runUseCases() {
 	ctx := context.Background()
 	quotes, err := watcher.getQuotesUseCase.Run(ctx, quote.PegoutStateRefundPegOutSucceeded)
 	if err != nil {
-		log.Errorf("%s error getting pegout quotes: %v", pegoutBridgeWatcherLogPrefix, err)
+		log.Errorf(LogPegoutBridgeGetQuotesError, err)
 		return
 	}
 	err = watcher.bridgePegoutUseCase.Run(ctx, quotes...)
 	if err != nil && !errors.Is(err, usecases.TxBelowMinimumError) {
-		log.Errorf("%s error sending pegout to bridge: %v", pegoutBridgeWatcherLogPrefix, err)
+		log.Errorf(LogPegoutBridgeSendError, err)
 		return
 	}
 }

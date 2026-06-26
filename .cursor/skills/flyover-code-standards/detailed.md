@@ -696,3 +696,126 @@ Scripts that aren't part of the build don't belong in `pkg/`, `cmd/`, or
 - `funlen` may be disabled in tests but `maintidx` should not — split into
   separate test functions.
 - If a linter rule is disabled, it requires explicit justification in the review.
+
+---
+
+## 9. Log Message Centralization
+
+Inline log strings scattered across the codebase cause test drift: the message
+and its test assertion live in two places and silently diverge when one is
+changed. The pattern below was adopted starting from PR #1024 (FLY-2388).
+
+### The rule
+
+> A log message constant always lives in the **same package** that emits it,
+> in a `messages.go` file. Log message constants never go in `entities`.
+
+Log strings are observability details, not domain facts. `entities` is reserved
+for true domain contracts — specifically, alert subjects already live in
+`entities/alerts` because the external alerting system depends on their exact
+text. That exception does not extend to log messages.
+
+### Structure
+
+Each package that emits log messages has a single `messages.go` file. When a
+package has more than one source file that emits logs, use **one `const` block
+per source file**, with a comment naming that file. This keeps the mapping
+predictable as the file grows and removes any "where does this leftover go"
+guesswork — every constant has exactly one obvious home.
+
+```go
+// internal/adapters/entrypoints/watcher/messages.go
+package watcher
+
+// Log message templates for transfer_cold_wallet_watcher.go
+// Format arguments are filled at the call site with logrus *f variants.
+const (
+    LogTransferError           = "TransferColdWalletWatcher: Error executing transfer to cold wallet: %v"
+    LogTransferSuccess         = "TransferColdWalletWatcher: %s transfer successful - TxHash: %s, Amount: %s, Fee: %s"
+    LogTransferSkippedNoExcess = "TransferColdWalletWatcher: %s transfer skipped - no excess liquidity"
+    LogTransferFailed          = "TransferColdWalletWatcher: %s transfer failed - %s: %v"
+)
+
+// Log message templates for bitcoin_peer_watcher.go
+const (
+    LogBitcoinPeerError    = "BitcoinPeerWatcher: error running peer check: %v"
+    LogBitcoinPeerShutdown = "BitcoinPeerWatcher shut down"
+)
+```
+
+Do not group constants by ad-hoc themes (e.g. "all the peer watchers"); those
+groupings break down as soon as a constant fits more than one theme or none.
+One block per source file is the rule.
+
+### Emitter
+
+Always use the `*f` logrus variant when the constant contains format verbs. A
+plain-string constant (no `%` placeholders) may use the non-`f` variant.
+
+```go
+// BAD — plain constant used with log.Error via concatenation
+const LogTransferError = "TransferColdWalletWatcher: Error executing transfer to cold wallet: "
+log.Error(LogTransferError, err) // relies on trailing space; inconsistent with other constants
+```
+
+```go
+// GOOD — format string used with Errorf
+const LogTransferError = "TransferColdWalletWatcher: Error executing transfer to cold wallet: %v"
+log.Errorf(LogTransferError, err)
+```
+
+> "LogTransferError relies on a trailing space and log.Error concatenation.
+> This is brittle and inconsistent with the other constants that use *f methods.
+> Consider making it a real format string and using Errorf." — PR #1024 (Copilot)
+
+### Test assertions
+
+Tests derive the expected string from the **same constant** via `fmt.Sprintf`,
+and reuse any already-declared error variables instead of recreating them inline.
+
+```go
+// BAD — re-types the string; drifts silently if the constant changes
+defer test.AssertLogContains(t, "Error executing transfer to cold wallet")()
+
+// BAD — recreates the error literal inline instead of reusing the declared variable
+defer test.AssertLogContains(t,
+    fmt.Sprintf(watcher.LogTransferFailed, "BTC", "transfer failed", errors.New("insufficient funds")))()
+```
+
+```go
+// GOOD — derived from the constant; impossible to drift
+defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferError, expectedError))()
+
+// GOOD — reuses the variable already used to build the test result
+transferError := errors.New("insufficient funds")
+result.BtcResult.Error = transferError
+defer test.AssertLogContains(t,
+    fmt.Sprintf(watcher.LogTransferFailed, "BTC", "transfer failed", transferError))()
+```
+
+> "This test already stores the expected error in transferError; reusing that
+> value in the Sprintf avoids duplicating the literal." — PR #1024 (Copilot)
+
+### Where log message constants never go
+
+Do not add log message constants to any `entities` package. They always stay in
+the package that emits them:
+
+| Message example | Wrong location | Correct location |
+|---|---|---|
+| `"TransferColdWalletWatcher shut down"` | `entities/cold_wallet` | `adapters/entrypoints/watcher` |
+| `"Server started at localhost:..."` | `entities/...` | `adapters/entrypoints/rest/server` |
+| `"%s interaction with db: %+v"` | `entities/...` | `adapters/dataproviders/database/mongo` |
+| `"Initializing application..."` | `entities/...` | `cmd/application` |
+
+Alert subjects in `entities/alerts` are the single existing exception — they are
+not log messages; they are external contracts consumed by the alerting system.
+
+### Naming convention
+
+Use a `Log` prefix for all log-message constants to distinguish them from alert
+subjects and error templates in the same codebase:
+
+- Log messages → `LogTransferSuccess`, `LogTransferFailed`
+- Alert subjects → `AlertSubjectNodeReorg` (in `entities/alerts`)
+- Error templates → `RskChainHeightErrorTemplate` (in `entities/blockchain`)

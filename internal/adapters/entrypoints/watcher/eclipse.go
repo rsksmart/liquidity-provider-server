@@ -84,12 +84,12 @@ func (watcher *EclipseWatcher) runEclipseCheck() {
 			},
 		)
 	} else if err != nil {
-		log.Error("Error executing eclipse check: ", err)
+		log.Errorf(LogEclipseError, err)
 	}
 }
 
 func (watcher *EclipseWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
-	log.Debug("EclipseWatcher shut down")
+	log.Debug(LogEclipseShutdown)
 }

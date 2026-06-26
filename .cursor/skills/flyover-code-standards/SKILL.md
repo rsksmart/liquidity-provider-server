@@ -25,6 +25,7 @@ Before submitting code, verify:
 - [ ] **Pointers are justified** — prefer values; nil-check every pointer; use zero-value structs over nil
 - [ ] **Tests are complete** — assert error types, all result fields, events; use mockery; expected on left
 - [ ] **Test package uses `_test` suffix** — test files declare `package foo_test`, not `package foo`
+- [ ] **Log messages are constants** — no inline string literals in `log.*` calls; each package has a `messages.go`; tests reference the same constant via `fmt.Sprintf`, never re-type the string
 - [ ] **Security basics** — `textContent` not `innerHTML` in JS; `BigInt` not `Number` for large values in JS; verify config signatures in Go
 
 ## Architecture (Go)
@@ -48,6 +49,7 @@ Before submitting code, verify:
 - Use `time.DateOnly`/`time.RFC3339` constants, never hardcode `"2006-01-02"`.
 - `*big.Int` in DTOs, `*entities.Wei` in domain. Gas used = `big.Int` (not a currency). Gas price = `Wei`.
 - Move strings to constants on the third occurrence.
+- **Log message constants**: every log string is a named constant in a `messages.go` file in the same package that emits it, with one `const` block per source file (comment names the file). Use `%v` format verbs and always pair them with the `*f` logrus variants (`Errorf`, `Infof`, etc.). Never move log message constants to `entities` — only alert subjects belong there. See [detailed.md](detailed.md) §9.
 
 ## Detailed Reference
 

@@ -3,6 +3,7 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -262,7 +263,7 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Quote 010203 is already watched")
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutRskAlreadyWatched, testRetainedQuote.QuoteHash))
 		acceptPegoutChannel <- quote.AcceptedPegoutQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 			Quote:         testPegoutQuote,
@@ -271,7 +272,7 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle incorrect event sent to bus", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Trying to parse wrong event in Pegout Rsk deposit watcher")
+		checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskWrongEvent)
 		acceptPegoutChannel <- quote.AcceptedPeginQuoteEvent{Event: entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId)}
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})

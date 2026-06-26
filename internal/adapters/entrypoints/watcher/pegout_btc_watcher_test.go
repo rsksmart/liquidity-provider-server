@@ -3,6 +3,7 @@ package watcher_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -37,7 +38,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 
 	go pegoutWatcher.Start()
 	t.Run("handle quote without tx hash", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Quote 010203 doesn't have btc tx hash to watch")
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutBtcNoTxHash, testRetainedQuote.QuoteHash))
 		incomplete := testRetainedQuote
 		incomplete.LpBtcTxHash = ""
 		pegoutSentChannel <- quote.PegoutBtcSentToUserEvent{
@@ -67,7 +68,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Quote 010203 is already watched")
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutBtcAlreadyWatched, testRetainedQuote.QuoteHash))
 		pegoutSentChannel <- quote.PegoutBtcSentToUserEvent{
 			Event:       entities.NewBaseEvent(quote.PegoutBtcSentEventId),
 			PegoutQuote: testPegoutQuote, RetainedQuote: testRetainedQuote,
@@ -75,7 +76,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle incorrect event sent to bus", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Trying to parse wrong event in Pegout Bridge watcher")
+		checkFunction := test.AssertLogContains(t, watcher.LogPegoutBtcWrongEvent)
 		pegoutSentChannel <- quote.CallForUserCompletedEvent{Event: entities.NewBaseEvent(quote.CallForUserCompletedEventId)}
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})

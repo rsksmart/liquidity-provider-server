@@ -44,11 +44,6 @@ var (
 )
 
 const (
-	BtcChainHeightErrorTemplate = "error getting Bitcoin chain height: %v"
-	BtcTxInfoErrorTemplate      = "error getting Bitcoin transaction information (%s): %v"
-)
-
-const (
 	BitcoinMainnetP2PKHZeroAddress  = "1111111111111111111114oLvT2"
 	BitcoinTestnetP2PKHZeroAddress  = "mfWxJ45yp2SFn7UciZyNpvDKrzbhyfKrY8"
 	BitcoinMainnetP2SHZeroAddress   = "31h1vYVSYuKP6AhS86fbRdMw9XHieotbST"
