@@ -1,6 +1,6 @@
 import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
 import { apiFetch } from '@api/management/utils/api-fetch'
-import { resetInitialDataCacheForTests } from '@shared/utils/initial-data'
+import { resetInitialDataCache } from '@shared/utils/initial-data'
 import { loggedOutFixture } from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,7 +9,7 @@ describe('apiFetch', () => {
   beforeEach(() => {
     document.head.innerHTML = ''
     document.body.innerHTML = ''
-    resetInitialDataCacheForTests()
+    resetInitialDataCache()
     vi.stubGlobal('fetch', vi.fn())
   })
 

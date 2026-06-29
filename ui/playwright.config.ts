@@ -15,6 +15,9 @@ export default defineConfig({
   use: {
     baseURL: getShellUrl(),
     trace: 'on-first-retry',
+    launchOptions: {
+      slowMo: Number(process.env.PLAYWRIGHT_SLOW_MO ?? 0),
+    },
   },
   projects: [
     { name: 'setup', testMatch: /session\.setup\.ts/ },

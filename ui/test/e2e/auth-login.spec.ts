@@ -129,9 +129,10 @@ test.describe('auth login flows', () => {
       await expect(page.getByRole('heading', { level: 1, name: 'Management' })).toBeVisible()
 
       await clearSessionCookie(context)
-      await page.getByRole('button', { name: 'Logout' }).click()
-
-      await expect(page.getByText('Your session has expired. Please log in again.')).toBeVisible()
+      await Promise.all([
+        expect(page.getByText('Your session has expired. Please log in again.')).toBeVisible(),
+        page.getByRole('button', { name: 'Logout' }).click(),
+      ])
       await expect(page).toHaveURL(/\/management\/next\/login$/)
     })
 

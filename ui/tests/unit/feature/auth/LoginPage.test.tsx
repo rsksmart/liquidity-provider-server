@@ -1,6 +1,6 @@
 import { apiFetch } from '@api/management/utils/api-fetch'
 import { LoginPage } from '@feature/auth/components/LoginPage'
-import { resetInitialDataCacheForTests } from '@shared/utils/initial-data'
+import { resetInitialDataCache } from '@shared/utils/initial-data'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { loggedOutFixture } from '@tests/fixtures'
@@ -23,7 +23,7 @@ describe('LoginPage', () => {
   beforeEach(() => {
     document.head.innerHTML = ''
     document.body.innerHTML = ''
-    resetInitialDataCacheForTests()
+    resetInitialDataCache()
     vi.mocked(apiFetch).mockReset()
   })
 

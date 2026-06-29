@@ -13,6 +13,8 @@
     }
   },
   "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
     "tests/unit/**/*.ts",
     "tests/unit/**/*.tsx",
     "tests/fixtures/**/*.ts",

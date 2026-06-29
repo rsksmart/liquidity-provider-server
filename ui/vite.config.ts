@@ -4,11 +4,13 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
+import { lpsDevBootstrapPlugin, lpsDevProxyTarget } from './vite.lps-dev-bootstrap.ts'
+
 const devInitialData = {
   loggedIn: false,
   data: {
     CredentialsSet: true,
-    BaseUrl: 'http://localhost:8080',
+    BaseUrl: '',
     BtcAddress: 'tb1qexample',
     RskAddress: '0xabc',
     ProviderData: {
@@ -63,10 +65,20 @@ const devInitialData = {
 
 export default defineConfig({
   base: '/management/next/',
+  server: {
+    proxy: {
+      // API routes only — never proxy the Vite app shell under /management/next/*
+      '^/management/(?!next(?:/|$))': {
+        target: lpsDevProxyTarget,
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
     tsconfigPaths(),
+    lpsDevBootstrapPlugin(),
     {
       name: 'go-template-nonce',
       apply: 'build',
