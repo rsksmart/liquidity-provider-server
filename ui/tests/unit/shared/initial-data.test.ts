@@ -1,5 +1,7 @@
 import {
+  bootstrapDevEnvironment,
   getInitialData,
+  replaceInitialDataPayload,
   resetInitialDataCache,
   useInitialData,
 } from '@shared/utils/initial-data'
@@ -51,5 +53,76 @@ describe('useInitialData', () => {
 
   it('throws when the initial-data script is missing', () => {
     expect(() => getInitialData()).toThrow(/initial-data script element missing or empty/)
+  })
+})
+
+describe('replaceInitialDataPayload', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    resetInitialDataCache()
+  })
+
+  it('throws when the initial-data script element is missing', () => {
+    expect(() => {
+      replaceInitialDataPayload(loggedOutFixture)
+    }).toThrow(/initial-data script element missing/)
+  })
+})
+
+describe('bootstrapDevEnvironment', () => {
+  beforeEach(() => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    resetInitialDataCache()
+    vi.stubGlobal('fetch', vi.fn())
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('loads csrf and initial data from the LPS dev shell', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'old-csrf' })
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json({ csrf: 'new-csrf', initialData: loggedInFixture }),
+    )
+
+    await bootstrapDevEnvironment()
+
+    expect(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')).toBe(
+      'new-csrf',
+    )
+    resetInitialDataCache()
+    expect(getInitialData().loggedIn).toBe(true)
+  })
+
+  it('warns and keeps Vite stubs when the LPS dev shell is unavailable', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ error: 'LPS unavailable' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await bootstrapDevEnvironment()
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('LPS dev bootstrap skipped'),
+      'LPS unavailable',
+    )
+  })
+
+  it('warns when the LPS dev shell request fails', async () => {
+    const networkError = new Error('network')
+    vi.mocked(fetch).mockRejectedValue(networkError)
+
+    await bootstrapDevEnvironment()
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('LPS dev bootstrap skipped'),
+      networkError,
+    )
   })
 })
