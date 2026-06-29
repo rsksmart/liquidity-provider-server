@@ -200,7 +200,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(0), assert.AnError).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		assertErrorLog := test.AssertLogContains(t, "error getting RSK height in BtcReleaseWatcher")
+		assertErrorLog := test.LogContains(t, "error getting RSK height in BtcReleaseWatcher")
 
 		err := watcher.Prepare(context.Background())
 		require.NoError(t, err)
@@ -228,7 +228,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		bridge.On("GetBatchPegOutCreatedEvent", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		assertNoQuotesLog := test.AssertLogContains(t, "error fetching BatchPegOutCreated events in BtcReleaseWatcher")
+		assertNoQuotesLog := test.LogContains(t, "error fetching BatchPegOutCreated events in BtcReleaseWatcher")
 
 		err := watcher.Prepare(context.Background())
 		require.NoError(t, err)
@@ -257,7 +257,7 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(uint(0), assert.AnError).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		assertNoQuotesLog := test.AssertLogContains(t, "error processing BatchPegOut")
+		assertNoQuotesLog := test.LogContains(t, "error processing BatchPegOut")
 
 		err := watcher.Prepare(context.Background())
 		require.NoError(t, err)

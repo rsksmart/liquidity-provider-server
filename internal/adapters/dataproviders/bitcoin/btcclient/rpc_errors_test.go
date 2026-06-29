@@ -12,8 +12,9 @@ import (
 
 func TestAsRPCError(t *testing.T) {
 	rpcErr := btcjson.NewRPCError(btcjson.ErrRPCInvalidParameter, "Invalid parameter, expected unspent output")
-	var extracted *btcjson.RPCError
-	require.ErrorAs(t, rpcErr, &extracted)
+	extracted, ok := btcclient.AsRPCError(rpcErr)
+	require.True(t, ok)
+	require.NotNil(t, extracted)
 	assert.Equal(t, rpcErr, extracted)
 
 	err, ok := btcclient.AsRPCError(errors.New("plain error"))

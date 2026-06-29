@@ -128,13 +128,25 @@ func AssertNoLog(t *testing.T) (assertFunc func()) {
 }
 
 func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
+	return logContains(t, expected, true)
+}
+
+func LogContains(t *testing.T, expected string) (assertFunc func() bool) {
+	return logContains(t, expected, false)
+}
+
+func logContains(t *testing.T, expected string, useAssertion bool) (assertFunc func() bool) {
 	buff := new(ThreadSafeBuffer)
 	log.SetOutput(buff)
 	return func() bool {
 		if buff.Len() == 0 {
 			return false
 		}
-		return assert.Contains(t, buff.String(), expected, "Expected message not found")
+		if useAssertion {
+			return assert.Contains(t, buff.String(), expected, "Expected message not found")
+		} else {
+			return strings.Contains(buff.String(), expected)
+		}
 	}
 }
 
