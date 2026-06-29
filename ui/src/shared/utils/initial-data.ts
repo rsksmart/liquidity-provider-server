@@ -42,15 +42,19 @@ interface LpsDevShellResponse {
   initialData: InitialDataPayload
 }
 
+const LPS_DEV_BOOTSTRAP_SKIPPED_MESSAGE =
+  'LPS dev bootstrap skipped — using Vite stubs. Start LPS on :8080 for login/logout flows.'
+
+function warnDevBootstrapSkipped(reason: unknown): void {
+  console.warn(LPS_DEV_BOOTSTRAP_SKIPPED_MESSAGE, reason)
+}
+
 export async function bootstrapDevEnvironment(): Promise<void> {
   try {
     const res = await fetch('/__dev/lps-shell', { credentials: 'include' })
     if (!res.ok) {
       const body = (await res.json().catch(() => null)) as { error?: string } | null
-      console.warn(
-        'LPS dev bootstrap skipped — using Vite stubs. Start LPS on :8080 for login/logout flows.',
-        body?.error ?? res.status,
-      )
+      warnDevBootstrapSkipped(body?.error ?? res.status)
       return
     }
 
@@ -58,9 +62,6 @@ export async function bootstrapDevEnvironment(): Promise<void> {
     document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', csrf)
     replaceInitialDataPayload(initialData)
   } catch (err) {
-    console.warn(
-      'LPS dev bootstrap skipped — using Vite stubs. Start LPS on :8080 for login/logout flows.',
-      err,
-    )
+    warnDevBootstrapSkipped(err)
   }
 }

@@ -84,6 +84,50 @@ describe('apiFetch', () => {
     } satisfies Partial<ApiFetchError>)
   })
 
+  it('returns an empty body as-is for non-JSON error responses', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    vi.mocked(fetch).mockResolvedValue(
+      new Response('', {
+        status: 500,
+        statusText: 'Internal Server Error',
+      }),
+    )
+
+    await expect(apiFetch('/management/login', { method: 'POST' })).rejects.toMatchObject({
+      body: '',
+    } satisfies Partial<ApiFetchError>)
+  })
+
+  it('does not treat a 403 without a session message as session expiry', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ error: 'forbidden' }), {
+        status: 403,
+        statusText: 'Forbidden',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(apiFetch('/management/status', { method: 'GET' })).rejects.toMatchObject({
+      status: 403,
+    } satisfies Partial<ApiFetchError>)
+  })
+
+  it('treats 403 session validation errors as session expiry', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ message: 'session validation error' }), {
+        status: 403,
+        statusText: 'Forbidden',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(apiFetch('/management/status', { method: 'GET' })).rejects.toBeInstanceOf(
+      ApiFetchError,
+    )
+  })
+
   it('resolves relative URLs against BaseUrl from initial data', async () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
     const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
