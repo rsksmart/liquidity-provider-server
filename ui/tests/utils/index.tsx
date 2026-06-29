@@ -1,5 +1,5 @@
 import type { InitialDataPayload } from '@shared/types/initial-data'
-import { resetInitialDataCacheForTests } from '@shared/utils/initial-data'
+import { replaceInitialDataPayload } from '@shared/utils/initial-data'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -19,8 +19,13 @@ export function seedInitialData(
     )
   }
 
-  document.body.innerHTML = `<script id="initial-data" type="application/json">${JSON.stringify(payload)}</script>`
-  resetInitialDataCacheForTests()
+  if (!document.getElementById('initial-data')) {
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<script id="initial-data" type="application/json"></script>',
+    )
+  }
+  replaceInitialDataPayload(payload)
 }
 
 /**

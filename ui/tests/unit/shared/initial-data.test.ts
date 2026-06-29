@@ -1,6 +1,6 @@
 import {
   getInitialData,
-  resetInitialDataCacheForTests,
+  resetInitialDataCache,
   useInitialData,
 } from '@shared/utils/initial-data'
 import { renderHook } from '@testing-library/react'
@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 describe('useInitialData', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
-    resetInitialDataCacheForTests()
+    resetInitialDataCache()
   })
 
   afterEach(() => {

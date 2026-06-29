@@ -10,9 +10,19 @@ import { toast } from 'sonner'
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const LOGIN_PATH = '/management/login'
 
+function getManagementApiOrigin(): string {
+  // Vite dev: API goes through the local proxy (same origin). Bootstrap loads real LPS BaseUrl.
+  if (import.meta.env.MODE === 'development') return window.location.origin
+  const configured = getInitialData().data.BaseUrl.trim()
+  if (configured === '') return window.location.origin
+  return configured
+}
+
 function resolveRequestUrl(input: string): string {
-  const baseUrl = getInitialData().data.BaseUrl
-  const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+  if (input.startsWith('http://') || input.startsWith('https://')) {
+    return new URL(input).href
+  }
+  const base = getManagementApiOrigin().replace(/\/?$/, '/')
   return new URL(input, base).href
 }
 
@@ -63,7 +73,7 @@ export function isSessionExpiredError(err: unknown): boolean {
   return err instanceof ApiFetchError && isSessionExpiredBody(err.body)
 }
 
-const SESSION_EXPIRED_REDIRECT_DELAY_MS = 250
+const SESSION_EXPIRED_REDIRECT_DELAY_MS = 800
 
 function handleSessionExpired(): void {
   toast.error('Your session has expired. Please log in again.')

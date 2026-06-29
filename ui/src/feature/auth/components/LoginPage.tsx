@@ -92,32 +92,52 @@ export function LoginPage() {
   )
 
   return (
-    <main className="container mx-auto mt-10 max-w-lg px-4">
-      <Card>
-        <CardHeader>
-          <h1 className="text-2xl font-semibold">Login</h1>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" autoComplete="off" onSubmit={onFormSubmit}>
-            <LoginField label="Username" name="username" type="text" testId="login-username-input" />
-            <LoginField label="Password" name="password" type="password" testId="login-password-input" />
-            {!credentialsSet ? (
-              <>
-                <LoginField label="New Username" name="new-username" type="text" />
-                <LoginField label="New Password" name="new-password" type="password" />
-              </>
-            ) : null}
-            {error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
-            <Button type="submit" disabled={submitting} data-testid="login-submit-button">
-              Login
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <main className="container mx-auto mt-5 px-4">
+      <div className="mx-auto w-full md:w-1/2">
+        <Card>
+          <CardHeader>
+            <h1 className="text-2xl font-semibold">Login</h1>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" autoComplete="off" onSubmit={onFormSubmit}>
+              <LoginField
+                label="Username"
+                name="username"
+                type="text"
+                testId="login-username-input"
+                inputClassName="h-10"
+              />
+              <LoginField
+                label="Password"
+                name="password"
+                type="password"
+                testId="login-password-input"
+                inputClassName="h-10"
+              />
+              {!credentialsSet ? (
+                <>
+                  <LoginField label="New Username" name="new-username" type="text" inputClassName="h-10" />
+                  <LoginField label="New Password" name="new-password" type="password" inputClassName="h-10" />
+                </>
+              ) : null}
+              {error ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
+              <Button
+                type="submit"
+                size="lg"
+                className="h-10 px-3"
+                disabled={submitting}
+                data-testid="login-submit-button"
+              >
+                Login
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   )
 }
