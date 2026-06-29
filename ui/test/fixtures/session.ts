@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type { APIRequestContext } from '@playwright/test'
+import type { APIRequestContext, BrowserContext } from '@playwright/test'
 
 const AUTH_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.auth')
 export const MANAGEMENT_STORAGE_STATE_PATH = path.join(AUTH_DIR, 'management.json')
@@ -22,7 +22,7 @@ export function extractCsrfFromResponseHtml(html: string): string {
   if (!match?.[1]?.trim()) {
     throw new Error('csrf-token meta missing or empty')
   }
-  return match[1]
+  return match[1].replaceAll('&#43;', '+')
 }
 
 export async function seedManagementSession(request: APIRequestContext): Promise<void> {
@@ -55,4 +55,25 @@ export async function seedManagementSession(request: APIRequestContext): Promise
 
   fs.mkdirSync(AUTH_DIR, { recursive: true })
   await request.storageState({ path: MANAGEMENT_STORAGE_STATE_PATH })
+}
+
+export async function applyFreshManagementSession(
+  request: APIRequestContext,
+  context: BrowserContext,
+): Promise<void> {
+  await seedManagementSession(request)
+  const state = JSON.parse(fs.readFileSync(MANAGEMENT_STORAGE_STATE_PATH, 'utf8')) as {
+    cookies: Parameters<BrowserContext['addCookies']>[0]
+  }
+  await context.clearCookies()
+  await context.addCookies(state.cookies)
+}
+
+export async function clearSessionCookie(context: BrowserContext): Promise<void> {
+  const cookies = await context.cookies()
+  await context.clearCookies()
+  const withoutSession = cookies.filter((cookie) => cookie.name !== 'lp-session')
+  if (withoutSession.length > 0) {
+    await context.addCookies(withoutSession)
+  }
 }

@@ -20,15 +20,23 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "@tailwindcss/vite": "^4.3.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "react-router-dom": "7.16.0"
+    "react-router-dom": "7.16.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.60.0",
     "@eslint/js": "9.39.4",
+    "@playwright/test": "1.60.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "24.12.4",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
@@ -43,6 +51,7 @@
     "globals": "16.5.0",
     "jsdom": "27.4.0",
     "prettier": "3.8.3",
+    "shadcn": "^4.11.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.4",
     "vite": "7.3.3",

@@ -1,17 +1,26 @@
 import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
 import { getInitialData } from '@shared/utils/initial-data'
+import { toast } from 'sonner'
 
 /**
  * Thin fetch wrapper for management API calls: resolves URLs against server BaseUrl,
  * attaches X-CSRF-Token on mutating methods (gorilla/csrf parity with legacy management.js),
- * and maps non-2xx responses to ApiFetchError.
+ * maps non-2xx responses to ApiFetchError, and redirects on session expiry (401 or 403 session errors).
  */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+const LOGIN_PATH = '/management/login'
 
 function resolveRequestUrl(input: string): string {
   const baseUrl = getInitialData().data.BaseUrl
   const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
   return new URL(input, base).href
+}
+
+function requestPath(input: string): string {
+  if (input.startsWith('http://') || input.startsWith('https://')) {
+    return new URL(input).pathname
+  }
+  return input.split('?')[0] ?? input
 }
 
 function readCsrfToken(): string {
@@ -41,6 +50,28 @@ async function readErrorBody(response: Response): Promise<unknown> {
   }
 }
 
+function isSessionExpiredBody(body: unknown): boolean {
+  if (typeof body !== 'object' || body === null || !('message' in body)) {
+    return false
+  }
+
+  const message = body.message
+  return message === 'session not recognized' || message === 'session validation error'
+}
+
+export function isSessionExpiredError(err: unknown): boolean {
+  return err instanceof ApiFetchError && isSessionExpiredBody(err.body)
+}
+
+const SESSION_EXPIRED_REDIRECT_DELAY_MS = 250
+
+function handleSessionExpired(): void {
+  toast.error('Your session has expired. Please log in again.')
+  window.setTimeout(() => {
+    window.location.assign('/management/next/login')
+  }, SESSION_EXPIRED_REDIRECT_DELAY_MS)
+}
+
 export async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const method = (init.method ?? 'GET').toUpperCase()
   const headers = new Headers(init.headers)
@@ -55,8 +86,18 @@ export async function apiFetch(input: string, init: RequestInit = {}): Promise<R
     headers,
   })
 
+  const body = await readErrorBody(response)
+  const path = requestPath(input)
+  const sessionExpired =
+    !path.includes(LOGIN_PATH) &&
+    (response.status === 401 || (response.status === 403 && isSessionExpiredBody(body)))
+
+  if (sessionExpired) {
+    handleSessionExpired()
+    throw new ApiFetchError(response.status, response.statusText, body)
+  }
+
   if (!response.ok) {
-    const body = await readErrorBody(response)
     throw new ApiFetchError(response.status, response.statusText, body)
   }
 

@@ -79,6 +79,24 @@ Credentials come from `docker-compose/local` test config or CI secrets. **Never*
 - No POST to collateral, configuration, or trusted-accounts APIs.
 - Security assertions use **served HTML** via `request.get()` (not Vite `:5173` dev server).
 
+## shadcn/ui
+
+The next management UI uses [shadcn/ui](https://ui.shadcn.com) (Tailwind v4 + copied components under `src/components/ui/`).
+
+| Component | Use |
+| --------- | --- |
+| `sonner` | Session-expired and logout-failure toasts |
+| `alert` | Inline login error banner |
+| `button`, `input`, `label`, `card` | Login form and logout control |
+
+Add components with the shadcn CLI from `ui/`:
+
+```bash
+pnpm dlx shadcn@latest add <component>
+```
+
+Config: `components.json` (`@/` → `src/`).
+
 ## Not yet covered
 
 Legacy `assets/management.html` areas without Playwright specs in this directory:
