@@ -3,6 +3,7 @@ package environment_test
 import (
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/require"
@@ -198,4 +199,54 @@ func TestEnvironment_String_RedactsThroughDebugLogFormat(t *testing.T) {
 
 	require.NotContains(t, output, "mongo-secret")
 	require.Contains(t, output, expectedSecretMask)
+}
+
+func TestEnvironment_FillWithDefaults(t *testing.T) {
+	t.Run("should default LogFormat to json when empty", func(t *testing.T) {
+		env := &environment.Environment{}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, "json", defaults.LogFormat)
+	})
+	t.Run("should keep custom LogFormat when set", func(t *testing.T) {
+		env := &environment.Environment{LogFormat: "logfmt"}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, "logfmt", defaults.LogFormat)
+	})
+}
+
+func TestEnvironment_LogFormat_Validation(t *testing.T) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	t.Run("defaults to json when unset and passes validation", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("LOG_FORMAT", "")
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		require.Equal(t, "json", env.LogFormat)
+		require.NoError(t, validate.Struct(env))
+	})
+
+	for _, format := range []string{"json", "logfmt"} {
+		t.Run("accepts "+format, func(t *testing.T) {
+			setUpEnv(t)
+			t.Setenv("LOG_FORMAT", format)
+			env := &environment.Environment{}
+			require.NoError(t, environment.Load(env))
+			env.FillWithDefaults()
+			require.Equal(t, format, env.LogFormat)
+			require.NoError(t, validate.Struct(env))
+		})
+	}
+
+	t.Run("rejects invalid value", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("LOG_FORMAT", "text")
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		err := validate.Struct(env)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "LogFormat")
+	})
 }

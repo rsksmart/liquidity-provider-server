@@ -18,6 +18,7 @@ type Environment struct {
 	Port             uint     `env:"SERVER_PORT" validate:"required"`
 	LogLevel         string   `env:"LOG_LEVEL" validate:"required"`
 	LogFile          string   `env:"LOG_FILE"`
+	LogFormat        string   `env:"LOG_FORMAT" validate:"omitempty,oneof=json logfmt"`
 	AwsLocalEndpoint string   `env:"AWS_LOCAL_ENDPOINT"`
 	SecretSource     string   `env:"SECRET_SRC" validate:"required,oneof=aws env"`
 	WalletManagement string   `env:"WALLET" validate:"required,oneof=native fireblocks"`
@@ -75,7 +76,7 @@ func (env *RskEnv) FillWithDefaults() *RskEnv {
 }
 
 type BtcExtraSource struct {
-	Format string `json:"format" validate:"required,oneof=rpc,mempool"`
+	Format string `json:"format" validate:"required,oneof=rpc mempool"`
 	Url    string `json:"url" validate:"required,url"`
 }
 
@@ -259,12 +260,21 @@ func (env *ColdWalletEnv) FillWithDefaults() *ColdWalletEnv {
 	return env
 }
 
+func (env *Environment) FillWithDefaults() *Environment {
+	if env.LogFormat == "" {
+		env.LogFormat = "json"
+	}
+	return env
+}
+
 func LoadEnv() *Environment {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	env := &Environment{}
 	if err := Load(env); err != nil {
 		log.Fatal("Error reading environment: ", err)
-	} else if err = validate.Struct(env); err != nil {
+	}
+	env.FillWithDefaults()
+	if err := validate.Struct(env); err != nil {
 		log.Fatal("Environment incomplete: ", err)
 	}
 

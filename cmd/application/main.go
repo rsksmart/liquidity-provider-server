@@ -6,6 +6,7 @@ import (
 	"github.com/awnumar/memguard"
 	"github.com/rsksmart/liquidity-provider-server/cmd/application/lps"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -18,9 +19,21 @@ import (
 // @Server https://lps.testnet.flyover.rif.technology Testnet
 // @Server https://lps.flyover.rif.technology Mainnet
 
+const logServiceName = "liquidity-provider-server"
+
+type LogConfig struct {
+	Service     string
+	Environment string
+	Version     string
+	Format      string
+	Level       string
+	File        string
+}
+
 var (
 	BuildVersion string
 	BuildTime    string
+	logConfig    LogConfig
 )
 
 func main() {
@@ -28,6 +41,7 @@ func main() {
 	defer memguard.Purge()
 
 	env := environment.LoadEnv()
+	logConfig = buildLogConfig(*env)
 	timeouts, err := environment.TimeoutsFromEnv(env.Timeouts)
 	if err != nil {
 		log.Fatal("Error parsing timeouts: ", err)
@@ -71,6 +85,21 @@ func setUpLogger(env environment.Environment) log.Level {
 		}
 	}
 	return logLevel
+}
+
+func buildLogConfig(env environment.Environment) LogConfig {
+	version := liquidity_provider.BuildVersion
+	if version == "" {
+		version = BuildVersion
+	}
+	return LogConfig{
+		Service:     logServiceName,
+		Environment: env.LpsStage,
+		Version:     version,
+		Format:      env.LogFormat,
+		Level:       env.LogLevel,
+		File:        env.LogFile,
+	}
 }
 
 func logBuildInfo() {
