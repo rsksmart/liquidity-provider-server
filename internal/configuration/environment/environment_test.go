@@ -123,7 +123,7 @@ func TestEclipseEnv_ToConfig(t *testing.T) {
 }
 
 func TestEnvironment_String_RedactsSecrets(t *testing.T) {
-	env := environment.Environment{
+	env := &environment.Environment{
 		LpsStage:         "regtest",
 		Port:             8080,
 		LogLevel:         "debug",
@@ -249,4 +249,37 @@ func TestEnvironment_LogFormat_Validation(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorContains(t, err, "LogFormat")
 	})
+}
+
+func TestBtcExtraSource_FormatValidation(t *testing.T) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	for _, format := range []string{"rpc", "mempool"} {
+		t.Run("accepts "+format, func(t *testing.T) {
+			source := environment.BtcExtraSource{
+				Format: format,
+				Url:    "http://example.com",
+			}
+			require.NoError(t, validate.Struct(source))
+		})
+	}
+
+	t.Run("rejects invalid format", func(t *testing.T) {
+		source := environment.BtcExtraSource{
+			Format: "invalid",
+			Url:    "http://example.com",
+		}
+		err := validate.Struct(source)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "Format")
+	})
+}
+
+func TestLoadEnv(t *testing.T) {
+	setUpEnv(t)
+	t.Setenv("LOG_FORMAT", "")
+
+	env := environment.LoadEnv()
+
+	require.Equal(t, "json", env.LogFormat)
 }
