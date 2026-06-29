@@ -42,6 +42,7 @@ func main() {
 
 	env := environment.LoadEnv()
 	logConfig = buildLogConfig(*env)
+	_ = logConfig
 	timeouts, err := environment.TimeoutsFromEnv(env.Timeouts)
 	if err != nil {
 		log.Fatal("Error parsing timeouts: ", err)

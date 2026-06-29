@@ -283,9 +283,9 @@ func LoadEnv() *Environment {
 
 // String returns a fmt-style representation of the Environment with secret
 // fields masked, so that the value is safe to log.
-func (env Environment) String() string {
+func (env *Environment) String() string {
 	type plain Environment
-	redacted := plain(env)
+	redacted := plain(*env)
 	redacted.Mongo.Password = maskSecret(redacted.Mongo.Password)
 	redacted.Rsk.KeystorePassword = maskSecret(redacted.Rsk.KeystorePassword)
 	redacted.Btc.Password = maskSecret(redacted.Btc.Password)
