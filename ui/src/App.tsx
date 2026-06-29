@@ -1,5 +1,5 @@
 import { AuthGuard } from '@feature/auth/components/AuthGuard'
-import { LoginPlaceholder } from '@feature/auth/components/LoginPlaceholder'
+import { LoginPage } from '@feature/auth/components/LoginPage'
 import { ErrorPlaceholder } from '@feature/error/components/ErrorPlaceholder'
 import { ManagementPlaceholder } from '@feature/management/components/ManagementPlaceholder'
 import { useInitialData } from '@shared/utils/initial-data'
@@ -15,7 +15,7 @@ export function App() {
         path="/login"
         element={
           <AuthGuard requireAuth={false}>
-            <LoginPlaceholder />
+            <LoginPage />
           </AuthGuard>
         }
       />

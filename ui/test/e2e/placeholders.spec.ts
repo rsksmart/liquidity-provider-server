@@ -1,7 +1,5 @@
-import fs from 'node:fs'
-
 import { expect, test } from '../fixtures'
-import { MANAGEMENT_STORAGE_STATE_PATH } from '../fixtures/session'
+import { applyFreshManagementSession } from '../fixtures/session'
 
 test.describe('placeholder pages', () => {
   test('login route shows Login heading when logged out', async ({ page }) => {
@@ -15,15 +13,12 @@ test.describe('placeholder pages', () => {
   })
 
   test.describe('authenticated', () => {
-    test.use({ storageState: MANAGEMENT_STORAGE_STATE_PATH })
-
-    test.beforeEach(() => {
+    test.beforeEach(async ({ request, context }) => {
       test.skip(
-        !process.env.LPS_E2E_USER?.trim() ||
-          !process.env.LPS_E2E_PASSWORD?.trim() ||
-          !fs.existsSync(MANAGEMENT_STORAGE_STATE_PATH),
-        'requires LPS_E2E_USER, LPS_E2E_PASSWORD, and session.setup',
+        !process.env.LPS_E2E_USER?.trim() || !process.env.LPS_E2E_PASSWORD?.trim(),
+        'requires LPS_E2E_USER and LPS_E2E_PASSWORD',
       )
+      await applyFreshManagementSession(request, context)
     })
 
     test('management route shows Management heading when logged in', async ({ page }) => {
