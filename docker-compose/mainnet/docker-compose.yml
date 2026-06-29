@@ -88,6 +88,7 @@ services:
       - SERVER_PORT
       - LOG_LEVEL
       - LOG_FILE
+      - LOG_FORMAT
       - ENABLE_MANAGEMENT_API
       - MONGODB_USER
       - MONGODB_PASSWORD
