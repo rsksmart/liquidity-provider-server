@@ -197,7 +197,7 @@ func (watcher *PegoutRskDepositWatcher) checkDeposits(ctx context.Context, fromB
 
 	deposits, err = watcher.contracts.PegOut.GetDepositEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
-		log.Errorf(LogPegoutRskGetDepositsError, fromBlock, toBlock)
+		log.Errorf(LogPegoutRskGetDepositsError, fromBlock, toBlock, err)
 		return
 	}
 	for _, deposit := range deposits {

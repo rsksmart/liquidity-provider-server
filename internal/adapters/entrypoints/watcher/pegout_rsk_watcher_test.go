@@ -313,7 +313,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 
 	go depositWatcher.Start()
 	t.Run("should handle error getting deposits", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "error executing getting deposits in range [0, 5]")
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutRskGetDepositsError, uint64(0), uint64(5), assert.AnError))
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(5), nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(0), mock.MatchedBy(matchUinPtr(5))).Return(nil, assert.AnError)
 		tickerChannel <- time.Now()

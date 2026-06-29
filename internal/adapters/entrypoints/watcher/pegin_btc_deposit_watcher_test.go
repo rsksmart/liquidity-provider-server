@@ -159,6 +159,60 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 }
 
+func TestPeginDepositAddressWatcher_Start_HandleDepositedQuoteError(t *testing.T) {
+	peginRepository := &mocks.PeginQuoteRepositoryMock{}
+	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()
+	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil).Once()
+	btcWallet := &mocks.BitcoinWalletMock{}
+	btcRpc := &mocks.BtcRpcMock{}
+	rpc := blockchain.Rpc{Btc: btcRpc}
+	eventBus := &mocks.EventBusMock{}
+	acceptPeginChannel := make(chan entities.Event)
+	eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return((<-chan entities.Event)(acceptPeginChannel))
+	ticker := &mocks.TickerMock{}
+	tickerChannel := make(chan time.Time)
+	ticker.EXPECT().C().Return(tickerChannel)
+	ticker.EXPECT().Stop().Return()
+	getUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
+	useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, getUseCase, nil, nil)
+	peginWatcher := watcher.NewPeginDepositAddressWatcher(useCases, btcWallet, rpc, eventBus, ticker)
+
+	require.NoError(t, peginWatcher.Prepare(context.Background()))
+	go peginWatcher.Start()
+
+	testRetainedQuote := quote.RetainedPeginQuote{
+		QuoteHash:      test.AnyHash,
+		DepositAddress: test.AnyAddress,
+		UserBtcTxHash:  test.AnyHash,
+		State:          quote.PeginStateWaitingForDepositConfirmations,
+	}
+	testPeginQuote := quote.PeginQuote{Nonce: 5, Confirmations: 10}
+	btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
+	acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
+		Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
+		Quote:         testPeginQuote,
+		RetainedQuote: testRetainedQuote,
+	}
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		_, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
+		assert.True(collect, ok)
+	}, time.Second, 10*time.Millisecond)
+
+	checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcCallForUserError, testRetainedQuote.QuoteHash, assert.AnError))
+	btcRpc.On("GetHeight").Return(big.NewInt(5), nil).Once()
+	btcRpc.On("GetTransactionInfo", testRetainedQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
+	tickerChannel <- time.Now()
+	assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		mt := newMockCollectT(collect)
+		btcRpc.AssertExpectations(mt)
+	}, time.Second, 10*time.Millisecond)
+
+	closeChannel := make(chan bool)
+	go peginWatcher.Shutdown(closeChannel)
+	<-closeChannel
+}
+
 // nolint:funlen,cyclop,maintidx,gocyclo
 func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	peginRepository := &mocks.PeginQuoteRepositoryMock{}

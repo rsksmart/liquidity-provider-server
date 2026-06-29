@@ -103,7 +103,7 @@ const (
 	LogPegoutRskShutdown           = LogPegoutRskPrefix + "shut down"
 	LogPegoutRskWrongEvent         = LogPegoutRskPrefix + "Trying to parse wrong event in Pegout Rsk deposit watcher"
 	LogPegoutRskAlreadyWatched     = LogPegoutRskPrefix + "Quote %s is already watched"
-	LogPegoutRskGetDepositsError   = LogPegoutRskPrefix + "error executing getting deposits in range [%d, %d]"
+	LogPegoutRskGetDepositsError   = LogPegoutRskPrefix + "error executing getting deposits in range [%d, %d]: %v"
 	LogPegoutRskCheckingDeposit    = LogPegoutRskPrefix + "Checking deposit of tx %s for quote %s"
 	LogPegoutRskUpdateDepositError = LogPegoutRskPrefix + "Error updating pegout deposit quote (%s): %v"
 	LogPegoutRskUpdateExpiredError = LogPegoutRskPrefix + "Error updating expired quote (%s): %v"
