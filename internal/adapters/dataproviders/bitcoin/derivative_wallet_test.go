@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	log "github.com/sirupsen/logrus"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -677,7 +678,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 				require.NoError(t, err)
 
-				defer test.AssertLogContains(t, "error unlocking utxos for transaction")
+				defer test.AssertLogContains(t, "error unlocking utxos for transaction")()
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.NoError(t, err)
 				assert.NotEmpty(t, result.Hash)
@@ -700,12 +701,18 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 				require.NoError(t, err)
 
-				defer test.AssertLogContains(t, "error unlocking utxos for transaction")
+				logBuffer := new(bytes.Buffer)
+				originalLogOutput := log.StandardLogger().Out
+				log.SetOutput(logBuffer)
+				t.Cleanup(func() {
+					log.SetOutput(originalLogOutput)
+				})
 
 				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
 				require.NoError(t, err)
 				assert.NotEmpty(t, result.Hash)
 				assert.NotNil(t, result.Fee)
+				assert.NotContains(t, logBuffer.String(), "error unlocking utxos for transaction")
 
 				client.AssertExpectations(t)
 			},
