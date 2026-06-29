@@ -760,6 +760,43 @@ func TestPegoutRskDepositWatcher_Start_CheckQuote_InsufficientConfirmations(t *t
 	quoteRepository.AssertNotCalled(t, "GetQuote")
 }
 
+// TestPegoutRskDepositWatcher_Start_ChainHeightError covers the else-if branch in the
+// Start loop where GetHeight fails during a tick, exercising LogPegoutRskChainHeight.
+func TestPegoutRskDepositWatcher_Start_ChainHeightError(t *testing.T) {
+	ticker := &mocks.TickerMock{}
+	tickerChannel := make(chan time.Time)
+	ticker.EXPECT().C().Return(tickerChannel)
+	ticker.EXPECT().Stop().Return()
+	pegoutContract := &mocks.PegoutContractMock{}
+	providerMock := &mocks.ProviderMock{}
+	contracts := blockchain.RskContracts{PegOut: pegoutContract}
+	rskRpc := &mocks.RootstockRpcServerMock{}
+	rpc := blockchain.Rpc{Rsk: rskRpc}
+	eventBus := &mocks.EventBusMock{}
+	acceptPegoutChannel := make(chan entities.Event)
+	eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return((<-chan entities.Event)(acceptPegoutChannel))
+
+	useCases := watcher.NewPegoutRskDepositWatcherUseCases(nil, nil, nil, nil, nil)
+	depositWatcher := watcher.NewPegoutRskDepositWatcher(useCases, providerMock, rpc, contracts, eventBus, 0, ticker, time.Duration(1))
+
+	go depositWatcher.Start()
+
+	checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutRskChainHeight, assert.AnError))
+	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(0), assert.AnError).Once()
+	tickerChannel <- time.Now()
+
+	assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		mt := newMockCollectT(collect)
+		rskRpc.AssertExpectations(mt)
+	}, time.Second, 10*time.Millisecond)
+	pegoutContract.AssertNotCalled(t, "GetDepositEvents")
+
+	closeChannel := make(chan bool)
+	go depositWatcher.Shutdown(closeChannel)
+	<-closeChannel
+}
+
 // TestPegoutRskDepositWatcher_Start_CheckDeposit_UpdateError covers the error branch in
 // checkDeposit where updatePegoutDepositUseCase.Run fails (UpdateRetainedQuote errors),
 // exercising LogPegoutRskUpdateDepositError.
