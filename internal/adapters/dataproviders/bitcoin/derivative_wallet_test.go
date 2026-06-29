@@ -613,21 +613,6 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 			},
 		},
 		{
-			description: "error funding raw tx",
-			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
-				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
-				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
-				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
-				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
-				require.NoError(t, err)
-				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
-				require.Error(t, err)
-				assert.Empty(t, result.Hash)
-				assert.Nil(t, result.Fee)
-				client.AssertExpectations(t)
-			},
-		},
-		{
 			description: "error signing tx",
 			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
 				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
@@ -702,6 +687,30 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 			},
 		},
 		{
+			description: "unlocking already unlocked outputs is ignored",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				alreadyUnlockedErr := btcjson.NewRPCError(btcjson.ErrRPCInvalidParameter, "Invalid parameter, expected unspent output")
+				client.EXPECT().CreateRawTransaction(mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
+				client.EXPECT().EstimateSmartFee(mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
+				client.EXPECT().FundRawTransaction(mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: fundedTx, Fee: 50, ChangePosition: 2}, nil).Once()
+				client.EXPECT().LockUnspent(true, mock.Anything).Return(alreadyUnlockedErr).Once()
+				client.EXPECT().SignRawTransactionWithKey(mock.Anything, mock.Anything).Return(fundedTx, true, nil).Once()
+				client.EXPECT().SendRawTransaction(mock.Anything, mock.Anything).Return(chainhash.NewHashFromStr(testnetTestTxHash)).Once()
+
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+
+				defer test.AssertLogContains(t, "error unlocking utxos for transaction")
+
+				result, err := wallet.SendWithOpReturn(testnetAddress, entities.NewWei(1), []byte{0xf1})
+				require.NoError(t, err)
+				assert.NotEmpty(t, result.Hash)
+				assert.NotNil(t, result.Fee)
+
+				client.AssertExpectations(t)
+			},
+		},
+		{
 			description: "fundrawtransaction does not add any input",
 			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
 				client.EXPECT().CreateRawTransaction(mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
@@ -719,7 +728,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 				assert.NotNil(t, result.Fee)
 
 				client.AssertExpectations(t)
-				client.AssertNotCalled(t, "UnlockUnspent")
+				client.AssertNotCalled(t, "LockUnspent")
 			},
 		},
 	}
