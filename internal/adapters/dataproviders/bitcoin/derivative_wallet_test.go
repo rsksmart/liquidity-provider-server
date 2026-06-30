@@ -81,6 +81,7 @@ func TestNewDerivativeWallet(t *testing.T) {
 		}, nil).Once()
 		wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 		require.ErrorContains(t, err, "wallet is still scanning")
+		require.ErrorIs(t, err, bitcoin.ErrWalletScanning)
 		assert.Nil(t, wallet)
 		client.AssertExpectations(t)
 	})
@@ -185,6 +186,7 @@ func testImportPubKeyAndRescan(t *testing.T, rskAccount *account.RskAccount, add
 	client.On("ImportAddressRescan", btcAddress, "", true).Return(nil).Once()
 	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 	require.ErrorContains(t, err, "public key imported, rescan started")
+	require.ErrorIs(t, err, bitcoin.ErrWalletScanning)
 	assert.Nil(t, wallet)
 	client.AssertExpectations(t)
 }

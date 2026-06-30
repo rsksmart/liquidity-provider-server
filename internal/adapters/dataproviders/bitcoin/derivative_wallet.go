@@ -24,6 +24,10 @@ const (
 	DerivativeWalletId         = "rsk-wallet"
 )
 
+var (
+	ErrWalletScanning = errors.New("bitcoin wallet is currently scanning")
+)
+
 type DerivativeWallet struct {
 	conn       *Connection
 	rskAccount *account.RskAccount
@@ -61,7 +65,7 @@ func (wallet *DerivativeWallet) initWallet() error {
 	}
 	_, ok := info.Scanning.Value.(btcjson.ScanProgress)
 	if ok {
-		return errors.New("wallet is still scanning, please wait for the scan to finish before initializing the server again")
+		return fmt.Errorf("wallet is still scanning, please wait for the scan to finish before initializing the server again: %w", ErrWalletScanning)
 	}
 
 	if btcAddress, err = wallet.rskAccount.BtcAddress(); err != nil {
@@ -110,7 +114,7 @@ func (wallet *DerivativeWallet) importPublicKey() error {
 	if err != nil {
 		return fmt.Errorf(errorTemplate, err)
 	}
-	return errors.New("public key imported, rescan started, please wait for the rescan process to finish before initializing the server again")
+	return fmt.Errorf("public key imported, rescan started, please wait for the rescan process to finish before initializing the server again: %w", ErrWalletScanning)
 }
 
 func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities.Wei) (blockchain.BtcFeeEstimation, error) {
