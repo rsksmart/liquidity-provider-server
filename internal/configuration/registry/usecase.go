@@ -27,6 +27,7 @@ type UseCaseRegistry struct {
 	registerProviderUseCase             *liquidity_provider.RegistrationUseCase
 	callForUserUseCase                  *pegin.CallForUserUseCase
 	registerPeginUseCase                *pegin.RegisterPeginUseCase
+	claimPeginUseCase                   *pegin.ClaimPegInUseCase
 	acceptPeginQuoteUseCase             *pegin.AcceptQuoteUseCase
 	getWatchedPeginQuoteUseCase         *watcher.GetWatchedPeginQuoteUseCase
 	expiredPeginQuoteUseCase            *pegin.ExpiredPeginQuoteUseCase
@@ -142,6 +143,14 @@ func NewUseCaseRegistry(
 			databaseRegistry.PeginRepository,
 			messaging.EventBus,
 			messaging.Rpc,
+			mutexes.RskWalletMutex(),
+		),
+		// Commit-first peg-in claim (DoS-removal redesign, EPIC E5).
+		claimPeginUseCase: pegin.NewClaimPegInUseCase(
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			lpRegistry.LiquidityProvider,
+			lpRegistry.LiquidityProvider,
 			mutexes.RskWalletMutex(),
 		),
 		acceptPeginQuoteUseCase: pegin.NewAcceptQuoteUseCase(

@@ -15,12 +15,15 @@ mkdir -p bindings/abi
 docker cp temp_lbc_deployer:/home/node/out bindings/out
 
 CONTRACTS=(
-  "IPegIn                  PeginContract                  pegin"
+  "PegInContract           PeginContract                  pegin"
   "IPegOut                 PegoutContract                 pegout"
   "ICollateralManagement   CollateralManagementContract   collateral_management"
   "IBridge                 RskBridge                      bridge"
   "IFlyoverDiscovery       FlyoverDiscovery               discovery"
   "Flyover                 Flyover                        flyover"
+  # Commit-first peg-in contracts (DoS-removal redesign, EPICs E1/E2/E5).
+  "PegInAddressRegistry    PegInAddressRegistry           registry"
+  "FlyoverConfigurations   FlyoverConfigurations          configurations"
 )
 
 for entry in "${CONTRACTS[@]}"; do

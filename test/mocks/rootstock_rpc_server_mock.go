@@ -6,10 +6,8 @@ import (
 	context "context"
 	big "math/big"
 
-	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-
 	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
-
+	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	mock "github.com/stretchr/testify/mock"
 )
 

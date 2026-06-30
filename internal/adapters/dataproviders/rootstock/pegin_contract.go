@@ -316,6 +316,140 @@ func (peginContract *peginContractImpl) PausedStatus() (blockchain.PauseStatus, 
 	}, nil
 }
 
+// requestPegInGasLimit and resolvePegInGasLimit are fixed gas limits for the commit-first
+// claim path. They are provisional PoC values (see PRD: parameter calibration is later work).
+const (
+	requestPegInGasLimit = 2_500_000
+	resolvePegInGasLimit = 2_500_000
+)
+
+// alreadyProcessedRevert is the contract error raised when a peg-in was already claimed/processed.
+const alreadyProcessedRevert = "PegInAlreadyProcessed"
+const addressNotRegisteredRevert = "AddressNotRegistered"
+const waitingForBridgeRevert = "NotEnoughConfirmations"
+
+// RequestPegIn executes the first-mined-wins commit-first claim. The LP fronts RBTC
+// (params.Value = amount - peg-in fee) as msg.value. A revert because another LP already
+// claimed the same peg-in is mapped to blockchain.AlreadyClaimedError so the caller can treat
+// it as benign (DoS-removal redesign, EPIC E4/E5).
+func (peginContract *peginContractImpl) RequestPegIn(params blockchain.RequestPegInParams) (blockchain.TransactionReceipt, error) {
+	var rskAddr common.Address
+	if err := ParseAddress(&rskAddr, params.RskAddress); err != nil {
+		return blockchain.TransactionReceipt{}, err
+	}
+	callData, dataErr := peginContract.binding.TryPackRequestPegIn(rskAddr, params.Amount.AsBigInt(), params.BtcTxHash, params.OpReturn)
+	if dataErr != nil {
+		return blockchain.TransactionReceipt{}, dataErr
+	}
+
+	// Dry-run first to surface a deterministic revert (e.g. already-claimed) without spending gas.
+	// CallOpts carries no msg.value; the dry-run only detects deterministic reverts (already
+	// claimed, unregistered address), which do not depend on the fronted value.
+	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{From: peginContract.signer.Address()}, callData)
+	if mapped := peginContract.mapClaimRevert("requestPegIn", revert); mapped != nil {
+		return blockchain.TransactionReceipt{}, mapped
+	}
+
+	opts := &bind.TransactOpts{
+		From:     peginContract.signer.Address(),
+		Signer:   peginContract.signer.Sign,
+		GasLimit: requestPegInGasLimit,
+		Value:    params.Value.AsBigInt(),
+	}
+	return peginContract.sendClaimTx("RequestPegIn", opts, callData)
+}
+
+// ResolvePegIn settles a requested peg-in against the Bridge. A NotEnoughConfirmations revert is
+// surfaced as blockchain.WaitingForBridgeError so the watcher retries on the next BTC confirmation.
+func (peginContract *peginContractImpl) ResolvePegIn(params blockchain.ResolvePegInParams) (blockchain.TransactionReceipt, error) {
+	var rskAddr, registrant common.Address
+	if err := ParseAddress(&rskAddr, params.RskAddress); err != nil {
+		return blockchain.TransactionReceipt{}, err
+	}
+	if err := ParseAddress(&registrant, params.Registrant); err != nil {
+		return blockchain.TransactionReceipt{}, err
+	}
+	callData, dataErr := peginContract.binding.TryPackResolvePegIn(rskAddr, params.BtcTxHash, params.BtcRawTransaction, params.PartialMerkleTree, params.Height, registrant)
+	if dataErr != nil {
+		return blockchain.TransactionReceipt{}, dataErr
+	}
+
+	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{}, callData)
+	parsedRevert, err := ParseRevertReason(peginContract.abis.PegIn, revert)
+	if err != nil && parsedRevert == nil {
+		return blockchain.TransactionReceipt{}, fmt.Errorf("error parsing resolvePegIn result: %w", err)
+	} else if parsedRevert != nil && (strings.EqualFold(waitingForBridgeRevert, parsedRevert.Name) || strings.EqualFold("InsufficientConfirmations", parsedRevert.Name)) {
+		return blockchain.TransactionReceipt{}, blockchain.WaitingForBridgeError
+	} else if parsedRevert != nil && strings.EqualFold(alreadyProcessedRevert, parsedRevert.Name) {
+		return blockchain.TransactionReceipt{}, blockchain.AlreadyClaimedError
+	} else if parsedRevert != nil {
+		return blockchain.TransactionReceipt{}, fmt.Errorf("resolvePegIn reverted with: %s", parsedRevert.Name)
+	}
+
+	opts := &bind.TransactOpts{
+		From:     peginContract.signer.Address(),
+		Signer:   peginContract.signer.Sign,
+		GasLimit: resolvePegInGasLimit,
+	}
+	return peginContract.sendClaimTx("ResolvePegIn", opts, callData)
+}
+
+// mapClaimRevert maps a dry-run revert from a claim call to a sentinel error, returning nil
+// when there is no revert (the call may proceed).
+func (peginContract *peginContractImpl) mapClaimRevert(op string, revert error) error {
+	parsedRevert, err := ParseRevertReason(peginContract.abis.PegIn, revert)
+	if err != nil && parsedRevert == nil {
+		return fmt.Errorf("error parsing %s result: %w", op, err)
+	} else if parsedRevert != nil && strings.EqualFold(alreadyProcessedRevert, parsedRevert.Name) {
+		return blockchain.AlreadyClaimedError
+	} else if parsedRevert != nil && strings.EqualFold(addressNotRegisteredRevert, parsedRevert.Name) {
+		return blockchain.AddressNotRegisteredError
+	} else if parsedRevert != nil {
+		return fmt.Errorf("%s reverted with: %s", op, parsedRevert.Name)
+	}
+	return nil
+}
+
+// sendClaimTx submits the packed claim call and builds a TransactionReceipt, returning the
+// receipt even on revert (with an error) so callers can record the tx hash.
+func (peginContract *peginContractImpl) sendClaimTx(name string, opts *bind.TransactOpts, callData []byte) (blockchain.TransactionReceipt, error) {
+	var tx *geth.Transaction
+	receipt, err := awaitTx(peginContract.client, peginContract.miningTimeout, name, func() (*geth.Transaction, error) {
+		var txErr error
+		tx, txErr = bind.Transact(peginContract.contract, opts, callData)
+		return tx, txErr
+	})
+	if err != nil {
+		return blockchain.TransactionReceipt{}, fmt.Errorf("%s error: %w", name, err)
+	} else if receipt == nil {
+		return blockchain.TransactionReceipt{}, fmt.Errorf("%s error: incomplete receipt", name)
+	}
+
+	toAddress := ""
+	txValue := entities.NewWei(0)
+	if tx != nil {
+		if tx.To() != nil {
+			toAddress = tx.To().String()
+		}
+		txValue = entities.NewBigWei(tx.Value())
+	}
+	transactionReceipt := blockchain.TransactionReceipt{
+		TransactionHash:   receipt.TxHash.String(),
+		BlockHash:         receipt.BlockHash.String(),
+		BlockNumber:       receipt.BlockNumber.Uint64(),
+		From:              peginContract.signer.Address().String(),
+		To:                toAddress,
+		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
+		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
+		Value:             txValue,
+		GasPrice:          entities.NewWei(receipt.EffectiveGasPrice.Int64()),
+	}
+	if receipt.Status == 0 {
+		return transactionReceipt, fmt.Errorf("%s error: transaction reverted (%s)", name, receipt.TxHash.String())
+	}
+	return transactionReceipt, nil
+}
+
 // parsePeginQuote parses a quote.PeginQuote into a bindings.QuotesPegInQuote. All BTC address fields support all address types
 // except for FedBtcAddress which must be a P2SH address.
 func parsePeginQuote(peginQuote quote.PeginQuote) (bindings.QuotesPegInQuote, error) {

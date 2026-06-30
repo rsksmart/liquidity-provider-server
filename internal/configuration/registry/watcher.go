@@ -11,25 +11,28 @@ import (
 type WatcherRegistry struct {
 	PeginDepositAddressWatcher *watcher.PeginDepositAddressWatcher
 	PeginBridgeWatcher         *watcher.PeginBridgeWatcher
-	QuoteCleanerWatcher        *watcher.QuoteCleanerWatcher
-	PegoutRskDepositWatcher    *watcher.PegoutRskDepositWatcher
-	PegoutBtcTransferWatcher   *watcher.PegoutBtcTransferWatcher
-	LiquidityCheckWatcher      *watcher.LiquidityCheckWatcher
-	PenalizationAlertWatcher   *watcher.PenalizationAlertWatcher
-	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
-	BitcoinEclipseWatcher      *watcher.EclipseWatcher
-	RskEclipseWatcher          *watcher.EclipseWatcher
-	BtcReleaseWatcher          *watcher.BtcReleaseWatcher
-	BitcoinPeerWatcher         *watcher.BitcoinPeerWatcher
-	RootstockPeerWatcher       *watcher.RootstockPeerWatcher
-	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
-	PeerMetricsWatcher         *monitoring.PeerMetricsWatcher
-	AssetReportWatcher         *monitoring.AssetReportWatcher
-	TransferColdWalletWatcher  *watcher.TransferColdWalletWatcher
-	ColdWalletMetricsWatcher   *monitoring.ColdWalletMetricsWatcher
-	BitcoinReorgWatcher        *watcher.BitcoinReorgWatcher
-	RootstockReorgWatcher      *watcher.RootstockReorgWatcher
-	ReorgMetricsWatcher        *monitoring.ReorgMetricsWatcher
+	// PeginDiscoveryWatcher drives the commit-first peg-in path (EPIC E5). It is nil when the
+	// PegInAddressRegistry/FlyoverConfigurations contracts are not configured.
+	PeginDiscoveryWatcher     *watcher.PeginDiscoveryWatcher
+	QuoteCleanerWatcher       *watcher.QuoteCleanerWatcher
+	PegoutRskDepositWatcher   *watcher.PegoutRskDepositWatcher
+	PegoutBtcTransferWatcher  *watcher.PegoutBtcTransferWatcher
+	LiquidityCheckWatcher     *watcher.LiquidityCheckWatcher
+	PenalizationAlertWatcher  *watcher.PenalizationAlertWatcher
+	PegoutBridgeWatcher       *watcher.PegoutBridgeWatcher
+	BitcoinEclipseWatcher     *watcher.EclipseWatcher
+	RskEclipseWatcher         *watcher.EclipseWatcher
+	BtcReleaseWatcher         *watcher.BtcReleaseWatcher
+	BitcoinPeerWatcher        *watcher.BitcoinPeerWatcher
+	RootstockPeerWatcher      *watcher.RootstockPeerWatcher
+	QuoteMetricsWatcher       *monitoring.QuoteMetricsWatcher
+	PeerMetricsWatcher        *monitoring.PeerMetricsWatcher
+	AssetReportWatcher        *monitoring.AssetReportWatcher
+	TransferColdWalletWatcher *watcher.TransferColdWalletWatcher
+	ColdWalletMetricsWatcher  *monitoring.ColdWalletMetricsWatcher
+	BitcoinReorgWatcher       *watcher.BitcoinReorgWatcher
+	RootstockReorgWatcher     *watcher.RootstockReorgWatcher
+	ReorgMetricsWatcher       *monitoring.ReorgMetricsWatcher
 }
 
 // nolint:funlen
@@ -45,7 +48,23 @@ func NewWatcherRegistry(
 ) *WatcherRegistry {
 	appMetrics := monitoring.NewMetrics(prometheus.DefaultRegisterer)
 
+	// Commit-first peg-in discovery (EPIC E5). Only built when the new contracts are configured;
+	// otherwise it stays nil and the application skips starting it.
+	var peginDiscoveryWatcher *watcher.PeginDiscoveryWatcher
+	if rskRegistry.Contracts.PegInAddressRegistry != nil && rskRegistry.Contracts.FlyoverConfigurations != nil {
+		peginDiscoveryWatcher = watcher.NewPeginDiscoveryWatcher(
+			useCaseRegistry.claimPeginUseCase,
+			rskRegistry.Contracts.PegInAddressRegistry,
+			rskRegistry.Contracts.FlyoverConfigurations,
+			btcRegistry.MonitoringWallet,
+			messaging.Rpc,
+			messaging.EventBus,
+			tickers.PeginDiscoveryWatcherTicker,
+		)
+	}
+
 	return &WatcherRegistry{
+		PeginDiscoveryWatcher: peginDiscoveryWatcher,
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
 			watcher.NewPeginDepositAddressWatcherUseCases(
 				useCaseRegistry.callForUserUseCase,

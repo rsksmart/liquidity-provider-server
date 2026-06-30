@@ -261,6 +261,13 @@ func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []b
 	})
 }
 
+// calculateAndCheckLiquidity verifies the LP currently has enough liquidity to serve the quote.
+//
+// DoS removal (PRD S5 / EPIC E5): this is a point-in-time feasibility CHECK, not a reservation.
+// The RequiredLiquidity it returns is persisted on the retained quote as metadata only; it is no
+// longer subtracted from available liquidity (see LocalLiquidityProvider.AvailablePeginLiquidity),
+// so an attacker "accepting" quotes it never funds can no longer lock an LP's liquidity. The
+// commit-first claim path fronts RBTC from the LP wallet at claim time instead.
 func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Context, peginQuote quote.PeginQuote) (*entities.Wei, error) {
 	var err error
 	var gasPrice *entities.Wei
