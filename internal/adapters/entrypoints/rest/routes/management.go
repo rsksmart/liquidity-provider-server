@@ -13,7 +13,7 @@ import (
 const (
 	LoginPath  = "/management/login"
 	UiPath     = "/management"
-	StaticPath = "/static/{file}"
+	StaticPath = "/static/"
 	IconPath   = "/favicon.ico"
 )
 

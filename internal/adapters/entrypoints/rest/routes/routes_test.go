@@ -35,7 +35,7 @@ type openApiSpecification struct {
 
 // nolint:funlen
 func TestConfigureRoutes_Public(t *testing.T) {
-	onlyPublicMux := http.NewServeMux()
+	router := routes.NewRouter()
 	useCaseRegistry := &mocks.UseCaseRegistryMock{}
 	setupRegistryMock(useCaseRegistry)
 	onlyPublicEnv := environment.Environment{
@@ -49,34 +49,35 @@ func TestConfigureRoutes_Public(t *testing.T) {
 		AllowedOrigins: testAllowedDomains,
 	}
 
-	routes.ConfigureRoutes(onlyPublicMux, onlyPublicEnv, useCaseRegistry, newBlockedEndpointFactory())
+	routes.ConfigureRoutes(router, onlyPublicEnv, useCaseRegistry, newBlockedEndpointFactory())
+	handler := router.BuildHandler()
 	publicEndpoints := toEndpoints(routes.GetPublicEndpoints(useCaseRegistry))
 
 	t.Run("should configure cors middleware if origin is present", func(t *testing.T) {
-		testCorsMiddleware(t, publicEndpoints, onlyPublicMux, testAllowedDomains[0], true)
+		testCorsMiddleware(t, publicEndpoints, handler, testAllowedDomains[0], true)
 	})
 
 	t.Run("should not allow any domain if origin is not present", func(t *testing.T) {
-		testCorsMiddleware(t, publicEndpoints, onlyPublicMux, "", false)
+		testCorsMiddleware(t, publicEndpoints, handler, "", false)
 	})
 
 	t.Run("should not allow any domain if origin is not allowed", func(t *testing.T) {
-		testCorsMiddleware(t, publicEndpoints, onlyPublicMux, "https://not-allowed.com", false)
+		testCorsMiddleware(t, publicEndpoints, handler, "https://not-allowed.com", false)
 	})
 
 	t.Run("should configure options handler", func(t *testing.T) {
-		assertConfiguresOptionsHandler(t, onlyPublicMux)
+		assertConfiguresOptionsHandler(t, handler)
 	})
 
 	t.Run("should register public routes", func(t *testing.T) {
-		testPublicRoutesRegistration(t, useCaseRegistry, onlyPublicMux)
+		testPublicRoutesRegistration(t, useCaseRegistry, router)
 	})
 
 	t.Run("should register management routes only if Management API is enabled", func(t *testing.T) {
 		managementRoutes := routes.GetManagementEndpoints(onlyPublicEnv, useCaseRegistry, &mocks.StoreMock{})
 		for _, endpoint := range managementRoutes {
 			req := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
-			_, pattern := onlyPublicMux.Handler(req)
+			_, pattern := router.Handler(req)
 			assert.Empty(t, pattern, "management route %s %s should not be registered", endpoint.Method, endpoint.Path)
 		}
 	})
@@ -84,7 +85,7 @@ func TestConfigureRoutes_Public(t *testing.T) {
 
 // nolint:funlen
 func TestConfigureRoutes_Management(t *testing.T) {
-	managementMux := http.NewServeMux()
+	router := routes.NewRouter()
 	useCaseRegistry := &mocks.UseCaseRegistryMock{}
 	setupRegistryMock(useCaseRegistry)
 	managementEnv := environment.Environment{
@@ -97,48 +98,49 @@ func TestConfigureRoutes_Management(t *testing.T) {
 		},
 		AllowedOrigins: testAllowedDomains,
 	}
-	routes.ConfigureRoutes(managementMux, managementEnv, useCaseRegistry, newBlockedEndpointFactory())
+	routes.ConfigureRoutes(router, managementEnv, useCaseRegistry, newBlockedEndpointFactory())
+	handler := router.BuildHandler()
 
 	managementEndpoints := routes.GetManagementEndpoints(managementEnv, useCaseRegistry, &mocks.StoreMock{})
 	allEndpoints := append(toEndpoints(routes.GetPublicEndpoints(useCaseRegistry)), managementEndpoints...)
 
 	t.Run("should configure cors middleware", func(t *testing.T) {
-		testCorsMiddleware(t, allEndpoints, managementMux, testAllowedDomains[1], true)
+		testCorsMiddleware(t, allEndpoints, handler, testAllowedDomains[1], true)
 	})
 
 	t.Run("should not allow any domain if origin is not present", func(t *testing.T) {
-		testCorsMiddleware(t, allEndpoints, managementMux, "", false)
+		testCorsMiddleware(t, allEndpoints, handler, "", false)
 	})
 
 	t.Run("should not allow any domain if origin is not allowed", func(t *testing.T) {
-		testCorsMiddleware(t, allEndpoints, managementMux, "https://not-allowed.com", false)
+		testCorsMiddleware(t, allEndpoints, handler, "https://not-allowed.com", false)
 	})
 
 	t.Run("should configure options handler", func(t *testing.T) {
-		assertConfiguresOptionsHandler(t, managementMux)
+		assertConfiguresOptionsHandler(t, handler)
 	})
 
 	t.Run("should register public routes", func(t *testing.T) {
-		testPublicRoutesRegistration(t, useCaseRegistry, managementMux)
+		testPublicRoutesRegistration(t, useCaseRegistry, router)
 	})
 
 	t.Run("should register management routes only if Management API is enabled", func(t *testing.T) {
 		for _, endpoint := range managementEndpoints {
 			req := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
-			_, pattern := managementMux.Handler(req)
+			_, pattern := router.Handler(req)
 			assert.NotEmpty(t, pattern, "management route %s %s not registered", endpoint.Method, endpoint.Path)
 		}
 		t.Run("should register management routes with proper middlewares", func(t *testing.T) {
 			for _, endpoint := range managementEndpoints {
 				if slices.Contains(routes.AllowedPaths[:], endpoint.Path) {
-					assertHasCsrfMiddleware(t, managementMux, endpoint)
+					assertHasCsrfMiddleware(t, handler, endpoint)
 				} else {
 					req := httptest.NewRequest(http.MethodGet, routes.UiPath, nil)
 					responseRecorder := httptest.NewRecorder()
-					managementMux.ServeHTTP(responseRecorder, req)
-					assertHasCsrfMiddleware(t, managementMux, endpoint)
+					handler.ServeHTTP(responseRecorder, req)
+					assertHasCsrfMiddleware(t, handler, endpoint)
 					// nolint:bodyclose
-					assertHasSessionMiddleware(t, managementMux, endpoint, responseRecorder.Result().Cookies()[0], responseRecorder.Header().Get(csrfTokenHeaderName))
+					assertHasSessionMiddleware(t, handler, endpoint, responseRecorder.Result().Cookies()[0], responseRecorder.Header().Get(csrfTokenHeaderName))
 					require.NoError(t, responseRecorder.Result().Body.Close())
 				}
 			}
@@ -146,8 +148,8 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	})
 }
 
-func TestConfigureRoutes_HeadMatchesGetRoute(t *testing.T) {
-	publicMux := http.NewServeMux()
+func TestConfigureRoutes_HeadReturnsMethodNotAllowed(t *testing.T) {
+	router := routes.NewRouter()
 	useCaseRegistry := &mocks.UseCaseRegistryMock{}
 	setupRegistryMock(useCaseRegistry)
 	env := environment.Environment{
@@ -160,14 +162,16 @@ func TestConfigureRoutes_HeadMatchesGetRoute(t *testing.T) {
 		},
 		AllowedOrigins: testAllowedDomains,
 	}
-	routes.ConfigureRoutes(publicMux, env, useCaseRegistry, newBlockedEndpointFactory())
+	routes.ConfigureRoutes(router, env, useCaseRegistry, newBlockedEndpointFactory())
+	handler := router.BuildHandler()
 
-	// ServeMux routes HEAD to the GET handler (net/http strips the body), so a HEAD request reaches
-	// the handler instead of returning 405. This is an intentional deviation from the gorilla router.
+	// http.ServeMux would dispatch HEAD to the GET handler, but the registration installs an explicit
+	// HEAD handler so HEAD on a GET-only route still returns 405, matching the previous gorilla router.
 	req := httptest.NewRequest(http.MethodHead, "/health", nil)
 	responseRecorder := httptest.NewRecorder()
-	publicMux.ServeHTTP(responseRecorder, req)
-	assert.Equal(t, http.StatusTeapot, responseRecorder.Code)
+	handler.ServeHTTP(responseRecorder, req)
+	assert.Equal(t, http.StatusMethodNotAllowed, responseRecorder.Code)
+	assert.Equal(t, http.MethodGet, responseRecorder.Header().Get("Allow"))
 }
 
 // toEndpoints flattens the public endpoint wrappers to plain endpoints so the registration and CORS
@@ -180,8 +184,8 @@ func toEndpoints(publicEndpoints []routes.PublicEndpoint) []routes.Endpoint {
 	return result
 }
 
-// requestPath turns a registered pattern into a concrete request path, substituting the {file}
-// wildcard of the static assets route.
+// requestPath turns a registered pattern into a concrete request path, appending a file name to the
+// static assets subtree route.
 func requestPath(pattern string) string {
 	if pattern == routes.StaticPath {
 		return "/static/test"
@@ -216,11 +220,12 @@ func testCorsMiddleware(
 	}
 }
 
-func testPublicRoutesRegistration(t *testing.T, useCaseRegistry registry.UseCaseRegistry, mux *http.ServeMux) {
+func testPublicRoutesRegistration(t *testing.T, useCaseRegistry registry.UseCaseRegistry, router *routes.Router) {
+	handler := router.BuildHandler()
 	publicRoutes := routes.GetPublicEndpoints(useCaseRegistry)
 	for _, endpoint := range publicRoutes {
 		req := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
-		_, pattern := mux.Handler(req)
+		_, pattern := router.Handler(req)
 		assert.NotEmpty(t, pattern, "public route %s %s not registered", endpoint.Method, endpoint.Path)
 	}
 	t.Run("should use captcha middleware in proper routes", func(t *testing.T) {
@@ -228,7 +233,7 @@ func testPublicRoutesRegistration(t *testing.T, useCaseRegistry registry.UseCase
 			if endpoint.RequiresCaptcha {
 				req := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
 				responseRecorder := httptest.NewRecorder()
-				mux.ServeHTTP(responseRecorder, req)
+				handler.ServeHTTP(responseRecorder, req)
 				assert.Contains(t, responseRecorder.Body.String(), "missing X-Captcha-Token header")
 			}
 		}

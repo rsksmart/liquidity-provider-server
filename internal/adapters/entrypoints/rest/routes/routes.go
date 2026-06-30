@@ -38,37 +38,35 @@ func (f *endpointFactoryImpl) GetPrivate(env environment.Environment, useCaseReg
 	return GetManagementEndpoints(env, useCaseRegistry, store)
 }
 
-func ConfigureRoutes(mux *http.ServeMux, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
-	corsMiddleware := middlewares.NewCorsMiddleware(env.AllowedOrigins)
-
+func ConfigureRoutes(router *Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
 	store, err := cookies.GetSessionCookieStore(env.Management)
 	if err != nil {
 		log.Fatal("Error registering routes: ", err)
 	}
 
-	registerPublicRoutes(mux, corsMiddleware, env, endpointFactory.GetPublic(useCaseRegistry))
+	registerPublicRoutes(router, env, endpointFactory.GetPublic(useCaseRegistry))
 
 	if env.Management.EnableManagementApi {
-		registerManagementRoutes(mux, corsMiddleware, env, store, endpointFactory.GetPrivate(env, useCaseRegistry, store))
+		registerManagementRoutes(router, env, store, endpointFactory.GetPrivate(env, useCaseRegistry, store))
 	}
 
-	mux.Handle(http.MethodOptions+" /", useMiddlewares(handlers.NewOptionsHandler(), corsMiddleware))
+	router.Handle(http.MethodOptions+" /", handlers.NewOptionsHandler())
+
+	router.Use(middlewares.NewCorsMiddleware(env.AllowedOrigins))
 }
 
-func registerPublicRoutes(mux *http.ServeMux, corsMiddleware func(http.Handler) http.Handler, env environment.Environment, endpoints []PublicEndpoint) {
+func registerPublicRoutes(router *Router, env environment.Environment, endpoints []PublicEndpoint) {
 	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
 	for _, endpoint := range endpoints {
-		appliedMiddlewares := make([]func(http.Handler) http.Handler, 0, 2)
+		handler := endpoint.Handler
 		if endpoint.RequiresCaptcha {
-			appliedMiddlewares = append(appliedMiddlewares, captchaMiddleware)
+			handler = captchaMiddleware(handler)
 		}
-
-		appliedMiddlewares = append(appliedMiddlewares, corsMiddleware)
-		mux.Handle(endpoint.Method+" "+endpoint.Path, useMiddlewares(endpoint.Handler, appliedMiddlewares...))
+		registerEndpoint(router, endpoint.Method, endpoint.Path, handler)
 	}
 }
 
-func registerManagementRoutes(mux *http.ServeMux, corsMiddleware func(http.Handler) http.Handler, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
+func registerManagementRoutes(router *Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
 	log.Warn(
 		"Server is running with the management API exposed. This interface " +
 			"includes endpoints that must remain private at all cost. Please shut down " +
@@ -79,12 +77,32 @@ func registerManagementRoutes(mux *http.ServeMux, corsMiddleware func(http.Handl
 	var handler http.Handler
 	for _, endpoint := range endpoints {
 		if slices.Contains(AllowedPaths[:], endpoint.Path) {
-			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf, corsMiddleware)
+			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf)
 		} else {
-			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf, corsMiddleware)
+			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf)
 		}
-		mux.Handle(endpoint.Method+" "+endpoint.Path, handler)
+		registerEndpoint(router, endpoint.Method, endpoint.Path, handler)
 	}
+}
+
+// registerEndpoint registers handler for the endpoint's method and path. For GET routes it also
+// registers an explicit HEAD handler returning 405. http.ServeMux otherwise dispatches HEAD requests
+// to the GET handler, whereas the previous gorilla router rejected any method not explicitly declared
+// on a route; the explicit HEAD handler preserves that 405 behavior.
+func registerEndpoint(router *Router, method, path string, handler http.Handler) {
+	router.Handle(method+" "+path, handler)
+	if method == http.MethodGet {
+		router.Handle(http.MethodHead+" "+path, methodNotAllowedHandler(method))
+	}
+}
+
+// methodNotAllowedHandler responds with 405 and an Allow header, matching the previous gorilla router's
+// response for a request whose method is not registered on an otherwise matching path.
+func methodNotAllowedHandler(allowedMethod string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Allow", allowedMethod)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
 }
 
 func useMiddlewares(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {

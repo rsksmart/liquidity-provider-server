@@ -10,15 +10,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const commonLogTimeFormat = "02/Jan/2006:15:04:05 -0700"
-
 func NewAccessLogMiddleware(logger *log.Logger, level log.Level) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			recorder := &accessLogResponseWriter{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(recorder, r)
-			logger.Log(level, buildAccessLogLine(r, start, recorder.status, recorder.size))
+			logger.Log(level, recorder.buildAccessLogLine(r, start))
 		})
 	}
 }
@@ -44,7 +42,7 @@ func (w *accessLogResponseWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 
-func buildAccessLogLine(r *http.Request, ts time.Time, status, size int) string {
+func (w *accessLogResponseWriter) buildAccessLogLine(r *http.Request, ts time.Time) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
@@ -77,12 +75,12 @@ func buildAccessLogLine(r *http.Request, ts time.Time, status, size int) string 
 	builder.WriteString(" - ")
 	builder.WriteString(username)
 	builder.WriteString(" [")
-	builder.WriteString(ts.Format(commonLogTimeFormat))
+	builder.WriteString(ts.Format(time.RFC3339))
 	builder.WriteString("] ")
 	builder.WriteString(requestLine)
 	builder.WriteByte(' ')
-	builder.WriteString(strconv.Itoa(status))
+	builder.WriteString(strconv.Itoa(w.status))
 	builder.WriteByte(' ')
-	builder.WriteString(strconv.Itoa(size))
+	builder.WriteString(strconv.Itoa(w.size))
 	return builder.String()
 }

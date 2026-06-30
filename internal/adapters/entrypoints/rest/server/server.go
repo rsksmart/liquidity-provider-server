@@ -18,7 +18,6 @@ import (
 type Server struct {
 	http            http.Server
 	logLevel        log.Level
-	mux             *http.ServeMux
 	doneChannel     chan os.Signal
 	env             environment.Environment
 	useCaseRegistry registry.UseCaseRegistry
@@ -37,18 +36,18 @@ func NewServer(
 		env:             env,
 		doneChannel:     done,
 		logLevel:        logLevel,
-		mux:             http.NewServeMux(),
 		useCaseRegistry: useCaseRegistry,
 		timeouts:        timeouts,
 	}, done
 }
 
 func (s *Server) start() error {
-	routes.ConfigureRoutes(s.mux, s.env, s.useCaseRegistry, routes.NewEndpointFactory())
-	h := middlewares.NewAccessLogMiddleware(log.StandardLogger(), s.logLevel)(s.mux)
+	router := routes.NewRouter()
+	router.Use(middlewares.NewAccessLogMiddleware(log.StandardLogger(), s.logLevel))
+	routes.ConfigureRoutes(router, s.env, s.useCaseRegistry, routes.NewEndpointFactory())
 	s.http = http.Server{
 		Addr:              ":" + strconv.FormatUint(uint64(s.env.Port), 10),
-		Handler:           h,
+		Handler:           router.BuildHandler(),
 		ReadHeaderTimeout: s.timeouts.ServerReadHeader.Seconds(),
 		WriteTimeout:      s.timeouts.ServerWrite.Seconds(),
 		IdleTimeout:       s.timeouts.ServerIdle.Seconds(),
