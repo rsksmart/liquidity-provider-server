@@ -113,6 +113,12 @@ func (b *ThreadSafeBuffer) Len() int {
 	return b.Buffer.Len()
 }
 
+func (b *ThreadSafeBuffer) String() string {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+	return b.Buffer.String()
+}
+
 func AssertNoLog(t *testing.T) (assertFunc func()) {
 	buff := new(bytes.Buffer)
 	log.SetOutput(buff)
@@ -122,18 +128,25 @@ func AssertNoLog(t *testing.T) (assertFunc func()) {
 }
 
 func AssertLogContains(t *testing.T, expected string) (assertFunc func() bool) {
-	message := make([]byte, 2048)
+	return logContains(t, expected, true)
+}
+
+func LogContains(t *testing.T, expected string) (assertFunc func() bool) {
+	return logContains(t, expected, false)
+}
+
+func logContains(t *testing.T, expected string, useAssertion bool) (assertFunc func() bool) {
 	buff := new(ThreadSafeBuffer)
 	log.SetOutput(buff)
 	return func() bool {
 		if buff.Len() == 0 {
 			return false
 		}
-		_, err := buff.Read(message)
-		if err != nil {
-			return false
+		if useAssertion {
+			return assert.Contains(t, buff.String(), expected, "Expected message not found")
+		} else {
+			return strings.Contains(buff.String(), expected)
 		}
-		return assert.Contains(t, string(message), expected, "Expected message not found")
 	}
 }
 

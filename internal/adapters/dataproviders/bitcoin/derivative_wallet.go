@@ -209,7 +209,7 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
-
+	defer wallet.unlockUtxos(fundedTx.Transaction)
 	signedTx, err := wallet.signFundedTransaction(fundedTx)
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
@@ -352,4 +352,28 @@ func (wallet *DerivativeWallet) buildRawTransactionWithOpReturn(address string, 
 	rawTx.AddTxOut(wire.NewTxOut(0, opReturnScript))
 
 	return rawTx, nil
+}
+
+func (wallet *DerivativeWallet) unlockUtxos(tx *wire.MsgTx) {
+	if tx == nil {
+		return
+	}
+	outpoints := make([]*wire.OutPoint, 0, len(tx.TxIn))
+	for _, input := range tx.TxIn {
+		if input != nil {
+			outpoints = append(outpoints, &input.PreviousOutPoint)
+		}
+	}
+	if len(outpoints) == 0 {
+		return
+	}
+	err := wallet.conn.client.LockUnspent(true, outpoints)
+	if err == nil || btcclient.IsLockUnspentAlreadyUnlocked(err) {
+		return
+	}
+	log.Errorf(
+		"error unlocking utxos for transaction %s: %v",
+		tx.TxHash(),
+		btcclient.WrapRPCError(btcclient.MethodLockUnspent, err),
+	)
 }
