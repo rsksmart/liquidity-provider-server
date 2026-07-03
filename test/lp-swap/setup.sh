@@ -115,13 +115,7 @@ else
   SUNSET_URL="http://localhost:8081"
 fi
 
-CSRF_TOKEN=$(curl -s -c cookie_jar.txt -H 'Content-Type: application/json' \
-  "$SUNSET_URL/management" | sed -n 's/.*name="csrf"[^>]*value="\([^"]*\)".*/\1/p')
-
-CSRF_TOKEN=${CSRF_TOKEN//&#43;/+}
-echo "CSRF_TOKEN -> $CSRF_TOKEN"
 curl -s -b cookie_jar.txt -c cookie_jar.txt "$SUNSET_URL/management/login" \
-  -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' \
   --data "{
      \"username\": \"$MANAGEMENT_USER\",
@@ -129,13 +123,11 @@ curl -s -b cookie_jar.txt -c cookie_jar.txt "$SUNSET_URL/management/login" \
   }"
 
 curl -s -b cookie_jar.txt "$SUNSET_URL/providers/resignation" \
-  -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' -X POST && \
   echo "LP $SUNSET_ID resigned successfully" || echo "Error resigning LP $SUNSET_ID"
 
 read -r -p "Press enter to withdraw funds from LP $SUNSET_ID. Remember before withdrawing you need to wait the resign blocks!" choice
 
 curl -s -b cookie_jar.txt "$SUNSET_URL/providers/withdrawCollateral" \
-  -H "X-CSRF-Token: $CSRF_TOKEN" \
   -H 'Content-Type: application/json' -X POST && \
   echo "LP $SUNSET_ID withdrew the collateral successfully" || echo "Error withdrawing LP $SUNSET_ID collateral"

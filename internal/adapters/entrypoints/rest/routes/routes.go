@@ -47,7 +47,7 @@ func ConfigureRoutes(router *Router, env environment.Environment, useCaseRegistr
 	registerPublicRoutes(router, env, endpointFactory.GetPublic(useCaseRegistry))
 
 	if env.Management.EnableManagementApi {
-		registerManagementRoutes(router, env, store, endpointFactory.GetPrivate(env, useCaseRegistry, store))
+		registerManagementRoutes(router, store, endpointFactory.GetPrivate(env, useCaseRegistry, store))
 	}
 
 	router.Handle(http.MethodOptions+" /", handlers.NewOptionsHandler())
@@ -66,20 +66,21 @@ func registerPublicRoutes(router *Router, env environment.Environment, endpoints
 	}
 }
 
-func registerManagementRoutes(router *Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
+func registerManagementRoutes(router *Router, store sessions.Store, endpoints []Endpoint) {
 	log.Warn(
 		"Server is running with the management API exposed. This interface " +
 			"includes endpoints that must remain private at all cost. Please shut down " +
 			"the server if you haven't configured the WAF properly as explained in documentation.",
 	)
 
-	sessionMiddlewares := middlewares.NewSessionMiddlewares(env.Management, store)
+	crossOriginMiddleware := middlewares.NewCrossOriginProtectionMiddleware()
+	sessionValidator := middlewares.NewSessionMiddleware(store)
 	var handler http.Handler
 	for _, endpoint := range endpoints {
 		if slices.Contains(AllowedPaths[:], endpoint.Path) {
-			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.Csrf)
+			handler = useMiddlewares(endpoint.Handler, crossOriginMiddleware)
 		} else {
-			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf)
+			handler = useMiddlewares(endpoint.Handler, sessionValidator, crossOriginMiddleware)
 		}
 		registerEndpoint(router, endpoint.Method, endpoint.Path, handler)
 	}

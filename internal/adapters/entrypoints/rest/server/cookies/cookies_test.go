@@ -25,7 +25,6 @@ func testGetSessionCookieStore(t *testing.T) {
 			EnableManagementApi:  false,
 			SessionAuthKey:       "invalid",
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
-			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		}}
 		_, err := cookies.GetSessionCookieStore(env.Management)
@@ -36,7 +35,6 @@ func testGetSessionCookieStore(t *testing.T) {
 			EnableManagementApi:  false,
 			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: "invalid",
-			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		}}
 		_, err := cookies.GetSessionCookieStore(env.Management)
@@ -47,7 +45,6 @@ func testGetSessionCookieStore(t *testing.T) {
 			EnableManagementApi:  false,
 			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
-			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		}}
 		stores := make([]sessions.Store, 0)

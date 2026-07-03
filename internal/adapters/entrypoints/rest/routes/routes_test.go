@@ -7,11 +7,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -22,9 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// nolint:gosec // Linter is assuming the header name is a password
-const csrfTokenHeaderName = "X-Csrf-Token"
 
 var testAllowedDomains = []string{"https://allowed.com", "https://another-allowed.com"}
 
@@ -43,7 +38,6 @@ func TestConfigureRoutes_Public(t *testing.T) {
 			EnableManagementApi:  false,
 			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
-			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
 		AllowedOrigins: testAllowedDomains,
@@ -93,7 +87,6 @@ func TestConfigureRoutes_Management(t *testing.T) {
 			EnableManagementApi:  true,
 			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
-			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
 		AllowedOrigins: testAllowedDomains,
@@ -132,16 +125,13 @@ func TestConfigureRoutes_Management(t *testing.T) {
 		}
 		t.Run("should register management routes with proper middlewares", func(t *testing.T) {
 			for _, endpoint := range managementEndpoints {
-				if slices.Contains(routes.AllowedPaths[:], endpoint.Path) {
-					assertHasCsrfMiddleware(t, handler, endpoint)
-				} else {
-					req := httptest.NewRequest(http.MethodGet, routes.UiPath, nil)
-					responseRecorder := httptest.NewRecorder()
-					handler.ServeHTTP(responseRecorder, req)
-					assertHasCsrfMiddleware(t, handler, endpoint)
-					// nolint:bodyclose
-					assertHasSessionMiddleware(t, handler, endpoint, responseRecorder.Result().Cookies()[0], responseRecorder.Header().Get(csrfTokenHeaderName))
-					require.NoError(t, responseRecorder.Result().Body.Close())
+				// Cross-origin protection rejects unsafe cross-site requests on every management route.
+				if endpoint.Method != http.MethodGet {
+					assertHasCrossOriginProtection(t, handler, endpoint)
+				}
+				// Routes outside AllowedPaths additionally require a valid session.
+				if !slices.Contains(routes.AllowedPaths[:], endpoint.Path) {
+					assertHasSessionMiddleware(t, handler, endpoint)
 				}
 			}
 		})
@@ -157,7 +147,6 @@ func TestConfigureRoutes_HeadReturnsMethodNotAllowed(t *testing.T) {
 			EnableManagementApi:  false,
 			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
-			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
 		AllowedOrigins: testAllowedDomains,
@@ -240,10 +229,11 @@ func testPublicRoutesRegistration(t *testing.T, useCaseRegistry registry.UseCase
 	})
 }
 
-func assertHasSessionMiddleware(t *testing.T, handler http.Handler, endpoint routes.Endpoint, cookie *http.Cookie, token string) {
+func assertHasSessionMiddleware(t *testing.T, handler http.Handler, endpoint routes.Endpoint) {
+	// A request with no Origin nor Sec-Fetch-Site header (same-origin or non-browser) clears the
+	// cross-origin gate and reaches the session validator, which rejects it because there is no
+	// recognized session.
 	request := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
-	request.AddCookie(cookie)
-	request.Header.Set(csrfTokenHeaderName, token)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	// nolint:bodyclose
@@ -252,16 +242,17 @@ func assertHasSessionMiddleware(t *testing.T, handler http.Handler, endpoint rou
 	require.NoError(t, response.Result().Body.Close())
 }
 
-func assertHasCsrfMiddleware(t *testing.T, handler http.Handler, endpoint routes.Endpoint) {
-	req := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
-	responseRecorder := httptest.NewRecorder()
-	handler.ServeHTTP(responseRecorder, req)
+func assertHasCrossOriginProtection(t *testing.T, handler http.Handler, endpoint routes.Endpoint) {
+	// An unsafe cross-site request is rejected by the cross-origin protection, which sits outermost.
+	request := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
+	request.Header.Set("Origin", "https://evil.example.com")
+	request.Header.Set("Sec-Fetch-Site", "cross-site")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
 	// nolint:bodyclose
-	i := slices.IndexFunc(responseRecorder.Result().Cookies(), func(cookie *http.Cookie) bool {
-		return cookie.Name == cookies.CsrfCookieName
-	})
-	require.NoError(t, responseRecorder.Result().Body.Close())
-	assert.NotEqual(t, -1, i, "response does not have CSRF cookie")
+	assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)
+	assert.Contains(t, response.Body.String(), "cross-origin request rejected")
+	require.NoError(t, response.Result().Body.Close())
 }
 
 // nolint:funlen
@@ -314,7 +305,7 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 
 func assertHasCorsHeadersAllowed(t *testing.T, recorder *httptest.ResponseRecorder, origin string) {
 	assert.Equal(t, origin, recorder.Header().Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
+	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
 	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
 	assert.Equal(t, "true", recorder.Header().Get("Access-Control-Allow-Credentials"))
 	assert.Equal(t, "Origin", recorder.Header().Get("Vary"))
@@ -322,7 +313,7 @@ func assertHasCorsHeadersAllowed(t *testing.T, recorder *httptest.ResponseRecord
 
 func assertHasCorsHeadersNotAllowed(t *testing.T, recorder *httptest.ResponseRecorder) {
 	assert.Empty(t, recorder.Header().Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
+	assert.Equal(t, "Content-Type, Origin, Accept, token, X-Captcha-Token", recorder.Header().Get("Access-Control-Allow-Headers"))
 	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS", recorder.Header().Get("Access-Control-Allow-Methods"))
 	assert.Equal(t, "Origin", recorder.Header().Get("Vary"))
 }
@@ -367,8 +358,7 @@ func (f *blockedEndpointFactory) GetPrivate(env environment.Environment, useCase
 }
 
 func teapotHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set(csrfTokenHeaderName, csrf.Token(req))
+	return func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusTeapot)
 	}
 }

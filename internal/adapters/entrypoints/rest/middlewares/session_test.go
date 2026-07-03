@@ -10,7 +10,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/middlewares"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -43,8 +42,7 @@ func TestSessionMiddleware_HappyPath(t *testing.T) {
 	})
 
 	// Create the middleware
-	middleware := middlewares.NewSessionMiddlewares(mockManagementEnv(), mockStore)
-	handler := middleware.SessionValidator(mockHandler)
+	handler := middlewares.NewSessionMiddleware(mockStore)(mockHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rr := httptest.NewRecorder()
@@ -71,8 +69,7 @@ func TestSessionMiddleware_StoreGetError_ReturnsForbidden(t *testing.T) {
 
 	// Handler should NOT be called in this case, so no expectations set
 
-	middleware := middlewares.NewSessionMiddlewares(mockManagementEnv(), mockStore)
-	handler := middleware.SessionValidator(mockHandler)
+	handler := middlewares.NewSessionMiddleware(mockStore)(mockHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rr := httptest.NewRecorder()
@@ -107,8 +104,7 @@ func TestSessionMiddleware_NewSession_ReturnsForbidden(t *testing.T) {
 
 	// Handler should NOT be called in this case, so no expectations set
 
-	middleware := middlewares.NewSessionMiddlewares(mockManagementEnv(), mockStore)
-	handler := middleware.SessionValidator(mockHandler)
+	handler := middlewares.NewSessionMiddleware(mockStore)(mockHandler)
 
 	// Create test request and response
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -156,8 +152,7 @@ func TestSessionMiddleware_SessionSaveError_StillProcessesRequest(t *testing.T) 
 		}
 	})
 
-	middleware := middlewares.NewSessionMiddlewares(mockManagementEnv(), mockStore)
-	handler := middleware.SessionValidator(mockHandler)
+	handler := middlewares.NewSessionMiddleware(mockStore)(mockHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rr := httptest.NewRecorder()
@@ -175,16 +170,4 @@ func TestSessionMiddleware_SessionSaveError_StillProcessesRequest(t *testing.T) 
 	mockStore.AssertCalled(t, "Get", req, cookies.ManagementSessionCookieName)
 	mockStore.AssertCalled(t, "Save", req, rr, validSession)
 	mockHandler.AssertCalled(t, "ServeHTTP", rr, req)
-}
-
-// Helper function to create a mock management environment
-func mockManagementEnv() environment.ManagementEnv {
-	return environment.ManagementEnv{
-		EnableManagementApi:   true,
-		SessionAuthKey:        "01fbac02d66202e8468d2a4f1deba4fa5c2491f592e0e22e32fe1e6acac25923",
-		SessionEncryptionKey:  "02fbac02d66202e8468d2a4f1deba4fa5c2491f592e0e22e32fe1e6acac25923",
-		SessionTokenAuthKey:   "03fbac02d66202e8468d2a4f1deba4fa5c2491f592e0e22e32fe1e6acac25923",
-		UseHttps:              false,
-		EnableSecurityHeaders: false,
-	}
 }
