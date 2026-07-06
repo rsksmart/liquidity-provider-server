@@ -92,10 +92,9 @@ if [[ "$CREATE_POWPEG" == "true" ]]; then
 fi
 
 ### LPS (always runs) ###
-# lps01 may briefly crash on first boot during a BTC
-# wallet rescan. lps-configurer polls /health internally and signals completion via
-# its exit code
-# TODO: Change the fatal.log when lps01 crashes
+# On first boot, lps01 exits cleanly (code 0) while the BTC wallet rescan is in progress.
+# Docker restarts it automatically (unless-stopped policy) until the rescan completes and
+# the server boots normally. lps-configurer polls /health and signals readiness via its exit code.
 docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d
 echo "Configuring LPS..."
 EXIT_CODE=$(docker wait lps-configurer)
