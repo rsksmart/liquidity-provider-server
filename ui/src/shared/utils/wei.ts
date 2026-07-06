@@ -1,5 +1,7 @@
 import Decimal from 'decimal.js'
 
+const WEI_PER_ETHER = new Decimal('1000000000000000000')
+
 export function weiToEther(wei: string | number | null | undefined): string {
   if (wei === null || wei === undefined) {
     return '0'
@@ -7,7 +9,7 @@ export function weiToEther(wei: string | number | null | undefined): string {
 
   try {
     const decimalValue = new Decimal(wei)
-    return decimalValue.dividedBy(new Decimal(1e18)).toString()
+    return decimalValue.dividedBy(WEI_PER_ETHER).toString()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(`Failed to convert wei to ether. Input: "${String(wei)}". Error: ${message}`)
@@ -24,7 +26,7 @@ export function etherToWei(ether: string | number): string {
     if (num.isNegative()) {
       throw new RangeError(`The input "${String(ether)}" is not a valid number.`)
     }
-    return num.times(new Decimal(1e18)).toFixed()
+    return num.times(WEI_PER_ETHER).toFixed()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(`Failed to convert ether to wei. Input: "${String(ether)}". Error: ${message}`)
