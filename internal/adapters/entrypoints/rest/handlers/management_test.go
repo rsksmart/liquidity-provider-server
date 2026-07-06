@@ -24,9 +24,8 @@ func TestManagementInterfaceHandlerHappyPath(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/management", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore := new(mocks.StoreMock)
-		// Return error to simulate no session (not logged in)
-		mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
+		mockStore := new(mocks.SessionStoreMock)
+		mockStore.On("Validate", mock.Anything).Return(errors.New("no session"))
 
 		mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, false).Return(&liquidity_provider.ManagementTemplate{
@@ -69,8 +68,8 @@ func TestManagementInterfaceHandlerHappyPath(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/management", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore := new(mocks.StoreMock)
-		mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
+		mockStore := new(mocks.SessionStoreMock)
+		mockStore.On("Validate", mock.Anything).Return(errors.New("no session"))
 
 		mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, false).Return(&liquidity_provider.ManagementTemplate{
@@ -114,8 +113,8 @@ func TestManagementInterfaceHandlerErrorCases(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/management", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore := new(mocks.StoreMock)
-		mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
+		mockStore := new(mocks.SessionStoreMock)
+		mockStore.On("Validate", mock.Anything).Return(errors.New("no session"))
 
 		mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, false).Return(nil, errors.New("database error"))
@@ -143,8 +142,8 @@ func TestManagementInterfaceHandlerSecurityHeaders(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/management", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore := new(mocks.StoreMock)
-		mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
+		mockStore := new(mocks.SessionStoreMock)
+		mockStore.On("Validate", mock.Anything).Return(errors.New("no session"))
 
 		mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, false).Return(&liquidity_provider.ManagementTemplate{
@@ -179,8 +178,8 @@ func TestManagementInterfaceHandlerSecurityHeaders(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/management", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore := new(mocks.StoreMock)
-		mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
+		mockStore := new(mocks.SessionStoreMock)
+		mockStore.On("Validate", mock.Anything).Return(errors.New("no session"))
 
 		mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, false).Return(&liquidity_provider.ManagementTemplate{
@@ -217,8 +216,8 @@ func TestManagementInterfaceHandlerResponseFormat(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/management", nil)
 		recorder := httptest.NewRecorder()
 
-		mockStore := new(mocks.StoreMock)
-		mockStore.On("Get", mock.Anything, "lp-session").Return(nil, errors.New("no session"))
+		mockStore := new(mocks.SessionStoreMock)
+		mockStore.On("Validate", mock.Anything).Return(errors.New("no session"))
 
 		mockUseCase := new(mocks.GetManagementUiDataUseCaseMock)
 		mockUseCase.On("Run", mock.Anything, false).Return(&liquidity_provider.ManagementTemplate{

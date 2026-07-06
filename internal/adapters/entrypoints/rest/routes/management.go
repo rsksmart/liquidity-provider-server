@@ -3,10 +3,10 @@ package routes
 import (
 	"net/http"
 
-	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 )
 
@@ -20,8 +20,8 @@ const (
 var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
 
 // nolint:funlen
-func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
-	sessionManager := handlers.NewCookieSessionManager(env.Management)
+func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store cookies.SessionStore) []Endpoint {
+	sessionManager := handlers.NewCookieSessionManager(store)
 	return []Endpoint{
 		{
 			Path:    "/pegin/collateral",

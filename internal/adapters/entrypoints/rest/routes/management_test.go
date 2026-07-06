@@ -46,7 +46,7 @@ func TestGetManagementEndpoints(t *testing.T) {
 	registryMock.EXPECT().GetLiquidityRatioUseCase().Return(&liquidity_provider.GetLiquidityRatioUseCase{})
 	registryMock.EXPECT().SetLiquidityRatioUseCase().Return(&liquidity_provider.SetLiquidityRatioUseCase{})
 
-	endpoints := routes.GetManagementEndpoints(environment.Environment{}, registryMock, &mocks.StoreMock{})
+	endpoints := routes.GetManagementEndpoints(environment.Environment{}, registryMock, nil)
 	specBytes := test.ReadFile(t, "OpenApi.yml")
 	spec := &openApiSpecification{}
 

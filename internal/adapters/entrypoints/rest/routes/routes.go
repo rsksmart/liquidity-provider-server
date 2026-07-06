@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/middlewares"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
@@ -21,7 +20,7 @@ type Endpoint struct {
 // EndpointFactory abstraction to be able to mock the endpoints in tests
 type EndpointFactory interface {
 	GetPublic(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoint
-	GetPrivate(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint
+	GetPrivate(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store cookies.SessionStore) []Endpoint
 }
 
 type endpointFactoryImpl struct{}
@@ -34,7 +33,7 @@ func (f *endpointFactoryImpl) GetPublic(useCaseRegistry registry.UseCaseRegistry
 	return GetPublicEndpoints(useCaseRegistry)
 }
 
-func (f *endpointFactoryImpl) GetPrivate(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []Endpoint {
+func (f *endpointFactoryImpl) GetPrivate(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store cookies.SessionStore) []Endpoint {
 	return GetManagementEndpoints(env, useCaseRegistry, store)
 }
 
@@ -66,7 +65,7 @@ func registerPublicRoutes(router *Router, env environment.Environment, endpoints
 	}
 }
 
-func registerManagementRoutes(router *Router, store sessions.Store, endpoints []Endpoint) {
+func registerManagementRoutes(router *Router, store cookies.SessionStore, endpoints []Endpoint) {
 	log.Warn(
 		"Server is running with the management API exposed. This interface " +
 			"includes endpoints that must remain private at all cost. Please shut down " +

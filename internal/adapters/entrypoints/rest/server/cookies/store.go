@@ -1,118 +1,177 @@
 package cookies
 
 import (
-	"encoding/hex"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/subtle"
+	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/gorilla/securecookie"
-	"github.com/gorilla/sessions"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"net/http"
 	"sync"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
 
-// UniqueSessionStore is a custom implementation of the sessions.Store interface. The rationale to implement this is that
-// existing implementations don't provide any way to prevent concurrent logins and the LPS management session should be unique
+const sessionIDBytes = 32
+
+var ErrSessionNotRecognized = errors.New("session not recognized")
+
+// SessionStore manages the single management login session.
+type SessionStore interface {
+	Create(w http.ResponseWriter, r *http.Request) error
+	Validate(r *http.Request) error
+	Refresh(w http.ResponseWriter, r *http.Request) error
+	Close(w http.ResponseWriter, r *http.Request) error
+}
+
+// UniqueSessionStore keeps one login alive at a time: the active session ID lives in
+// memory behind a mutex (this is what blocks concurrent logins) and is sealed into a
+// cookie with AES-256-GCM. Creating a new session overwrites the active ID, invalidating
+// any previously issued cookie.
 type UniqueSessionStore struct {
-	sessions.CookieStore
-	session      *sessions.Session
-	name         string
-	sessionMutex *sync.Mutex
+	name     string
+	gcm      cipher.AEAD
+	maxAge   int
+	secure   bool
+	mu       sync.Mutex
+	activeID []byte
 }
 
-func NewUniqueSessionStore(uniqueSessionName string, keyPairs ...[]byte) *UniqueSessionStore {
-	store := &UniqueSessionStore{
-		CookieStore:  *sessions.NewCookieStore(keyPairs...),
-		name:         uniqueSessionName,
-		sessionMutex: &sync.Mutex{},
+func NewUniqueSessionStore(name string, key []byte, maxAge int, secure bool) (*UniqueSessionStore, error) {
+	if len(key) != KeysBytesLength {
+		return nil, fmt.Errorf("session key must be %d bytes for AES-256, got %d", KeysBytesLength, len(key))
 	}
-	return store
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("error creating AES cipher: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("error creating GCM: %w", err)
+	}
+	return &UniqueSessionStore{name: name, gcm: gcm, maxAge: maxAge, secure: secure}, nil
 }
 
-func (s *UniqueSessionStore) Get(r *http.Request, name string) (*sessions.Session, error) {
-	return sessions.GetRegistry(r).Get(s, name)
+func (s *UniqueSessionStore) Create(w http.ResponseWriter, r *http.Request) error {
+	id, err := utils.GetRandomBytes(sessionIDBytes)
+	if err != nil {
+		return err
+	}
+	value, err := s.seal(id)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.activeID = id
+	s.mu.Unlock()
+	s.setCookie(w, r, value, s.maxAge)
+	return nil
 }
 
-func (s *UniqueSessionStore) New(r *http.Request, name string) (*sessions.Session, error) {
-	if name != s.name {
-		return s.dummySession(name), fmt.Errorf("UniqueSessionStore is expecting %s session name and received %s", s.name, name)
+// Validate is read-only (no Set-Cookie): used by the UI handler to compute loggedIn.
+func (s *UniqueSessionStore) Validate(r *http.Request) error {
+	id, err := s.requestID(r)
+	if err != nil {
+		return err
 	}
-
-	if s.session != nil {
-		return s.getExistingSession(r, name)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.activeID == nil || subtle.ConstantTimeCompare(id, s.activeID) != 1 {
+		return ErrSessionNotRecognized
 	}
-
-	session := sessions.NewSession(s, name)
-	opts := *s.Options
-	session.Options = &opts
-	session.IsNew = true
-	return session, nil
+	return nil
 }
 
-func (s *UniqueSessionStore) Save(r *http.Request, w http.ResponseWriter, session *sessions.Session) error {
-	const idSize = 32
-	s.sessionMutex.Lock()
-	defer s.sessionMutex.Unlock()
-	// Delete if max-age is <= 0
-	if session.Options.MaxAge <= 0 {
-		s.session = nil
-		http.SetCookie(w, sessions.NewCookie(session.Name(), "", session.Options))
-		return nil
+// Refresh validates the REQUEST's cookie against the active ID and, only if it still
+// matches, re-seals THAT SAME id into a fresh cookie (sliding window).
+func (s *UniqueSessionStore) Refresh(w http.ResponseWriter, r *http.Request) error {
+	id, err := s.requestID(r)
+	if err != nil {
+		return err
 	}
+	s.mu.Lock()
+	active := s.activeID != nil && subtle.ConstantTimeCompare(id, s.activeID) == 1
+	s.mu.Unlock()
+	if !active {
+		return ErrSessionNotRecognized
+	}
+	value, err := s.seal(id)
+	if err != nil {
+		return err
+	}
+	s.setCookie(w, r, value, s.maxAge)
+	return nil
+}
 
-	if session.ID == "" {
-		idBytes, err := utils.GetRandomBytes(idSize)
-		if err != nil {
-			return err
+// Close always expires the requester's own cookie, but only clears the in-memory active ID
+// if the request's cookie is that same session.
+func (s *UniqueSessionStore) Close(w http.ResponseWriter, r *http.Request) error {
+	s.setCookie(w, r, "", -1)
+	if id := s.openRequestID(r); id != nil {
+		s.mu.Lock()
+		if s.activeID != nil && subtle.ConstantTimeCompare(id, s.activeID) == 1 {
+			s.activeID = nil
 		}
-		session.ID = hex.EncodeToString(idBytes)
+		s.mu.Unlock()
 	}
-
-	s.session = session
-	encoded, err := securecookie.EncodeMulti(session.Name(), session.ID, s.Codecs...)
-	if err != nil {
-		return err
-	}
-	http.SetCookie(w, sessions.NewCookie(session.Name(), encoded, session.Options))
 	return nil
 }
 
-func (s *UniqueSessionStore) CloseUniqueSession(r *http.Request, w http.ResponseWriter) error {
-	if s.session == nil {
+func (s *UniqueSessionStore) openRequestID(r *http.Request) []byte {
+	cookie, err := r.Cookie(s.name)
+	if err != nil {
 		return nil
 	}
-	s.session.Options.MaxAge = -1
-	if err := s.session.Save(r, w); err != nil {
-		return err
+	id, err := s.open(cookie.Value)
+	if err != nil {
+		return nil
 	}
-	return nil
+	return id
 }
 
-func (s *UniqueSessionStore) getExistingSession(r *http.Request, name string) (*sessions.Session, error) {
-	var err error
-	var cookie *http.Cookie
-	var sessionId string
-
-	cookie, err = r.Cookie(name)
+func (s *UniqueSessionStore) requestID(r *http.Request) ([]byte, error) {
+	cookie, err := r.Cookie(s.name)
 	if err != nil {
-		return s.dummySession(name), err
+		return nil, ErrSessionNotRecognized
 	}
-
-	err = securecookie.DecodeMulti(name, cookie.Value, &sessionId, s.Codecs...)
+	id, err := s.open(cookie.Value)
 	if err != nil {
-		return s.dummySession(name), err
+		return nil, ErrSessionNotRecognized
 	}
-	if sessionId == s.session.ID {
-		s.session.IsNew = false
-		return s.session, nil
-	} else {
-		return s.dummySession(name), errors.New("session not recognized")
-	}
+	return id, nil
 }
 
-// dummySession some parts of the gorilla sessions library expect a session even if an error is returned from a function
-// such is the case of New function of sessions.Store interface. In order to maintain compatibility with the API and avoid
-// nil pointer errors, this function should be used only to return a dummy session together with an error
-func (s *UniqueSessionStore) dummySession(name string) *sessions.Session {
-	return sessions.NewSession(s, name)
+func (s *UniqueSessionStore) seal(id []byte) (string, error) {
+	nonce, err := utils.GetRandomBytes(int64(s.gcm.NonceSize()))
+	if err != nil {
+		return "", err
+	}
+	sealed := s.gcm.Seal(nonce, nonce, id, nil)
+	return base64.RawURLEncoding.EncodeToString(sealed), nil
+}
+
+func (s *UniqueSessionStore) open(value string) ([]byte, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil {
+		return nil, err
+	}
+	nonceSize := s.gcm.NonceSize()
+	if len(raw) < nonceSize {
+		return nil, errors.New("sealed cookie too short")
+	}
+	return s.gcm.Open(nil, raw[:nonceSize], raw[nonceSize:], nil)
+}
+
+func (s *UniqueSessionStore) setCookie(w http.ResponseWriter, r *http.Request, value string, maxAge int) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     s.name,
+		Value:    value,
+		Domain:   r.URL.Host,
+		Path:     "/",
+		MaxAge:   maxAge,
+		Secure:   s.secure,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
 }

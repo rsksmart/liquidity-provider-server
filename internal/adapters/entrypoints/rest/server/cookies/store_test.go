@@ -1,184 +1,158 @@
 package cookies_test
 
 import (
+	"encoding/base64"
 	"encoding/hex"
-	"github.com/gorilla/securecookie"
-	"github.com/gorilla/sessions"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"github.com/rsksmart/liquidity-provider-server/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
-	key1String = "01fbac02d66202e8468d2a4f1deba4fa5c2491f592e0e22e32fe1e6acac25923"
-	key2String = "02fbac02d66202e8468d2a4f1deba4fa5c2491f592e0e22e32fe1e6acac25923"
-	cookieName = "cookie"
+	keyString  = "01fbac02d66202e8468d2a4f1deba4fa5c2491f592e0e22e32fe1e6acac25923"
+	cookieName = "lp-session"
 )
 
-func TestUniqueSessionStore_New(t *testing.T) {
-	var (
-		cookie         *http.Cookie
-		firstSessionId string
-	)
-	k1, err := hex.DecodeString(key1String)
-	require.NoError(t, err)
-	k2, err := hex.DecodeString(key2String)
-	require.NoError(t, err)
-	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
-	t.Run("should return an error if the session name is different", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		session, err := store.New(req, test.AnyString)
-		assertDummySession(t, session)
-		require.ErrorContains(t, err, "UniqueSessionStore is expecting cookie session name and received any value")
+func TestNewUniqueSessionStore_KeyLength(t *testing.T) {
+	t.Run("rejects 16-byte key", func(t *testing.T) {
+		_, err := cookies.NewUniqueSessionStore(cookieName, make([]byte, 16), cookies.SessionMaxSeconds, false)
+		require.Error(t, err)
 	})
-	t.Run("should return an new session the first time", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		res := httptest.NewRecorder()
-		session, err := store.New(req, cookieName)
-		require.NoError(t, err)
-		assert.NotEmpty(t, session)
-		assert.True(t, session.IsNew)
-
-		// get cookie for next test
-		err = store.Save(req, res, session)
-		require.NoError(t, err)
-		// nolint:bodyclose
-		cookie = res.Result().Cookies()[0]
-		require.NoError(t, res.Result().Body.Close())
-		firstSessionId = session.ID
+	t.Run("rejects 24-byte key", func(t *testing.T) {
+		_, err := cookies.NewUniqueSessionStore(cookieName, make([]byte, 24), cookies.SessionMaxSeconds, false)
+		require.Error(t, err)
 	})
-	t.Run("should return an existing session the second time", func(t *testing.T) {
-		t.Run("should handle error decoding cookie", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			req.AddCookie(&http.Cookie{Name: cookieName, Value: "-"})
-			session, err := store.New(req, cookieName)
-			assertDummySession(t, session)
-			require.Error(t, err)
-		})
-		t.Run("should return error when session not recognized", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			otherId, err := utils.GetRandomBytes(32)
-			require.NoError(t, err)
-			otherCookie, err := securecookie.EncodeMulti(cookieName, hex.EncodeToString(otherId), securecookie.CodecsFromPairs(k1, k2)...)
-			require.NoError(t, err)
-			req.AddCookie(&http.Cookie{Name: cookieName, Value: otherCookie})
-			session, err := store.New(req, cookieName)
-			assertDummySession(t, session)
-			require.ErrorContains(t, err, "session not recognized")
-		})
-		t.Run("should return existing session successfully", func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			req.AddCookie(cookie)
-			session, err := store.New(req, cookieName)
-			require.NoError(t, err)
-			assert.NotNil(t, session)
-			assert.Equal(t, firstSessionId, session.ID)
-			assert.False(t, session.IsNew)
-		})
+	t.Run("accepts 32-byte key", func(t *testing.T) {
+		key, err := hex.DecodeString(keyString)
+		require.NoError(t, err)
+		store, err := cookies.NewUniqueSessionStore(cookieName, key, cookies.SessionMaxSeconds, false)
+		require.NoError(t, err)
+		assert.NotNil(t, store)
 	})
 }
 
-func TestUniqueSessionStore_Get(t *testing.T) {
-	k1, err := hex.DecodeString(key1String)
+func TestUniqueSessionStore_RoundTrip(t *testing.T) {
+	store := newTestStore(t)
+	cookie := createSession(t, store)
+
+	err := store.Validate(reqWithCookie(cookie))
 	require.NoError(t, err)
-	k2, err := hex.DecodeString(key2String)
-	require.NoError(t, err)
-	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
+}
+
+func TestUniqueSessionStore_TamperRejection(t *testing.T) {
+	store := newTestStore(t)
+	cookie := createSession(t, store)
+
+	t.Run("flipped byte in GCM tag", func(t *testing.T) {
+		tampered := tamperCookieValue(t, cookie.Value, len(cookie.Value)-1)
+		req := reqWithCookie(&http.Cookie{Name: cookie.Name, Value: tampered})
+		require.ErrorIs(t, store.Validate(req), cookies.ErrSessionNotRecognized)
+	})
+
+	t.Run("flipped byte inside ciphertext", func(t *testing.T) {
+		tampered := tamperCookieValue(t, cookie.Value, 20)
+		req := reqWithCookie(&http.Cookie{Name: cookie.Name, Value: tampered})
+		require.ErrorIs(t, store.Validate(req), cookies.ErrSessionNotRecognized)
+	})
+
+	t.Run("Refresh rejects tampered cookie", func(t *testing.T) {
+		tampered := tamperCookieValue(t, cookie.Value, 10)
+		req := reqWithCookie(&http.Cookie{Name: cookie.Name, Value: tampered})
+		rec := httptest.NewRecorder()
+		require.ErrorIs(t, store.Refresh(rec, req), cookies.ErrSessionNotRecognized)
+		assert.Empty(t, rec.Result().Cookies())
+	})
+}
+
+func TestUniqueSessionStore_SingleSession(t *testing.T) {
+	store := newTestStore(t)
+	cookieA := createSession(t, store)
+	cookieB := createSession(t, store)
+
+	require.ErrorIs(t, store.Validate(reqWithCookie(cookieA)), cookies.ErrSessionNotRecognized)
+	require.NoError(t, store.Validate(reqWithCookie(cookieB)))
+
+	t.Run("Refresh with stale cookie does not issue Set-Cookie", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		err := store.Refresh(rec, reqWithCookie(cookieA))
+		require.ErrorIs(t, err, cookies.ErrSessionNotRecognized)
+		assert.Empty(t, rec.Result().Cookies())
+	})
+
+	t.Run("Close with stale cookie does not clear active session", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		require.NoError(t, store.Close(rec, reqWithCookie(cookieA)))
+		require.NoError(t, store.Validate(reqWithCookie(cookieB)))
+	})
+}
+
+func TestUniqueSessionStore_NoCookie(t *testing.T) {
+	store := newTestStore(t)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	newSession, err := store.New(req, cookieName)
-	require.NoError(t, err)
-	existingSession, err := store.Get(req, cookieName)
-	require.NoError(t, err)
-	assert.Equal(t, newSession.ID, existingSession.ID)
+	require.ErrorIs(t, store.Validate(req), cookies.ErrSessionNotRecognized)
 }
 
-func TestUniqueSessionStore_Save(t *testing.T) {
-	var session *sessions.Session
-	var err error
-	k1, err := hex.DecodeString(key1String)
-	require.NoError(t, err)
-	k2, err := hex.DecodeString(key2String)
-	require.NoError(t, err)
-	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
+func TestUniqueSessionStore_CloseAndRefresh(t *testing.T) {
+	store := newTestStore(t)
+	cookie := createSession(t, store)
+	req := reqWithCookie(cookie)
 
+	t.Run("Refresh re-issues a valid cookie", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		require.NoError(t, store.Refresh(rec, req))
+		refreshed := rec.Result().Cookies()[0]
+		require.NoError(t, store.Validate(reqWithCookie(refreshed)))
+	})
+
+	t.Run("Close clears active session", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		require.NoError(t, store.Close(rec, req))
+		require.ErrorIs(t, store.Validate(req), cookies.ErrSessionNotRecognized)
+	})
+}
+
+func newTestStore(t *testing.T) *cookies.UniqueSessionStore {
+	t.Helper()
+	key, err := hex.DecodeString(keyString)
+	require.NoError(t, err)
+	store, err := cookies.NewUniqueSessionStore(cookieName, key, cookies.SessionMaxSeconds, false)
+	require.NoError(t, err)
+	return store
+}
+
+func createSession(t *testing.T, store *cookies.UniqueSessionStore) *http.Cookie {
+	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	res := httptest.NewRecorder()
-	session, err = store.New(req, cookieName)
-	require.NoError(t, err)
-	assert.NotEmpty(t, session)
-	assert.True(t, session.IsNew)
-
-	t.Run("should save session", func(t *testing.T) {
-		err = store.Save(req, res, session)
-		require.NoError(t, err)
-		// nolint:bodyclose
-		req.AddCookie(res.Result().Cookies()[0])
-		require.NoError(t, res.Result().Body.Close())
-
-		session, err = store.Get(req, cookieName)
-		require.NoError(t, err)
-		assert.False(t, session.IsNew)
-		assert.NotEmpty(t, session.ID)
-	})
-	t.Run("should remove session if max age is less than or equal to 0", func(t *testing.T) {
-		res = httptest.NewRecorder()
-		session, err = store.Get(req, cookieName)
-		session.Options.MaxAge = -1
-		err = store.Save(req, res, session)
-		require.NoError(t, err)
-		// nolint:bodyclose
-		assert.Empty(t, res.Result().Cookies()[0].Value)
-		require.NoError(t, res.Result().Body.Close())
-	})
+	rec := httptest.NewRecorder()
+	require.NoError(t, store.Create(rec, req))
+	result := rec.Result()
+	require.NoError(t, result.Body.Close())
+	cookie := result.Cookies()[0]
+	assert.Equal(t, cookies.SessionMaxSeconds, cookie.MaxAge)
+	assert.Equal(t, "/", cookie.Path)
+	assert.True(t, cookie.HttpOnly)
+	assert.Equal(t, http.SameSiteStrictMode, cookie.SameSite)
+	assert.Equal(t, req.URL.Host, cookie.Domain)
+	return cookie
 }
 
-func TestUniqueSessionStore_CloseUniqueSession(t *testing.T) {
-	k1, err := hex.DecodeString(key1String)
-	require.NoError(t, err)
-	k2, err := hex.DecodeString(key2String)
-	require.NoError(t, err)
-	store := cookies.NewUniqueSessionStore(cookieName, k1, k2)
+func reqWithCookie(cookie *http.Cookie) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	res := httptest.NewRecorder()
-
-	session, err := store.New(req, cookieName)
-	require.NoError(t, err)
-	assert.True(t, session.IsNew)
-	err = store.Save(req, res, session)
-	require.NoError(t, err)
-
-	// nolint:bodyclose
-	req.AddCookie(res.Result().Cookies()[0])
-	require.NoError(t, res.Result().Body.Close())
-	session, err = store.Get(req, cookieName)
-	require.NoError(t, err)
-	require.False(t, session.IsNew)
-	require.NotEmpty(t, session.ID)
-
-	t.Run("should close the session", func(t *testing.T) {
-		req = httptest.NewRequest(http.MethodGet, "/", nil)
-		// nolint:bodyclose
-		req.AddCookie(res.Result().Cookies()[0])
-		require.NoError(t, res.Result().Body.Close())
-		res = httptest.NewRecorder()
-		err = store.CloseUniqueSession(req, res)
-		require.NoError(t, err)
-
-		session, err = store.Get(req, cookieName)
-		require.NoError(t, err)
-		assert.Empty(t, session.ID)
-	})
+	req.AddCookie(cookie)
+	return req
 }
 
-func assertDummySession(t *testing.T, session *sessions.Session) {
-	assert.NotNil(t, session)
-	assert.Empty(t, session.Options)
-	assert.False(t, session.IsNew)
-	assert.Empty(t, session.Values)
-	assert.Empty(t, session.ID)
+func tamperCookieValue(t *testing.T, value string, byteIndex int) string {
+	t.Helper()
+	raw, err := base64.RawURLEncoding.DecodeString(value)
+	require.NoError(t, err)
+	if byteIndex >= len(raw) {
+		byteIndex = len(raw) - 1
+	}
+	raw[byteIndex] ^= 0xff
+	return base64.RawURLEncoding.EncodeToString(raw)
 }

@@ -106,9 +106,9 @@ packages:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry:
     interfaces:
       UseCaseRegistry:
-  github.com/gorilla/sessions:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies:
     interfaces:
-      Store:
+      SessionStore:
   net/http:
     interfaces:
       Handler:
