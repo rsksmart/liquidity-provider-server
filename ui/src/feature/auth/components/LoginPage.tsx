@@ -31,24 +31,16 @@ export function LoginPage() {
       const password = fieldValue(formData, 'password')
 
       try {
-        await apiFetch('/management/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        })
+        await apiFetch.post('/management/login', { username, password })
 
         if (!credentialsSet) {
           const newUsername = fieldValue(formData, 'new-username')
           const newPassword = fieldValue(formData, 'new-password')
-          await apiFetch('/management/credentials', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              oldUsername: username,
-              oldPassword: password,
-              newUsername,
-              newPassword,
-            }),
+          await apiFetch.post('/management/credentials', {
+            oldUsername: username,
+            oldPassword: password,
+            newUsername,
+            newPassword,
           })
         }
 

@@ -1,7 +1,5 @@
-import {
-  ApiFetchError,
-  CsrfTokenMissingError,
-} from '@api/management/types/errors'
+import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
+import type { ManagementPostBodies } from '@api/management/types/post-bodies'
 import { getInitialData } from '@shared/utils/initial-data'
 import { toast } from 'sonner'
 
@@ -12,6 +10,25 @@ import { toast } from 'sonner'
  */
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const LOGIN_PATH = '/management/login'
+const LOGOUT_PATH = '/management/logout'
+
+export type ApiFetchInit = Omit<RequestInit, 'body'> & {
+  /** JSON payload — stringified automatically; defaults method to POST when method is omitted. */
+  json?: unknown
+}
+
+type PostInit = Omit<ApiFetchInit, 'method' | 'json'>
+
+interface ApiFetch {
+  (input: string, init?: ApiFetchInit): Promise<Response>
+  get: (input: string, init?: Omit<ApiFetchInit, 'method' | 'json'>) => Promise<Response>
+  post(input: '/management/logout', init?: PostInit): Promise<Response>
+  post<Path extends keyof ManagementPostBodies>(
+    input: Path,
+    json: ManagementPostBodies[Path],
+    init?: PostInit,
+  ): Promise<Response>
+}
 
 function getManagementApiOrigin(): string {
   // Vite dev: API goes through the local proxy (same origin). Bootstrap loads real LPS BaseUrl.
@@ -37,8 +54,7 @@ function requestPath(input: string): string {
 }
 
 function isLoginPath(path: string): boolean {
-  const normalized =
-    path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path
+  const normalized = path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path
   return normalized === LOGIN_PATH
 }
 
@@ -75,10 +91,7 @@ function isSessionExpiredBody(body: unknown): boolean {
   }
 
   const message = body.message
-  return (
-    message === 'session not recognized' ||
-    message === 'session validation error'
-  )
+  return message === 'session not recognized' || message === 'session validation error'
 }
 
 export function isSessionExpiredError(err: unknown): boolean {
@@ -106,37 +119,65 @@ function handleSessionExpired(): void {
   }, SESSION_EXPIRED_REDIRECT_DELAY_MS)
 }
 
-export async function apiFetch(
-  input: string,
-  init: RequestInit = {},
-): Promise<Response> {
-  const method = (init.method ?? 'GET').toUpperCase()
-  const headers = new Headers(init.headers)
+async function apiFetchImpl(input: string, init: ApiFetchInit = {}): Promise<Response> {
+  const { json, ...requestInit } = init
+  const method = (requestInit.method ?? (json !== undefined ? 'POST' : 'GET')).toUpperCase()
+  const body = json !== undefined ? JSON.stringify(json) : undefined
+  const headers = new Headers(requestInit.headers)
 
   if (MUTATING_METHODS.has(method)) {
     headers.set('X-CSRF-Token', readCsrfToken())
+    if (body != null && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json')
+    }
   }
 
   const response = await fetch(resolveRequestUrl(input), {
-    ...init,
+    ...requestInit,
     method,
+    body,
     headers,
   })
 
   if (!response.ok) {
-    const body = await readErrorBody(response)
+    const responseBody = await readErrorBody(response)
     const path = requestPath(input)
     const sessionExpired =
       !isLoginPath(path) &&
       (response.status === 401 ||
-        (response.status === 403 && isSessionExpiredBody(body)))
+        (response.status === 403 && isSessionExpiredBody(responseBody)))
 
     if (sessionExpired) {
       handleSessionExpired()
     }
 
-    throw new ApiFetchError(response.status, response.statusText, body)
+    throw new ApiFetchError(response.status, response.statusText, responseBody)
   }
 
   return response
 }
+
+function apiFetchPost(input: '/management/logout', init?: PostInit): Promise<Response>
+function apiFetchPost<Path extends keyof ManagementPostBodies>(
+  input: Path,
+  json: ManagementPostBodies[Path],
+  init?: PostInit,
+): Promise<Response>
+function apiFetchPost(input: string, jsonOrInit?: unknown, init: PostInit = {}): Promise<Response> {
+  if (input === LOGOUT_PATH) {
+    const logoutInit = jsonOrInit !== undefined ? (jsonOrInit as PostInit) : init
+    return apiFetchImpl(input, { ...logoutInit, method: 'POST' })
+  }
+
+  return apiFetchImpl(input, {
+    ...init,
+    method: 'POST',
+    ...(jsonOrInit !== undefined ? { json: jsonOrInit } : {}),
+  })
+}
+
+export const apiFetch: ApiFetch = Object.assign(apiFetchImpl, {
+  get: (input: string, init: Omit<ApiFetchInit, 'method' | 'json'> = {}) =>
+    apiFetchImpl(input, { ...init, method: 'GET' }),
+  post: apiFetchPost,
+})

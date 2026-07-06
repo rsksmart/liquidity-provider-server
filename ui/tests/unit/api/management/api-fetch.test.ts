@@ -35,6 +35,54 @@ describe('apiFetch', () => {
     },
   )
 
+  it('sets Content-Type application/json on mutating requests with a body', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    await apiFetch('/management/login', {
+      json: { username: 'u', password: 'p' },
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(new Headers(init.headers).get('Content-Type')).toBe('application/json')
+  })
+
+  it('defaults method to POST when json is provided', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    await apiFetch('/management/login', { json: { username: 'u', password: 'p' } })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(JSON.stringify({ username: 'u', password: 'p' }))
+  })
+
+  it('does not override an explicit Content-Type header', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    await apiFetch('/management/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      json: { username: 'u' },
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(new Headers(init.headers).get('Content-Type')).toBe('text/plain')
+    expect(init.body).toBe(JSON.stringify({ username: 'u' }))
+  })
+
+  it('omits Content-Type on body-less POST requests', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    await apiFetch.post('/management/logout')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(new Headers(init.headers).has('Content-Type')).toBe(false)
+  })
+
   it('omits X-CSRF-Token on GET requests', async () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-get-token' })
     const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
@@ -148,5 +196,18 @@ describe('apiFetch', () => {
     await apiFetch('https://example.com/management/status')
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe('https://example.com/management/status')
+  })
+
+  it('preserves the response body on successful requests', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ collateral: '1000000000000000000' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const response = await apiFetch('/pegin/collateral')
+    await expect(response.json()).resolves.toEqual({ collateral: '1000000000000000000' })
   })
 })

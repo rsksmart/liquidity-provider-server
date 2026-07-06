@@ -1,18 +1,25 @@
 import { ApiFetchError } from '@api/management/types/errors'
-import { apiFetch } from '@api/management/utils/api-fetch'
 import { logout } from '@feature/auth/logout'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { toastWarningMock } = vi.hoisted(() => ({
-  toastWarningMock: vi.fn(),
-}))
+const { toastWarningMock, apiFetchMock } = vi.hoisted(() => {
+  const fetchMock = vi.fn()
+  const withShortcuts = Object.assign(fetchMock, {
+    get: fetchMock,
+    post: fetchMock,
+  })
+  return {
+    toastWarningMock: vi.fn(),
+    apiFetchMock: withShortcuts,
+  }
+})
 
 vi.mock('@api/management/utils/api-fetch', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('@api/management/utils/api-fetch')>()
   return {
     ...actual,
-    apiFetch: vi.fn(),
+    apiFetch: apiFetchMock,
   }
 })
 
@@ -27,7 +34,7 @@ describe('logout', () => {
   const assignMock = vi.fn()
 
   beforeEach(() => {
-    vi.mocked(apiFetch).mockReset()
+    apiFetchMock.mockReset()
     toastWarningMock.mockReset()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     assignMock.mockReset()
@@ -43,7 +50,7 @@ describe('logout', () => {
   })
 
   it('redirects to login after a successful logout', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response('ok', { status: 200 }))
+    apiFetchMock.mockResolvedValue(new Response('ok', { status: 200 }))
 
     await logout()
 
@@ -51,10 +58,8 @@ describe('logout', () => {
   })
 
   it('skips redirect when the session is already expired (403)', async () => {
-    vi.mocked(apiFetch).mockRejectedValue(
-      new ApiFetchError(403, 'Forbidden', {
-        message: 'session not recognized',
-      }),
+    apiFetchMock.mockRejectedValue(
+      new ApiFetchError(403, 'Forbidden', { message: 'session not recognized' }),
     )
 
     await logout()
@@ -64,9 +69,7 @@ describe('logout', () => {
   })
 
   it('skips redirect when the session is already expired (401)', async () => {
-    vi.mocked(apiFetch).mockRejectedValue(
-      new ApiFetchError(401, 'Unauthorized', ''),
-    )
+    apiFetchMock.mockRejectedValue(new ApiFetchError(401, 'Unauthorized', ''))
 
     await logout()
 
@@ -76,7 +79,7 @@ describe('logout', () => {
 
   it('shows warning toast and redirects after delay when logout fails', async () => {
     vi.useFakeTimers()
-    vi.mocked(apiFetch).mockRejectedValue(new Error('network'))
+    apiFetchMock.mockRejectedValue(new Error('network'))
 
     const logoutPromise = logout()
 

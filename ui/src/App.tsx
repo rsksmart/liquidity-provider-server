@@ -1,7 +1,7 @@
 import { AuthGuard } from '@feature/auth/components/AuthGuard'
 import { LoginPage } from '@feature/auth/components/LoginPage'
 import { ErrorPlaceholder } from '@feature/error/components/ErrorPlaceholder'
-import { ManagementPlaceholder } from '@feature/management/components/ManagementPlaceholder'
+import { ManagementPage } from '@feature/management/components'
 import { useInitialData } from '@shared/utils/initial-data'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
@@ -23,7 +23,7 @@ export function App() {
         path="/management"
         element={
           <AuthGuard requireAuth={true}>
-            <ManagementPlaceholder />
+            <ManagementPage />
           </AuthGuard>
         }
       />

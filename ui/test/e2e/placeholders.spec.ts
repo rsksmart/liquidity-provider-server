@@ -21,9 +21,11 @@ test.describe('placeholder pages', () => {
       await applyFreshManagementSession(request, context)
     })
 
-    test('management route shows Management heading when logged in', async ({ page }) => {
+    test('management route shows dashboard when logged in', async ({ page }) => {
       await page.goto('management')
-      await expect(page.getByRole('heading', { level: 1, name: 'Management' })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: 'Management Dashboard' })).toBeVisible()
+      await expect(page.getByText('Provider RSK Address')).toBeVisible()
+      await expect(page.getByRole('tab', { name: 'Pegin' })).toBeVisible()
     })
   })
 })
