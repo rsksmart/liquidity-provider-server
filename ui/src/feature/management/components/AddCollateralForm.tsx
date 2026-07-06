@@ -11,7 +11,7 @@ import {
   managementLoadingBarClass,
 } from '@feature/management/management-styles'
 import { etherToWei, weiToApiAmount } from '@shared/utils/wei'
-import { type ChangeEvent, type FormEvent, useCallback, useState } from 'react'
+import { type ChangeEvent, type SubmitEvent, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -98,7 +98,7 @@ export function AddCollateralForm({ kind }: AddCollateralFormProps) {
   )
 
   const onSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
+    (event: SubmitEvent<HTMLFormElement>) => {
       event.preventDefault()
       void submit(amount)
     },
