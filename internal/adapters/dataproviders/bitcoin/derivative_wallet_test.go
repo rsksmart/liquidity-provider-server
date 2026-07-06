@@ -557,7 +557,7 @@ func testSendWithOpReturnAtMaxInputCount(t *testing.T, rskAccount *account.RskAc
 	client.AssertExpectations(t)
 }
 
-// nolint:funlen
+// nolint:funlen,maintidx
 func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount) []struct {
 	description string
 	setup       func(t *testing.T, client *mocks.ClientAdapterMock)
