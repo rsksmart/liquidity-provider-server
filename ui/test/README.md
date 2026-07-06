@@ -47,7 +47,7 @@ pnpm install
 pnpm test:e2e --list
 
 # Full run against running LPS
-LPS_E2E_BASE_URL=http://localhost:8080/management/next \
+LPS_E2E_BASE_URL=http://localhost:8080/management/next/ \
 LPS_E2E_USER=<username> \
 LPS_E2E_PASSWORD=<password> \
   pnpm test:e2e
@@ -66,7 +66,7 @@ make ui-e2e
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `LPS_E2E_BASE_URL` | `http://localhost:8080/management/next` | Playwright `baseURL` — must be LPS-served shell |
+| `LPS_E2E_BASE_URL` | `http://localhost:8080/management/next/` | Playwright `baseURL` — must be LPS-served shell (trailing slash keeps relative navigations under `/management/next/`) |
 | `LPS_E2E_USER` | — | Management login username (authenticated specs only) |
 | `LPS_E2E_PASSWORD` | — | Management login password (never commit) |
 
