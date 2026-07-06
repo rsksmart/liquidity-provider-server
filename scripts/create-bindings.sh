@@ -4,7 +4,7 @@ IMAGE=$1
 
 if [ -z "$IMAGE" ]; then
   echo "Usage: $0 <docker-image>"
-  echo "Example: $0 ghcr.io/liquidity-bridge-contracts/liquidity-bridge-contracts:latest"
+  echo "Example: $0 ghcr.io/rsksmart/liquidity-bridge-contract@sha256:<digest>"
   exit 1
 fi
 

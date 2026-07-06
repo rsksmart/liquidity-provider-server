@@ -26,6 +26,8 @@ import (
 
 // nolint:funlen
 func TestPegoutBridgeWatcher_Start(t *testing.T) {
+	originalLevel := log.GetLevel()
+	t.Cleanup(func() { log.SetLevel(originalLevel) })
 	setup := func() (chan time.Time, *mocks.PegoutQuoteRepositoryMock, *mocks.ProviderMock, *mocks.RskWalletMock) {
 		ticker := &mocks.TickerMock{}
 		tickerChannel := make(chan time.Time)

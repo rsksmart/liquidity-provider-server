@@ -47,10 +47,18 @@ fi
 ### Contract deployment ###
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
+  # LBC_IMAGE is a pinned digest that never changes between runs, so compose would
+  # treat a previous run's "service_completed_successfully" as still satisfied and
+  # skip re-running the deployer. After a chain reset (rm -rf volumes) that leaves the
+  # contracts undeployed. Remove the one-shot containers so they always run fresh.
+  docker rm -f lbc-deployer lps-approver >/dev/null 2>&1 || true
   docker compose -f docker-compose.yml -f wallet-funder/docker-compose.funder.yml -f lbc-deployer/docker-compose.lbc-deployer.yml --env-file "$ENV_FILE" up -d --wait
   EXIT_CODE=$(docker wait lbc-deployer)
-  if [ "$EXIT_CODE" != "0" ]; then
-    echo "ERROR: Contract deployment failed (exit code $EXIT_CODE)"
+  # docker wait returns 0 for a container that was created but never started, so also
+  # require that the deployer actually ran before trusting the exit code.
+  STARTED_AT=$(docker inspect -f '{{.State.StartedAt}}' lbc-deployer 2>/dev/null)
+  if [ "$EXIT_CODE" != "0" ] || [ "$STARTED_AT" = "0001-01-01T00:00:00Z" ]; then
+    echo "ERROR: Contract deployment failed (exit code $EXIT_CODE, started $STARTED_AT)"
     exit 1
   fi
   echo "Contracts deployed"
@@ -84,10 +92,9 @@ if [[ "$CREATE_POWPEG" == "true" ]]; then
 fi
 
 ### LPS (always runs) ###
-# lps01 may briefly crash on first boot during a BTC
-# wallet rescan. lps-configurer polls /health internally and signals completion via
-# its exit code
-# TODO: Change the fatal.log when lps01 crashes
+# On first boot, lps01 exits cleanly (code 0) while the BTC wallet rescan is in progress.
+# Docker restarts it automatically (unless-stopped policy) until the rescan completes and
+# the server boots normally. lps-configurer polls /health and signals readiness via its exit code.
 docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d
 echo "Configuring LPS..."
 EXIT_CODE=$(docker wait lps-configurer)
