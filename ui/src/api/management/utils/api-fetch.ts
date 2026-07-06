@@ -1,4 +1,7 @@
-import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
+import {
+  ApiFetchError,
+  CsrfTokenMissingError,
+} from '@api/management/types/errors'
 import { getInitialData } from '@shared/utils/initial-data'
 import { toast } from 'sonner'
 
@@ -31,6 +34,12 @@ function requestPath(input: string): string {
     return new URL(input).pathname
   }
   return input.split('?')[0] ?? input
+}
+
+function isLoginPath(path: string): boolean {
+  const normalized =
+    path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path
+  return normalized === LOGIN_PATH
 }
 
 function readCsrfToken(): string {
@@ -66,11 +75,17 @@ function isSessionExpiredBody(body: unknown): boolean {
   }
 
   const message = body.message
-  return message === 'session not recognized' || message === 'session validation error'
+  return (
+    message === 'session not recognized' ||
+    message === 'session validation error'
+  )
 }
 
 export function isSessionExpiredError(err: unknown): boolean {
-  return err instanceof ApiFetchError && isSessionExpiredBody(err.body)
+  return (
+    err instanceof ApiFetchError &&
+    (err.status === 401 || isSessionExpiredBody(err.body))
+  )
 }
 
 const SESSION_EXPIRED_REDIRECT_DELAY_MS = 800
@@ -82,7 +97,10 @@ function handleSessionExpired(): void {
   }, SESSION_EXPIRED_REDIRECT_DELAY_MS)
 }
 
-export async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
+export async function apiFetch(
+  input: string,
+  init: RequestInit = {},
+): Promise<Response> {
   const method = (init.method ?? 'GET').toUpperCase()
   const headers = new Headers(init.headers)
 
@@ -99,8 +117,9 @@ export async function apiFetch(input: string, init: RequestInit = {}): Promise<R
   const body = await readErrorBody(response)
   const path = requestPath(input)
   const sessionExpired =
-    !path.includes(LOGIN_PATH) &&
-    (response.status === 401 || (response.status === 403 && isSessionExpiredBody(body)))
+    !isLoginPath(path) &&
+    (response.status === 401 ||
+      (response.status === 403 && isSessionExpiredBody(body)))
 
   if (sessionExpired) {
     handleSessionExpired()
