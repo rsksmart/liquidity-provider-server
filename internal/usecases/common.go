@@ -99,7 +99,8 @@ var (
 	WrongStateError                     = errors.New("quote with wrong state")
 	NoEnoughConfirmationsError          = errors.New("not enough confirmations for transaction")
 	InsufficientAmountError             = errors.New("insufficient amount")
-	AlreadyRegisteredError              = errors.New("liquidity provider already registered")
+	RegistrationRejectedError           = errors.New("liquidity provider registration rejected by admin")
+	RegistrationWithdrawnError          = errors.New("liquidity provider registration withdrawn")
 	IllegalQuoteStateError              = errors.New("illegal quote state")
 	LockingCapExceededError             = errors.New("locking cap exceeded")
 	NonPositiveWeiError                 = errors.New("wei value must be positive")
@@ -172,6 +173,14 @@ func (args ErrorArgs) String() string {
 
 func WrapUseCaseError(useCase UseCaseId, err error) error {
 	return WrapUseCaseErrorArgs(useCase, err, make(ErrorArgs, 0))
+}
+
+// SafeLogStr strips CR/LF from a user-controlled string before it is included
+// in a structured log field, preventing log forging (CWE-117).
+func SafeLogStr(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	return s
 }
 
 func WrapUseCaseErrorArgs(useCase UseCaseId, err error, args ErrorArgs) error {

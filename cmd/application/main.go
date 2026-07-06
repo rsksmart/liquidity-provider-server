@@ -8,7 +8,9 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"os/signal"
 	"path"
+	"syscall"
 )
 
 // @Version 1.2.1
@@ -42,7 +44,11 @@ func main() {
 	log.Info("Application initialized successfully")
 	cancel()
 	log.Info("Starting application...")
-	app.Run(*env, logLevel)
+
+	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	app.Run(runCtx, *env, logLevel)
 	app.ShutdownServices()
 }
 

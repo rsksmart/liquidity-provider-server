@@ -10,7 +10,7 @@ services:
     pull_policy: build
     image: lps:latest
     container_name: lps01
-    restart: on-failure:3
+    restart: unless-stopped
     environment:
       - LPS_STAGE
       - SERVER_PORT
@@ -43,6 +43,7 @@ services:
       - PROVIDER_NAME
       - BASE_URL
       - PROVIDER_TYPE
+      - LP_REGISTRATION_POLL_INTERVAL_SECONDS
       - PEGOUT_DEPOSIT_CACHE_START_BLOCK
       - CAPTCHA_SECRET_KEY
       - CAPTCHA_SITE_KEY

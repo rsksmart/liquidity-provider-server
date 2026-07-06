@@ -127,6 +127,7 @@ func CreateDiscoveryContract(
 		rskWallet,
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
 		environment.DefaultTimeouts().MiningWait.Seconds(),
+		0,
 		binding,
 		rootstock.MustLoadFlyoverABIs(),
 	), nil
