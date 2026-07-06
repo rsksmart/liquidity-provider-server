@@ -22,8 +22,8 @@ func (useCase *GetCollateralUseCase) Run() (*entities.Wei, error) {
 	collateral, err := useCase.contracts.CollateralManagement.GetPegoutCollateral(rskAddress)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"vertical":   "pegout",
-			"rskAddress": rskAddress,
+			"vertical":    "pegout",
+			"rsk_address": rskAddress,
 		}).WithError(err).Error("GetCollateral: read failed")
 		return nil, usecases.WrapUseCaseError(usecases.GetPegoutCollateralId, err)
 	}

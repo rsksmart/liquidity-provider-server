@@ -150,7 +150,7 @@ const (
 	LogKeyMessage    LogKey = "msg"
 	LogKeyError      LogKey = "error"
 	LogKeyVertical   LogKey = "vertical"
-	LogKeyRskAddress LogKey = "rskAddress"
+	LogKeyRskAddress LogKey = "rsk_address"
 )
 
 type LogEntry map[LogKey]any
