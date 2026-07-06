@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -14,13 +16,14 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 const (
 	rpcCallRetryMax   = 3
 	rpcCallRetrySleep = 1 * time.Minute
 )
+
+var ErrShortRevertData = errors.New("revert data shorter than ABI selector")
 
 var DefaultRetryParams = RetryParams{
 	Retries: rpcCallRetryMax,
@@ -161,6 +164,9 @@ func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
 
 	var selectorBytes [errorSelectorSize]byte
 	var parsedError *abi.Error
+	if len(revertDataBytes) < errorSelectorSize {
+		return nil, fmt.Errorf("%w: %d bytes", ErrShortRevertData, len(revertDataBytes))
+	}
 	copy(selectorBytes[:], revertDataBytes[:errorSelectorSize])
 	if parsedError, err = contractAbi.ErrorByID(selectorBytes); err != nil {
 		return nil, fmt.Errorf("error decoding data using ABI: %w", err)
