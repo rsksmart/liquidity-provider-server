@@ -70,11 +70,13 @@ describe('apiFetch session expiry', () => {
       }),
     )
 
-    await expect(apiFetch('/management/status', { method: 'GET' })).rejects.toBeInstanceOf(
-      ApiFetchError,
-    )
+    await expect(
+      apiFetch('/management/status', { method: 'GET' }),
+    ).rejects.toBeInstanceOf(ApiFetchError)
 
-    expect(toastErrorMock).toHaveBeenCalledWith('Your session has expired. Please log in again.')
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      'Your session has expired. Please log in again.',
+    )
     expect(assignMock).not.toHaveBeenCalled()
     vi.runAllTimers()
     expect(assignMock).toHaveBeenCalledWith('/management/next/login')
@@ -90,11 +92,13 @@ describe('apiFetch session expiry', () => {
       }),
     )
 
-    await expect(apiFetch('/management/status', { method: 'GET' })).rejects.toBeInstanceOf(
-      ApiFetchError,
-    )
+    await expect(
+      apiFetch('/management/status', { method: 'GET' }),
+    ).rejects.toBeInstanceOf(ApiFetchError)
 
-    expect(toastErrorMock).toHaveBeenCalledWith('Your session has expired. Please log in again.')
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      'Your session has expired. Please log in again.',
+    )
     expect(assignMock).not.toHaveBeenCalled()
     vi.runAllTimers()
     expect(assignMock).toHaveBeenCalledWith('/management/next/login')
@@ -103,6 +107,7 @@ describe('apiFetch session expiry', () => {
   it('does not redirect on 403 CSRF errors', async () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
     vi.mocked(fetch).mockResolvedValue(
+      // LPS middleware message uses "CRSF" (server-side typo in session.go).
       new Response(JSON.stringify({ message: 'CRSF token validation error' }), {
         status: 403,
         statusText: 'Forbidden',
@@ -110,9 +115,9 @@ describe('apiFetch session expiry', () => {
       }),
     )
 
-    await expect(apiFetch('/management/status', { method: 'GET' })).rejects.toBeInstanceOf(
-      ApiFetchError,
-    )
+    await expect(
+      apiFetch('/management/status', { method: 'GET' }),
+    ).rejects.toBeInstanceOf(ApiFetchError)
 
     expect(toastErrorMock).not.toHaveBeenCalled()
     expect(assignMock).not.toHaveBeenCalled()

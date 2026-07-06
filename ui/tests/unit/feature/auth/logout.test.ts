@@ -8,7 +8,8 @@ const { toastWarningMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('@api/management/utils/api-fetch', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@api/management/utils/api-fetch')>()
+  const actual =
+    await importOriginal<typeof import('@api/management/utils/api-fetch')>()
   return {
     ...actual,
     apiFetch: vi.fn(),
@@ -49,9 +50,22 @@ describe('logout', () => {
     expect(assignMock).toHaveBeenCalledWith('/management/next/login')
   })
 
-  it('skips redirect when the session is already expired', async () => {
+  it('skips redirect when the session is already expired (403)', async () => {
     vi.mocked(apiFetch).mockRejectedValue(
-      new ApiFetchError(403, 'Forbidden', { message: 'session not recognized' }),
+      new ApiFetchError(403, 'Forbidden', {
+        message: 'session not recognized',
+      }),
+    )
+
+    await logout()
+
+    expect(toastWarningMock).not.toHaveBeenCalled()
+    expect(assignMock).not.toHaveBeenCalled()
+  })
+
+  it('skips redirect when the session is already expired (401)', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(
+      new ApiFetchError(401, 'Unauthorized', ''),
     )
 
     await logout()
@@ -65,7 +79,9 @@ describe('logout', () => {
 
     await logout()
 
-    expect(toastWarningMock).toHaveBeenCalledWith('Logout failed; local session cleared.')
+    expect(toastWarningMock).toHaveBeenCalledWith(
+      'Logout failed; local session cleared.',
+    )
     expect(assignMock).toHaveBeenCalledWith('/management/next/login')
     expect(console.error).toHaveBeenCalled()
   })

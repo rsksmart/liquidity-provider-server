@@ -1,4 +1,4 @@
-import { Toaster as Sonner, type ToasterProps} from 'sonner'
+import { Toaster as Sonner, type ToasterProps } from 'sonner'
 
 const toastOptions: ToasterProps['toastOptions'] = {
   classNames: {
