@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
+import { getShellUrl } from './test/fixtures/session'
+
 export default defineConfig({
   testDir: './test/e2e',
   fullyParallel: true,
@@ -7,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.LPS_E2E_BASE_URL ?? 'http://localhost:8080/management/next/',
+    baseURL: getShellUrl(),
     trace: 'on-first-retry',
   },
   projects: [
