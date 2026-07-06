@@ -16,20 +16,21 @@ func NewStatusUseCase(quoteRepository quote.PegoutQuoteRepository) *StatusUseCas
 }
 
 func (useCase *StatusUseCase) Run(ctx context.Context, quoteHash string) (quote.WatchedPegoutQuote, error) {
+	logger := log.WithField("quote_hash", usecases.SafeLogStr(quoteHash))
 	pegoutQuote, err := useCase.quoteRepository.GetQuote(ctx, quoteHash)
 	if err != nil {
-		log.WithField("quoteHash", quoteHash).WithError(err).Error("QuoteStatus: repository load failed")
+		logger.WithError(err).Error("QuoteStatus: repository load failed")
 		return quote.WatchedPegoutQuote{}, usecases.WrapUseCaseError(usecases.PegoutQuoteStatusId, err)
 	} else if pegoutQuote == nil {
-		log.WithField("quoteHash", quoteHash).Debug("QuoteStatus: quote not found")
+		logger.Debug("QuoteStatus: quote not found")
 		return quote.WatchedPegoutQuote{}, usecases.WrapUseCaseError(usecases.PegoutQuoteStatusId, usecases.QuoteNotFoundError)
 	}
 	retainedQuote, err := useCase.quoteRepository.GetRetainedQuote(ctx, quoteHash)
 	if err != nil {
-		log.WithField("quoteHash", quoteHash).WithError(err).Error("QuoteStatus: repository load failed")
+		logger.WithError(err).Error("QuoteStatus: repository load failed")
 		return quote.WatchedPegoutQuote{}, usecases.WrapUseCaseError(usecases.PegoutQuoteStatusId, err)
 	} else if retainedQuote == nil {
-		log.WithField("quoteHash", quoteHash).Debug("QuoteStatus: quote not yet accepted")
+		logger.Debug("QuoteStatus: quote not yet accepted")
 		return quote.WatchedPegoutQuote{}, usecases.WrapUseCaseError(usecases.PegoutQuoteStatusId, usecases.QuoteNotAcceptedError)
 	}
 	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, quoteHash)
