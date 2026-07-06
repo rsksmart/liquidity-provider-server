@@ -1,6 +1,7 @@
 FROM --platform=linux/amd64 node:24-bookworm-slim AS ui-builder
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /code/ui
 
 COPY ui/package.json ui/pnpm-lock.yaml ./
