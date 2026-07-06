@@ -222,4 +222,52 @@ describe('apiFetch', () => {
     const response = await apiFetch('/pegin/collateral')
     await expect(response.json()).resolves.toEqual({ collateral: '1000000000000000000' })
   })
+
+  it('posts JSON via apiFetch.post', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    await apiFetch.post('/pegin/addCollateral', { amount: 1_000_000_000_000_000_000 })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(JSON.stringify({ amount: 1_000_000_000_000_000_000 }))
+  })
+
+  it('fetches via apiFetch.get', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    await apiFetch.get('/pegin/collateral')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.method).toBe('GET')
+  })
+
+  it('resolves relative URLs against window origin when BaseUrl is empty', async () => {
+    seedInitialData(
+      { ...loggedOutFixture, data: { ...loggedOutFixture.data, BaseUrl: '' } },
+      { csrfToken: 'csrf-token' },
+    )
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    await apiFetch('/pegin/collateral')
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(`${window.location.origin}/pegin/collateral`)
+  })
+
+  it('classifies session expiry for absolute URLs on error', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ message: 'session not recognized' }), {
+        status: 403,
+        statusText: 'Forbidden',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await expect(
+      apiFetch('https://example.com/management/status', { method: 'GET' }),
+    ).rejects.toBeInstanceOf(ApiFetchError)
+  })
 })

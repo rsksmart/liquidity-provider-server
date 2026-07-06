@@ -179,4 +179,38 @@ describe('add-collateral validation', () => {
     )
     expect(screen.getByTestId('pegin-add-collateral-button')).not.toBeDisabled()
   })
+
+  it('shows unknown error when API body has no message', async () => {
+    const user = userEvent.setup()
+    render(<AddCollateralForm kind="pegin" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pegin-collateral-balance')).toBeInTheDocument()
+    })
+
+    apiFetchMock.mockRejectedValueOnce(new ApiFetchError(500, 'Server Error', { error: 'boom' }))
+
+    await user.type(screen.getByTestId('pegin-collateral-amount'), '1')
+    await user.click(screen.getByTestId('pegin-add-collateral-button'))
+
+    expect(toastErrorMock).toHaveBeenCalledWith('Error adding collateral: Unknown error')
+  })
+
+  it('shows validation toast for non-API submit failures', async () => {
+    const user = userEvent.setup()
+    render(<AddCollateralForm kind="pegin" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pegin-collateral-balance')).toBeInTheDocument()
+    })
+
+    apiFetchMock.mockRejectedValueOnce(new Error('network'))
+
+    await user.type(screen.getByTestId('pegin-collateral-amount'), '1')
+    await user.click(screen.getByTestId('pegin-add-collateral-button'))
+
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      'Invalid input "1" for collateral amount. Please enter a valid number.',
+    )
+  })
 })
