@@ -83,6 +83,18 @@ describe('apiFetch', () => {
     expect(new Headers(init.headers).has('Content-Type')).toBe(false)
   })
 
+  it('treats the second logout argument as RequestInit, not JSON body', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+    const controller = new AbortController()
+
+    await apiFetch.post('/management/logout', { signal: controller.signal })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.signal).toBe(controller.signal)
+    expect(init.body).toBeUndefined()
+  })
+
   it('omits X-CSRF-Token on GET requests', async () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-get-token' })
     const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
