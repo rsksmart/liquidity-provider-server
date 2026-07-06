@@ -24,4 +24,12 @@ describe('wei conversion', () => {
   it('converts wei string to API JSON number', () => {
     expect(weiToApiAmount('11000000000000000000')).toBe(11_000_000_000_000_000_000)
   })
+
+  it('rejects invalid wei input', () => {
+    expect(() => weiToEther('not-a-wei-value')).toThrow(/Failed to convert wei to ether/)
+  })
+
+  it('rejects non-string/non-number ether input', () => {
+    expect(() => etherToWei(null as unknown as string)).toThrow(/Invalid input type for ether/)
+  })
 })
