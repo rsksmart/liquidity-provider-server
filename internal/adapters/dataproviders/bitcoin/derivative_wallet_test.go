@@ -419,7 +419,7 @@ func testEstimateFees(t *testing.T, rskAccount *account.RskAccount, addressInfo 
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Twice()
 	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
 	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeEconomical).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
-	setupEstimateTxFeesFundMocks(client, amount, feeRate, 0.0006, false)
+	setupEstimateTxFeesFundMocks(t, client, amount, feeRate, 0.0006, false)
 	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 	require.NoError(t, err)
 	fee, err := wallet.EstimateTxFees(testnetAddress, amount)
@@ -436,7 +436,7 @@ func testEstimateFeesExtra(t *testing.T, rskAccount *account.RskAccount, address
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Twice()
 	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
 	client.On("EstimateSmartFee", int64(1), &btcjson.EstimateModeEconomical).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 3}, nil).Once()
-	setupEstimateTxFeesFundMocks(client, amount, extraFeeRate, 0.0006, false)
+	setupEstimateTxFeesFundMocks(t, client, amount, extraFeeRate, 0.0006, false)
 	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 	require.NoError(t, err)
 	fee, err := wallet.EstimateTxFees(testnetAddress, amount)
@@ -446,10 +446,11 @@ func testEstimateFeesExtra(t *testing.T, rskAccount *account.RskAccount, address
 	client.AssertExpectations(t)
 }
 
-func setupEstimateTxFeesFundMocks(client *mocks.ClientAdapterMock, amount *entities.Wei, estimatedFeeRate float64, fundedFeeBtc float64, lockUnspent bool) {
+func setupEstimateTxFeesFundMocks(t *testing.T, client *mocks.ClientAdapterMock, amount *entities.Wei, estimatedFeeRate float64, fundedFeeBtc float64, lockUnspent bool) {
 	satoshis, _ := amount.ToSatoshi().Float64()
 	rawTx := &wire.MsgTx{TxOut: []*wire.TxOut{{Value: int64(satoshis), PkScript: []byte(paymentScriptMock)}}}
-	fundedFee, _ := btcutil.NewAmount(fundedFeeBtc)
+	fundedFee, err := btcutil.NewAmount(fundedFeeBtc)
+	require.NoError(t, err)
 	client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(rawTx, nil).Once()
 	client.On("FundRawTransaction", mock.Anything, btcjson.FundRawTransactionOpts{
 		ChangeAddress:   btcjson.String(btcAddress),
@@ -717,6 +718,7 @@ func derivativeWalletSendWithOpReturnErrorSetups(rskAccount *account.RskAccount)
 	}
 }
 
+// nolint:funlen
 func derivativeWalletEstimateTxFeesErrorSetups(rskAccount *account.RskAccount) []struct {
 	description string
 	setup       func(t *testing.T, client *mocks.ClientAdapterMock)
@@ -790,7 +792,8 @@ func derivativeWalletEstimateTxFeesErrorSetups(rskAccount *account.RskAccount) [
 				overLimitTx := &wire.MsgTx{TxOut: []*wire.TxOut{{Value: 1, PkScript: []byte(paymentScriptMock)}}, TxIn: txIns}
 				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{TxOut: overLimitTx.TxOut}, nil).Once()
 				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(feeRate), Blocks: 1}, nil).Once()
-				fundedFee, _ := btcutil.NewAmount(0.0006)
+				fundedFee, err := btcutil.NewAmount(0.0006)
+				require.NoError(t, err)
 				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&btcjson.FundRawTransactionResult{Transaction: overLimitTx, Fee: fundedFee, ChangePosition: 2}, nil).Once()
 				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 				require.NoError(t, err)
