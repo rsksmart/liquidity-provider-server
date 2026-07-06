@@ -55,9 +55,7 @@ describe('apiFetch session expiry', () => {
 
     await expect(
       apiFetch('/management/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'u', password: 'p' }),
+        json: { username: 'u', password: 'p' },
       }),
     ).rejects.toBeInstanceOf(ApiFetchError)
 

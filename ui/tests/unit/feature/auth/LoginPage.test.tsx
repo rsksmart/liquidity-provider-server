@@ -1,5 +1,4 @@
 import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
-import { apiFetch } from '@api/management/utils/api-fetch'
 import { LoginPage } from '@feature/auth/components/LoginPage'
 import { resetInitialDataCache } from '@shared/utils/initial-data'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -8,8 +7,15 @@ import { loggedOutFixture } from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const { apiFetchMock } = vi.hoisted(() => {
+  const fn = vi.fn()
+  return {
+    apiFetchMock: Object.assign(fn, { get: fn, post: fn }),
+  }
+})
+
 vi.mock('@api/management/utils/api-fetch', () => ({
-  apiFetch: vi.fn(),
+  apiFetch: apiFetchMock,
 }))
 
 const credentialsNotSetFixture = {
@@ -27,7 +33,7 @@ describe('LoginPage', () => {
     document.head.innerHTML = ''
     document.body.innerHTML = ''
     resetInitialDataCache()
-    vi.mocked(apiFetch).mockReset()
+    apiFetchMock.mockReset()
     assignMock.mockReset()
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -42,7 +48,7 @@ describe('LoginPage', () => {
 
   it('redirects to management after a successful login', async () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
-    vi.mocked(apiFetch).mockResolvedValue(new Response('ok', { status: 200 }))
+    apiFetchMock.mockResolvedValue(new Response('ok', { status: 200 }))
     const user = userEvent.setup()
 
     render(<LoginPage />)
@@ -83,7 +89,7 @@ describe('LoginPage', () => {
     },
   ])('shows "$expectedMessage" for $name', async ({ error, expectedMessage }) => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
-    vi.mocked(apiFetch).mockRejectedValue(error)
+    apiFetchMock.mockRejectedValue(error)
     const user = userEvent.setup()
 
     render(<LoginPage />)
@@ -96,7 +102,7 @@ describe('LoginPage', () => {
 
   it('shows the generic login error for a 403 CSRF rejection', async () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
-    vi.mocked(apiFetch).mockRejectedValue(
+    apiFetchMock.mockRejectedValue(
       new ApiFetchError(403, 'Forbidden', { message: 'CSRF token validation error' }),
     )
     const user = userEvent.setup()
@@ -112,7 +118,7 @@ describe('LoginPage', () => {
   // login happy path covered above; credentials-set chain below
   it('chains credentials POST when CredentialsSet is false', async () => {
     seedInitialData(credentialsNotSetFixture, { csrfToken: 'csrf-token' })
-    vi.mocked(apiFetch)
+    apiFetchMock
       .mockResolvedValueOnce(new Response('ok', { status: 200 }))
       .mockResolvedValueOnce(new Response('ok', { status: 200 }))
     const user = userEvent.setup()
@@ -128,19 +134,12 @@ describe('LoginPage', () => {
     await user.click(screen.getByTestId('login-submit-button'))
 
     await waitFor(() => {
-      expect(apiFetch).toHaveBeenNthCalledWith(
-        2,
-        '/management/credentials',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            oldUsername: 'old-user',
-            oldPassword: 'old-pass',
-            newUsername: 'new-user',
-            newPassword: 'new-pass',
-          }),
-        }),
-      )
+      expect(apiFetchMock.post).toHaveBeenNthCalledWith(2, '/management/credentials', {
+        oldUsername: 'old-user',
+        oldPassword: 'old-pass',
+        newUsername: 'new-user',
+        newPassword: 'new-pass',
+      })
     })
   })
 })

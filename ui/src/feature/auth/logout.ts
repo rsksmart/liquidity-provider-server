@@ -10,7 +10,7 @@ export async function logout(): Promise<void> {
   let logoutFailed = false
 
   try {
-    await apiFetch('/management/logout', { method: 'POST' })
+    await apiFetch.post('/management/logout')
   } catch (err) {
     if (isSessionExpiredError(err)) {
       sessionExpired = true

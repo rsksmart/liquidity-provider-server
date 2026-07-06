@@ -67,8 +67,28 @@ export default defineConfig({
   base: '/management/next/',
   server: {
     proxy: {
-      // API routes only — never proxy the Vite app shell under /management/next/*
+      // Management API routes — never proxy the Vite app shell under /management/next/*
       '^/management/(?!next(?:/|$))': {
+        target: lpsDevProxyTarget,
+        changeOrigin: true,
+      },
+      '^/pegin': {
+        target: lpsDevProxyTarget,
+        changeOrigin: true,
+      },
+      '^/pegout': {
+        target: lpsDevProxyTarget,
+        changeOrigin: true,
+      },
+      '^/configuration': {
+        target: lpsDevProxyTarget,
+        changeOrigin: true,
+      },
+      '^/reports': {
+        target: lpsDevProxyTarget,
+        changeOrigin: true,
+      },
+      '^/providers': {
         target: lpsDevProxyTarget,
         changeOrigin: true,
       },
@@ -116,8 +136,10 @@ export default defineConfig({
       reporter: ['text', 'json', 'lcov'],
       include: [
         'src/shared/utils/initial-data.ts',
+        'src/shared/utils/wei.ts',
         'src/api/management/**',
         'src/feature/auth/**',
+        'src/feature/management/**',
       ],
       thresholds: { lines: 90 },
     },
