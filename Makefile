@@ -1,4 +1,4 @@
-.PHONY: test all clean utils test-integration-db generate-fixtures ensure-gotestsum build-server
+.PHONY: test all clean utils test-integration-db generate-fixtures ensure-gotestsum build-server ui-e2e
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp

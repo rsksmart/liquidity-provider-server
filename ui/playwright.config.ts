@@ -7,7 +7,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.LPS_E2E_BASE_URL ?? 'http://localhost:8080/management/next',
+    baseURL: process.env.LPS_E2E_BASE_URL ?? 'http://localhost:8080/management/next/',
     trace: 'on-first-retry',
   },
   projects: [
