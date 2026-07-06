@@ -114,19 +114,19 @@ export async function apiFetch(
     headers,
   })
 
-  const body = await readErrorBody(response)
-  const path = requestPath(input)
-  const sessionExpired =
-    !isLoginPath(path) &&
-    (response.status === 401 ||
-      (response.status === 403 && isSessionExpiredBody(body)))
-
-  if (sessionExpired) {
-    handleSessionExpired()
-    throw new ApiFetchError(response.status, response.statusText, body)
-  }
-
   if (!response.ok) {
+    const body = await readErrorBody(response)
+    const path = requestPath(input)
+    const sessionExpired =
+      !isLoginPath(path) &&
+      (response.status === 401 ||
+        (response.status === 403 && isSessionExpiredBody(body)))
+
+    if (sessionExpired) {
+      handleSessionExpired()
+      throw new ApiFetchError(response.status, response.statusText, body)
+    }
+
     throw new ApiFetchError(response.status, response.statusText, body)
   }
 

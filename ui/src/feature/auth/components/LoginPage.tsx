@@ -1,7 +1,7 @@
 import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
 import { apiFetch } from '@api/management/utils/api-fetch'
 import { useInitialData } from '@shared/utils/initial-data'
-import { type SubmitEvent, useCallback, useState } from 'react'
+import { type FormEvent, useCallback, useState } from 'react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -84,7 +84,7 @@ export function LoginPage() {
   )
 
   const onFormSubmit = useCallback(
-    (event: SubmitEvent<HTMLFormElement>) => {
+    (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault()
       void submitLogin(event.currentTarget)
     },
