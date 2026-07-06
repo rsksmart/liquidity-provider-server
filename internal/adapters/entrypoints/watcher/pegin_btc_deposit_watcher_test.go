@@ -92,7 +92,7 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 	go peginWatcher.Start()
 
 	t.Run("handle error importing address", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcImportAddress, testRetainedQuote.DepositAddress, assert.AnError))
+		checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcImportAddress(testRetainedQuote.DepositAddress, assert.AnError))
 		btcWallet.On("ImportAddress", mock.Anything).Return(assert.AnError).Once()
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
@@ -133,7 +133,7 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcAlreadyWatched, testRetainedQuote.QuoteHash))
+		checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcAlreadyWatched(testRetainedQuote.QuoteHash))
 		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 			Quote:         testPeginQuote,
@@ -198,7 +198,7 @@ func TestPeginDepositAddressWatcher_Start_HandleDepositedQuoteError(t *testing.T
 		assert.True(collect, ok)
 	}, time.Second, 10*time.Millisecond)
 
-	checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcCallForUserError, testRetainedQuote.QuoteHash, assert.AnError))
+	checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcCallForUserError(testRetainedQuote.QuoteHash, assert.AnError))
 	btcRpc.On("GetHeight").Return(big.NewInt(5), nil).Once()
 	btcRpc.On("GetTransactionInfo", testRetainedQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
 	tickerChannel <- time.Now()
@@ -305,7 +305,8 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 		expiredQuote := quote.PeginQuote{Nonce: 6, AgreementTimestamp: 1}
 		t.Run("should handle error when expiring quotes", func(t *testing.T) {
 			resetMocks()
-			checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcUpdateExpiredError, test.AnyHash, ""))
+			wrappedErr := usecases.WrapUseCaseError(usecases.ExpiredPeginQuoteId, assert.AnError)
+			checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcUpdateExpiredError(test.AnyHash, wrappedErr))
 			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(assert.AnError).Once()
 			btcRpc.On("GetHeight").Return(big.NewInt(9), nil).Once()
 			btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()

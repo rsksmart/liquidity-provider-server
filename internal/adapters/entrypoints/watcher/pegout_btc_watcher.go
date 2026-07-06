@@ -107,7 +107,7 @@ func (watcher *PegoutBtcTransferWatcher) checkQuotes() {
 	var tx blockchain.BitcoinTransactionInformation
 	for _, watchedQuote := range watcher.quotes {
 		if tx, err = watcher.rpc.Btc.GetTransactionInfo(watchedQuote.RetainedQuote.LpBtcTxHash); err != nil {
-			log.Errorf(LogPegoutBtcTxInfo, watchedQuote.RetainedQuote.LpBtcTxHash, err)
+			log.Error(LogPegoutBtcTxInfo(watchedQuote.RetainedQuote.LpBtcTxHash, err))
 			return
 		}
 		if watcher.validateQuote(watchedQuote, tx) {
@@ -120,9 +120,9 @@ func (watcher *PegoutBtcTransferWatcher) refundPegout(watchedQuote quote.Watched
 	var err error
 	if err = watcher.refundPegoutUseCase.Run(context.Background(), watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
-		log.Errorf(LogPegoutBtcRefundError, watchedQuote.RetainedQuote.QuoteHash, err)
+		log.Error(LogPegoutBtcRefundError(watchedQuote.RetainedQuote.QuoteHash, err))
 	} else if err != nil {
-		log.Errorf(LogPegoutBtcRefundError, watchedQuote.RetainedQuote.QuoteHash, err)
+		log.Error(LogPegoutBtcRefundError(watchedQuote.RetainedQuote.QuoteHash, err))
 	} else {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 	}
@@ -139,11 +139,11 @@ func (watcher *PegoutBtcTransferWatcher) handleBtcSentToUserCompleted(event enti
 	watcher.quotesMutex.Lock()
 	defer watcher.quotesMutex.Unlock()
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
-		log.Infof(LogPegoutBtcAlreadyWatched, quoteHash)
+		log.Info(LogPegoutBtcAlreadyWatched(quoteHash))
 		return
 	}
 	if parsedEvent.RetainedQuote.State != quote.PegoutStateSendPegoutSucceeded || parsedEvent.RetainedQuote.LpBtcTxHash == "" {
-		log.Warnf(LogPegoutBtcNoTxHash, quoteHash)
+		log.Warn(LogPegoutBtcNoTxHash(quoteHash))
 		return
 	}
 	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(parsedEvent.PegoutQuote, parsedEvent.RetainedQuote, parsedEvent.CreationData)

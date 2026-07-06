@@ -115,7 +115,7 @@ func (watcher *PeginBridgeWatcher) handleCallForUserCompleted(event entities.Eve
 	watcher.quotesMutex.Lock()
 	defer watcher.quotesMutex.Unlock()
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
-		log.Infof(LogPeginBridgeAlreadyWatched, quoteHash)
+		log.Info(LogPeginBridgeAlreadyWatched(quoteHash))
 		return
 	}
 	if parsedEvent.RetainedQuote.State == quote.PeginStateCallForUserSucceeded {
@@ -128,7 +128,7 @@ func (watcher *PeginBridgeWatcher) checkQuotes() {
 	var tx blockchain.BitcoinTransactionInformation
 	for _, watchedQuote := range watcher.quotes {
 		if tx, err = watcher.rpc.Btc.GetTransactionInfo(watchedQuote.RetainedQuote.UserBtcTxHash); err != nil {
-			log.Errorf(LogPeginBridgeBtcTxInfo, watchedQuote.RetainedQuote.UserBtcTxHash, err)
+			log.Error(LogPeginBridgeBtcTxInfo(watchedQuote.RetainedQuote.UserBtcTxHash, err))
 			return
 		}
 		if watcher.validateQuote(watchedQuote, tx) {
@@ -141,9 +141,9 @@ func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote quote.WatchedPegin
 	var err error
 	if err = watcher.registerPeginUseCase.Run(context.Background(), watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
-		log.Errorf(LogPeginBridgeRegisterError, watchedQuote.RetainedQuote.QuoteHash, err)
+		log.Error(LogPeginBridgeRegisterError(watchedQuote.RetainedQuote.QuoteHash, err))
 	} else if err != nil {
-		log.Errorf(LogPeginBridgeRegisterError, watchedQuote.RetainedQuote.QuoteHash, err)
+		log.Error(LogPeginBridgeRegisterError(watchedQuote.RetainedQuote.QuoteHash, err))
 	} else {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 	}

@@ -3,7 +3,6 @@ package watcher_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -38,7 +37,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 
 	go pegoutWatcher.Start()
 	t.Run("handle quote without tx hash", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutBtcNoTxHash, testRetainedQuote.QuoteHash))
+		checkFunction := test.AssertLogContains(t, watcher.LogPegoutBtcNoTxHash(testRetainedQuote.QuoteHash))
 		incomplete := testRetainedQuote
 		incomplete.LpBtcTxHash = ""
 		pegoutSentChannel <- quote.PegoutBtcSentToUserEvent{
@@ -68,7 +67,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutBtcAlreadyWatched, testRetainedQuote.QuoteHash))
+		checkFunction := test.AssertLogContains(t, watcher.LogPegoutBtcAlreadyWatched(testRetainedQuote.QuoteHash))
 		pegoutSentChannel <- quote.PegoutBtcSentToUserEvent{
 			Event:       entities.NewBaseEvent(quote.PegoutBtcSentEventId),
 			PegoutQuote: testPegoutQuote, RetainedQuote: testRetainedQuote,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -114,7 +113,7 @@ func TestPeginBridgeWatcher_Start_CfuCompleted(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBridgeAlreadyWatched, testRetainedQuote.QuoteHash))
+		checkFunction := test.AssertLogContains(t, watcher.LogPeginBridgeAlreadyWatched(testRetainedQuote.QuoteHash))
 		cfuChannel <- quote.CallForUserCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
 			PeginQuote:    testPeginQuote,

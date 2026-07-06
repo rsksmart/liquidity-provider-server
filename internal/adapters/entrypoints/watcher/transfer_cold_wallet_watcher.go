@@ -76,14 +76,14 @@ func (watcher *TransferColdWalletWatcher) logTransferResult(result *liquidity_pr
 func (watcher *TransferColdWalletWatcher) logNetworkTransferResult(network string, result liquidity_provider.NetworkTransferResult) {
 	switch result.Status {
 	case liquidity_provider.TransferStatusSuccess:
-		log.Infof(LogTransferSuccess, network, result.TxHash, result.Amount.String(), result.Fee.String())
+		log.Info(LogTransferSuccess(network, result.TxHash, result.Amount.String(), result.Fee.String()))
 	case liquidity_provider.TransferStatusSkippedNoExcess:
-		log.Infof(LogTransferSkippedNoExcess, network)
+		log.Info(LogTransferSkippedNoExcess(network))
 	case liquidity_provider.TransferStatusSkippedNotEconomical:
-		log.Infof(LogTransferSkippedNotEcon, network, result.Message)
+		log.Info(LogTransferSkippedNotEcon(network, result.Message))
 	case liquidity_provider.TransferStatusSkippedCooldown:
-		log.Infof(LogTransferSkippedCooldown, network)
+		log.Info(LogTransferSkippedCooldown(network))
 	case liquidity_provider.TransferStatusFailed:
-		log.Errorf(LogTransferFailed, network, result.Message, result.Error)
+		log.Error(LogTransferFailed(network, result.Message, result.Error))
 	}
 }

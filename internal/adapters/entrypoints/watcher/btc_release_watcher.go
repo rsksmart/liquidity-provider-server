@@ -116,7 +116,7 @@ func (watcher *BtcReleaseWatcher) checkBatchPegOuts() (uint64, error) {
 		return 0, fmt.Errorf("error fetching BatchPegOutCreated events in BtcReleaseWatcher: %w", err)
 	}
 
-	log.Infof(LogBtcReleaseChecking, watcher.currentBlock, toBlock, len(batches))
+	log.Info(LogBtcReleaseChecking(watcher.currentBlock, toBlock, len(batches)))
 	err = watcher.updateBatches(checkContext, batches)
 	if err != nil {
 		return 0, err
@@ -144,13 +144,13 @@ func (watcher *BtcReleaseWatcher) updateBatches(ctx context.Context, batches []r
 	var updated uint
 	var err error
 	for _, batch := range batches {
-		log.Debugf(LogBtcReleaseProcessing, batch)
+		log.Debug(LogBtcReleaseProcessing(batch))
 		if updated, err = watcher.updateRebalanceUseCase.Run(ctx, batch); err != nil {
 			return fmt.Errorf("error processing BatchPegOut: %w", err)
 		} else if updated == 0 {
-			log.Infof(LogBtcReleaseNoQuotes, batch.TransactionHash)
+			log.Info(LogBtcReleaseNoQuotes(batch.TransactionHash))
 		} else {
-			log.Infof(LogBtcReleaseProcessed, updated, batch.TransactionHash)
+			log.Info(LogBtcReleaseProcessed(updated, batch.TransactionHash))
 		}
 	}
 	return nil

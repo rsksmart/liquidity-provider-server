@@ -145,13 +145,13 @@ func (watcher *PeginDepositAddressWatcher) handleAcceptedPeginQuote(event entiti
 	watcher.quotesMutex.Lock()
 	defer watcher.quotesMutex.Unlock()
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
-		log.Infof(LogPeginBtcAlreadyWatched, quoteHash)
+		log.Info(LogPeginBtcAlreadyWatched(quoteHash))
 		return
 	}
 
 	err := watcher.btcWallet.ImportAddress(parsedEvent.RetainedQuote.DepositAddress)
 	if err != nil {
-		log.Errorf(LogPeginBtcImportAddress, parsedEvent.RetainedQuote.DepositAddress, err)
+		log.Error(LogPeginBtcImportAddress(parsedEvent.RetainedQuote.DepositAddress, err))
 		return
 	}
 	watcher.quotes[quoteHash] = quote.NewWatchedPeginQuote(parsedEvent.Quote, parsedEvent.RetainedQuote, parsedEvent.CreationData)
@@ -172,16 +172,16 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watc
 
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit {
 		if watchedQuote, err = watcher.handleNotDepositedQuote(ctx, watchedQuote); err != nil {
-			log.Errorf(LogPeginBtcCallForUserError, quoteHash, err)
+			log.Error(LogPeginBtcCallForUserError(quoteHash, err))
 			return
 		}
 	}
 
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDeposit && watchedQuote.PeginQuote.IsExpired() {
 		if err = watcher.expiredUseCase.Run(ctx, watchedQuote.RetainedQuote); err != nil {
-			log.Errorf(LogPeginBtcUpdateExpiredError, quoteHash, err)
+			log.Error(LogPeginBtcUpdateExpiredError(quoteHash, err))
 		} else {
-			log.Infof(LogPeginBtcExpired, quoteHash, watchedQuote.PeginQuote.ExpireTime().Unix())
+			log.Info(LogPeginBtcExpired(quoteHash, watchedQuote.PeginQuote.ExpireTime().Unix()))
 			delete(watcher.quotes, quoteHash)
 		}
 		return
@@ -189,7 +189,7 @@ func (watcher *PeginDepositAddressWatcher) handleQuote(ctx context.Context, watc
 
 	if watchedQuote.RetainedQuote.State == quote.PeginStateWaitingForDepositConfirmations {
 		if err = watcher.handleDepositedQuote(ctx, watchedQuote); err != nil {
-			log.Errorf(LogPeginBtcCallForUserError, quoteHash, err)
+			log.Error(LogPeginBtcCallForUserError(quoteHash, err))
 		}
 		return
 	}
@@ -207,7 +207,7 @@ func (watcher *PeginDepositAddressWatcher) handleNotDepositedQuote(ctx context.C
 	}
 
 	for _, tx := range txs {
-		log.Infof(LogPeginBtcCheckingTx, tx.Hash, watchedQuote.RetainedQuote.QuoteHash)
+		log.Info(LogPeginBtcCheckingTx(tx.Hash, watchedQuote.RetainedQuote.QuoteHash))
 		if block, err = watcher.rpc.Btc.GetTransactionBlockInfo(tx.Hash); err != nil {
 			return quote.WatchedPeginQuote{}, err
 		}
@@ -243,9 +243,9 @@ func (watcher *PeginDepositAddressWatcher) callForUser(ctx context.Context, watc
 	quoteHash := watchedQuote.RetainedQuote.QuoteHash
 	if err = watcher.callForUserUseCase.Run(ctx, watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, quoteHash)
-		log.Errorf(LogPeginBtcCallForUserError, quoteHash, err)
+		log.Error(LogPeginBtcCallForUserError(quoteHash, err))
 	} else if err != nil {
-		log.Errorf(LogPeginBtcCallForUserError, quoteHash, err)
+		log.Error(LogPeginBtcCallForUserError(quoteHash, err))
 	} else {
 		delete(watcher.quotes, quoteHash)
 	}
@@ -265,16 +265,16 @@ func (watcher *PeginDepositAddressWatcher) GetCurrentBlock() *big.Int {
 }
 
 func (watcher *PeginDepositAddressWatcher) logRejectReason(block blockchain.BitcoinBlockInformation, tx blockchain.BitcoinTransactionInformation, watchedQuote quote.WatchedPeginQuote) {
-	rejectReason := fmt.Sprintf(LogPeginBtcRejectReason, watchedQuote.RetainedQuote.QuoteHash)
+	rejectReason := LogPeginBtcRejectReason(watchedQuote.RetainedQuote.QuoteHash)
 	if watchedQuote.PeginQuote.ExpireTime().Before(block.Time) {
 		blockTime := block.Time.Unix()
 		expirationTime := watchedQuote.PeginQuote.ExpireTime().Unix()
-		rejectReason += fmt.Sprintf(LogPeginBtcRejectExpired, expirationTime, blockTime-expirationTime, blockTime)
+		rejectReason += LogPeginBtcRejectExpired(expirationTime, blockTime-expirationTime, blockTime)
 	}
 	paidAmount := tx.AmountToAddress(watchedQuote.RetainedQuote.DepositAddress)
 	expectedAmount := watchedQuote.PeginQuote.Total()
 	if paidAmount.Cmp(expectedAmount) < 0 {
-		rejectReason += fmt.Sprintf(LogPeginBtcRejectAmount, paidAmount.ToSatoshi().String(), expectedAmount.ToSatoshi().String())
+		rejectReason += LogPeginBtcRejectAmount(paidAmount.ToSatoshi().String(), expectedAmount.ToSatoshi().String())
 	}
 	log.Info(LogPeginBtcPrefix + rejectReason)
 }

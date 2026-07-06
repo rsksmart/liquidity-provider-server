@@ -43,12 +43,12 @@ func (useCase *GetWatchedPegoutQuoteUseCase) getWatchedQuotes(ctx context.Contex
 	var creationData quote.PegoutCreationData
 	var err error
 	if retainedQuotes, err = useCase.pegoutRepository.GetRetainedQuoteByState(ctx, state); err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.GetWatchedPegoutQuoteId, err)
+		return nil, err
 	}
 
 	for _, retainedQuote := range retainedQuotes {
 		if pegoutQuote, err = useCase.pegoutRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
-			return nil, usecases.WrapUseCaseError(usecases.GetWatchedPegoutQuoteId, err)
+			return nil, err
 		}
 		creationData = useCase.pegoutRepository.GetPegoutCreationData(ctx, retainedQuote.QuoteHash)
 		watchedQuote = append(

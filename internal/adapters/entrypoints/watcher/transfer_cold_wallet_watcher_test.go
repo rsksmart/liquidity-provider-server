@@ -98,7 +98,7 @@ func TestTransferColdWalletWatcher_Start_BtcSuccess(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSuccess, "BTC", "btc_tx_hash_123", "1000000", "5000"))()
+	defer test.AssertLogContains(t, watcher.LogTransferSuccess("BTC", "btc_tx_hash_123", "1000000", "5000"))()
 
 	go func() {
 		defer wg.Done()
@@ -138,7 +138,7 @@ func TestTransferColdWalletWatcher_Start_RskSuccess(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSuccess, "RSK", "rsk_tx_hash_456", "2000000", "3000"))()
+	defer test.AssertLogContains(t, watcher.LogTransferSuccess("RSK", "rsk_tx_hash_456", "2000000", "3000"))()
 
 	go func() {
 		defer wg.Done()
@@ -175,7 +175,7 @@ func TestTransferColdWalletWatcher_Start_BothSkippedNoExcess(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSkippedNoExcess, "BTC"))()
+	defer test.AssertLogContains(t, watcher.LogTransferSkippedNoExcess("BTC"))()
 
 	go func() {
 		defer wg.Done()
@@ -213,7 +213,7 @@ func TestTransferColdWalletWatcher_Start_BtcSkippedNotEconomical(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSkippedNotEcon, "BTC", "transfer amount too small"))()
+	defer test.AssertLogContains(t, watcher.LogTransferSkippedNotEcon("BTC", "transfer amount too small"))()
 
 	go func() {
 		defer wg.Done()
@@ -251,7 +251,7 @@ func TestTransferColdWalletWatcher_Start_RskSkippedNotEconomical(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSkippedNotEcon, "RSK", "gas cost too high"))()
+	defer test.AssertLogContains(t, watcher.LogTransferSkippedNotEcon("RSK", "gas cost too high"))()
 
 	go func() {
 		defer wg.Done()
@@ -288,7 +288,7 @@ func TestTransferColdWalletWatcher_Start_BtcSkippedCooldown(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSkippedCooldown, "BTC"))()
+	defer test.AssertLogContains(t, watcher.LogTransferSkippedCooldown("BTC"))()
 
 	go func() {
 		defer wg.Done()
@@ -328,7 +328,7 @@ func TestTransferColdWalletWatcher_Start_BtcFailed(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferFailed, "BTC", "transfer failed", transferError))()
+	defer test.AssertLogContains(t, watcher.LogTransferFailed("BTC", "transfer failed", transferError))()
 
 	go func() {
 		defer wg.Done()
@@ -368,7 +368,7 @@ func TestTransferColdWalletWatcher_Start_RskFailed(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferFailed, "RSK", "rsk transfer failed", transferError))()
+	defer test.AssertLogContains(t, watcher.LogTransferFailed("RSK", "rsk transfer failed", transferError))()
 
 	go func() {
 		defer wg.Done()
@@ -411,7 +411,7 @@ func TestTransferColdWalletWatcher_Start_BothTransfersSuccess(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferSuccess, "BTC", "btc_tx_hash_789", "5000000", "10000"))()
+	defer test.AssertLogContains(t, watcher.LogTransferSuccess("BTC", "btc_tx_hash_789", "5000000", "10000"))()
 
 	go func() {
 		defer wg.Done()
@@ -452,7 +452,7 @@ func TestTransferColdWalletWatcher_Start_BothFailed(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	closeChannel := make(chan bool)
-	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogTransferFailed, "BTC", "btc error", errors.New("btc wallet unavailable")))()
+	defer test.AssertLogContains(t, watcher.LogTransferFailed("BTC", "btc error", errors.New("btc wallet unavailable")))()
 
 	go func() {
 		defer wg.Done()

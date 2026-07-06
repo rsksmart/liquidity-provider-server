@@ -39,7 +39,7 @@ func TestQuoteCleanerWatcher_Start(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("clean quotes successfully", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogQuoteCleanerCleaned, 3))
+		checkFunction := test.AssertLogContains(t, watcher.LogQuoteCleanerCleaned(3))
 		peginRepository := &mocks.PeginQuoteRepositoryMock{}
 		peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).
 			Return([]quote.RetainedPeginQuote{{QuoteHash: "pegin1"}, {QuoteHash: "pegin2"}}, nil)

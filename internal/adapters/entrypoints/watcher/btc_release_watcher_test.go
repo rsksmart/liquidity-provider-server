@@ -2,7 +2,9 @@ package watcher_test
 
 import (
 	"context"
-	"fmt"
+	"testing"
+	"time"
+
 	w "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
@@ -12,8 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestBtcReleaseWatcher_Prepare(t *testing.T) {
@@ -117,7 +117,7 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 		useCase.EXPECT().Run(mock.Anything, mockEvents[1]).Return(uint(0), nil).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		assertQuotesLog := test.AssertLogContains(t, fmt.Sprintf(w.LogBtcReleaseProcessed, mockUpdatedQuotes, mockEvents[0].TransactionHash))
+		assertQuotesLog := test.AssertLogContains(t, w.LogBtcReleaseProcessed(mockUpdatedQuotes, mockEvents[0].TransactionHash))
 
 		err := watcher.Prepare(context.Background())
 		require.NoError(t, err)
@@ -149,7 +149,7 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 		useCase.EXPECT().Run(mock.Anything, mockEvents[1]).Return(uint(0), nil).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		assertNoQuotesLog := test.AssertLogContains(t, fmt.Sprintf(w.LogBtcReleaseNoQuotes, mockEvents[1].TransactionHash))
+		assertNoQuotesLog := test.AssertLogContains(t, w.LogBtcReleaseNoQuotes(mockEvents[1].TransactionHash))
 
 		err := watcher.Prepare(context.Background())
 		require.NoError(t, err)

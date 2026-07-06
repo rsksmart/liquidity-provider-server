@@ -42,12 +42,12 @@ func (useCase *GetWatchedPeginQuoteUseCase) getWatchedQuotes(ctx context.Context
 	var creationData quote.PeginCreationData
 	var err error
 	if retainedQuotes, err = useCase.peginRepository.GetRetainedQuoteByState(ctx, state); err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.GetWatchedPeginQuoteId, err)
+		return nil, err
 	}
 
 	for _, retainedQuote := range retainedQuotes {
 		if peginQuote, err = useCase.peginRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
-			return nil, usecases.WrapUseCaseError(usecases.GetWatchedPeginQuoteId, err)
+			return nil, err
 		}
 		creationData = useCase.peginRepository.GetPeginCreationData(ctx, retainedQuote.QuoteHash)
 		watchedQuotes = append(

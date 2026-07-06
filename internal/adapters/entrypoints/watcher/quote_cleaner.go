@@ -54,8 +54,8 @@ func (watcher *QuoteCleanerWatcher) clean() {
 	if err != nil {
 		log.Errorf(LogQuoteCleanerError, err)
 	}
-	log.Infof(LogQuoteCleanerCleaned, len(txIds))
+	log.Info(LogQuoteCleanerCleaned(len(txIds)))
 	for _, id := range txIds {
-		log.Infof(LogQuoteCleanerQuote, id)
+		log.Info(LogQuoteCleanerQuote(id))
 	}
 }
