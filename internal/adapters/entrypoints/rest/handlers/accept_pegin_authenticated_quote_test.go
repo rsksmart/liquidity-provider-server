@@ -470,4 +470,33 @@ func TestAcceptPeginAuthenticatedQuoteHandler_SignatureProcessing(t *testing.T) 
 
 		mockUseCase.AssertExpectations(t)
 	})
+
+	t.Run("should reject signature that is only the 0x prefix", func(t *testing.T) {
+		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+
+		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
+			QuoteHash: quoteHash,
+			Signature: "0x",
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(jsonBody))
+		request.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		mockUseCase := new(mocks.AcceptQuoteUseCaseMock)
+
+		handler := handlers.NewAcceptPeginAuthenticatedQuoteHandler(mockUseCase)
+		handler(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		mockUseCase.AssertNotCalled(t, "Run")
+
+		var errorResponse map[string]interface{}
+		err = json.NewDecoder(recorder.Body).Decode(&errorResponse)
+		require.NoError(t, err)
+		assert.Contains(t, errorResponse, "message")
+		assert.Contains(t, errorResponse["message"], "validation error")
+	})
 }

@@ -32,6 +32,13 @@ func NewAcceptPegoutAuthenticatedQuoteHandler(useCase AcceptQuoteUseCase) http.H
 		}
 
 		acceptRequest.Signature = strings.TrimPrefix(acceptRequest.Signature, "0x")
+		if acceptRequest.Signature == "" {
+			jsonErr := rest.NewErrorResponseWithDetails("validation error", rest.ErrorDetails{
+				"Signature": "is required",
+			}, true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
 
 		acceptedQuote, err := useCase.Run(req.Context(), acceptRequest.QuoteHash, acceptRequest.Signature)
 		if err != nil {
