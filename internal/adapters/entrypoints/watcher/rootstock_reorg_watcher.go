@@ -41,7 +41,7 @@ watcherLoop:
 			err := watcher.reorgCheckUseCase.Run(ctx, entities.NodeTypeRootstock)
 			cancel()
 			if err != nil {
-				log.Error("RootstockReorgWatcher: error running reorg check: ", err)
+				log.Errorf(LogRootstockReorgError, err)
 			}
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
@@ -54,5 +54,5 @@ watcherLoop:
 func (watcher *RootstockReorgWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
-	log.Debug("RootstockReorgWatcher shut down")
+	log.Debug(LogRootstockReorgShutdown)
 }

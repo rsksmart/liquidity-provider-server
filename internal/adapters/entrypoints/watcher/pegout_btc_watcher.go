@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -56,7 +55,7 @@ func NewPegoutBtcTransferWatcher(
 func (watcher *PegoutBtcTransferWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
-	log.Debug(pegoutBtcWatcherLog("shut down"))
+	log.Debug(LogPegoutBtcShutdown)
 }
 
 func (watcher *PegoutBtcTransferWatcher) Prepare(ctx context.Context) error {
@@ -87,7 +86,7 @@ watcherLoop:
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
-				log.Error(pegoutBtcWatcherLog(blockchain.BtcChainHeightErrorTemplate, err))
+				log.Errorf(LogPegoutBtcBtcChainHeight, err)
 			}
 			watcher.quotesMutex.Unlock()
 			watcher.currentBlockMutex.Unlock()
@@ -108,7 +107,7 @@ func (watcher *PegoutBtcTransferWatcher) checkQuotes() {
 	var tx blockchain.BitcoinTransactionInformation
 	for _, watchedQuote := range watcher.quotes {
 		if tx, err = watcher.rpc.Btc.GetTransactionInfo(watchedQuote.RetainedQuote.LpBtcTxHash); err != nil {
-			log.Error(pegoutBtcWatcherLog(blockchain.BtcTxInfoErrorTemplate, watchedQuote.RetainedQuote.LpBtcTxHash, err))
+			log.Error(LogPegoutBtcTxInfo(watchedQuote.RetainedQuote.LpBtcTxHash, err))
 			return
 		}
 		if watcher.validateQuote(watchedQuote, tx) {
@@ -119,12 +118,11 @@ func (watcher *PegoutBtcTransferWatcher) checkQuotes() {
 
 func (watcher *PegoutBtcTransferWatcher) refundPegout(watchedQuote quote.WatchedPegoutQuote) {
 	var err error
-	const refundPegoutErrorMsgTemplate = "Error executing refund pegout on quote %s: %v"
 	if err = watcher.refundPegoutUseCase.Run(context.Background(), watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
-		log.Error(pegoutBtcWatcherLog(refundPegoutErrorMsgTemplate, watchedQuote.RetainedQuote.QuoteHash, err))
+		log.Error(LogPegoutBtcRefundError(watchedQuote.RetainedQuote.QuoteHash, err))
 	} else if err != nil {
-		log.Error(pegoutBtcWatcherLog(refundPegoutErrorMsgTemplate, watchedQuote.RetainedQuote.QuoteHash, err))
+		log.Error(LogPegoutBtcRefundError(watchedQuote.RetainedQuote.QuoteHash, err))
 	} else {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 	}
@@ -134,18 +132,18 @@ func (watcher *PegoutBtcTransferWatcher) handleBtcSentToUserCompleted(event enti
 	parsedEvent, ok := event.(quote.PegoutBtcSentToUserEvent)
 	quoteHash := parsedEvent.RetainedQuote.QuoteHash
 	if !ok {
-		log.Error(pegoutBtcWatcherLog("Trying to parse wrong event in Pegout Bridge watcher"))
+		log.Error(LogPegoutBtcWrongEvent)
 		return
 	}
 
 	watcher.quotesMutex.Lock()
 	defer watcher.quotesMutex.Unlock()
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
-		log.Info(pegoutBtcWatcherLog("Quote %s is already watched", quoteHash))
+		log.Info(LogPegoutBtcAlreadyWatched(quoteHash))
 		return
 	}
 	if parsedEvent.RetainedQuote.State != quote.PegoutStateSendPegoutSucceeded || parsedEvent.RetainedQuote.LpBtcTxHash == "" {
-		log.Warn(pegoutBtcWatcherLog("Quote %s doesn't have btc tx hash to watch", quoteHash))
+		log.Warn(LogPegoutBtcNoTxHash(quoteHash))
 		return
 	}
 	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(parsedEvent.PegoutQuote, parsedEvent.RetainedQuote, parsedEvent.CreationData)
@@ -167,8 +165,4 @@ func (watcher *PegoutBtcTransferWatcher) GetCurrentBlock() *big.Int {
 func (watcher *PegoutBtcTransferWatcher) validateQuote(watchedQuote quote.WatchedPegoutQuote, tx blockchain.BitcoinTransactionInformation) bool {
 	return watchedQuote.RetainedQuote.State == quote.PegoutStateSendPegoutSucceeded &&
 		tx.Confirmations >= uint64(watchedQuote.PegoutQuote.TransferConfirmations)
-}
-
-func pegoutBtcWatcherLog(format string, args ...any) string {
-	return fmt.Sprintf("PegoutBtcTransferWatcher: "+format, args...)
 }

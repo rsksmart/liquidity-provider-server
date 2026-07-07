@@ -2,6 +2,7 @@ package watcher_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,6 +27,7 @@ func TestNewPenalizationAlertWatcher(t *testing.T) {
 	assert.Equal(t, 5, test.CountNonZeroValues(penalizationWatcher))
 }
 
+// nolint:funlen
 func TestPenalizationAlertWatcher_Start(t *testing.T) {
 	t.Run("shouldn't update block if use case had an error", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
@@ -79,6 +81,26 @@ func TestPenalizationAlertWatcher_Start(t *testing.T) {
 			assert.Equal(collect, uint64(599), penalizationWatcher.GetCurrentBlock())
 			rskRpc.AssertExpectations(mt)
 			collateral.AssertExpectations(mt)
+		}, time.Second, 10*time.Millisecond)
+	})
+	t.Run("should log error and keep block if getting height fails", func(t *testing.T) {
+		rskRpc := &mocks.RootstockRpcServerMock{}
+		rskRpc.EXPECT().GetHeight(mock.Anything).Return(555, nil).Once()
+		rskRpc.EXPECT().GetHeight(mock.Anything).Return(0, assert.AnError).Once()
+		ticker := &mocks.TickerMock{}
+		tickerChannel := make(chan time.Time)
+		ticker.EXPECT().C().Return(tickerChannel)
+		penalizationWatcher := watcher.NewPenalizationAlertWatcher(blockchain.Rpc{Rsk: rskRpc}, nil, ticker, time.Duration(1))
+		err := penalizationWatcher.Prepare(context.Background())
+		require.NoError(t, err)
+		go penalizationWatcher.Start()
+		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPenalizationError, assert.AnError))
+		tickerChannel <- time.Now()
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			assert.Equal(collect, uint64(555), penalizationWatcher.GetCurrentBlock())
+			rskRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
 	})
 }

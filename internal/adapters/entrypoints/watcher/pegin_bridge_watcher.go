@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -84,7 +83,7 @@ watcherLoop:
 				watcher.checkQuotes()
 				watcher.currentBlock = height
 			} else if err != nil {
-				log.Error(peginBridgeWatcherLog(blockchain.BtcChainHeightErrorTemplate, err))
+				log.Errorf(LogPeginBridgeBtcChainHeight, err)
 			}
 			watcher.currentBlockMutex.Unlock()
 			watcher.quotesMutex.Unlock()
@@ -103,20 +102,20 @@ watcherLoop:
 func (watcher *PeginBridgeWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
-	log.Debug(peginBridgeWatcherLog("shut down"))
+	log.Debug(LogPeginBridgeShutdown)
 }
 
 func (watcher *PeginBridgeWatcher) handleCallForUserCompleted(event entities.Event) {
 	parsedEvent, ok := event.(quote.CallForUserCompletedEvent)
 	quoteHash := parsedEvent.RetainedQuote.QuoteHash
 	if !ok {
-		log.Error(peginBridgeWatcherLog("Trying to parse wrong event"))
+		log.Error(LogPeginBridgeWrongEvent)
 		return
 	}
 	watcher.quotesMutex.Lock()
 	defer watcher.quotesMutex.Unlock()
 	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
-		log.Info(peginBridgeWatcherLog("Quote %s is already watched", quoteHash))
+		log.Info(LogPeginBridgeAlreadyWatched(quoteHash))
 		return
 	}
 	if parsedEvent.RetainedQuote.State == quote.PeginStateCallForUserSucceeded {
@@ -129,7 +128,7 @@ func (watcher *PeginBridgeWatcher) checkQuotes() {
 	var tx blockchain.BitcoinTransactionInformation
 	for _, watchedQuote := range watcher.quotes {
 		if tx, err = watcher.rpc.Btc.GetTransactionInfo(watchedQuote.RetainedQuote.UserBtcTxHash); err != nil {
-			log.Error(peginBridgeWatcherLog(blockchain.BtcTxInfoErrorTemplate, watchedQuote.RetainedQuote.UserBtcTxHash, err))
+			log.Error(LogPeginBridgeBtcTxInfo(watchedQuote.RetainedQuote.UserBtcTxHash, err))
 			return
 		}
 		if watcher.validateQuote(watchedQuote, tx) {
@@ -140,12 +139,11 @@ func (watcher *PeginBridgeWatcher) checkQuotes() {
 
 func (watcher *PeginBridgeWatcher) registerPegin(watchedQuote quote.WatchedPeginQuote) {
 	var err error
-	const registerPeginErrorMsgTemplate = "Error executing register pegin on quote %s: %v"
 	if err = watcher.registerPeginUseCase.Run(context.Background(), watchedQuote.RetainedQuote); errors.Is(err, usecases.NonRecoverableError) {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
-		log.Error(peginBridgeWatcherLog(registerPeginErrorMsgTemplate, watchedQuote.RetainedQuote.QuoteHash, err))
+		log.Error(LogPeginBridgeRegisterError(watchedQuote.RetainedQuote.QuoteHash, err))
 	} else if err != nil {
-		log.Error(peginBridgeWatcherLog(registerPeginErrorMsgTemplate, watchedQuote.RetainedQuote.QuoteHash, err))
+		log.Error(LogPeginBridgeRegisterError(watchedQuote.RetainedQuote.QuoteHash, err))
 	} else {
 		delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 	}
@@ -167,8 +165,4 @@ func (watcher *PeginBridgeWatcher) GetCurrentBlock() *big.Int {
 	watcher.currentBlockMutex.RLock()
 	defer watcher.currentBlockMutex.RUnlock()
 	return watcher.currentBlock
-}
-
-func peginBridgeWatcherLog(msg string, args ...any) string {
-	return fmt.Sprintf("Pegin Bridge watcher: "+msg, args...)
 }

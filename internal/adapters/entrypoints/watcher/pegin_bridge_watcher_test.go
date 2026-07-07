@@ -113,7 +113,7 @@ func TestPeginBridgeWatcher_Start_CfuCompleted(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Quote any value is already watched")
+		checkFunction := test.AssertLogContains(t, watcher.LogPeginBridgeAlreadyWatched(testRetainedQuote.QuoteHash))
 		cfuChannel <- quote.CallForUserCompletedEvent{
 			Event:         entities.NewBaseEvent(quote.CallForUserCompletedEventId),
 			PeginQuote:    testPeginQuote,
@@ -122,7 +122,7 @@ func TestPeginBridgeWatcher_Start_CfuCompleted(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle incorrect event sent to bus", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, "Trying to parse wrong event")
+		checkFunction := test.AssertLogContains(t, watcher.LogPeginBridgeWrongEvent)
 		cfuChannel <- quote.PegoutQuoteCompletedEvent{
 			Event: entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
 		}

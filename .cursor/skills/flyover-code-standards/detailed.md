@@ -696,3 +696,194 @@ Scripts that aren't part of the build don't belong in `pkg/`, `cmd/`, or
 - `funlen` may be disabled in tests but `maintidx` should not — split into
   separate test functions.
 - If a linter rule is disabled, it requires explicit justification in the review.
+
+---
+
+## 9. Log Message Centralization
+
+Inline log strings scattered across the codebase cause test drift: the message
+and its test assertion live in two places and silently diverge when one is
+changed. The pattern below was adopted starting from PR #1024 (FLY-2388) and
+refined in PR #1025.
+
+### The rule
+
+> Every log message lives in the **same package** that emits it, in a
+> `log_messages.go` file. Log messages never go in `entities`.
+
+Log strings are observability details, not domain facts. `entities` is reserved
+for true domain contracts — specifically, alert subjects already live in
+`entities/alerts` because the external alerting system depends on their exact
+text. That exception does not extend to log messages.
+
+The canonical filename is `log_messages.go` (renamed from `messages.go` per
+review feedback in PR #1025).
+
+### Constant vs typed function — the split
+
+A message is either a **constant** or a **typed function**, decided by what the
+caller must provide:
+
+| Message shape | Form | Emitter |
+|---|---|---|
+| Fixed string, no placeholders (`"FooWatcher shut down"`) | constant | `log.Debug(LogFooShutdown)` |
+| Error-only template, single trailing `%v` (`"error running check: %v"`) | constant | `log.Errorf(LogFooError, err)` |
+| Any caller-provided value(s), with or without an error | **typed function** | `log.Info(LogFooChecking(txHash, quoteHash))` |
+
+> "Distinguish the cases where you just prepend something to the error from the
+> cases where you actually provide values... or even better a function so the
+> values the caller needs to provide are typed:
+> `LogPegoutRskGetDepositsError(start, end, err)`" — PR #1025 (Luisfc68)
+
+Typed functions make the compiler enforce argument order, count, and types —
+untyped `%s %d %v` templates silently accept anything. This applies to info and
+debug templates too, not only error templates: a single-value template becomes
+a one-parameter function for consistency.
+
+```go
+// internal/adapters/entrypoints/watcher/log_messages.go
+package watcher
+
+// Log message templates for pegout_rsk_watcher.go
+const (
+    LogPegoutRskPrefix      = "PegoutRskDepositWatcher: "
+    LogPegoutRskChainHeight = LogPegoutRskPrefix + "error getting Rootstock chain height: %v"
+    LogPegoutRskShutdown    = LogPegoutRskPrefix + "shut down"
+)
+
+func LogPegoutRskGetDepositsError(fromBlock, toBlock uint64, err error) string {
+    return fmt.Sprintf(LogPegoutRskPrefix+"error executing getting deposits in range [%d, %d]: %v", fromBlock, toBlock, err)
+}
+
+func LogPegoutRskExpired(quoteHash string, expirationTime int64) string {
+    return fmt.Sprintf(LogPegoutRskPrefix+"Quote %s expired at %d", quoteHash, expirationTime)
+}
+```
+
+Type the parameters to match the call site exactly (`uint64` for block numbers,
+`int64` for `time.Time.Unix()`, `uint` if the counter is `uint`, a concrete
+struct for `%+v` values). Do not widen to `any` or `string` for convenience.
+
+Do NOT convert the remaining constants to functions: prefixes must stay
+constants (compile-time concatenation), no-placeholder strings gain nothing,
+and error-only `%v` templates are already validated by `go vet`'s printf check
+against the logrus `*f` variants.
+
+### Structure
+
+One `log_messages.go` per package. When a package has more than one source file
+that emits logs, group per source file — one `const` block plus its functions,
+under a comment naming that file. Do not group by ad-hoc themes; one group per
+source file is the rule.
+
+Message fragments that are concatenated at runtime (e.g. a reject reason built
+from optional parts) are also typed functions; the emitting code concatenates
+their return values:
+
+```go
+rejectReason := LogPegoutRskRejectReason(quoteHash)
+if expired {
+    rejectReason += LogPegoutRskRejectExpired(expirationTime, depositTime-expirationTime, depositTime)
+}
+log.Info(LogPegoutRskPrefix + rejectReason)
+```
+
+### Emitter
+
+- Constant with format verbs → always the `*f` variant: `log.Errorf(LogFooError, err)`.
+- Constant without verbs → non-`f` variant: `log.Debug(LogFooShutdown)`.
+- Typed function → non-`f` variant with the call: `log.Error(LogFooUpdateError(quoteHash, err))`.
+
+```go
+// BAD — plain constant used with log.Error via concatenation
+const LogTransferError = "...Error executing transfer to cold wallet: "
+log.Error(LogTransferError, err) // relies on trailing space
+
+// GOOD — format string used with Errorf
+const LogTransferError = "...Error executing transfer to cold wallet: %v"
+log.Errorf(LogTransferError, err)
+```
+
+### Test assertions
+
+Tests derive the expected string from the **same constant or function** — never
+re-type the string. Three rules, all from real review comments:
+
+1. **Call the typed function directly** — no `fmt.Sprintf` needed:
+
+```go
+// BAD — re-types the string; drifts silently if the message changes
+defer test.AssertLogContains(t, "Error executing transfer to cold wallet")()
+
+// GOOD
+defer test.AssertLogContains(t, watcher.LogTransferFailed("BTC", "transfer failed", transferError))()
+```
+
+2. **Assert the real error value, never an empty placeholder.** Formatting the
+expected message with `""` makes the test pass even if the code stops logging
+the error at all. When the use case wraps errors, assert the wrapped form:
+
+```go
+// BAD — passes even if the error is dropped from the log
+checkFunc := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcUpdateExpiredError, test.AnyHash, ""))
+
+// GOOD — asserts the exact error the use case produces
+wrappedErr := usecases.WrapUseCaseError(usecases.ExpiredPeginQuoteId, assert.AnError)
+checkFunc := test.AssertLogContains(t, watcher.LogPeginBtcUpdateExpiredError(test.AnyHash, wrappedErr))
+```
+
+3. **Reuse declared error variables** instead of recreating literals inline.
+
+### Error wrapping: wrap once, at the use case boundary
+
+Related rule surfaced while fixing the assertions above: `usecases.WrapUseCaseError`
+must be applied exactly once, in the public `Run` method. Private helpers return
+the raw error; wrapping in both places produces logs like
+`"GetWatchedPegoutQuote: GetWatchedPegoutQuote: <err>"` and forces tests to
+assert double-wrapped strings.
+
+```go
+// BAD — helper wraps, then Run wraps again
+func (u *UseCase) getWatchedQuotes(...) (..., error) {
+    if err != nil {
+        return nil, usecases.WrapUseCaseError(usecases.GetWatchedPegoutQuoteId, err)
+    }
+}
+
+// GOOD — helper returns raw error; Run is the single wrapping point
+func (u *UseCase) getWatchedQuotes(...) (..., error) {
+    if err != nil {
+        return nil, err
+    }
+}
+```
+
+### Where log messages never go
+
+Do not add log messages to any `entities` package. They always stay in the
+package that emits them:
+
+| Message example | Wrong location | Correct location |
+|---|---|---|
+| `"TransferColdWalletWatcher shut down"` | `entities/cold_wallet` | `adapters/entrypoints/watcher` |
+| `"Server started at localhost:..."` | `entities/...` | `adapters/entrypoints/rest/server` |
+| `"%s interaction with db: %+v"` | `entities/...` | `adapters/dataproviders/database/mongo` |
+| `"Initializing application..."` | `entities/...` | `cmd/application` |
+
+Alert subjects in `entities/alerts` are the single existing exception — they are
+not log messages; they are external contracts consumed by the alerting system.
+
+### Naming convention
+
+Use a `Log` prefix for all log-message constants and functions to distinguish
+them from alert subjects and error templates in the same codebase:
+
+- Log messages → `LogTransferSuccess`, `LogPegoutRskExpired(quoteHash, ts)`
+- Alert subjects → `AlertSubjectNodeReorg` (in `entities/alerts`)
+- Error templates → `RskChainHeightErrorTemplate` (in `entities/blockchain`)
+
+### Reference implementation
+
+`internal/adapters/entrypoints/watcher/log_messages.go` is the pilot for the
+repo-wide migration (FLY-2388). Follow it when centralizing the remaining
+packages.

@@ -2,6 +2,7 @@ package watcher_test
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -63,7 +65,8 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	t.Run("should handle error getting quotes", func(t *testing.T) {
 		tickerChannel, pegoutRepository, _, _ := setup()
 		log.SetLevel(log.DebugLevel)
-		checkFunc := test.AssertLogContains(t, "error getting pegout quotes")
+		wrappedErr := usecases.WrapUseCaseError(usecases.GetWatchedPegoutQuoteId, assert.AnError)
+		checkFunc := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutBridgeGetQuotesError, wrappedErr))
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
@@ -76,7 +79,8 @@ func TestPegoutBridgeWatcher_Start(t *testing.T) {
 	t.Run("should log error sending tx to the bridge", func(t *testing.T) {
 		tickerChannel, pegoutRepository, providerMock, rskWallet := setup()
 		log.SetLevel(log.DebugLevel)
-		checkFunc := test.AssertLogContains(t, "error sending pegout to bridge")
+		wrappedErr := usecases.WrapUseCaseError(usecases.BridgePegoutId, assert.AnError)
+		checkFunc := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutBridgeSendError, wrappedErr))
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PegoutStateRefundPegOutSucceeded).Return([]quote.RetainedPegoutQuote{
 			{QuoteHash: quoteHash, State: quote.PegoutStateRefundPegOutSucceeded},
 		}, nil).Once()

@@ -36,7 +36,7 @@ func NewLiquidityCheckWatcher(
 func (watcher *LiquidityCheckWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
-	log.Debug("PeginBridgeWatcher shut down")
+	log.Debug(LogLiquidityCheckShutdown)
 }
 
 func (watcher *LiquidityCheckWatcher) Prepare(ctx context.Context) error { return nil }
@@ -48,10 +48,10 @@ watcherLoop:
 		case <-watcher.ticker.C():
 			ctx, cancel := context.WithTimeout(context.Background(), watcher.validationTimeout)
 			if err := watcher.checkLiquidityUseCase.Run(ctx); err != nil {
-				log.Error("Error checking liquidity inside watcher: ", err)
+				log.Errorf(LogLiquidityCheckError, err)
 			}
 			if err := watcher.lowLiquidityAlertUseCase.Run(ctx); err != nil {
-				log.Error("Error checking low liquidity inside watcher: ", err)
+				log.Errorf(LogLiquidityCheckLowLiquidError, err)
 			}
 			cancel()
 		case <-watcher.watcherStopChannel:

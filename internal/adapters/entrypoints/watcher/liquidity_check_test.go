@@ -2,6 +2,7 @@ package watcher_test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -99,6 +101,41 @@ func TestLiquidityCheckWatcher_Start_ErrorHandling(t *testing.T) {
 	w.Shutdown(closeChannel)
 	wg.Wait()
 	bridgeMock.AssertExpectations(t)
+}
+
+func TestLiquidityCheckWatcher_Start_LowLiquidityErrorHandling(t *testing.T) {
+	tickerChannel := make(chan time.Time)
+	closeChannel := make(chan bool)
+	ticker := &mocks.TickerMock{}
+	ticker.EXPECT().C().Return(tickerChannel)
+	ticker.EXPECT().Stop().Return()
+	providerMock := &mocks.ProviderMock{}
+	providerMock.On("HasPeginLiquidity", mock.Anything, mock.Anything).Return(nil)
+	providerMock.On("HasPegoutLiquidity", mock.Anything, mock.Anything).Return(nil)
+	providerMock.On("AvailablePegoutLiquidity", mock.Anything).Return((*entities.Wei)(nil), assert.AnError)
+	bridgeMock := &mocks.BridgeMock{}
+	bridgeMock.On("GetMinimumLockTxValue").Return(entities.NewWei(5), nil)
+	alertSenderMock := &mocks.AlertSenderMock{}
+	checkLiquidityUseCase := liquidity_provider.NewCheckLiquidityUseCase(providerMock, providerMock, blockchain.RskContracts{Bridge: bridgeMock}, alertSenderMock, test.AnyString)
+	lowLiquidityUseCase := liquidity_provider.NewLowLiquidityAlertUseCase(providerMock, providerMock, alertSenderMock, test.AnyString, 3, 1)
+	w := watcher.NewLiquidityCheckWatcher(checkLiquidityUseCase, lowLiquidityUseCase, ticker, time.Duration(1))
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	expectedErr := fmt.Errorf("%s: %w", usecases.LowLiquidityAlertId, assert.AnError)
+	defer test.AssertLogContains(t, fmt.Sprintf(watcher.LogLiquidityCheckLowLiquidError, expectedErr))()
+	go func() {
+		defer wg.Done()
+		w.Start()
+	}()
+	go func() {
+		defer wg.Done()
+		<-closeChannel
+	}()
+	tickerChannel <- time.Now()
+	w.Shutdown(closeChannel)
+	wg.Wait()
+	bridgeMock.AssertExpectations(t)
+	providerMock.AssertExpectations(t)
 }
 
 func TestLiquidityCheckWatcher_Prepare(t *testing.T) {

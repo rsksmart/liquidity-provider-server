@@ -13,10 +13,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 )
 
-const (
-	GetPegoutDepositsErrorTemplate = "error executing getting deposits in range [%d, %d]"
-)
-
 type RegisterPeginParams struct {
 	QuoteSignature        []byte
 	BitcoinRawTransaction []byte
