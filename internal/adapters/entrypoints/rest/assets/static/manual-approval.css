@@ -36,6 +36,20 @@
 
 #approveTxList, #denyTxList {
     overflow-x: hidden;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.col-checkbox {
+    width: 40px;
+}
+
+.col-actions {
+    width: 180px;
+}
+
+.sortable-header {
+    cursor: pointer;
 }
 
 #approveTxList li, #denyTxList li {
