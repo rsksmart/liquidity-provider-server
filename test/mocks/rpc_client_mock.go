@@ -1261,6 +1261,53 @@ func (_c *RpcClientMock_LoadWallet_Call) RunAndReturn(run func(string) (*btcjson
 	return _c
 }
 
+// LockUnspent provides a mock function with given fields: unlock, ops
+func (_m *RpcClientMock) LockUnspent(unlock bool, ops []*wire.OutPoint) error {
+	ret := _m.Called(unlock, ops)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockUnspent")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(bool, []*wire.OutPoint) error); ok {
+		r0 = rf(unlock, ops)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RpcClientMock_LockUnspent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockUnspent'
+type RpcClientMock_LockUnspent_Call struct {
+	*mock.Call
+}
+
+// LockUnspent is a helper method to define mock.On call
+//   - unlock bool
+//   - ops []*wire.OutPoint
+func (_e *RpcClientMock_Expecter) LockUnspent(unlock interface{}, ops interface{}) *RpcClientMock_LockUnspent_Call {
+	return &RpcClientMock_LockUnspent_Call{Call: _e.mock.On("LockUnspent", unlock, ops)}
+}
+
+func (_c *RpcClientMock_LockUnspent_Call) Run(run func(unlock bool, ops []*wire.OutPoint)) *RpcClientMock_LockUnspent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(bool), args[1].([]*wire.OutPoint))
+	})
+	return _c
+}
+
+func (_c *RpcClientMock_LockUnspent_Call) Return(_a0 error) *RpcClientMock_LockUnspent_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *RpcClientMock_LockUnspent_Call) RunAndReturn(run func(bool, []*wire.OutPoint) error) *RpcClientMock_LockUnspent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NextID provides a mock function with no fields
 func (_m *RpcClientMock) NextID() uint64 {
 	ret := _m.Called()

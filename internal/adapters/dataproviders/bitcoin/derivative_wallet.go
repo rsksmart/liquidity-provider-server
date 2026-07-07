@@ -2,7 +2,6 @@ package bitcoin
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -127,40 +126,27 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 		return blockchain.BtcFeeEstimation{}, err
 	}
 
-	amountInSatoshi, _ := value.ToSatoshi().Int64()
-	output := []btcjson.PsbtOutput{
-		{toAddress: btcutil.Amount(amountInSatoshi).ToUnit(btcutil.AmountBTC)},
-		{"data": hex.EncodeToString(make([]byte, quoteHashLength))}, // quote hash output
-	}
-
-	feeRate, err := wallet.estimateFeeRate()
-	if err != nil {
-		return blockchain.BtcFeeEstimation{}, err
-	}
-	changeAddress, err := wallet.rskAccount.BtcAddress()
+	rawTx, err := wallet.buildRawTransactionWithOpReturn(toAddress, value, make([]byte, quoteHashLength))
 	if err != nil {
 		return blockchain.BtcFeeEstimation{}, err
 	}
 
-	opts := btcjson.WalletCreateFundedPsbtOpts{
-		ChangeAddress:   btcjson.String(changeAddress.EncodeAddress()),
-		ChangePosition:  btcjson.Int64(changePositionWithOpReturn),
-		IncludeWatching: btcjson.Bool(true),
-		FeeRate:         feeRate,
+	opts, err := wallet.buildFundRawTransactionOpts(changePositionWithOpReturn, false)
+	if err != nil {
+		return blockchain.BtcFeeEstimation{}, err
 	}
 
-	simulatedTx, err := wallet.conn.client.WalletCreateFundedPsbt(nil, output, nil, &opts, nil)
+	fundedTx, err := wallet.conn.client.FundRawTransaction(rawTx, opts, nil)
 	if err != nil {
 		return blockchain.BtcFeeEstimation{}, err
 	}
-	btcFee, err := btcutil.NewAmount(simulatedTx.Fee)
-	if err != nil {
+	if err = validateBtcTxInputCount(len(fundedTx.Transaction.TxIn)); err != nil {
 		return blockchain.BtcFeeEstimation{}, err
 	}
-	satoshiFee := btcFee.ToUnit(btcutil.AmountSatoshi)
+
 	return blockchain.BtcFeeEstimation{
-		Value:   entities.SatoshiToWei(uint64(satoshiFee)),
-		FeeRate: utils.NewBigFloat64(*feeRate),
+		Value:   entities.SatoshiToWei(uint64(fundedTx.Fee)),
+		FeeRate: utils.NewBigFloat64(*opts.FeeRate),
 	}, nil
 }
 
@@ -206,7 +192,7 @@ func (wallet *DerivativeWallet) Send(address string, value *entities.Wei) (block
 		return blockchain.BitcoinTransactionResult{}, err
 	}
 
-	opts, err := wallet.buildFundRawTransactionOpts(changePositionSimple)
+	opts, err := wallet.buildFundRawTransactionOpts(changePositionSimple, true)
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
@@ -246,7 +232,7 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 		return blockchain.BitcoinTransactionResult{}, err
 	}
 
-	opts, err := wallet.buildFundRawTransactionOpts(changePositionWithOpReturn)
+	opts, err := wallet.buildFundRawTransactionOpts(changePositionWithOpReturn, true)
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
@@ -254,7 +240,10 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
-
+	if err = validateBtcTxInputCount(len(fundedTx.Transaction.TxIn)); err != nil {
+		return blockchain.BitcoinTransactionResult{}, err
+	}
+	defer wallet.unlockUtxos(fundedTx.Transaction)
 	signedTx, err := wallet.signFundedTransaction(fundedTx)
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
@@ -335,7 +324,7 @@ func (wallet *DerivativeWallet) estimateFeeRate() (*float64, error) {
 	return btcjson.Float64(utils.RoundToNDecimals(*estimationResult.FeeRate, estimationMaxDecimals)), nil
 }
 
-func (wallet *DerivativeWallet) buildFundRawTransactionOpts(changePos int) (btcjson.FundRawTransactionOpts, error) {
+func (wallet *DerivativeWallet) buildFundRawTransactionOpts(changePos int, lockUnspent bool) (btcjson.FundRawTransactionOpts, error) {
 	feeRate, err := wallet.estimateFeeRate()
 	if err != nil {
 		return btcjson.FundRawTransactionOpts{}, err
@@ -348,7 +337,7 @@ func (wallet *DerivativeWallet) buildFundRawTransactionOpts(changePos int) (btcj
 		ChangeAddress:   btcjson.String(changeAddress.EncodeAddress()),
 		ChangePosition:  btcjson.Int(changePos),
 		IncludeWatching: btcjson.Bool(true),
-		LockUnspents:    btcjson.Bool(true),
+		LockUnspents:    btcjson.Bool(lockUnspent),
 		FeeRate:         feeRate,
 		Replaceable:     btcjson.Bool(true),
 	}, nil
@@ -413,4 +402,28 @@ func (wallet *DerivativeWallet) buildRawTransactionWithOpReturn(address string, 
 	rawTx.AddTxOut(wire.NewTxOut(0, opReturnScript))
 
 	return rawTx, nil
+}
+
+func (wallet *DerivativeWallet) unlockUtxos(tx *wire.MsgTx) {
+	if tx == nil {
+		return
+	}
+	outpoints := make([]*wire.OutPoint, 0, len(tx.TxIn))
+	for _, input := range tx.TxIn {
+		if input != nil {
+			outpoints = append(outpoints, &input.PreviousOutPoint)
+		}
+	}
+	if len(outpoints) == 0 {
+		return
+	}
+	err := wallet.conn.client.LockUnspent(true, outpoints)
+	if err == nil || btcclient.IsLockUnspentAlreadyUnlocked(err) {
+		return
+	}
+	log.Errorf(
+		"error unlocking utxos for transaction %s: %v",
+		tx.TxHash(),
+		btcclient.WrapRPCError(btcclient.MethodLockUnspent, err),
+	)
 }

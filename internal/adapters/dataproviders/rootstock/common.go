@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -14,7 +16,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 const (
@@ -22,12 +23,6 @@ const (
 	rpcCallRetrySleep = 1 * time.Minute
 )
 
-// ErrShortRevertData is returned by ParseRevertReason when the revert payload
-// is shorter than a 4-byte ABI selector, so the error cannot be decoded into a
-// named custom error (or revert string). This can happen for multiple reasons
-// (e.g. ABI decode failures, calling an address with no code, or other opaque
-// reverts), and should not be interpreted as a specific on-chain condition by
-// the parser.
 var ErrShortRevertData = errors.New("revert data shorter than ABI selector")
 
 var DefaultRetryParams = RetryParams{
@@ -173,6 +168,9 @@ func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
 
 	var selectorBytes [errorSelectorSize]byte
 	var parsedError *abi.Error
+	if len(revertDataBytes) < errorSelectorSize {
+		return nil, fmt.Errorf("%w: %d bytes", ErrShortRevertData, len(revertDataBytes))
+	}
 	copy(selectorBytes[:], revertDataBytes[:errorSelectorSize])
 	if parsedError, err = contractAbi.ErrorByID(selectorBytes); err != nil {
 		return nil, fmt.Errorf("error decoding data using ABI: %w", err)

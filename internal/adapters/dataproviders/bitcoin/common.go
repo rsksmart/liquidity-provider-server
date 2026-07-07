@@ -25,6 +25,10 @@ const (
 	BtcToSatoshi             = 100000000
 	MaxConfirmationsForUtxos = 9999999
 	MinConfirmationsForUtxos = 1
+	// MaxBtcTxInputs is the maximum number of inputs that can be used in a transaction.
+	// This is a safety measure to prevent the creation of transactions that are too large
+	// to be processed by the smart contracts.
+	MaxBtcTxInputs = 50
 )
 
 func DecodeAddress(address string) ([]byte, error) {
@@ -215,6 +219,13 @@ func EnsureLoadedBtcWallet(connection *Connection) error {
 	log.Warnf("Expected wallet %s to be loaded and its not. Loading it...", connection.WalletId)
 	if _, err = connection.client.LoadWallet(connection.WalletId); err != nil {
 		return fmt.Errorf("error loading wallet %s: %w", connection.WalletId, err)
+	}
+	return nil
+}
+
+func validateBtcTxInputCount(inputCount int) error {
+	if inputCount > MaxBtcTxInputs {
+		return fmt.Errorf("%w (%d)", blockchain.TooManyInputsError, inputCount)
 	}
 	return nil
 }

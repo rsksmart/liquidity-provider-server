@@ -41,6 +41,7 @@ var (
 var (
 	BtcAddressInvalidNetworkError = errors.New("address network is not valid")
 	BtcAddressNotSupportedError   = errors.New("btc address not supported")
+	TooManyInputsError            = errors.New("transaction has more inputs than the maximum allowed for a single transaction")
 )
 
 const (
