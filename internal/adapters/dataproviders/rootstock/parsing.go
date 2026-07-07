@@ -37,7 +37,6 @@ func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.Trans
 		}
 	}
 
-	// tx.To() is nil for contract-creation transactions; keep To empty in that case.
 	to := ""
 	if tx.To() != nil {
 		to = tx.To().String()

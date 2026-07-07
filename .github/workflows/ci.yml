@@ -41,8 +41,10 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        env:
+          CC_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ env.CC_TOKEN }}
           files: ./coverage/cover.out
           fail_ci_if_error: true
 
