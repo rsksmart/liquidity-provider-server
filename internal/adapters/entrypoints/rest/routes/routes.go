@@ -38,7 +38,7 @@ func (f *endpointFactoryImpl) GetPrivate(env environment.Environment, useCaseReg
 	return GetManagementEndpoints(env, useCaseRegistry, store)
 }
 
-func ConfigureRoutes(router *Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
+func ConfigureRoutes(router Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
 	store, err := cookies.GetSessionCookieStore(env.Management)
 	if err != nil {
 		log.Fatal("Error registering routes: ", err)
@@ -55,7 +55,7 @@ func ConfigureRoutes(router *Router, env environment.Environment, useCaseRegistr
 	router.Use(middlewares.NewCorsMiddleware(env.AllowedOrigins))
 }
 
-func registerPublicRoutes(router *Router, env environment.Environment, endpoints []PublicEndpoint) {
+func registerPublicRoutes(router Router, env environment.Environment, endpoints []PublicEndpoint) {
 	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
 	for _, endpoint := range endpoints {
 		handler := endpoint.Handler
@@ -66,7 +66,7 @@ func registerPublicRoutes(router *Router, env environment.Environment, endpoints
 	}
 }
 
-func registerManagementRoutes(router *Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
+func registerManagementRoutes(router Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
 	log.Warn(
 		"Server is running with the management API exposed. This interface " +
 			"includes endpoints that must remain private at all cost. Please shut down " +
@@ -89,7 +89,7 @@ func registerManagementRoutes(router *Router, env environment.Environment, store
 // registers an explicit HEAD handler returning 405. http.ServeMux otherwise dispatches HEAD requests
 // to the GET handler, whereas the previous gorilla router rejected any method not explicitly declared
 // on a route; the explicit HEAD handler preserves that 405 behavior.
-func registerEndpoint(router *Router, method, path string, handler http.Handler) {
+func registerEndpoint(router Router, method, path string, handler http.Handler) {
 	router.Handle(method+" "+path, handler)
 	if method == http.MethodGet {
 		router.Handle(http.MethodHead+" "+path, methodNotAllowedHandler(method))

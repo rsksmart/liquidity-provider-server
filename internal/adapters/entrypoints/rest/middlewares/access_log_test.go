@@ -41,7 +41,7 @@ func TestNewAccessLogMiddleware_LogsCommonLogFormat(t *testing.T) {
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 
 	line := buffer.String()
-	assert.Regexp(t, `^192\.0\.2\.1 - - \[.+\] "GET /path HTTP/1\.1" 200 5\n$`, line)
+	assert.Regexp(t, `^192\.0\.2\.1 - - \[\d{2}/[A-Za-z]{3}/\d{4}:\d{2}:\d{2}:\d{2} [+-]\d{4}\] "GET /path HTTP/1\.1" 200 5\n$`, line)
 }
 
 func TestNewAccessLogMiddleware_CapturesStatusAndSize(t *testing.T) {
