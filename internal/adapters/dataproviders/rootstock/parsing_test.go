@@ -189,12 +189,12 @@ func TestParseReceipt(t *testing.T) {
 		require.NotPanics(t, func() {
 			receipt, err := rootstock.ParseReceipt(creationTx, rawReceipt)
 			require.NoError(t, err)
-			assert.Equal(t, "", receipt.To)
+			assert.Empty(t, receipt.To)
 		})
 	})
 }
 
-// nolint:funlen
+// nolint:funlen,maintidx
 func TestParseDepositEventByQuoteHash(t *testing.T) {
 	const (
 		txHash         = "0xfba869597b09185666429924ee5adc15289e131171c5018b353343e9783236a9"
@@ -419,33 +419,6 @@ func TestParseDepositEventByQuoteHash(t *testing.T) {
 		})
 	})
 	t.Run("should return error on malformed log data", func(t *testing.T) {
-		receipt := blockchain.TransactionReceipt{
-			TransactionHash:   txHash,
-			BlockHash:         blockHash,
-			BlockNumber:       blockNumber,
-			From:              from,
-			To:                to,
-			CumulativeGasUsed: big.NewInt(909304),
-			GasUsed:           big.NewInt(410230),
-			Value:             entities.NewWei(38805670000000000),
-			Logs: []blockchain.TransactionLog{
-				{
-					Address: "0xAa9caf1e3967600578727f975F283446a3dA6612",
-					Topics: [][32]byte{
-						utils.To32Bytes(hexutil.MustDecode("0xb1bc7bfc0dab19777eb03aa0a5643378fc9f186c8fc5a36620d21136fbea570f")),
-						utils.To32Bytes(hexutil.MustDecode("0xeb8a4598a3cb0b8a697206316216b791e7b16dd5a8496349a6aad6fac8f190e7")),
-						utils.To32Bytes(hexutil.MustDecode("0x000000000000000000000000aca43e826be4d5cbff195797968a3fcf20cc7813")),
-					},
-					Data:        hexutil.MustDecode("0x000000000000000000000000000000000000000000000000000089dd8d1f9efc"),
-					BlockNumber: blockNumber,
-					TxHash:      txHash,
-					TxIndex:     0,
-					BlockHash:   blockHash,
-					Index:       0,
-					Removed:     false,
-				},
-			},
-		}
 		emptyDataLog := blockchain.TransactionLog{
 			Address: lbcAddress,
 			Topics: [][32]byte{
@@ -458,7 +431,7 @@ func TestParseDepositEventByQuoteHash(t *testing.T) {
 			BlockNumber: blockNumber,
 			TxHash:      txHash,
 		}
-		receipt = baseReceipt
+		receipt := baseReceipt
 		receipt.Logs = []blockchain.TransactionLog{emptyDataLog}
 		deposit, err := rootstock.ParseDepositEventByQuoteHash(receipt, quoteHashA, lbcAddress)
 		require.Error(t, err)
