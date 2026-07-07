@@ -22,7 +22,7 @@ import (
 
 func TestAcceptPeginAuthenticatedQuoteHandler(t *testing.T) {
 	quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-	signature := "validSignature123"
+	signature := "validsignature123"
 	acceptedQuote := quote.AcceptedQuote{
 		Signature:      "signedHash123",
 		DepositAddress: "depositAddress456",
@@ -62,7 +62,7 @@ func TestAcceptPeginAuthenticatedQuoteHandler(t *testing.T) {
 func TestAcceptPeginAuthenticatedQuoteHandlerValidationErrors(t *testing.T) {
 	t.Run("should handle malformed JSON in request body", func(t *testing.T) {
 		// Create a request with malformed JSON (missing closing brace)
-		malformedJSON := []byte(`{"quoteHash": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "signature": "validSignature123"`)
+		malformedJSON := []byte(`{"quoteHash": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "signature": "validsignature123"`)
 		request := httptest.NewRequest(http.MethodPost, "/pegin/acceptAuthenticatedQuote", bytes.NewBuffer(malformedJSON))
 		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
@@ -125,7 +125,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 	t.Run("should return 400 on invalid quote hash format", func(t *testing.T) {
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: "123456789XABCDEF", // Invalid - contains non-hex character 'X'
-			Signature: "validSignature123",
+			Signature: "validsignature123",
 		}
 		jsonBody, err := json.Marshal(reqBody)
 		require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 	t.Run("should return 404 when quote not found", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
+		signature := "validsignature123"
 
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
@@ -188,7 +188,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 	t.Run("should return 410 when quote is expired", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
+		signature := "validsignature123"
 
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
@@ -222,7 +222,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 	t.Run("should return 409 when not enough liquidity", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
+		signature := "validsignature123"
 
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
@@ -256,7 +256,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 	t.Run("should return 409 when locking cap exceeded", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
+		signature := "validsignature123"
 
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
@@ -290,7 +290,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 	t.Run("should return 500 when trusted account is tampered", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
+		signature := "validsignature123"
 
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
@@ -324,7 +324,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 
 	t.Run("should return 500 on unexpected errors", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
+		signature := "validsignature123"
 
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
@@ -358,7 +358,7 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 	})
 	t.Run("should return 503 if contract is paused", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
+		signature := "validsignature123"
 		reqBody := pkg.AcceptAuthenticatedQuoteRequest{
 			QuoteHash: quoteHash,
 			Signature: signature,
@@ -392,8 +392,8 @@ func TestAcceptPeginAuthenticatedQuoteHandlerErrorCases(t *testing.T) {
 func TestAcceptPeginAuthenticatedQuoteHandler_SignatureProcessing(t *testing.T) {
 	t.Run("should strip 0x prefix from signature", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signatureWithPrefix := "0xvalidSignature123"
-		signatureWithoutPrefix := "validSignature123"
+		signatureWithPrefix := "0xvalidsignature123"
+		signatureWithoutPrefix := "validsignature123"
 		acceptedQuote := quote.AcceptedQuote{
 			Signature:      "signedHash123",
 			DepositAddress: "depositAddress456",
@@ -433,7 +433,7 @@ func TestAcceptPeginAuthenticatedQuoteHandler_SignatureProcessing(t *testing.T) 
 
 	t.Run("should leave signature unchanged when no 0x prefix", func(t *testing.T) {
 		quoteHash := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-		signature := "validSignature123"
+		signature := "validsignature123"
 		acceptedQuote := quote.AcceptedQuote{
 			Signature:      "signedHash123",
 			DepositAddress: "depositAddress456",
@@ -498,5 +498,9 @@ func TestAcceptPeginAuthenticatedQuoteHandler_SignatureProcessing(t *testing.T) 
 		require.NoError(t, err)
 		assert.Contains(t, errorResponse, "message")
 		assert.Contains(t, errorResponse["message"], "validation error")
+		assert.Contains(t, errorResponse, "details")
+		details, ok := errorResponse["details"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, "is required", details["Signature"])
 	})
 }

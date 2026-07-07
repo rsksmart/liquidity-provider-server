@@ -2,15 +2,20 @@ package handlers
 
 import (
 	"errors"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"net/http"
+	"strings"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 const UnknownErrorMessage = "unknown error"
+
+func normalizeAuthenticatedQuoteSignature(signature string) string {
+	return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(strings.ToLower(signature)), "0x"))
+}
 
 func HandleAcceptQuoteError(w http.ResponseWriter, err error) {
 	switch {

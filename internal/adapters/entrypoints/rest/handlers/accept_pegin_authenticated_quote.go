@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -31,7 +30,7 @@ func NewAcceptPeginAuthenticatedQuoteHandler(useCase AcceptQuoteUseCase) http.Ha
 			return
 		}
 
-		acceptRequest.Signature = strings.TrimPrefix(acceptRequest.Signature, "0x")
+		acceptRequest.Signature = normalizeAuthenticatedQuoteSignature(acceptRequest.Signature)
 		if acceptRequest.Signature == "" {
 			jsonErr := rest.NewErrorResponseWithDetails("validation error", rest.ErrorDetails{
 				"Signature": "is required",
