@@ -51,7 +51,6 @@ func managementAPIHandler(t *testing.T) http.Handler {
 			EnableManagementApi:  true,
 			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
-			SessionTokenAuthKey:  hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
 		AllowedOrigins: testAllowedDomains,

@@ -66,7 +66,7 @@ func registerPublicRoutes(router Router, env environment.Environment, endpoints 
 	}
 }
 
-func registerManagementRoutes(router Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
+func registerManagementRoutes(router Router, store sessions.Store, endpoints []Endpoint) {
 	log.Warn(
 		"Server is running with the management API exposed. This interface " +
 			"includes endpoints that must remain private at all cost. Please shut down " +
