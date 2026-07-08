@@ -15,16 +15,34 @@
  *   The private keys are derived as keccak256("auth-a"), keccak256("auth-b"),
  *   keccak256("auth-c").
  *
+ * SVP (RSKIP-419) flow (VETIVER / 9.0.2+):
+ *   After commitFederation the bridge requires spend-validation before the new federation
+ *   activates. The federators must sign + broadcast a fund tx and a spend tx to BTC, both
+ *   of which must confirm on-chain. Only then does the bridge accept the proposed federation
+ *   and count down federationActivationAge blocks.
+ *
+ *   Pre-conditions for SVP to succeed:
+ *     1. The bridge must have synced BTC headers (getBtcBlockchainBestChainHeight > 0) before
+ *        commit, or it cannot build the svpFundTx.
+ *     2. The active (genesis) federation must hold BTC, or the fund tx fails with
+ *        INSUFFICIENT_MONEY.
+ *
+ *   This script satisfies both conditions before committing:
+ *     a. primeBtcRelay — interleaves RSK + BTC block production until the bridge BTC height
+ *        catches up to the bitcoind tip.
+ *     b. fundFederation — sends BTC to the genesis federation address so SVP has funds.
+ *
  * Steps:
- *   1. Wait for the RSK node to be reachable.
- *   2. Fund auth-a/b/c from the pre-unlocked coinbase so they can pay for gas.
- *   3. Vote createFederation() — 3 times to reach majority.
- *   4. Vote addFederatorPublicKeyMultikey() for each of the 3 federation members — 3 times each.
- *   5. Call getPendingFederationHash() to retrieve the hash for the commit step.
- *   6. Vote commitFederation(hash) — 3 times to reach majority.
- *   7. Mine enough blocks for the new federation to become active (federationActivationAge=150).
- *   8. Verify the active federation address changed (confirms activation succeeded).
- *   9. Write USE_SEGWIT_FEDERATION=true to the env file so LPS starts with the right flag.
+ *   1.  Wait for the RSK node to be reachable.
+ *   2.  Fund auth-a/b/c from the pre-unlocked coinbase so they can pay for gas.
+ *   3.  Vote createFederation() — 3 times to reach majority.
+ *   4.  Vote addFederatorPublicKeyMultikey() for each of the 3 federation members — 3 times each.
+ *   5.  Call getPendingFederationHash() to retrieve the hash for the commit step.
+ *   6.  Prime BTC header relay, then fund the active (genesis) federation.
+ *   7.  Vote commitFederation(hash) — 3 times, then drive SVP + activation via interleaved
+ *       BTC/RSK block production until the federation address changes.
+ *   8.  Verify the active federation address changed (confirms activation succeeded).
+ *   9.  Write USE_SEGWIT_FEDERATION=true to the env file so LPS starts with the right flag.
  */
 
 const fs = require('fs');
@@ -39,9 +57,16 @@ const ENV_FILE = process.env.ENV_FILE;
 if (!ENV_FILE) throw new Error('ENV_FILE environment variable is required');
 const ENV_FILE_PATH = '/' + ENV_FILE;
 
+const BTC_RPC_URL = process.env.BTC_RPC_URL;
+if (!BTC_RPC_URL) throw new Error('BTC_RPC_URL environment variable is required');
+
+const BTC_RPC_USER = process.env.BTC_RPC_USER || 'test';
+const BTC_RPC_PASSWORD = process.env.BTC_RPC_PASSWORD || 'test';
+const BTC_RPC_WALLET = process.env.BTC_RPC_WALLET || 'main';
+const BTC_WALLET_PASSPHRASE = process.env.BTC_WALLET_PASSPHRASE || '';
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// RSK Bridge precompile address
 const BRIDGE_ADDRESS = '0x0000000000000000000000000000000001000006';
 
 // Pre-funded coinbase
@@ -70,9 +95,23 @@ const FEDERATION_MEMBER_PUBKEYS = [
     '02cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1', // third genesis member
 ];
 
-// Blocks required after commitFederation for the new federation to become active:
-//   validationPeriodDurationInBlocks (125) + federationActivationAge (150) + safety buffer (5)
-const BLOCKS_AFTER_COMMIT = 280;
+// BTC to send to the active federation so the bridge can build the SVP fund tx.
+// Must cover the 500000 sat SVP amount plus fees.
+const FEDERATION_FUNDING_BTC = 5;
+// BTC blocks to mine after the federation funding tx so federators register the UTXO.
+const FEDERATION_FUNDING_CONFIRMATIONS = 20;
+
+// Relay-priming: rounds of (3 RSK blocks + 2 BTC blocks + 2 s pause) before checking bridge height.
+const RELAY_PRIME_MAX_ROUNDS = 30;
+// Bridge BTC height must be within this many blocks of the bitcoind tip to consider relay primed.
+const RELAY_PRIME_TOLERANCE = 5;
+
+// SVP activation loop: interleave BTC + RSK blocks with wall-clock pauses so the federators
+// can sign/broadcast the fund and spend txs and the bridge can validate them.
+const SVP_MAX_ROUNDS = 220;
+const BTC_BLOCKS_PER_ROUND = 4;
+const RSK_BLOCKS_PER_ROUND = 2;
+const ROUND_DELAY_MS = 2000;
 
 // ── Bridge ABI ────────────────────────────────────────────────────────────────
 
@@ -82,9 +121,12 @@ const BRIDGE_ABI = [
     'function getPendingFederationHash() view returns (bytes)',
     'function commitFederation(bytes hash) returns (int256)',
     'function getFederationAddress() view returns (string)',
+    'function getBtcBlockchainBestChainHeight() view returns (uint256)',
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
 
 async function waitForNode(provider, maxRetries = 30, delayMs = 3000) {
     for (let i = 0; i < maxRetries; i++) {
@@ -94,27 +136,74 @@ async function waitForNode(provider, maxRetries = 30, delayMs = 3000) {
             return;
         } catch {
             console.log(`Waiting for RSK node... (attempt ${i + 1}/${maxRetries})`);
-            await new Promise(r => setTimeout(r, delayMs));
+            await delay(delayMs);
         }
     }
     throw new Error('RSK node did not become available in time');
 }
 
-async function rpcCall(method, params = []) {
+async function rskRpcCall(method, params = []) {
     const res = await fetch(RSK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
     });
-    if (!res.ok) throw new Error(`RPC ${method} failed with HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`RSK RPC ${method} failed with HTTP ${res.status}`);
     const json = await res.json();
-    if (json.error) throw new Error(`RPC ${method} returned error: ${JSON.stringify(json.error)}`);
+    if (json.error) throw new Error(`RSK RPC ${method} returned error: ${JSON.stringify(json.error)}`);
     return json.result;
+}
+
+async function btcRpc(method, params = [], useWallet = false) {
+    const url = useWallet
+        ? `${BTC_RPC_URL}/wallet/${BTC_RPC_WALLET}`
+        : BTC_RPC_URL;
+    const credentials = Buffer.from(`${BTC_RPC_USER}:${BTC_RPC_PASSWORD}`).toString('base64');
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${credentials}`,
+        },
+        body: JSON.stringify({ jsonrpc: '1.0', method, params, id: 1 }),
+    });
+    if (!res.ok) throw new Error(`BTC RPC ${method} failed with HTTP ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    if (json.error) throw new Error(`BTC RPC ${method} returned error: ${JSON.stringify(json.error)}`);
+    return json.result;
+}
+
+async function btcHeight() {
+    return btcRpc('getblockcount');
+}
+
+async function mineBtc(toAddr, n) {
+    return btcRpc('generatetoaddress', [n, toAddr]);
+}
+
+async function getBtcMiningAddress() {
+    return btcRpc('getnewaddress', [], true);
+}
+
+async function getBridgeBtcHeight(provider, bridgeInterface) {
+    const result = await provider.call({
+        to: BRIDGE_ADDRESS,
+        data: bridgeInterface.encodeFunctionData('getBtcBlockchainBestChainHeight'),
+    });
+    return Number(bridgeInterface.decodeFunctionResult('getBtcBlockchainBestChainHeight', result)[0]);
+}
+
+async function getFederationAddress(provider, bridgeInterface) {
+    const result = await provider.call({
+        to: BRIDGE_ADDRESS,
+        data: bridgeInterface.encodeFunctionData('getFederationAddress'),
+    });
+    return bridgeInterface.decodeFunctionResult('getFederationAddress', result)[0];
 }
 
 async function fundAuthAddresses(addresses) {
     for (const addr of addresses) {
-        await rpcCall('eth_sendTransaction', [{
+        await rskRpcCall('eth_sendTransaction', [{
             from: RSK_FUNDER,
             to: addr,
             value: '0x' + AUTH_FUND_AMOUNT.toString(16),
@@ -141,24 +230,60 @@ async function voteAll(wallets, bridgeInterface, fnName, args, label) {
     }
 }
 
-// Uses eth_sendTransaction from the pre-unlocked coinbase to advance the chain.
-// autoMine=true mines one block per transaction. A short delay between calls prevents
-// the RSK node from failing with "transaction wasn't mined" under rapid load.
-async function mineBlocks(count) {
-    console.log(`Mining ${count} blocks via coinbase self-transfers...`);
-    const delay = ms => new Promise(r => setTimeout(r, ms));
+// Mines RSK blocks by sending coinbase self-transfers (autoMine=true mints one block per tx).
+async function mineRsk(count) {
     for (let i = 0; i < count; i++) {
-        await rpcCall('eth_sendTransaction', [{
+        await rskRpcCall('eth_sendTransaction', [{
             from: RSK_FUNDER,
             to: RSK_FUNDER,
             value: '0x0',
         }]);
         await delay(50);
-        if ((i + 1) % 50 === 0) {
-            console.log(`  ${i + 1}/${count} blocks mined`);
+    }
+}
+
+// Interleaves RSK + BTC block production until the bridge BTC height is within
+// RELAY_PRIME_TOLERANCE blocks of the bitcoind tip.
+async function primeBtcRelay(provider, bridgeInterface, btcAddr) {
+    const target = await btcHeight();
+    console.log(`  BTC tip: ${target}, driving relay to bridge...`);
+    for (let i = 0; i < RELAY_PRIME_MAX_ROUNDS; i++) {
+        await mineRsk(3);
+        await mineBtc(btcAddr, 2);
+        await delay(2000);
+        const bridgeHeight = await getBridgeBtcHeight(provider, bridgeInterface);
+        console.log(`    relay round ${i}: bridge BTC height = ${bridgeHeight} / ${target}`);
+        if (bridgeHeight >= target - RELAY_PRIME_TOLERANCE) {
+            console.log(`  BTC header relay primed: bridge BTC height = ${bridgeHeight}`);
+            return;
         }
     }
-    console.log(`  Done — ${count} blocks mined`);
+    const bridgeHeight = await getBridgeBtcHeight(provider, bridgeInterface);
+    console.warn(`  WARNING: relay priming exhausted ${RELAY_PRIME_MAX_ROUNDS} rounds; bridge height = ${bridgeHeight}`);
+}
+
+// Sends BTC to the active (genesis) federation so the bridge has funds for the SVP fund tx.
+async function fundFederation(provider, bridgeInterface, btcAddr) {
+    const fedAddr = await getFederationAddress(provider, bridgeInterface);
+    console.log(`  Funding active federation ${fedAddr} with ${FEDERATION_FUNDING_BTC} BTC (peg-in)...`);
+
+    if (BTC_WALLET_PASSPHRASE) {
+        await btcRpc('walletpassphrase', [BTC_WALLET_PASSPHRASE, 120], true);
+    }
+    await btcRpc('settxfee', [0.0001], true);
+    const txid = await btcRpc('sendtoaddress', [fedAddr, FEDERATION_FUNDING_BTC], true);
+    console.log(`  Sent ${FEDERATION_FUNDING_BTC} BTC to federation, txid: ${txid}`);
+
+    await mineBtc(btcAddr, FEDERATION_FUNDING_CONFIRMATIONS);
+    console.log(`  Mined ${FEDERATION_FUNDING_CONFIRMATIONS} BTC blocks to confirm funding`);
+
+    // Drive RSK + BTC interleaved so federators can register the UTXO into the bridge wallet.
+    for (let i = 0; i < 12; i++) {
+        await mineRsk(2);
+        await mineBtc(btcAddr, 2);
+        await delay(2000);
+    }
+    console.log('  Federation funded and UTXO registration driven.');
 }
 
 function updateEnvFile(filePath) {
@@ -179,6 +304,7 @@ async function main() {
     console.log('║   Federation Segwit Migration (RSKIP-305) ║');
     console.log('╚══════════════════════════════════════════╝');
     console.log(`RSK endpoint : ${RSK_URL}`);
+    console.log(`BTC RPC URL  : ${BTC_RPC_URL}`);
     console.log(`Env file     : ${ENV_FILE_PATH}`);
 
     const provider = new ethers.JsonRpcProvider(RSK_URL);
@@ -195,13 +321,11 @@ async function main() {
 
     // ── Step 3: createFederation ──────────────────────────────────────────────
     // Three votes reach the majority threshold (3/5) required by the regtest bridge.
-    // The third vote executes the function and creates a pending federation.
     console.log('\n[3/9] createFederation (3 votes)...');
     await voteAll(authWallets, bridgeInterface, 'createFederation', [], 'createFederation');
 
     // ── Step 4: addFederatorPublicKeyMultikey ─────────────────────────────────
     // Add each powpeg member to the pending federation.
-    // In regtest BTC/RSK/MST keys are all the same compressed public key.
     console.log('\n[4/9] addFederatorPublicKeyMultikey for each member (3 votes each)...');
     for (const pubkeyHex of FEDERATION_MEMBER_PUBKEYS) {
         const keyBytes = '0x' + pubkeyHex;
@@ -223,47 +347,76 @@ async function main() {
     const [pendingHash] = bridgeInterface.decodeFunctionResult('getPendingFederationHash', hashCallResult);
     console.log(`  Pending federation hash: ${pendingHash}`);
 
-    // ── Step 6: commitFederation ──────────────────────────────────────────────
-    // After commit: federation activates after federationActivationAge (150 blocks).
-    // Because RSKIP-305 is active at block 0, the bridge automatically produces
-    // a segwit-compatible P2SH-P2WSH address for any new federation.
-    const oldFederationAddress = await provider.call({
-        to: BRIDGE_ADDRESS,
-        data: bridgeInterface.encodeFunctionData('getFederationAddress'),
-    }).then(r => bridgeInterface.decodeFunctionResult('getFederationAddress', r)[0]);
-    console.log('\n[6/9] commitFederation (3 votes)...');
+    const oldFederationAddress = await getFederationAddress(provider, bridgeInterface);
+    console.log(`  Current (old) federation address: ${oldFederationAddress}`);
+
+    // Get a BTC address to mine rewards to throughout the rest of the migration.
+    const btcMiningAddr = await getBtcMiningAddress();
+    console.log(`  BTC mining address: ${btcMiningAddr}`);
+
+    // ── Step 6: Prime relay + fund active federation (before commit) ──────────
+    // These must happen BEFORE commitFederation so the SVP validation window is
+    // not consumed by pre-conditions work.
+    console.log('\n[6/9] Priming BTC header relay before commit...');
+    await primeBtcRelay(provider, bridgeInterface, btcMiningAddr);
+
+    console.log('      Funding the active federation for SVP...');
+    await fundFederation(provider, bridgeInterface, btcMiningAddr);
+
+    // ── Step 7: commitFederation + SVP driving ────────────────────────────────
+    // After commit the bridge starts the SVP validation period. Interleave BTC and
+    // RSK block production so the federators can complete the fund→confirm→spend→confirm
+    // cycle within the validation window, then count down federationActivationAge.
+    console.log('\n[7/9] commitFederation (3 votes)...');
     await voteAll(authWallets, bridgeInterface, 'commitFederation', [pendingHash], 'commitFederation');
 
-    // ── Step 7: Mine blocks ───────────────────────────────────────────────────
-    // rskj has autoMine=true: one block is mined per incoming transaction.
-    // We send self-transfers from RSK_FUNDER to advance the block height.
-    console.log(`\n[7/9] Mining ${BLOCKS_AFTER_COMMIT} blocks for federation activation...`);
-    await mineBlocks(BLOCKS_AFTER_COMMIT);
+    console.log('      Driving SVP validation + activation (interleaved RSK+BTC mining)...');
+    let activated = false;
+    for (let round = 0; round < SVP_MAX_ROUNDS; round++) {
+        await mineBtc(btcMiningAddr, BTC_BLOCKS_PER_ROUND);
+        await mineRsk(RSK_BLOCKS_PER_ROUND);
+        await delay(ROUND_DELAY_MS);
+
+        if (round % 5 === 0) {
+            const bridgeBtcHeight = await getBridgeBtcHeight(provider, bridgeInterface);
+            const btcTip = await btcHeight();
+            const curFedAddr = await getFederationAddress(provider, bridgeInterface);
+            console.log(
+                `      round ${String(round).padStart(3)}: fedAddr=${curFedAddr}` +
+                ` bridgeBtcHeight=${bridgeBtcHeight} btcTip=${btcTip}`,
+            );
+            if (curFedAddr !== oldFederationAddress) {
+                activated = true;
+                break;
+            }
+        }
+    }
+
+    if (!activated) {
+        throw new Error(
+            `SVP activation did not complete within ${SVP_MAX_ROUNDS} rounds.\n` +
+            'Increase SVP_MAX_ROUNDS or check the powpeg federator logs for errors.',
+        );
+    }
 
     // ── Step 8: Verify federation activated ──────────────────────────────────
     console.log('\n[8/9] Verifying federation activation...');
-    const newFederationAddress = await provider.call({
-        to: BRIDGE_ADDRESS,
-        data: bridgeInterface.encodeFunctionData('getFederationAddress'),
-    }).then(r => bridgeInterface.decodeFunctionResult('getFederationAddress', r)[0]);
+    const newFederationAddress = await getFederationAddress(provider, bridgeInterface);
     if (newFederationAddress === oldFederationAddress) {
         throw new Error(
-            `Federation address did not change after ${BLOCKS_AFTER_COMMIT} blocks.\n` +
+            `Federation address did not change.\n` +
             `  Old address: ${oldFederationAddress}\n` +
-            `  New address: ${newFederationAddress}\n` +
-            'The new federation may not have activated yet — increase BLOCKS_AFTER_COMMIT.'
+            `  New address: ${newFederationAddress}`,
         );
     }
-    console.log('  Federation activation confirmed.');
+    console.log(`  Federation activation confirmed. New address: ${newFederationAddress}`);
 
     // ── Step 9: Update env file ───────────────────────────────────────────────
-    // lps-local.sh re-sources the env file after this container exits, so LPS
-    // will start with USE_SEGWIT_FEDERATION=true.
     console.log('\n[9/9] Updating env file...');
     updateEnvFile(ENV_FILE_PATH);
 
     console.log('\n Migration complete.');
-    console.log('  The new segwit-compatible (P2SH-P2WSH) federation is now active.\n');
+    console.log(`  The new segwit-compatible (P2SH-P2WSH) federation is now active.\n`);
 }
 
 main().catch(err => {

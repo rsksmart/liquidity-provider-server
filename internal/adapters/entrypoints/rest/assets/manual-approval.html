@@ -5,38 +5,7 @@
     <title>Manual Approval - Management UI</title>
     <link href="/static/Bootstrap.css" rel="stylesheet" crossorigin="anonymous">
     <link href="/static/management.css" rel="stylesheet" />
-    <style>
-        .bulk-actions-toolbar {
-            display: none;
-            background-color: #e7f3ff;
-            padding: 10px 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            border: 1px solid #b8daff;
-        }
-        .bulk-actions-toolbar.show {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .table-responsive {
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        .pagination-info {
-            margin-top: 10px;
-            color: #6c757d;
-        }
-        .filter-section {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        .status-badge {
-            font-size: 0.85rem;
-        }
-    </style>
+    <link href="/static/manual-approval.css" rel="stylesheet" />
 </head>
 <body>
     <div class="container main-content">
@@ -110,18 +79,18 @@
                                     <table class="table table-striped table-hover" id="pendingTableWrapper">
                                         <thead class="table-light">
                                             <tr>
-                                                <th style="width: 40px;">
+                                                <th class="col-checkbox">
                                                     <input type="checkbox" class="form-check-input" id="selectAllPending">
                                                 </th>
                                                 <th>Type</th>
                                                 <th>Quote Hash</th>
-                                                <th style="cursor: pointer;" id="pendingDateHeader">
+                                                <th class="sortable-header" id="pendingDateHeader">
                                                     Date <span id="pendingDateSort">↓</span>
                                                 </th>
                                                 <th>Amount</th>
                                                 <th>State</th>
                                                 <th>User Address</th>
-                                                <th style="width: 180px;">Actions</th>
+                                                <th class="col-actions">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody id="pendingTableBody">
@@ -186,13 +155,13 @@
                                             <tr>
                                                 <th>Type</th>
                                                 <th>Quote Hash</th>
-                                                <th style="cursor: pointer;" id="historyDateHeader">
+                                                <th class="sortable-header" id="historyDateHeader">
                                                     Transaction Date <span id="historyDateSort">↓</span>
                                                 </th>
                                                 <th>Amount</th>
                                                 <th>Decision</th>
                                                 <th>Decided By</th>
-                                                <th style="cursor: pointer;" id="historyDecisionDateHeader">
+                                                <th class="sortable-header" id="historyDecisionDateHeader">
                                                     Decision Date <span id="historyDecisionDateSort"></span>
                                                 </th>
                                             </tr>
@@ -243,7 +212,7 @@
                         <strong>Warning:</strong> This operation cannot be undone.
                     </div>
                     <p>You are about to approve <strong id="approveCount">0</strong> transaction(s):</p>
-                    <ul id="approveTxList" style="max-height: 200px; overflow-y: auto;">
+                    <ul id="approveTxList">
                         <!-- Transaction IDs will be listed here -->
                     </ul>
                 </div>
@@ -271,7 +240,7 @@
                         <strong>Warning:</strong> This operation cannot be undone.
                     </div>
                     <p>You are about to deny <strong id="denyCount">0</strong> transaction(s):</p>
-                    <ul id="denyTxList" style="max-height: 200px; overflow-y: auto;">
+                    <ul id="denyTxList">
                         <!-- Transaction IDs will be listed here -->
                     </ul>
                 </div>

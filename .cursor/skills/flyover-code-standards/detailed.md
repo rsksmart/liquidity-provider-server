@@ -408,6 +408,11 @@ if errors.Is(err, liquidity_provider.ErrNotFound) {
 The `deprecated` field is maintained manually because the codegen tool doesn't
 support it. Never remove it during auto-regeneration.
 
+The spec is generated via `make api` (go-swagger3 from `@Route` annotations).
+When adding a handler that serves multiple paths (e.g. a shared template
+handler), add one `@Route` annotation per path so all routes appear in the spec
+and pass `TestGetManagementEndpoints`.
+
 ---
 
 ## 5. Testing
@@ -590,6 +595,50 @@ const value = BigInt(weiAmount);
 ```
 
 > "use bigint here to prevent overflow" — PR #690
+
+### Management UI (CSS / Content Security Policy)
+
+The management server sends a `Content-Security-Policy` header when
+`ENABLE_SECURITY_HEADERS=true`. The `style-src` directive allows:
+
+- `'self'` — external `.css` files served from `/static/` ✅ always works
+- `'sha256-<hash>'` — one pinned hash matching a specific inline `<style>` block
+
+**Never use inline `<style>` blocks in management HTML templates.** Any edit to
+a `<style>` block changes its SHA-256 hash. The pinned hash in `management.go`
+won't match → the browser silently discards the **entire** block (no error
+shown). This causes invisible layout breakage that only appears when
+`ENABLE_SECURITY_HEADERS=true` (typically not set in local dev).
+
+```html
+<!-- BAD — inline style block, blocked by CSP on any edit -->
+<style>
+  .my-rule { display: none; }
+</style>
+```
+
+```html
+<!-- GOOD — external file, trusted by style-src 'self' -->
+<link href="/static/my-page.css" rel="stylesheet" />
+```
+
+The correct pattern (already used by the dashboard):
+
+1. Create `internal/adapters/entrypoints/rest/assets/static/<page-name>.css`.
+2. Add `<link href="/static/<page-name>.css" rel="stylesheet" />` to the template.
+3. The Go embed directive (`//go:embed static favicon.ico`) picks it up automatically.
+4. Use a **separate file per page** when selectors would conflict with the shared
+   `management.css` (e.g. `.table-responsive` has different `max-height` per page).
+
+Scripts use a per-request nonce (`{{ .ScriptNonce }}`) which is edit-safe.
+Styles have no nonce support in this codebase — external files are the only
+safe pattern.
+
+Always test with `ENABLE_SECURITY_HEADERS=true` locally. With the flag off, CSP
+is never sent and inline blocks appear to work even when they would be broken in
+production.
+
+For full context see `docs/csp-management-ui.md`.
 
 ### Git
 

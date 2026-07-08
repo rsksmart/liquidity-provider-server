@@ -1,0 +1,65 @@
+.bulk-actions-toolbar {
+    display: none;
+    background-color: #e7f3ff;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border: 1px solid #b8daff;
+}
+
+.bulk-actions-toolbar.show {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.pagination-info {
+    margin-top: 10px;
+    color: #6c757d;
+}
+
+.filter-section {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+.status-badge {
+    font-size: 0.85rem;
+}
+
+#approveTxList, #denyTxList {
+    overflow-x: hidden;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.col-checkbox {
+    width: 40px;
+}
+
+.col-actions {
+    width: 180px;
+}
+
+.sortable-header {
+    cursor: pointer;
+}
+
+#approveTxList li, #denyTxList li {
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
+.tx-id {
+    display: block;
+    font-size: 0.85em;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}

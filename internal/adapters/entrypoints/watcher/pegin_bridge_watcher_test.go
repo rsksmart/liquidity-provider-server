@@ -244,7 +244,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 		const errorMsg = "Error executing register pegin on quote 20:"
 		t.Run("should continue watching quote on recoverable error", func(t *testing.T) {
 			resetMocks()
-			defer test.AssertLogContains(t, errorMsg)()
+			checkFunction := test.AssertLogContains(t, errorMsg)
 			watchedQuote, ok := peginWatcher.GetWatchedQuote(quoteHash)
 			assert.True(t, ok)
 			assert.Equal(t, quote.WatchedPeginQuote{
@@ -271,10 +271,11 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 				PeginQuote:    testPeginQuote,
 				RetainedQuote: testRetainedQuote,
 			}, watchedQuote)
+			assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 		})
 		t.Run("should stop watching quote on unrecoverable error", func(t *testing.T) {
 			resetMocks()
-			defer test.AssertLogContains(t, errorMsg)()
+			checkFunction := test.AssertLogContains(t, errorMsg)
 			watchedQuote, ok := peginWatcher.GetWatchedQuote(quoteHash)
 			assert.True(t, ok)
 			assert.Equal(t, quote.WatchedPeginQuote{
@@ -298,6 +299,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 			watchedQuote, ok = peginWatcher.GetWatchedQuote(quoteHash)
 			assert.False(t, ok)
 			assert.Empty(t, watchedQuote)
+			assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 		})
 		t.Run("should stop watching quote on successful register", func(t *testing.T) {
 			resetMocks()

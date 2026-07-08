@@ -379,9 +379,9 @@ function updateBulkActionsToolbar() {
     const toolbar = document.getElementById('bulkActionsToolbar');
     const count = selectedTxIds.size;
     
+    document.getElementById('selectedCount').textContent = count;
     if (count > 0) {
         toolbar.classList.add('show');
-        document.getElementById('selectedCount').textContent = count;
     } else {
         toolbar.classList.remove('show');
     }
@@ -414,10 +414,10 @@ function showActionModal(action, txIds) {
     listEl.replaceChildren();
     for (const txId of txIds) {
         const li = document.createElement('li');
-        const small = document.createElement('small');
-        small.className = 'font-monospace';
-        small.textContent = txId;
-        li.appendChild(small);
+        const span = document.createElement('span');
+        span.className = 'font-monospace tx-id';
+        span.textContent = txId;
+        li.appendChild(span);
         listEl.appendChild(li);
     }
     

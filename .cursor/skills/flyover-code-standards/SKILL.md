@@ -4,12 +4,12 @@ description: >-
   Enforce Flyover protocol coding standards derived from lead reviewer patterns.
   Use when writing, reviewing, or modifying Go or JavaScript code in the
   liquidity-provider-server. Covers architecture, naming, testing, API design,
-  MongoDB patterns, and security.
+  MongoDB patterns, security, and management UI CSP rules.
 ---
 
 # Flyover Code Standards
 
-Standards extracted from 712 code review comments across the Flyover repos.
+Standards extracted from code review comments across the Flyover repos.
 Apply these when writing or modifying code to reduce review friction.
 
 ## Quick Checklist
@@ -26,6 +26,7 @@ Before submitting code, verify:
 - [ ] **Tests are complete** — assert error types, all result fields, events; use mockery; expected on left
 - [ ] **Test package uses `_test` suffix** — test files declare `package foo_test`, not `package foo`
 - [ ] **Security basics** — `textContent` not `innerHTML` in JS; `BigInt` not `Number` for large values in JS; verify config signatures in Go
+- [ ] **Management UI styles** — never use inline `<style>` blocks in HTML templates; put CSS in `static/<page>.css` (trusted via `style-src 'self'`); inline blocks are blocked by CSP when `ENABLE_SECURITY_HEADERS=true`
 
 ## Architecture (Go)
 
@@ -49,7 +50,11 @@ Before submitting code, verify:
 - `*big.Int` in DTOs, `*entities.Wei` in domain. Gas used = `big.Int` (not a currency). Gas price = `Wei`.
 - Move strings to constants on the third occurrence.
 
-## Detailed Reference
+## Management UI (CSS / CSP)
 
-For full patterns with rationale and real before/after examples from code reviews,
-see [detailed.md](detailed.md)
+- All page-specific CSS goes in `static/<page-name>.css`, linked via `<link href="/static/<page-name>.css">`.
+- Never add or edit inline `<style>` blocks in management HTML templates. The CSP `style-src` directive only allows external files (`'self'`) and a single pinned hash. Any edit to a `<style>` block changes its hash → the browser silently discards the **entire** block.
+- Scripts already use a per-request nonce (`{{ .ScriptNonce }}`); styles do not — external files are the only safe pattern.
+- Test with `ENABLE_SECURITY_HEADERS=true` locally. With the flag off, CSP is never sent and style blocks appear to work even when broken.
+
+See [detailed.md](detailed.md) for full patterns with rationale and examples.
