@@ -2,4 +2,6 @@ docker-compose/volumes
 ui/node_modules
 ui/playwright-report
 ui/test-results
-ui/test/.auth
+ui/test
+ui/tests
+ui/playwright.config.ts
