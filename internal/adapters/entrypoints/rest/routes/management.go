@@ -11,13 +11,14 @@ import (
 )
 
 const (
-	LoginPath  = "/management/login"
-	UiPath     = "/management"
-	StaticPath = "/static/"
-	IconPath   = "/favicon.ico"
+	LoginPath      = "/management/login"
+	UiPath         = "/management"
+	StaticRootPath = "/static"
+	StaticPath     = "/static/"
+	IconPath       = "/favicon.ico"
 )
 
-var AllowedPaths = [...]string{LoginPath, UiPath, StaticPath, IconPath}
+var AllowedPaths = [...]string{LoginPath, UiPath, StaticRootPath, StaticPath, IconPath}
 
 // nolint:funlen
 func GetManagementEndpoints(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store cookies.SessionStore) []Endpoint {
@@ -145,9 +146,14 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewManagementInterfaceHandler(env.Management, store, useCaseRegistry.GetManagementUiDataUseCase()),
 		},
 		{
+			Path:    StaticRootPath,
+			Method:  http.MethodGet,
+			Handler: http.NotFoundHandler(),
+		},
+		{
 			Path:    StaticPath,
 			Method:  http.MethodGet,
-			Handler: http.FileServer(http.FS(assets.FileSystem)),
+			Handler: newStaticAssetsHandler(),
 		},
 		{
 			Path:    IconPath,
@@ -185,4 +191,15 @@ func GetManagementEndpoints(env environment.Environment, useCaseRegistry registr
 			Handler: handlers.NewSetLiquidityRatioHandler(useCaseRegistry.SetLiquidityRatioUseCase()),
 		},
 	}
+}
+
+func newStaticAssetsHandler() http.Handler {
+	files := http.FileServer(http.FS(assets.FileSystem))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == StaticPath {
+			http.NotFound(w, r)
+			return
+		}
+		files.ServeHTTP(w, r)
+	})
 }

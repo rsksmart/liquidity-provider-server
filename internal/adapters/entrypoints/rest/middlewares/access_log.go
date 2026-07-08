@@ -75,7 +75,7 @@ func (w *accessLogResponseWriter) buildAccessLogLine(r *http.Request, ts time.Ti
 	builder.WriteString(" - ")
 	builder.WriteString(username)
 	builder.WriteString(" [")
-	builder.WriteString(ts.Format(time.RFC3339))
+	builder.WriteString(ts.Format("02/Jan/2006:15:04:05 -0700"))
 	builder.WriteString("] ")
 	builder.WriteString(requestLine)
 	builder.WriteByte(' ')

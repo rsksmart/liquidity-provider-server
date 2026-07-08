@@ -53,9 +53,9 @@ func TestGetManagementEndpoints(t *testing.T) {
 	err := yaml.Unmarshal(specBytes, spec)
 	require.NoError(t, err)
 
-	assert.Len(t, endpoints, 29)
+	assert.Len(t, endpoints, 30)
 	for _, endpoint := range endpoints {
-		if endpoint.Path != routes.IconPath && endpoint.Path != routes.StaticPath {
+		if endpoint.Path != routes.IconPath && endpoint.Path != routes.StaticPath && endpoint.Path != routes.StaticRootPath {
 			lowerCaseMethod := strings.ToLower(endpoint.Method)
 			assert.NotNilf(t, spec.Paths[endpoint.Path][lowerCaseMethod], "Handler not found for path %s and verb %s", endpoint.Path, endpoint.Method)
 		}
