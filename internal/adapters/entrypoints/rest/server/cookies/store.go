@@ -65,7 +65,7 @@ func (s *UniqueSessionStore) Create(w http.ResponseWriter, r *http.Request) erro
 	s.mu.Lock()
 	s.activeID = id
 	s.mu.Unlock()
-	s.setCookie(w, r, value, s.maxAge)
+	s.setCookie(w, value, s.maxAge)
 	return nil
 }
 
@@ -100,14 +100,14 @@ func (s *UniqueSessionStore) Refresh(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return err
 	}
-	s.setCookie(w, r, value, s.maxAge)
+	s.setCookie(w, value, s.maxAge)
 	return nil
 }
 
 // Close always expires the requester's own cookie, but only clears the in-memory active ID
 // if the request's cookie is that same session.
 func (s *UniqueSessionStore) Close(w http.ResponseWriter, r *http.Request) error {
-	s.setCookie(w, r, "", -1)
+	s.setCookie(w, "", -1)
 	if id := s.openRequestID(r); id != nil {
 		s.mu.Lock()
 		if s.activeID != nil && subtle.ConstantTimeCompare(id, s.activeID) == 1 {
@@ -119,11 +119,7 @@ func (s *UniqueSessionStore) Close(w http.ResponseWriter, r *http.Request) error
 }
 
 func (s *UniqueSessionStore) openRequestID(r *http.Request) []byte {
-	cookie, err := r.Cookie(s.name)
-	if err != nil {
-		return nil
-	}
-	id, err := s.open(cookie.Value)
+	id, err := s.requestID(r)
 	if err != nil {
 		return nil
 	}
@@ -163,11 +159,10 @@ func (s *UniqueSessionStore) open(value string) ([]byte, error) {
 	return s.gcm.Open(nil, raw[:nonceSize], raw[nonceSize:], nil)
 }
 
-func (s *UniqueSessionStore) setCookie(w http.ResponseWriter, r *http.Request, value string, maxAge int) {
+func (s *UniqueSessionStore) setCookie(w http.ResponseWriter, value string, maxAge int) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     s.name,
 		Value:    value,
-		Domain:   r.URL.Host,
 		Path:     "/",
 		MaxAge:   maxAge,
 		Secure:   s.secure,

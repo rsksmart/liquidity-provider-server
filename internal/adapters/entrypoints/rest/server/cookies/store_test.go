@@ -136,7 +136,7 @@ func createSession(t *testing.T, store *cookies.UniqueSessionStore) *http.Cookie
 	assert.Equal(t, "/", cookie.Path)
 	assert.True(t, cookie.HttpOnly)
 	assert.Equal(t, http.SameSiteStrictMode, cookie.SameSite)
-	assert.Equal(t, req.URL.Host, cookie.Domain)
+	assert.Empty(t, cookie.Domain, "host-only cookie scope: Domain must be omitted")
 	return cookie
 }
 

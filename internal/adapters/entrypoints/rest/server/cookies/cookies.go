@@ -20,12 +20,19 @@ var (
 	storeErr    error
 )
 
+func resetSessionCookieStoreForTest() {
+	storeOnce = sync.Once{}
+	cookieStore = nil
+	storeErr = nil
+}
+
 func GetSessionCookieStore(env environment.ManagementEnv) (*UniqueSessionStore, error) {
-	key, err := utils.DecodeKey(env.SessionEncryptionKey, KeysBytesLength)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding session encryption key: %w", err)
-	}
 	storeOnce.Do(func() {
+		key, err := utils.DecodeKey(env.SessionEncryptionKey, KeysBytesLength)
+		if err != nil {
+			storeErr = fmt.Errorf("error decoding session encryption key: %w", err)
+			return
+		}
 		cookieStore, storeErr = NewUniqueSessionStore(ManagementSessionCookieName, key, SessionMaxSeconds, env.UseHttps)
 	})
 	return cookieStore, storeErr
