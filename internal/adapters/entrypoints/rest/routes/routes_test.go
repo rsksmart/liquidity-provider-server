@@ -209,7 +209,7 @@ func testCorsMiddleware(
 	}
 }
 
-func testPublicRoutesRegistration(t *testing.T, useCaseRegistry registry.UseCaseRegistry, router *routes.Router) {
+func testPublicRoutesRegistration(t *testing.T, useCaseRegistry registry.UseCaseRegistry, router routes.Router) {
 	handler := router.BuildHandler()
 	publicRoutes := routes.GetPublicEndpoints(useCaseRegistry)
 	for _, endpoint := range publicRoutes {
