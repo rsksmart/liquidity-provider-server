@@ -16,8 +16,6 @@ require (
 	github.com/ethereum/go-ethereum v1.17.2
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/gorilla/csrf v1.7.2
-	github.com/gorilla/handlers v1.5.2
-	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/sessions v1.4.0
 	github.com/prometheus/client_golang v1.23.2
@@ -59,7 +57,6 @@ require (
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.1.0 // indirect
 	github.com/ethereum/c-kzg-4844/v2 v2.1.6 // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect

@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/handlers"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/middlewares"
@@ -39,9 +38,7 @@ func (f *endpointFactoryImpl) GetPrivate(env environment.Environment, useCaseReg
 	return GetManagementEndpoints(env, useCaseRegistry, store)
 }
 
-func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
-	router.Use(middlewares.NewCorsMiddleware(env.AllowedOrigins))
-
+func ConfigureRoutes(router Router, env environment.Environment, useCaseRegistry registry.UseCaseRegistry, endpointFactory EndpointFactory) {
 	store, err := cookies.GetSessionCookieStore(env.Management)
 	if err != nil {
 		log.Fatal("Error registering routes: ", err)
@@ -53,21 +50,23 @@ func ConfigureRoutes(router *mux.Router, env environment.Environment, useCaseReg
 		registerManagementRoutes(router, env, store, endpointFactory.GetPrivate(env, useCaseRegistry, store))
 	}
 
-	router.Methods(http.MethodOptions).HandlerFunc(handlers.NewOptionsHandler())
+	router.Handle(http.MethodOptions+" /", handlers.NewOptionsHandler())
+
+	router.Use(middlewares.NewCorsMiddleware(env.AllowedOrigins))
 }
 
-func registerPublicRoutes(router *mux.Router, env environment.Environment, endpoints []PublicEndpoint) {
+func registerPublicRoutes(router Router, env environment.Environment, endpoints []PublicEndpoint) {
 	captchaMiddleware := middlewares.NewCaptchaMiddleware(env.Captcha.Url, env.Captcha.Threshold, env.Captcha.Disabled, env.Captcha.SecretKey)
 	for _, endpoint := range endpoints {
 		handler := endpoint.Handler
 		if endpoint.RequiresCaptcha {
-			handler = useMiddlewares(handler, captchaMiddleware)
+			handler = captchaMiddleware(handler)
 		}
-		router.Path(endpoint.Path).Methods(endpoint.Method).Handler(handler)
+		registerEndpoint(router, endpoint.Method, endpoint.Path, handler)
 	}
 }
 
-func registerManagementRoutes(router *mux.Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
+func registerManagementRoutes(router Router, env environment.Environment, store sessions.Store, endpoints []Endpoint) {
 	log.Warn(
 		"Server is running with the management API exposed. This interface " +
 			"includes endpoints that must remain private at all cost. Please shut down " +
@@ -82,8 +81,28 @@ func registerManagementRoutes(router *mux.Router, env environment.Environment, s
 		} else {
 			handler = useMiddlewares(endpoint.Handler, sessionMiddlewares.SessionValidator, sessionMiddlewares.Csrf)
 		}
-		router.Path(endpoint.Path).Methods(endpoint.Method).Handler(handler)
+		registerEndpoint(router, endpoint.Method, endpoint.Path, handler)
 	}
+}
+
+// registerEndpoint registers handler for the endpoint's method and path. For GET routes it also
+// registers an explicit HEAD handler returning 405. http.ServeMux otherwise dispatches HEAD requests
+// to the GET handler, whereas the previous gorilla router rejected any method not explicitly declared
+// on a route; the explicit HEAD handler preserves that 405 behavior.
+func registerEndpoint(router Router, method, path string, handler http.Handler) {
+	router.Handle(method+" "+path, handler)
+	if method == http.MethodGet {
+		router.Handle(http.MethodHead+" "+path, methodNotAllowedHandler(method))
+	}
+}
+
+// methodNotAllowedHandler responds with 405 and an Allow header, matching the previous gorilla router's
+// response for a request whose method is not registered on an otherwise matching path.
+func methodNotAllowedHandler(allowedMethod string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Allow", allowedMethod)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	})
 }
 
 func useMiddlewares(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
