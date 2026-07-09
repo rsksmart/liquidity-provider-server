@@ -7,7 +7,7 @@ These are the environment variables required by the liquidity provider server (L
 | Name | Description | Example | Mandatory |
 | --- | --- | --- | --- |
 | `LPS_STAGE` | The network where LPS will be running on. | One of the following: `regtest`, `testnet`, `mainnet` | YES |
-| `PORT` | The port number to run the http server of the LPS. | `8080` | YES |
+| `SERVER_PORT` | The port number to run the http server of the LPS. | `8080` | YES |
 | `LOG_LEVEL` | Level for the application logs. | One of the following: `panic`, `fatal`, `error`, `warn`, `info`, `debug`, `trace` | YES |
 | `LOG_FILE` | File to send the logs to. If not provided logs will be sent to standard output | `/home/lps.log` | NO |
 | `LOG_FORMAT` | Output format for application logs. Defaults to `json` if not provided. | One of the following: `json`, `logfmt` | NO |

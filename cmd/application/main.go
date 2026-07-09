@@ -41,7 +41,6 @@ func main() {
 	defer memguard.Purge()
 
 	env := environment.LoadEnv()
-	_ = applyLogConfig(*env)
 	timeouts, err := environment.TimeoutsFromEnv(env.Timeouts)
 	if err != nil {
 		log.Fatal("Error parsing timeouts: ", err)
@@ -50,6 +49,7 @@ func main() {
 
 	logLevel := setUpLogger(*env)
 	logBuildInfo()
+	applyLogConfig(*env)
 	log.Debugf("Environment loaded: %+v", env)
 
 	log.Info("Initializing application...")

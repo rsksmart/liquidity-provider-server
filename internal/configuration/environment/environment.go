@@ -13,6 +13,9 @@ import (
 
 const secretMask = "********"
 
+// Environment holds LPS configuration loaded from environment variables.
+//
+//nolint:recvcheck // String uses a value receiver so fmt.Stringer redacts both Environment and *Environment
 type Environment struct {
 	LpsStage         string   `env:"LPS_STAGE" validate:"required,oneof=regtest testnet mainnet"`
 	Port             uint     `env:"SERVER_PORT" validate:"required"`
@@ -283,9 +286,9 @@ func LoadEnv() *Environment {
 
 // String returns a fmt-style representation of the Environment with secret
 // fields masked, so that the value is safe to log.
-func (env *Environment) String() string {
+func (env Environment) String() string {
 	type plain Environment
-	redacted := plain(*env)
+	redacted := plain(env)
 	redacted.Mongo.Password = maskSecret(redacted.Mongo.Password)
 	redacted.Rsk.KeystorePassword = maskSecret(redacted.Rsk.KeystorePassword)
 	redacted.Btc.Password = maskSecret(redacted.Btc.Password)
