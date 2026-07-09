@@ -33,7 +33,6 @@ type LogConfig struct {
 var (
 	BuildVersion string
 	BuildTime    string
-	logConfig    LogConfig
 )
 
 func main() {
@@ -49,7 +48,6 @@ func main() {
 
 	logLevel := setUpLogger(*env)
 	logBuildInfo()
-	applyLogConfig(*env)
 	log.Debugf("Environment loaded: %+v", env)
 
 	log.Info("Initializing application...")
@@ -85,11 +83,6 @@ func setUpLogger(env environment.Environment) log.Level {
 		}
 	}
 	return logLevel
-}
-
-func applyLogConfig(env environment.Environment) LogConfig {
-	logConfig = buildLogConfig(env)
-	return logConfig
 }
 
 func buildLogConfig(env environment.Environment) LogConfig {

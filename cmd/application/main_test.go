@@ -54,24 +54,3 @@ func TestBuildLogConfig(t *testing.T) {
 		require.Equal(t, "logfmt", cfg.Format)
 	})
 }
-
-func TestApplyLogConfig(t *testing.T) {
-	liquidity_provider.BuildVersion = "v2.6.0"
-	t.Cleanup(func() {
-		liquidity_provider.BuildVersion = ""
-		logConfig = LogConfig{}
-	})
-
-	env := environment.Environment{
-		LpsStage:  "mainnet",
-		LogFormat: "json",
-		LogLevel:  "warn",
-		LogFile:   "/var/log/lps.log",
-	}
-
-	cfg := applyLogConfig(env)
-
-	require.Equal(t, cfg, logConfig)
-	require.Equal(t, logServiceName, logConfig.Service)
-	require.Equal(t, "mainnet", logConfig.Environment)
-}
