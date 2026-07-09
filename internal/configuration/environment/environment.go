@@ -88,7 +88,7 @@ type BtcEnv struct {
 	Username        string           `env:"BTC_USERNAME" validate:"required"`
 	Password        string           `env:"BTC_PASSWORD" validate:"required"`
 	Endpoint        string           `env:"BTC_ENDPOINT" validate:"required"`
-	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES"`
+	BtcExtraSources []BtcExtraSource `env:"BTC_EXTRA_SOURCES" validate:"omitempty,dive"`
 	MaxReorgDepth   uint64           `env:"BITCOIN_MAX_REORG_DEPTH"`
 	MinPeers        uint64           `env:"BITCOIN_MIN_PEERS"`
 }

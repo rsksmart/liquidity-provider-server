@@ -251,6 +251,41 @@ func TestEnvironment_LogFormat_Validation(t *testing.T) {
 	})
 }
 
+func TestEnvironment_BtcExtraSources_Validation(t *testing.T) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	t.Run("accepts valid sources through Load and validate.Struct", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("BTC_EXTRA_SOURCES", `[{"format": "rpc", "url": "http://example.com"}, {"format": "mempool", "url": "https://mempool.space"}]`)
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		require.NoError(t, validate.Struct(env))
+	})
+
+	t.Run("rejects invalid format through Load and validate.Struct", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("BTC_EXTRA_SOURCES", `[{"format": "invalid-format", "url": "http://example.com"}]`)
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		err := validate.Struct(env)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "Format")
+	})
+
+	t.Run("rejects invalid url through Load and validate.Struct", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("BTC_EXTRA_SOURCES", `[{"format": "rpc", "url": "not-a-url"}]`)
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		err := validate.Struct(env)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "Url")
+	})
+}
+
 func TestBtcExtraSource_FormatValidation(t *testing.T) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
