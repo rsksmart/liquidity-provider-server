@@ -1,5 +1,8 @@
 import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
-import { apiFetch } from '@api/management/utils/api-fetch'
+import {
+  apiFetch,
+  resetSessionExpiredHandling,
+} from '@api/management/utils/api-fetch'
 import { resetInitialDataCache } from '@shared/utils/initial-data'
 import { loggedOutFixture } from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
@@ -10,6 +13,7 @@ describe('apiFetch', () => {
     document.head.innerHTML = ''
     document.body.innerHTML = ''
     resetInitialDataCache()
+    resetSessionExpiredHandling()
     vi.stubGlobal('fetch', vi.fn())
   })
 

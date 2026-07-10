@@ -1,5 +1,8 @@
 import { ApiFetchError } from '@api/management/types/errors'
-import { apiFetch } from '@api/management/utils/api-fetch'
+import {
+  apiFetch,
+  resetSessionExpiredHandling,
+} from '@api/management/utils/api-fetch'
 import { resetInitialDataCache } from '@shared/utils/initial-data'
 import { loggedOutFixture } from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
@@ -23,6 +26,7 @@ describe('apiFetch session expiry', () => {
     document.head.innerHTML = ''
     document.body.innerHTML = ''
     resetInitialDataCache()
+    resetSessionExpiredHandling()
     vi.stubGlobal('fetch', vi.fn())
     toastErrorMock.mockReset()
     assignMock.mockReset()
@@ -121,5 +125,31 @@ describe('apiFetch session expiry', () => {
 
     expect(toastErrorMock).not.toHaveBeenCalled()
     expect(assignMock).not.toHaveBeenCalled()
+  })
+
+  it('toasts and redirects only once when multiple requests expire', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(
+        new Response('unauthorized', {
+          status: 401,
+          statusText: 'Unauthorized',
+        }),
+      ),
+    )
+
+    await Promise.all([
+      expect(
+        apiFetch('/management/status', { method: 'GET' }),
+      ).rejects.toBeInstanceOf(ApiFetchError),
+      expect(
+        apiFetch('/management/providers', { method: 'GET' }),
+      ).rejects.toBeInstanceOf(ApiFetchError),
+    ])
+
+    expect(toastErrorMock).toHaveBeenCalledTimes(1)
+    vi.runAllTimers()
+    expect(assignMock).toHaveBeenCalledTimes(1)
+    expect(assignMock).toHaveBeenCalledWith('/management/next/login')
   })
 })
