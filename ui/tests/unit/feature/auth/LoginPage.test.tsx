@@ -94,7 +94,7 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(expectedMessage)
   })
 
-  it('shows the server message for a 403 CSRF rejection', async () => {
+  it('shows the generic login error for a 403 CSRF rejection', async () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
     vi.mocked(apiFetch).mockRejectedValue(
       new ApiFetchError(403, 'Forbidden', { message: 'CSRF token validation error' }),
@@ -106,7 +106,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByTestId('login-password-input'), 'pass')
     await user.click(screen.getByTestId('login-submit-button'))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('CSRF token validation error')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid username or password.')
   })
 
   // login happy path covered above; credentials-set chain below

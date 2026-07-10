@@ -88,7 +88,7 @@ export function isSessionExpiredError(err: unknown): boolean {
   )
 }
 
-const SESSION_EXPIRED_REDIRECT_DELAY_MS = 800
+export const SESSION_EXPIRED_REDIRECT_DELAY_MS = 800
 
 function handleSessionExpired(): void {
   toast.error('Your session has expired. Please log in again.')
@@ -124,7 +124,6 @@ export async function apiFetch(
 
     if (sessionExpired) {
       handleSessionExpired()
-      throw new ApiFetchError(response.status, response.statusText, body)
     }
 
     throw new ApiFetchError(response.status, response.statusText, body)
