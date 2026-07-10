@@ -90,7 +90,16 @@ export function isSessionExpiredError(err: unknown): boolean {
 
 export const SESSION_EXPIRED_REDIRECT_DELAY_MS = 800
 
+let sessionExpiredHandled = false
+
+/** Test-only: clear the once-per-page-load session-expired guard. */
+export function resetSessionExpiredHandling(): void {
+  sessionExpiredHandled = false
+}
+
 function handleSessionExpired(): void {
+  if (sessionExpiredHandled) return
+  sessionExpiredHandled = true
   toast.error('Your session has expired. Please log in again.')
   window.setTimeout(() => {
     window.location.assign('/management/next/login')
