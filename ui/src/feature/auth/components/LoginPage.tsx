@@ -1,4 +1,3 @@
-import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
 import { apiFetch } from '@api/management/utils/api-fetch'
 import { useInitialData } from '@shared/utils/initial-data'
 import { type SubmitEvent, useCallback, useState } from 'react'
@@ -14,20 +13,6 @@ const LOGIN_ERROR = 'Invalid username or password.'
 function fieldValue(formData: FormData, name: string): string {
   const value = formData.get(name)
   return typeof value === 'string' ? value : ''
-}
-
-function getLoginErrorMessage(err: unknown): string {
-  if (err instanceof ApiFetchError && err.status === 403) {
-    if (
-      typeof err.body === 'object' &&
-      err.body !== null &&
-      'message' in err.body &&
-      typeof (err.body).message === 'string'
-    ) {
-      return (err.body as { message: string }).message
-    }
-  }
-  return LOGIN_ERROR
 }
 
 export function LoginPage() {
@@ -68,14 +53,8 @@ export function LoginPage() {
         }
 
         window.location.assign('/management/next/management')
-      } catch (err) {
-        if (err instanceof CsrfTokenMissingError || err instanceof TypeError) {
-          setError(LOGIN_ERROR)
-        } else if (err instanceof ApiFetchError) {
-          setError(getLoginErrorMessage(err))
-        } else {
-          setError(LOGIN_ERROR)
-        }
+      } catch {
+        setError(LOGIN_ERROR)
       } finally {
         setSubmitting(false)
       }

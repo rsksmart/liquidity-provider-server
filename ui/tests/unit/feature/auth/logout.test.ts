@@ -74,15 +74,22 @@ describe('logout', () => {
     expect(assignMock).not.toHaveBeenCalled()
   })
 
-  it('shows warning toast and still redirects when logout fails', async () => {
+  it('shows warning toast and redirects after delay when logout fails', async () => {
+    vi.useFakeTimers()
     vi.mocked(apiFetch).mockRejectedValue(new Error('network'))
 
-    await logout()
+    const logoutPromise = logout()
 
-    expect(toastWarningMock).toHaveBeenCalledWith(
-      'Logout failed; local session cleared.',
-    )
+    await vi.waitFor(() => {
+      expect(toastWarningMock).toHaveBeenCalledWith('Logout failed. Redirecting to login.')
+    })
+    expect(assignMock).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(800)
+    await logoutPromise
+
     expect(assignMock).toHaveBeenCalledWith('/management/next/login')
     expect(console.error).toHaveBeenCalled()
+    vi.useRealTimers()
   })
 })
