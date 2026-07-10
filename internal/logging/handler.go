@@ -12,13 +12,24 @@ import (
 
 const redactedValue = "[REDACTED]"
 
+// Canonical PII attribute keys for redaction and call-site migration (Phase 7).
+// Matching is case-insensitive on the leaf key.
+const (
+	KeyPrivateKey    = "privateKey"
+	KeySeed          = "seed"
+	KeyMnemonic      = "mnemonic"
+	KeyAPIKey        = "apiKey"
+	KeyPassword      = "password"
+	KeyAuthorization = "authorization"
+)
+
 var piiDenyList = map[string]struct{}{
-	"privatekey":    {},
-	"seed":          {},
-	"mnemonic":      {},
-	"apikey":        {},
-	"password":      {},
-	"authorization": {},
+	strings.ToLower(KeyPrivateKey):    {},
+	strings.ToLower(KeySeed):          {},
+	strings.ToLower(KeyMnemonic):      {},
+	strings.ToLower(KeyAPIKey):        {},
+	strings.ToLower(KeyPassword):      {},
+	strings.ToLower(KeyAuthorization): {},
 }
 
 type contextHandler struct {

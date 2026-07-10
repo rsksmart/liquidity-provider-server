@@ -19,6 +19,16 @@ func ResetLevelVar() {
 	levelVar.Set(slog.LevelInfo)
 }
 
+// SetErrorSentinelsForTest configures sentinel matching for tests in package logging_test.
+func SetErrorSentinelsForTest(sentinels []error) {
+	errorSentinels = sentinels
+}
+
+// ResetErrorSentinelsForTest clears sentinel matching between tests.
+func ResetErrorSentinelsForTest() {
+	errorSentinels = nil
+}
+
 
 // CaptureStackForTest exposes stack capture for tests.
 func CaptureStackForTest(skip int) string {

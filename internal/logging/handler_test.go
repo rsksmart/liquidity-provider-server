@@ -16,7 +16,7 @@ func TestHandler_RedactsTopLevelPII(t *testing.T) {
 	level.Set(slog.LevelInfo)
 	logger := slog.New(logging.NewTestHandler(&buf, level))
 
-	logger.Info("test", "password", "secret-value", "quoteHash", "0xabc")
+	logger.Info("test", logging.KeyPassword, "secret-value", "quoteHash", "0xabc")
 
 	entry := decodeEntry(t, buf.Bytes())
 	require.Equal(t, "[REDACTED]", entry["password"])
@@ -29,7 +29,7 @@ func TestHandler_RedactsPIIInsideGroups(t *testing.T) {
 	level.Set(slog.LevelInfo)
 	logger := slog.New(logging.NewTestHandler(&buf, level))
 
-	logger.Info("test", slog.Group("request", slog.String("apiKey", "key-123"), slog.String("path", "/quotes")))
+	logger.Info("test", slog.Group("request", slog.String(logging.KeyAPIKey, "key-123"), slog.String("path", "/quotes")))
 
 	entry := decodeEntry(t, buf.Bytes())
 	request, ok := entry["request"].(map[string]any)
