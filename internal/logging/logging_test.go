@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ import (
 func TestInit_ParsesFormats(t *testing.T) {
 	swapDefaultLogger(t)
 
-	for _, format := range []string{"json", "text", "logfmt"} {
+	for _, format := range []string{"json", "text", "logfmt", "otel"} {
 		t.Run(format, func(t *testing.T) {
 			require.NoError(t, logging.Init(logging.Config{
 				Service:     "liquidity-provider-server",
@@ -31,15 +32,15 @@ func TestInit_ParsesFormats(t *testing.T) {
 	}
 }
 
-func TestInit_RejectsOtelFormat(t *testing.T) {
+func TestInit_RejectsInvalidFormat(t *testing.T) {
 	swapDefaultLogger(t)
 	err := logging.Init(logging.Config{
 		Service: "liquidity-provider-server",
-		Format:  "otel",
+		Format:  "yaml",
 		Level:   "info",
 	})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "not supported yet")
+	require.Contains(t, err.Error(), "invalid log format")
 }
 
 func TestInit_RejectsInvalidLevel(t *testing.T) {
@@ -51,6 +52,54 @@ func TestInit_RejectsInvalidLevel(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unsupported log level")
+}
+
+func TestInit_RejectsUnknownLevel(t *testing.T) {
+	swapDefaultLogger(t)
+	err := logging.Init(logging.Config{
+		Service: "liquidity-provider-server",
+		Format:  "json",
+		Level:   "verbose",
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid log level")
+}
+
+func TestInit_ParsesLevels(t *testing.T) {
+	swapDefaultLogger(t)
+
+	for _, level := range []string{"trace", "debug", "info", "warn", "warning", "error", "fatal"} {
+		t.Run(level, func(t *testing.T) {
+			require.NoError(t, logging.Init(logging.Config{
+				Service: "liquidity-provider-server",
+				Format:  "json",
+				Level:   level,
+			}))
+		})
+	}
+}
+
+func TestInit_SetsErrorSentinelsFromConfig(t *testing.T) {
+	swapDefaultLogger(t)
+	setupErrorSentinels(t)
+
+	require.NoError(t, logging.Init(logging.Config{
+		Service:        "liquidity-provider-server",
+		Format:         "json",
+		Level:          "info",
+		ErrorSentinels: usecaseSentinels(),
+	}))
+
+	var buf bytes.Buffer
+	level := logging.LevelVar()
+	level.Set(slog.LevelInfo)
+	slog.SetDefault(slog.New(logging.NewTestHandler(&buf, level)))
+
+	wrapped := usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, usecases.ExpiredQuoteError)
+	logging.Error(context.Background(), "accept failed", wrapped)
+
+	entry := decodeEntry(t, buf.Bytes())
+	require.Equal(t, usecases.ExpiredQuoteError.Error(), entry["errorCode"])
 }
 
 func TestInit_AttachesBaseFields(t *testing.T) {
@@ -88,6 +137,7 @@ func TestLevelVar_FiltersByLevel(t *testing.T) {
 func TestError_EmitsStandardShape(t *testing.T) {
 	var buf bytes.Buffer
 	swapDefaultLogger(t)
+	setupErrorSentinels(t)
 	level := logging.LevelVar()
 	level.Set(slog.LevelInfo)
 	slog.SetDefault(slog.New(logging.NewTestHandler(&buf, level)))
@@ -104,21 +154,30 @@ func TestError_EmitsStandardShape(t *testing.T) {
 	require.NotEmpty(t, entry["errorStack"])
 }
 
-func TestError_PreservesErrorsIs(t *testing.T) {
+func TestError_EmitsArgsInErrorContext(t *testing.T) {
+	var buf bytes.Buffer
 	swapDefaultLogger(t)
+	setupErrorSentinels(t)
 	level := logging.LevelVar()
 	level.Set(slog.LevelInfo)
-	slog.SetDefault(slog.New(logging.NewTestHandler(&bytes.Buffer{}, level)))
+	slog.SetDefault(slog.New(logging.NewTestHandler(&buf, level)))
 
-	wrapped := usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, usecases.ExpiredQuoteError)
+	args := usecases.ErrorArg("quoteHash", "0xabc")
+	wrapped := usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, usecases.QuoteNotFoundError, args)
 	logging.Error(context.Background(), "accept failed", wrapped)
 
-	require.ErrorIs(t, wrapped, usecases.ExpiredQuoteError)
+	entry := decodeEntry(t, buf.Bytes())
+	errorContext, ok := entry["errorContext"].(string)
+	require.True(t, ok)
+	require.Equal(t, string(usecases.AcceptPeginQuoteId), errorContext[:len(usecases.AcceptPeginQuoteId)])
+	require.Contains(t, errorContext, ". Args:")
+	require.Contains(t, errorContext, "quoteHash")
 }
 
 func TestError_HandlesJoinedErrors(t *testing.T) {
 	var buf bytes.Buffer
 	swapDefaultLogger(t)
+	setupErrorSentinels(t)
 	level := logging.LevelVar()
 	level.Set(slog.LevelInfo)
 	slog.SetDefault(slog.New(logging.NewTestHandler(&buf, level)))
@@ -131,6 +190,48 @@ func TestError_HandlesJoinedErrors(t *testing.T) {
 
 	entry := decodeEntry(t, buf.Bytes())
 	require.Equal(t, usecases.NonRecoverableError.Error(), entry["errorCode"])
+}
+
+func TestError_UsesInnermostWhenNoSentinels(t *testing.T) {
+	var buf bytes.Buffer
+	swapDefaultLogger(t)
+	level := logging.LevelVar()
+	level.Set(slog.LevelInfo)
+	slog.SetDefault(slog.New(logging.NewTestHandler(&buf, level)))
+
+	root := errors.New("root cause")
+	wrapped := fmt.Errorf("outer: %w", root)
+	logging.Error(context.Background(), "failed", wrapped)
+
+	entry := decodeEntry(t, buf.Bytes())
+	require.Equal(t, "root cause", entry["errorCode"])
+}
+
+func TestError_OmitsShapeForNilError(t *testing.T) {
+	var buf bytes.Buffer
+	swapDefaultLogger(t)
+	level := logging.LevelVar()
+	level.Set(slog.LevelInfo)
+	slog.SetDefault(slog.New(logging.NewTestHandler(&buf, level)))
+
+	logging.Error(context.Background(), "no error", nil)
+
+	entry := decodeEntry(t, buf.Bytes())
+	_, hasCode := entry["errorCode"]
+	_, hasMessage := entry["errorMessage"]
+	_, hasStack := entry["errorStack"]
+	_, hasContext := entry["errorContext"]
+	require.False(t, hasCode)
+	require.False(t, hasMessage)
+	require.False(t, hasStack)
+	require.False(t, hasContext)
+}
+
+func TestTraceIDFromContext(t *testing.T) {
+	require.Empty(t, logging.TraceIDFromContext(context.Background()))
+
+	ctx := logging.WithTraceID(context.Background(), "trace-123")
+	require.Equal(t, "trace-123", logging.TraceIDFromContext(ctx))
 }
 
 func TestLazy_DefersEvaluation(t *testing.T) {
@@ -171,10 +272,41 @@ func swapDefaultLogger(t *testing.T) {
 	t.Helper()
 	previous := slog.Default()
 	logging.ResetLevelVar()
+	logging.ResetErrorSentinelsForTest()
 	t.Cleanup(func() {
 		slog.SetDefault(previous)
 		logging.ResetLevelVar()
+		logging.ResetErrorSentinelsForTest()
 	})
+}
+
+func setupErrorSentinels(t *testing.T) {
+	t.Helper()
+	logging.SetErrorSentinelsForTest(usecaseSentinels())
+}
+
+func usecaseSentinels() []error {
+	return []error{
+		usecases.NonRecoverableError,
+		usecases.TxBelowMinimumError,
+		usecases.RskAddressNotSupportedError,
+		usecases.QuoteNotFoundError,
+		usecases.QuoteNotAcceptedError,
+		usecases.ExpiredQuoteError,
+		usecases.NoLiquidityError,
+		usecases.ProviderConfigurationError,
+		usecases.WrongStateError,
+		usecases.NoEnoughConfirmationsError,
+		usecases.InsufficientAmountError,
+		usecases.RegistrationRejectedError,
+		usecases.RegistrationWithdrawnError,
+		usecases.IllegalQuoteStateError,
+		usecases.LockingCapExceededError,
+		usecases.NonPositiveWeiError,
+		usecases.EmptyConfirmationsMapError,
+		usecases.NonPositiveConfirmationKeyError,
+		usecases.NonPositiveReimbursementWindowError,
+	}
 }
 
 func decodeEntry(t *testing.T, raw []byte) map[string]any {

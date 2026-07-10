@@ -25,8 +25,6 @@ import (
 	"os"
 	"path"
 	"strings"
-
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 // Config holds logger initialization inputs. Phase 8 wiring maps Environment and build vars here.
@@ -37,9 +35,15 @@ type Config struct {
 	Format      string
 	Level       string
 	File        string
+	// ErrorSentinels maps domain sentinel errors to errorCode via errors.Is.
+	// Wired from main in Phase 8 to avoid logging → usecases import cycles.
+	ErrorSentinels []error
 }
 
-var levelVar = &slog.LevelVar{}
+var (
+	levelVar       = &slog.LevelVar{}
+	errorSentinels []error
+)
 
 type traceIDKey struct{}
 
@@ -91,6 +95,7 @@ func Init(cfg Config) error {
 		slog.String("version", cfg.Version),
 	)
 	slog.SetDefault(logger)
+	errorSentinels = cfg.ErrorSentinels
 	return nil
 }
 
@@ -154,8 +159,8 @@ func newFormatHandler(format string, output io.Writer, level *slog.LevelVar) (sl
 	case "text", "logfmt":
 		return slog.NewTextHandler(output, &opts), nil
 	case "otel":
-		// Phase 2: json and text/logfmt only. OTel export via otelslog lands in a follow-up.
-		return nil, fmt.Errorf("log format %q is not supported yet; use json or text/logfmt", format)
+		// Interim: same JSON handler as "json". OTel log export via otelslog lands in a follow-up.
+		return slog.NewJSONHandler(output, &opts), nil
 	default:
 		return nil, fmt.Errorf("invalid log format %q", format)
 	}
@@ -212,7 +217,7 @@ func extractErrorShape(err error) errorShape {
 }
 
 func sentinelCode(err error) string {
-	for _, sentinel := range lpsSentinels() {
+	for _, sentinel := range errorSentinels {
 		if errors.Is(err, sentinel) {
 			return sentinel.Error()
 		}
@@ -240,28 +245,4 @@ func useCaseContext(err error) string {
 		return useCase + remainder[idx:]
 	}
 	return useCase
-}
-
-func lpsSentinels() []error {
-	return []error{
-		usecases.NonRecoverableError,
-		usecases.TxBelowMinimumError,
-		usecases.RskAddressNotSupportedError,
-		usecases.QuoteNotFoundError,
-		usecases.QuoteNotAcceptedError,
-		usecases.ExpiredQuoteError,
-		usecases.NoLiquidityError,
-		usecases.ProviderConfigurationError,
-		usecases.WrongStateError,
-		usecases.NoEnoughConfirmationsError,
-		usecases.InsufficientAmountError,
-		usecases.RegistrationRejectedError,
-		usecases.RegistrationWithdrawnError,
-		usecases.IllegalQuoteStateError,
-		usecases.LockingCapExceededError,
-		usecases.NonPositiveWeiError,
-		usecases.EmptyConfirmationsMapError,
-		usecases.NonPositiveConfirmationKeyError,
-		usecases.NonPositiveReimbursementWindowError,
-	}
 }
