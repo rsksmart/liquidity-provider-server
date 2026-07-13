@@ -12,7 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -210,9 +210,7 @@ func TestBuildPowPegRedeemScript(t *testing.T) {
 	op3 := fmt.Sprintf("%02x", txscript.OP_3)
 	assert.EqualValues(t, scriptString[len(scriptString)-4:len(scriptString)-2], op3)
 
-	sort.Slice(fedInfo.PubKeys, func(i, j int) bool {
-		return fedInfo.PubKeys[i] < fedInfo.PubKeys[j]
-	})
+	slices.Sort(fedInfo.PubKeys)
 
 	buf2, err := federation.GetRedeemScriptBuf(fedInfo, true)
 	require.NoError(t, err)
