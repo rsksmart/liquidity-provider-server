@@ -68,12 +68,14 @@ export function AddCollateralForm({ kind }: AddCollateralFormProps) {
       let weiStr: string
       try {
         weiStr = etherToWei(amountEther)
+        // etherToWei can return a non-integral string for sub-wei ether inputs
+        // (Decimal.times(1e18).toFixed() keeps fractional wei). BigInt throws on
+        // those; keep the guard in this try so submit never silently no-ops.
+        if (!/^\d+$/.test(weiStr) || BigInt(weiStr) <= 0n) {
+          toast.error(invalidAmountMessage(amountEther))
+          return
+        }
       } catch {
-        toast.error(invalidAmountMessage(amountEther))
-        return
-      }
-
-      if (BigInt(weiStr) <= 0n) {
         toast.error(invalidAmountMessage(amountEther))
         return
       }

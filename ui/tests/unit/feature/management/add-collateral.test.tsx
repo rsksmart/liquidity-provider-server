@@ -1,6 +1,6 @@
 import { ApiFetchError } from '@api/management/types/errors'
 import { AddCollateralForm } from '@feature/management/components'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { loggedInFixture } from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
@@ -121,6 +121,29 @@ describe('add-collateral validation', () => {
 
     expect(toastErrorMock).toHaveBeenCalledWith(
       `Invalid input "${value}" for collateral amount. Please enter a valid number.`,
+    )
+    expect(apiFetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows error toast for sub-wei fractional amount without POST', async () => {
+    const user = userEvent.setup()
+    render(<AddCollateralForm kind="pegin" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pegin-collateral-balance')).toBeInTheDocument()
+    })
+
+    // Sub-wei ether (1e-19) yields a non-integral wei string; BigInt would throw
+    // if left outside the validation try/catch (silent no-op regression).
+    const amount = '0.0000000000000000001'
+    const input = screen.getByTestId('pegin-collateral-amount')
+    await user.clear(input)
+    // HTML number inputs may normalize on type; set value directly.
+    fireEvent.change(input, { target: { value: amount } })
+    await user.click(screen.getByTestId('pegin-add-collateral-button'))
+
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      `Invalid input "${amount}" for collateral amount. Please enter a valid number.`,
     )
     expect(apiFetchMock).toHaveBeenCalledTimes(1)
   })
