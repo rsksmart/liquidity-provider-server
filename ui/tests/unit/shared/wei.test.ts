@@ -32,4 +32,9 @@ describe('wei conversion', () => {
   it('rejects non-string/non-number ether input', () => {
     expect(() => etherToWei(null as unknown as string)).toThrow(/Invalid input type for ether/)
   })
+
+  it('keeps sub-wei fractional digits (caller must reject before BigInt)', () => {
+    // Documented edge case: values smaller than 1 wei stay fractional after *1e18.
+    expect(etherToWei('0.0000000000000000001')).toBe('0.1')
+  })
 })
