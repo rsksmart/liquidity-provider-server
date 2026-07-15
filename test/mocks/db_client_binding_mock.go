@@ -8,7 +8,6 @@ import (
 	mongo "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	mock "github.com/stretchr/testify/mock"
 	options "go.mongodb.org/mongo-driver/v2/mongo/options"
-
 	readpref "go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 

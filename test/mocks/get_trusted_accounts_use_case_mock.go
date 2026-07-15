@@ -8,7 +8,6 @@ import (
 	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
 
 	liquidity_provider "github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

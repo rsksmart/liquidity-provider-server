@@ -208,6 +208,11 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 		watchers = append(watchers, app.watcherRegistry.BitcoinEclipseWatcher)
 	}
 
+	// Commit-first peg-in discovery (EPIC E5). Only started when the new contracts are configured.
+	if app.watcherRegistry.PeginDiscoveryWatcher != nil {
+		watchers = append(watchers, app.watcherRegistry.PeginDiscoveryWatcher)
+	}
+
 	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
 	defer cancel()
 	for _, w := range watchers {

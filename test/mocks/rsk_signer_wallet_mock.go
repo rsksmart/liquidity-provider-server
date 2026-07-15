@@ -3,13 +3,11 @@
 package mocks
 
 import (
-	common "github.com/ethereum/go-ethereum/common"
-	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-
 	context "context"
 
+	common "github.com/ethereum/go-ethereum/common"
 	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
-
+	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/ethereum/go-ethereum/core/types"

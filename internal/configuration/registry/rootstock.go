@@ -8,9 +8,11 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	bridgeBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/bridge"
 	collateralBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
+	configurationsBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/configurations"
 	discoveryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
 	peginBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	pegoutBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
+	registryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -23,19 +25,23 @@ type Rootstock struct {
 }
 
 type rskContractBindings struct {
-	bridge               *bridgeBinding.RskBridge
-	peginContract        *peginBinding.PeginContract
-	pegoutContract       *pegoutBinding.PegoutContract
-	collateralManagement *collateralBinding.CollateralManagementContract
-	discovery            *discoveryBinding.FlyoverDiscovery
+	bridge                *bridgeBinding.RskBridge
+	peginContract         *peginBinding.PeginContract
+	pegoutContract        *pegoutBinding.PegoutContract
+	collateralManagement  *collateralBinding.CollateralManagementContract
+	discovery             *discoveryBinding.FlyoverDiscovery
+	pegInAddressRegistry  *registryBinding.PegInAddressRegistry
+	flyoverConfigurations *configurationsBinding.FlyoverConfigurations
 }
 
 type rskBoundContracts struct {
-	bridge               *bind.BoundContract
-	peginContract        *bind.BoundContract
-	pegoutContract       *bind.BoundContract
-	collateralManagement *bind.BoundContract
-	discovery            *bind.BoundContract
+	bridge                *bind.BoundContract
+	peginContract         *bind.BoundContract
+	pegoutContract        *bind.BoundContract
+	collateralManagement  *bind.BoundContract
+	discovery             *bind.BoundContract
+	pegInAddressRegistry  *bind.BoundContract
+	flyoverConfigurations *bind.BoundContract
 }
 
 // nolint:funlen
@@ -58,8 +64,16 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 	}
 
 	abis := rootstock.MustLoadFlyoverABIs()
+
+	// Commit-first peg-in contracts (DoS-removal redesign, EPICs E1/E2/E5). They are optional:
+	// only constructed when their addresses are configured, so legacy deployments are unaffected.
+	pegInAddressRegistry := buildPegInAddressRegistry(env, contractBindings, boundContracts, client)
+	flyoverConfigurations := buildFlyoverConfigurations(env, contractBindings, boundContracts, client)
+
 	return &Rootstock{
 		Contracts: blockchain.RskContracts{
+			PegInAddressRegistry:  pegInAddressRegistry,
+			FlyoverConfigurations: flyoverConfigurations,
 			Bridge: rootstock.NewRskBridgeImpl(
 				rootstock.RskBridgeConfig{
 					Address:               env.Rsk.BridgeAddress,
@@ -158,21 +172,80 @@ func createBoundContracts(
 	discovery := bindings.discovery.Instance(client.Rpc(), discoveryAddress)
 	bridge := bindings.bridge.Instance(client.Rpc(), bridgeAddress)
 
-	return rskBoundContracts{
+	bound := rskBoundContracts{
 		bridge:               bridge,
 		peginContract:        peginContract,
 		pegoutContract:       pegoutContract,
 		collateralManagement: collateralManagement,
 		discovery:            discovery,
-	}, nil
+	}
+
+	// Optional commit-first peg-in contracts (EPICs E1/E2/E5).
+	if env.Rsk.PegInAddressRegistryAddress != "" {
+		var addr common.Address
+		if err = rootstock.ParseAddress(&addr, env.Rsk.PegInAddressRegistryAddress); err != nil {
+			return rskBoundContracts{}, err
+		}
+		bound.pegInAddressRegistry = bindings.pegInAddressRegistry.Instance(client.Rpc(), addr)
+	}
+	if env.Rsk.FlyoverConfigurationsAddress != "" {
+		var addr common.Address
+		if err = rootstock.ParseAddress(&addr, env.Rsk.FlyoverConfigurationsAddress); err != nil {
+			return rskBoundContracts{}, err
+		}
+		bound.flyoverConfigurations = bindings.flyoverConfigurations.Instance(client.Rpc(), addr)
+	}
+
+	return bound, nil
 }
 
 func createContractBindings() rskContractBindings {
 	return rskContractBindings{
-		bridge:               bridgeBinding.NewRskBridge(),
-		peginContract:        peginBinding.NewPeginContract(),
-		pegoutContract:       pegoutBinding.NewPegoutContract(),
-		collateralManagement: collateralBinding.NewCollateralManagementContract(),
-		discovery:            discoveryBinding.NewFlyoverDiscovery(),
+		bridge:                bridgeBinding.NewRskBridge(),
+		peginContract:         peginBinding.NewPeginContract(),
+		pegoutContract:        pegoutBinding.NewPegoutContract(),
+		collateralManagement:  collateralBinding.NewCollateralManagementContract(),
+		discovery:             discoveryBinding.NewFlyoverDiscovery(),
+		pegInAddressRegistry:  registryBinding.NewPegInAddressRegistry(),
+		flyoverConfigurations: configurationsBinding.NewFlyoverConfigurations(),
 	}
+}
+
+// buildPegInAddressRegistry constructs the registry adapter when its address is configured,
+// otherwise returns nil so the rest of the system stays on the legacy path.
+func buildPegInAddressRegistry(
+	env environment.Environment,
+	bindings rskContractBindings,
+	bound rskBoundContracts,
+	client *rootstock.RskClient,
+) blockchain.PegInAddressRegistryContract {
+	if bound.pegInAddressRegistry == nil {
+		return nil
+	}
+	return rootstock.NewPegInAddressRegistryImpl(
+		client,
+		env.Rsk.PegInAddressRegistryAddress,
+		bound.pegInAddressRegistry,
+		rootstock.DefaultRetryParams,
+		bindings.pegInAddressRegistry,
+	)
+}
+
+// buildFlyoverConfigurations constructs the configurations adapter when its address is configured.
+func buildFlyoverConfigurations(
+	env environment.Environment,
+	bindings rskContractBindings,
+	bound rskBoundContracts,
+	client *rootstock.RskClient,
+) blockchain.FlyoverConfigurationsContract {
+	if bound.flyoverConfigurations == nil {
+		return nil
+	}
+	return rootstock.NewFlyoverConfigurationsImpl(
+		client,
+		env.Rsk.FlyoverConfigurationsAddress,
+		bound.flyoverConfigurations,
+		rootstock.DefaultRetryParams,
+		bindings.flyoverConfigurations,
+	)
 }

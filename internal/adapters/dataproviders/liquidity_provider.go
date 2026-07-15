@@ -167,16 +167,15 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 	}
 	liquidity.Add(lpRskBalance, lpLbcBalance)
 	log.Debugf("Liquidity: %s wei", liquidity.String())
-	peginQuotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx,
-		quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations,
-	)
-	if err != nil {
-		return nil, err
-	}
-	for _, retainedQuote := range peginQuotes {
-		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
-	}
-	// we include this in the locked liquidity because the refund is done in RBTC, and it is converted to BTC once a threshold is reached
+	// DoS removal (PRD S5 / EPIC E5): the peg-in reservation at off-chain quote-accept is the attack
+	// being removed. Previously we summed RequiredLiquidity over WaitingForDeposit /
+	// WaitingForDepositConfirmations retained quotes into lockedLiquidity, which let an attacker
+	// "accept" genuine quotes it never funds and lock an LP's liquidity at zero cost. In the
+	// commit-first model no liquidity is reserved before the user commits BTC on-chain; the LP only
+	// fronts RBTC at claim time against its own wallet (see ClaimPegInUseCase). We therefore no
+	// longer subtract pegin retained-quote RequiredLiquidity here.
+	//
+	// we include the pegout refund amount in the locked liquidity because the refund is done in RBTC, and it is converted to BTC once a threshold is reached
 	pegoutQuotes, err := lp.pegoutRepository.GetRetainedQuoteByState(ctx, quote.PegoutStateRefundPegOutSucceeded)
 	if err != nil {
 		return nil, err

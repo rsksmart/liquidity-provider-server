@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	liquidity_provider "github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -5,7 +5,6 @@ package mocks
 import (
 	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
 	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

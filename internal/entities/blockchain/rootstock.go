@@ -24,6 +24,13 @@ var (
 	InvalidAddressError   = errors.New("invalid rootstock address")
 	ContractPausedError   = errors.New("contract is paused")
 	TxFailedError         = errors.New("transaction failed")
+	// AlreadyClaimedError signals that another LP already claimed/processed this peg-in.
+	// It is the expected outcome of the first-mined-wins race in the commit-first peg-in
+	// path (DoS-removal redesign) and must be treated as benign by claim callers.
+	AlreadyClaimedError = errors.New("peg-in already claimed by another provider")
+	// AddressNotRegisteredError signals the RSK address is not (yet) registered in the
+	// PegInAddressRegistry, so a claim cannot proceed.
+	AddressNotRegisteredError = errors.New("rsk address is not registered")
 )
 
 type RskContracts struct {
@@ -32,6 +39,11 @@ type RskContracts struct {
 	PegOut               PegoutContract
 	CollateralManagement CollateralManagementContract
 	Discovery            DiscoveryContract
+	// PegInAddressRegistry and FlyoverConfigurations back the commit-first peg-in path
+	// (DoS-removal redesign, EPICs E1/E2/E5). They are optional in legacy deployments,
+	// so consumers must nil-check before use.
+	PegInAddressRegistry  PegInAddressRegistryContract
+	FlyoverConfigurations FlyoverConfigurationsContract
 }
 
 func DecodeStringTrimPrefix(hexString string) ([]byte, error) {
