@@ -1,5 +1,9 @@
 import { LogoutButton } from '@feature/auth/components/LogoutButton'
-import { CollateralCard, ProviderCard } from '@feature/management/components'
+import {
+  CollateralCard,
+  ProviderCard,
+  TrustedAccountsCard,
+} from '@feature/management/components'
 import {
   managementCardsColumnClass,
   managementPageTitleClass,
@@ -15,9 +19,13 @@ export function ManagementPage() {
       </div>
       <hr className="mb-4 border-[#dee2e6]" />
       <div className="grid grid-cols-1 md:grid-cols-2">
-        <div className={managementCardsColumnClass} data-testid="management-cards-column">
+        <div
+          className={managementCardsColumnClass}
+          data-testid="management-cards-column"
+        >
           <ProviderCard />
           <CollateralCard />
+          <TrustedAccountsCard />
         </div>
       </div>
     </main>
