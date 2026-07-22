@@ -15,6 +15,17 @@ const sharedReactRules = {
   ...react.configs['jsx-runtime'].rules,
   ...reactHooks.configs.recommended.rules,
   '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
+  // Required members before optional (interfaces, type literals, classes).
+  '@typescript-eslint/member-ordering': [
+    'error',
+    {
+      default: {
+        memberTypes: 'never',
+        optionalityOrder: 'required-first',
+        order: 'as-written',
+      },
+    },
+  ],
   'react-perf/jsx-no-new-object-as-prop': 'warn',
   'react-perf/jsx-no-new-array-as-prop': 'warn',
   'react-perf/jsx-no-new-function-as-prop': 'warn',
