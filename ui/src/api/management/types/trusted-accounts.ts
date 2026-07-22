@@ -1,10 +1,10 @@
 /** Trusted-account DTOs for management UI — mirrors existing LPS JSON shapes. */
 
 export interface TrustedAccount {
-  name?: string
   address: string
   btcLockingCap: string | number
   rbtcLockingCap: string | number
+  name?: string
 }
 
 export interface TrustedAccountsListResponse {
