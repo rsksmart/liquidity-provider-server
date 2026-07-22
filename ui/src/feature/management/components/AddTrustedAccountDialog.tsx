@@ -11,7 +11,7 @@ import {
   type TrustedAccountFormField,
   type TrustedAccountFormValues,
   validateTrustedAccountForm,
-} from '@feature/management/components/trusted-account-form'
+} from '@feature/management/trusted-account-form'
 import {
   type ChangeEvent,
   type SubmitEvent,

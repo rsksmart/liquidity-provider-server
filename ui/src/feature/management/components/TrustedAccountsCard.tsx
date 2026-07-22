@@ -1,7 +1,6 @@
 import { ApiFetchError } from '@api/management/types/errors'
 import { apiFetch } from '@api/management/utils/api-fetch'
 import { AddTrustedAccountDialog } from '@feature/management/components/AddTrustedAccountDialog'
-import { getTrustedAccountApiErrorMessage } from '@feature/management/components/trusted-account-form'
 import { useTrustedAccounts } from '@feature/management/hooks/use-trusted-accounts'
 import {
   managementBootstrapSmButtonClass,
@@ -14,6 +13,7 @@ import {
   managementFieldTitleClass,
   managementLoadingBarClass,
 } from '@feature/management/management-styles'
+import { getTrustedAccountApiErrorMessage } from '@feature/management/trusted-account-form'
 import { weiToEther } from '@shared/utils/wei'
 import { type MouseEvent, useCallback, useState } from 'react'
 import { toast } from 'sonner'
