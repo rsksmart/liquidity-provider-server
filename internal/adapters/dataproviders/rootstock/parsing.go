@@ -141,7 +141,12 @@ func ParseReleaseRejection(receipt blockchain.TransactionReceipt, bridgeAddress 
 	if err != nil {
 		return false, "", err
 	}
-	topic := bridgeAbi.Events[releaseRequestRejectedEvent].ID
+	eventDef, ok := bridgeAbi.Events[releaseRequestRejectedEvent]
+	if !ok {
+		return false, "", errors.New("bridge ABI missing expected event: " + releaseRequestRejectedEvent)
+	}
+	topic := eventDef.ID
+
 	log, found := findEventLog(receipt.Logs, bridgeAddress, topic)
 	if !found {
 		return false, "", nil
