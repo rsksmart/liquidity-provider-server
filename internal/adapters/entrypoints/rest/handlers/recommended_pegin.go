@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -41,6 +42,17 @@ func NewRecommendedPeginHandler(useCase RecommendedPeginUseCase) http.HandlerFun
 		parsedAmount, ok := new(big.Int).SetString(amount, 10)
 		if !ok {
 			jsonErr := rest.NewErrorResponse("invalid or missing parameter amount", true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
+		if parsedAmount.Sign() <= 0 {
+			jsonErr := rest.NewErrorResponse("parameter amount must be greater than zero", true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
+
+		if destinationAddress != "" && !blockchain.IsRskAddress(destinationAddress) {
+			jsonErr := rest.NewErrorResponse("invalid parameter destination_address", true)
 			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
 			return
 		}

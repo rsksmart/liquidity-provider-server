@@ -19,7 +19,7 @@ import (
 
 const (
 	keyAddress = "0x9d93929a9099be4355fc2389fbf253982f9df47c"
-	keyPath    = "../../../../../docker-compose/localstack/local-key.json"
+	keyPath    = "../../../../../docker-compose/local/localstack/local-key.json"
 )
 
 var derivationKeystore = fmt.Sprintf("test-account-derivation-%d", time.Now().UnixNano())

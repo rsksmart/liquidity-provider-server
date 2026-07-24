@@ -2,6 +2,7 @@ package mongo_test
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -692,11 +693,11 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
 				require.True(t, ok)
-				count, err := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
-				require.NoError(t, err)
-				assert.Equal(t, int64(len(retainedQuotes)), count)
+				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				require.NoError(t, cbErr)
+				assert.Nil(t, result)
 			}).
-			Return(any(int64(len(retainedQuotes))), nil)
+			Return(nil, nil)
 		for _, q := range retainedQuotes {
 			collection.On("UpdateOne", mock.Anything,
 				bson.D{primitive.E{Key: "quote_hash", Value: q.QuoteHash}},
@@ -735,11 +736,11 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 			Run(func(args mock.Arguments) {
 				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
 				require.True(t, ok)
-				count, err := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
-				require.Error(t, err)
-				assert.Equal(t, int64(0), count)
+				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				require.Error(t, cbErr)
+				assert.Nil(t, result)
 			}).
-			Return(int64(0), assert.AnError)
+			Return(nil, assert.AnError)
 
 		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
@@ -753,15 +754,26 @@ func TestPegoutMongoRepository_UpdateRetainedQuotes(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("Update count mismatch", func(t *testing.T) {
-		client, _ := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
 		session := &mocks.SessionBindingMock{}
 		client.On("StartSession").Return(session, nil).Once()
 		session.On("EndSession", mock.Anything).Return().Once()
-		session.On("WithTransaction", mock.Anything, mock.Anything).Return(any(int64(len(retainedQuotes)-1)), nil)
+		session.On("WithTransaction", mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				fn, ok := args.Get(1).(func(mongoDb.SessionContext) (any, error))
+				require.True(t, ok)
+				result, cbErr := fn(mongoDb.NewSessionContext(context.Background(), mongoDb.SessionFromContext(context.Background())))
+				require.Error(t, cbErr)
+				assert.Nil(t, result)
+			}).
+			Return(nil, errors.New("mismatch on updated documents. Expected 2, updated 1"))
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).Return(&mongoDb.UpdateResult{ModifiedCount: 0}, nil).Once()
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
 		defer test.AssertNoLog(t)()
 		err := repo.UpdateRetainedQuotes(context.Background(), retainedQuotes)
+		collection.AssertExpectations(t)
 		client.AssertExpectations(t)
 		session.AssertExpectations(t)
 		require.ErrorContains(t, err, "mismatch on updated documents. Expected 2, updated 1")
@@ -848,11 +860,16 @@ func TestPegoutMongoRepository_GetQuotes(t *testing.T) {
 	})
 }
 
+// pegoutListQuotesByDateRangeAggRow matches the aggregation document after $lookup and $unwind on "retained".
+type pegoutListQuotesByDateRangeAggRow struct {
+	mongo.StoredPegoutQuote `bson:",inline"`
+	Retained                quote.RetainedPegoutQuote `bson:"retained"`
+}
+
 // nolint:funlen, maintidx
 func TestPegoutMongoRepository_ListQuotesByDateRange(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
-	// Test data setup
 	testHash1 := "8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819"
 	testHash2 := "27d70ec2bc2c3154dc9a5b53b118a755441b22bc1c8ccde967ed33609970c25f"
 
@@ -875,30 +892,22 @@ func TestPegoutMongoRepository_ListQuotesByDateRange(t *testing.T) {
 	t.Run("Successfully list quotes with pagination and retained quotes", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		pegoutCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-
 		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection).Times(1)
-		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection).Times(1)
 
-		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-			{Key: "$gte", Value: startDate.Unix()},
-			{Key: "$lte", Value: endDate.Unix()},
-		}}}
-
-		pegoutCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{testStoredQuote1, testStoredQuote2}, nil, nil)).Once()
-
-		retainedFilter := bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: []string{testHash1, testHash2}}}}}
-		retainedCollection.On("Find", mock.Anything, retainedFilter).
-			Return(mongoDb.NewCursorFromDocuments([]any{testRetainedQuote1, testRetainedPegoutQuote}, nil, nil)).Once()
+		pegoutCollection.On("Aggregate", mock.Anything, mock.Anything).
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{bson.M{"total": 2}},
+				"data": bson.A{
+					pegoutListQuotesByDateRangeAggRow{StoredPegoutQuote: testStoredQuote1, Retained: testRetainedQuote1},
+					pegoutListQuotesByDateRangeAggRow{StoredPegoutQuote: testStoredQuote2, Retained: testRetainedPegoutQuote},
+				},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
-
 		defer assertDbInteractionLog(t, "READ interaction with db: 2")()
 
 		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
-
 		require.NoError(t, err)
 		assert.Equal(t, 2, count)
 		require.Len(t, result, 2)
@@ -906,218 +915,106 @@ func TestPegoutMongoRepository_ListQuotesByDateRange(t *testing.T) {
 		assert.Equal(t, testRetainedQuote1, result[0].RetainedQuote)
 		assert.Equal(t, testPegoutQuote, result[1].Quote)
 		assert.Equal(t, testRetainedPegoutQuote, result[1].RetainedQuote)
-
 		pegoutCollection.AssertExpectations(t)
-		retainedCollection.AssertExpectations(t)
 	})
 
 	t.Run("Successfully list quotes without pagination", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		pegoutCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-
 		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection).Times(1)
-		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection).Times(1)
 
-		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-			{Key: "$gte", Value: startDate.Unix()},
-			{Key: "$lte", Value: endDate.Unix()},
-		}}}
-
-		pegoutCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{testStoredQuote1}, nil, nil)).Once()
-
-		retainedFilter := bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: []string{testHash1}}}}}
-		retainedCollection.On("Find", mock.Anything, retainedFilter).
-			Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+		pegoutCollection.On("Aggregate", mock.Anything, mock.Anything).
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{bson.M{"total": 1}},
+				"data": bson.A{
+					pegoutListQuotesByDateRangeAggRow{StoredPegoutQuote: testStoredQuote1, Retained: testRetainedQuote1},
+				},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
-
 		defer assertDbInteractionLog(t, "READ interaction with db: 1")()
 
 		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 0, 0)
-
 		require.NoError(t, err)
 		assert.Equal(t, 1, count)
 		require.Len(t, result, 1)
 		assert.Equal(t, testPegoutQuote, result[0].Quote)
-		assert.Equal(t, quote.RetainedPegoutQuote{}, result[0].RetainedQuote)
-
+		assert.Equal(t, testRetainedQuote1, result[0].RetainedQuote)
 		pegoutCollection.AssertExpectations(t)
-		retainedCollection.AssertExpectations(t)
 	})
 
 	t.Run("Successfully return empty result", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		pegoutCollection := &mocks.CollectionBindingMock{}
-
 		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection).Times(1)
 
-		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-			{Key: "$gte", Value: startDate.Unix()},
-			{Key: "$lte", Value: endDate.Unix()},
-		}}}
-
-		pegoutCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+		pegoutCollection.On("Aggregate", mock.Anything, mock.Anything).
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{},
+				"data":     bson.A{},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
-
-		defer assertDbInteractionLog(t, "READ interaction with db: []")()
+		defer assertDbInteractionLog(t, "READ interaction with db: 0")()
 
 		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
-
 		require.NoError(t, err)
 		assert.Equal(t, 0, count)
 		require.Empty(t, result)
-
 		pegoutCollection.AssertExpectations(t)
 	})
 
-	t.Run("Successfully list quotes without retained quotes", func(t *testing.T) {
+	t.Run("Error on aggregation", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		pegoutCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-
-		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection).Times(1)
-		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection).Times(1)
-
-		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-			{Key: "$gte", Value: startDate.Unix()},
-			{Key: "$lte", Value: endDate.Unix()},
-		}}}
-
-		pegoutCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{testStoredQuote1}, nil, nil)).Once()
-
-		retainedFilter := bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: []string{testHash1}}}}}
-		retainedCollection.On("Find", mock.Anything, retainedFilter).
-			Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
-
-		conn := mongo.NewConnection(client, time.Duration(1))
-		repo := mongo.NewPegoutMongoRepository(conn)
-
-		defer assertDbInteractionLog(t, "READ interaction with db: 1")()
-
-		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
-
-		require.NoError(t, err)
-		assert.Equal(t, 1, count)
-		require.Len(t, result, 1)
-		assert.Equal(t, testPegoutQuote, result[0].Quote)
-		assert.Equal(t, quote.RetainedPegoutQuote{}, result[0].RetainedQuote)
-
-		pegoutCollection.AssertExpectations(t)
-		retainedCollection.AssertExpectations(t)
-	})
-
-	t.Run("Error when fetching quotes from database", func(t *testing.T) {
-		client, db := getClientAndDatabaseMocks()
-		pegoutCollection := &mocks.CollectionBindingMock{}
-
 		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection).Times(1)
 
-		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-			{Key: "$gte", Value: startDate.Unix()},
-			{Key: "$lte", Value: endDate.Unix()},
-		}}}
-
-		pegoutCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
+		pegoutCollection.On("Aggregate", mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
-
 		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
-
 		require.Error(t, err)
 		assert.Equal(t, assert.AnError, err)
 		assert.Equal(t, 0, count)
 		assert.Nil(t, result)
-
 		pegoutCollection.AssertExpectations(t)
-	})
-
-	t.Run("Error when fetching retained quotes", func(t *testing.T) {
-		client, db := getClientAndDatabaseMocks()
-		pegoutCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-
-		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection).Times(1)
-		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection).Times(1)
-
-		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-			{Key: "$gte", Value: startDate.Unix()},
-			{Key: "$lte", Value: endDate.Unix()},
-		}}}
-
-		pegoutCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{testStoredQuote1}, nil, nil)).Once()
-
-		retainedFilter := bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: []string{testHash1}}}}}
-		retainedCollection.On("Find", mock.Anything, retainedFilter).
-			Return(nil, assert.AnError).Once()
-
-		conn := mongo.NewConnection(client, time.Duration(1))
-		repo := mongo.NewPegoutMongoRepository(conn)
-
-		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
-
-		require.Error(t, err)
-		assert.Equal(t, assert.AnError, err)
-		assert.Equal(t, 1, count)
-		require.Len(t, result, 1)
-
-		pegoutCollection.AssertExpectations(t)
-		retainedCollection.AssertExpectations(t)
 	})
 
 	t.Run("Successfully handle pagination edge cases", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		pegoutCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-
 		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection).Times(1)
-		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection).Times(1)
 
-		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-			{Key: "$gte", Value: startDate.Unix()},
-			{Key: "$lte", Value: endDate.Unix()},
-		}}}
-
-		pegoutCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{testStoredQuote1}, nil, nil)).Once()
-
-		retainedFilter := bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: []string{testHash1}}}}}
-		retainedCollection.On("Find", mock.Anything, retainedFilter).
-			Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+		pegoutCollection.On("Aggregate", mock.Anything, mock.Anything).
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{bson.M{"total": 2}},
+				"data": bson.A{
+					pegoutListQuotesByDateRangeAggRow{StoredPegoutQuote: testStoredQuote2, Retained: testRetainedPegoutQuote},
+				},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
-
 		defer assertDbInteractionLog(t, "READ interaction with db: 1")()
 
-		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 1)
-
+		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 2, 1)
 		require.NoError(t, err)
-		assert.Equal(t, 1, count)
+		assert.Equal(t, 2, count)
 		require.Len(t, result, 1)
-
+		assert.Equal(t, testPegoutQuote, result[0].Quote)
+		assert.Equal(t, testRetainedPegoutQuote, result[0].RetainedQuote)
 		pegoutCollection.AssertExpectations(t)
-		retainedCollection.AssertExpectations(t)
 	})
 
 	t.Run("Should fill zero values for retained pegout quotes with missing gas fields", func(t *testing.T) {
 		client, db := getClientAndDatabaseMocks()
 		pegoutCollection := &mocks.CollectionBindingMock{}
-		retainedCollection := &mocks.CollectionBindingMock{}
-
 		db.EXPECT().Collection(mongo.PegoutQuoteCollection).Return(pegoutCollection).Times(1)
-		db.EXPECT().Collection(mongo.RetainedPegoutQuoteCollection).Return(retainedCollection).Times(1)
 
-		// Create old database record with missing gas fields (represented as BSON document)
 		oldRetainedDocument := bson.D{
 			{Key: "quote_hash", Value: testHash1},
 			{Key: "deposit_address", Value: "test_deposit_address"},
@@ -1127,43 +1024,35 @@ func TestPegoutMongoRepository_ListQuotesByDateRange(t *testing.T) {
 			{Key: "bridge_refund_gas_used", Value: uint64(21000)},
 			{Key: "refund_pegout_gas_used", Value: uint64(21000)},
 			{Key: "owner_account_address", Value: "0x123"},
-			// Note: BridgeRefundGasPrice, RefundPegoutGasPrice, and SendPegoutBtcFee are missing (nil)
 		}
+		storedBytes, errMarshal := bson.Marshal(testStoredQuote1)
+		require.NoError(t, errMarshal)
+		var row bson.M
+		require.NoError(t, bson.Unmarshal(storedBytes, &row))
+		row["retained"] = oldRetainedDocument
 
-		expectedFilter := bson.D{{Key: "agreement_timestamp", Value: bson.D{
-			{Key: "$gte", Value: startDate.Unix()},
-			{Key: "$lte", Value: endDate.Unix()},
-		}}}
-
-		pegoutCollection.On("Find", mock.Anything, expectedFilter, mock.Anything).
-			Return(mongoDb.NewCursorFromDocuments([]any{testStoredQuote1}, nil, nil)).Once()
-
-		retainedFilter := bson.D{{Key: "quote_hash", Value: bson.D{{Key: "$in", Value: []string{testHash1}}}}}
-		retainedCollection.On("Find", mock.Anything, retainedFilter).
-			Return(mongoDb.NewCursorFromDocuments([]any{oldRetainedDocument}, nil, nil)).Once()
+		pegoutCollection.On("Aggregate", mock.Anything, mock.Anything).
+			Return(mongoDb.NewCursorFromDocuments([]any{bson.M{
+				"metadata": bson.A{bson.M{"total": 1}},
+				"data":     bson.A{row},
+			}}, nil, nil)).Once()
 
 		conn := mongo.NewConnection(client, time.Duration(1))
 		repo := mongo.NewPegoutMongoRepository(conn)
-
 		defer assertDbInteractionLog(t, "READ interaction with db: 1")()
 
 		result, count, err := repo.ListQuotesByDateRange(context.Background(), startDate, endDate, 1, 10)
-
 		require.NoError(t, err)
 		assert.Equal(t, 1, count)
 		require.Len(t, result, 1)
 		assert.Equal(t, testPegoutQuote, result[0].Quote)
-
-		// Verify that FillZeroValues() was applied - gas prices should be zero Wei instead of nil
 		assert.NotNil(t, result[0].RetainedQuote.BridgeRefundGasPrice)
 		assert.NotNil(t, result[0].RetainedQuote.RefundPegoutGasPrice)
 		assert.NotNil(t, result[0].RetainedQuote.SendPegoutBtcFee)
 		assert.Equal(t, entities.NewWei(0), result[0].RetainedQuote.BridgeRefundGasPrice)
 		assert.Equal(t, entities.NewWei(0), result[0].RetainedQuote.RefundPegoutGasPrice)
 		assert.Equal(t, entities.NewWei(0), result[0].RetainedQuote.SendPegoutBtcFee)
-
 		pegoutCollection.AssertExpectations(t)
-		retainedCollection.AssertExpectations(t)
 	})
 }
 

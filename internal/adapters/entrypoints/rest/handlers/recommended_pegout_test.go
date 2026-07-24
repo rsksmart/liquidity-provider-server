@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// nolint:funlen
 func TestNewRecommendedPegoutHandler(t *testing.T) {
 	const path = "/pegout/recommended"
 	queryOnlyAmount := url.Values{"amount": []string{"100"}}
@@ -45,6 +46,19 @@ func TestNewRecommendedPegoutHandler(t *testing.T) {
 			useCase := new(mocks.RecommendedPegoutUseCaseMock)
 			handler := handlers.NewRecommendedPegoutHandler(useCase)
 			assert.HTTPStatusCode(t, handler, http.MethodGet, path, testCase, http.StatusBadRequest)
+			useCase.AssertNotCalled(t, "Run")
+		}
+	})
+	t.Run("should return 400 on non-positive amount", func(t *testing.T) {
+		testCases := []url.Values{
+			{"amount": []string{"0"}, "destination_type": []string{"p2pkh"}},
+			{"amount": []string{"-1000000"}, "destination_type": []string{"p2pkh"}},
+		}
+		for _, testCase := range testCases {
+			useCase := new(mocks.RecommendedPegoutUseCaseMock)
+			handler := handlers.NewRecommendedPegoutHandler(useCase)
+			assert.HTTPStatusCode(t, handler, http.MethodGet, path, testCase, http.StatusBadRequest)
+			assert.HTTPBodyContains(t, handler, http.MethodGet, path, testCase, "parameter amount must be greater than zero")
 			useCase.AssertNotCalled(t, "Run")
 		}
 	})

@@ -3,6 +3,7 @@ package pegout
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -20,12 +21,17 @@ const (
 	BridgeConversionGasPrice = 60000000
 )
 
+var ErrBridgeReleaseRejected = errors.New("bridge release request rejected")
+
+type ReleaseRejectionParser = func(receipt blockchain.TransactionReceipt, bridgeAddress string) (bool, blockchain.RejectedPegoutReason, error)
+
 type BridgePegoutUseCase struct {
-	quoteRepository quote.PegoutQuoteRepository
-	pegoutProvider  liquidity_provider.PegoutLiquidityProvider
-	rskWallet       blockchain.RootstockWallet
-	contracts       blockchain.RskContracts
-	rskWalletMutex  sync.Locker
+	quoteRepository        quote.PegoutQuoteRepository
+	pegoutProvider         liquidity_provider.PegoutLiquidityProvider
+	rskWallet              blockchain.RootstockWallet
+	contracts              blockchain.RskContracts
+	rskWalletMutex         sync.Locker
+	releaseRejectionParser ReleaseRejectionParser
 }
 
 func NewBridgePegoutUseCase(
@@ -34,13 +40,15 @@ func NewBridgePegoutUseCase(
 	rskWallet blockchain.RootstockWallet,
 	contracts blockchain.RskContracts,
 	rskWalletMutex sync.Locker,
+	releaseRejectionParser ReleaseRejectionParser,
 ) *BridgePegoutUseCase {
 	return &BridgePegoutUseCase{
-		quoteRepository: quoteRepository,
-		pegoutProvider:  pegoutProvider,
-		rskWallet:       rskWallet,
-		contracts:       contracts,
-		rskWalletMutex:  rskWalletMutex,
+		quoteRepository:        quoteRepository,
+		pegoutProvider:         pegoutProvider,
+		rskWallet:              rskWallet,
+		contracts:              contracts,
+		rskWalletMutex:         rskWalletMutex,
+		releaseRejectionParser: releaseRejectionParser,
 	}
 }
 
@@ -75,6 +83,9 @@ func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...qu
 
 	config := blockchain.NewTransactionConfig(totalValue, BridgeConversionGasLimit, entities.NewWei(BridgeConversionGasPrice))
 	receipt, txErr := useCase.rskWallet.SendRbtc(ctx, config, useCase.contracts.Bridge.GetAddress())
+	if txErr == nil && receipt.TransactionHash != "" {
+		txErr = useCase.checkBridgeRejection(receipt)
+	}
 	if txErr == nil {
 		log.Debugf("%s: transaction sent to the bridge successfully (%s)", usecases.BridgePegoutId, receipt.TransactionHash)
 	}
@@ -82,6 +93,19 @@ func (useCase *BridgePegoutUseCase) Run(ctx context.Context, watchedQuotes ...qu
 	err = useCase.updateQuotes(ctx, receipt, txErr, watchedQuotes)
 	if err != nil {
 		return usecases.WrapUseCaseError(usecases.BridgePegoutId, err)
+	}
+	return nil
+}
+
+func (useCase *BridgePegoutUseCase) checkBridgeRejection(receipt blockchain.TransactionReceipt) error {
+	rejected, reason, err := useCase.releaseRejectionParser(receipt, useCase.contracts.Bridge.GetAddress())
+	if err != nil {
+		return err
+	}
+	if rejected {
+		reasonStr := string(reason)
+		log.Errorf("%s: bridge rejected release for tx %s, reason=%s", usecases.BridgePegoutId, receipt.TransactionHash, reasonStr)
+		return fmt.Errorf("%w: reason=%s", ErrBridgeReleaseRejected, reasonStr)
 	}
 	return nil
 }

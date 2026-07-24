@@ -2,6 +2,7 @@ package pegout_test
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -90,6 +91,17 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 		result, err = useCase.Run(context.Background(), createdQuote.PegoutQuote.Total(), blockchain.BtcAddressTypeP2PKH)
 		require.ErrorIs(t, err, liquidity_provider.AmountOutOfRangeError)
 		assert.Empty(t, result)
+	})
+	t.Run("should return AmountOutOfRangeError without calling getGasFee when amount exceeds config MaxValue", func(t *testing.T) {
+		hugeAmount, _ := new(big.Int).SetString("999999999999999999999999999", 10)
+		outOfRangeLp := new(mocks.ProviderMock)
+		outOfRangeLp.On("PegoutConfiguration", mock.Anything).Return(getPegoutConfiguration())
+		btcWalletNotCalled := new(mocks.BitcoinWalletMock)
+		useCase := pegout.NewRecommendedPegoutUseCase(outOfRangeLp, contracts, rpc, btcWalletNotCalled, utils.Scale)
+		result, err = useCase.Run(context.Background(), entities.NewBigWei(hugeAmount), blockchain.BtcAddressTypeP2PKH)
+		require.ErrorIs(t, err, liquidity_provider.AmountOutOfRangeError)
+		assert.Empty(t, result)
+		btcWalletNotCalled.AssertNotCalled(t, "EstimateTxFees")
 	})
 	t.Run("should validate liquidity is enough for recommended amount", func(t *testing.T) {
 		btc.On("GetZeroAddress", mock.Anything).Return(blockchain.BitcoinTestnetP2PKHZeroAddress, nil).Once()

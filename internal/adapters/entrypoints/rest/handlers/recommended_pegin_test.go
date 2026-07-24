@@ -66,6 +66,33 @@ func TestNewRecommendedPeginHandler(t *testing.T) {
 			useCase.AssertNotCalled(t, "Run")
 		}
 	})
+	t.Run("should return 400 on non-positive amount", func(t *testing.T) {
+		testCases := []url.Values{
+			{"amount": []string{"0"}},
+			{"amount": []string{"-1000000"}},
+		}
+		for _, testCase := range testCases {
+			useCase := new(mocks.RecommendedPeginUseCaseMock)
+			handler := handlers.NewRecommendedPeginHandler(useCase)
+			assert.HTTPStatusCode(t, handler, http.MethodGet, path, testCase, http.StatusBadRequest)
+			assert.HTTPBodyContains(t, handler, http.MethodGet, path, testCase, "parameter amount must be greater than zero")
+			useCase.AssertNotCalled(t, "Run")
+		}
+	})
+	t.Run("should return 400 on invalid destination_address", func(t *testing.T) {
+		testCases := []url.Values{
+			{"amount": []string{"500"}, "destination_address": []string{"asd"}},
+			{"amount": []string{"500"}, "destination_address": []string{"bc1q9ue5ls6zmzwdrhy6zucw9zwhz5zzv6qm2zn3mv"}},
+			{"amount": []string{"500"}, "destination_address": []string{"0x31c1BB940B8b44bBf67a1Af40aab4eaB9268B5f"}},
+			{"amount": []string{"500"}, "destination_address": []string{"0x31c1BB940B8b44bBf67a1Af40aab4eaB9268B5fb2"}},
+		}
+		for _, testCase := range testCases {
+			useCase := new(mocks.RecommendedPeginUseCaseMock)
+			handler := handlers.NewRecommendedPeginHandler(useCase)
+			assert.HTTPStatusCode(t, handler, http.MethodGet, path, testCase, http.StatusBadRequest)
+			useCase.AssertNotCalled(t, "Run")
+		}
+	})
 	t.Run("should return 400 if recommended amount is out of limits", func(t *testing.T) {
 		useCase := new(mocks.RecommendedPeginUseCaseMock)
 		useCase.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(usecases.RecommendedOperationResult{}, liquidity_provider.AmountOutOfRangeError)

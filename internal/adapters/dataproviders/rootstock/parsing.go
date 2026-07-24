@@ -14,7 +14,10 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
+
+const releaseRequestRejectedEvent = "release_request_rejected"
 
 func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.TransactionReceipt, error) {
 	if tx == nil || receipt == nil {
@@ -123,4 +126,61 @@ func ParseDepositEvent(receipt blockchain.TransactionReceipt) (blockchain.Parsed
 		},
 		RawLog: log,
 	}, nil
+}
+
+// ParseReleaseRejection scans receipt.Logs for a Bridge release_request_rejected event emitted by bridgeAddress.
+//
+// Event ABI (from rskj BridgeEvents.RELEASE_REQUEST_REJECTED):
+//
+//	release_request_rejected(address indexed sender, uint256 amount, int256 reason)
+//
+// Non-indexed params (amount, reason) are packed into log.Data as two 32-byte words; reason is the last word.
+// Reason codes are declared by rskj RejectedPegoutReason.
+func ParseReleaseRejection(receipt blockchain.TransactionReceipt, bridgeAddress string) (rejected bool, reason blockchain.RejectedPegoutReason, err error) {
+	bridgeAbi, err := bindings.IBridgeMetaData.GetAbi()
+	if err != nil {
+		return false, "", err
+	}
+	eventDef, ok := bridgeAbi.Events[releaseRequestRejectedEvent]
+	if !ok {
+		return false, "", errors.New("bridge ABI missing expected event: " + releaseRequestRejectedEvent)
+	}
+	topic := eventDef.ID
+
+	log, found := findEventLog(receipt.Logs, bridgeAddress, topic)
+	if !found {
+		return false, "", nil
+	}
+	event := new(bindings.IBridgeReleaseRequestRejected)
+	if err = bridgeAbi.UnpackIntoInterface(event, releaseRequestRejectedEvent, log.Data); err != nil {
+		return false, "", err
+	}
+	if !event.Reason.IsInt64() {
+		return true, blockchain.RejectedPegoutReasonUnknown, nil
+	}
+	return true, parseRejectedPegoutReason(event.Reason.Int64()), nil
+}
+
+func parseRejectedPegoutReason(reason int64) blockchain.RejectedPegoutReason {
+	switch reason {
+	case 1:
+		return blockchain.RejectedPegoutReasonLowAmount
+	case 2:
+		return blockchain.RejectedPegoutReasonCallerContract
+	case 3:
+		return blockchain.RejectedPegoutReasonFeeAboveValue
+	default:
+		return blockchain.RejectedPegoutReasonUnknown
+	}
+}
+
+func findEventLog(logs []blockchain.TransactionLog, contractAddress string, topic common.Hash) (blockchain.TransactionLog, bool) {
+	for _, log := range logs {
+		if len(log.Topics) > 0 &&
+			bytes.Equal(log.Topics[0][:], topic.Bytes()) &&
+			utils.CompareIgnore0x(log.Address, contractAddress) {
+			return log, true
+		}
+	}
+	return blockchain.TransactionLog{}, false
 }

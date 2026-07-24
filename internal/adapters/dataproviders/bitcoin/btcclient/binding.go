@@ -34,6 +34,7 @@ type RpcWallet interface {
 	GetAddressInfo(address string) (*btcjson.GetAddressInfoResult, error)
 	ImportPubKeyRescan(pubKey string, rescan bool) error
 	ImportPubKey(pubKey string) error
+	LockUnspent(unlock bool, ops []*wire.OutPoint) error
 }
 
 type RpcClient interface {

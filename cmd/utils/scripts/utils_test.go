@@ -19,7 +19,7 @@ import (
 func TestGetWallet(t *testing.T) {
 	t.Run("should return wallet", func(t *testing.T) {
 		ctx := context.Background()
-		keystorePath := filepath.Join("../../../", "docker-compose/localstack/local-key.json")
+		keystorePath := filepath.Join("../../../", "docker-compose/local/localstack/local-key.json")
 		env := environment.Environment{
 			SecretSource:     "env",
 			WalletManagement: "native",
@@ -52,7 +52,7 @@ func TestGetWallet(t *testing.T) {
 
 func TestCreatePeginContract(t *testing.T) {
 	t.Run("should return contract", func(t *testing.T) {
-		keystorePath := filepath.Join("../../../", "docker-compose/localstack/local-key.json")
+		keystorePath := filepath.Join("../../../", "docker-compose/local/localstack/local-key.json")
 		env := environment.Environment{
 			SecretSource:     "env",
 			WalletManagement: "native",
@@ -75,7 +75,7 @@ func TestCreatePeginContract(t *testing.T) {
 
 func TestCreatePegoutContract(t *testing.T) {
 	t.Run("should return contract", func(t *testing.T) {
-		keystorePath := filepath.Join("../../../", "docker-compose/localstack/local-key.json")
+		keystorePath := filepath.Join("../../../", "docker-compose/local/localstack/local-key.json")
 		env := environment.Environment{
 			SecretSource:     "env",
 			WalletManagement: "native",
@@ -98,7 +98,7 @@ func TestCreatePegoutContract(t *testing.T) {
 
 func TestCreateDiscoveryContract(t *testing.T) {
 	t.Run("should return contract", func(t *testing.T) {
-		keystorePath := filepath.Join("../../../", "docker-compose/localstack/local-key.json")
+		keystorePath := filepath.Join("../../../", "docker-compose/local/localstack/local-key.json")
 		env := environment.Environment{
 			SecretSource:     "env",
 			WalletManagement: "native",

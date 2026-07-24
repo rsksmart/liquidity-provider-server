@@ -123,12 +123,13 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertExpectations(t) &&
-				bridge.AssertExpectations(t) &&
-				rskRpc.AssertExpectations(t) &&
-				assertQuotesLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertExpectations(mt)
+			bridge.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.True(t, assertQuotesLog())
 	})
 	t.Run("should run tick with a with reduce page if its too close to the latest block", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -154,12 +155,13 @@ func TestBtcReleaseWatcher_Start(t *testing.T) {
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertExpectations(t) &&
-				bridge.AssertExpectations(t) &&
-				rskRpc.AssertExpectations(t) &&
-				assertNoQuotesLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertExpectations(mt)
+			bridge.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.True(t, assertNoQuotesLog())
 	})
 }
 
@@ -198,19 +200,20 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(0), assert.AnError).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		assertErrorLog := test.AssertLogContains(t, "error getting RSK height in BtcReleaseWatcher")
+		assertErrorLog := test.LogContains(t, "error getting RSK height in BtcReleaseWatcher")
 
 		err := watcher.Prepare(context.Background())
 		require.NoError(t, err)
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertNotCalled(t, "Run") &&
-				bridge.AssertNotCalled(t, "GetBatchPegOutCreatedEvent") &&
-				rskRpc.AssertExpectations(t) &&
-				assertErrorLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertNotCalled(mt, "Run")
+			bridge.AssertNotCalled(mt, "GetBatchPegOutCreatedEvent")
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.Eventually(t, assertErrorLog, time.Second*3, time.Millisecond*100)
 	})
 	t.Run("should handle error getting event", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -225,19 +228,20 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		bridge.On("GetBatchPegOutCreatedEvent", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		assertNoQuotesLog := test.AssertLogContains(t, "error fetching BatchPegOutCreated events in BtcReleaseWatcher")
+		assertNoQuotesLog := test.LogContains(t, "error fetching BatchPegOutCreated events in BtcReleaseWatcher")
 
 		err := watcher.Prepare(context.Background())
 		require.NoError(t, err)
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertNotCalled(t, "Run") &&
-				bridge.AssertExpectations(t) &&
-				rskRpc.AssertExpectations(t) &&
-				assertNoQuotesLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertNotCalled(mt, "Run")
+			bridge.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.Eventually(t, assertNoQuotesLog, time.Second*3, time.Millisecond*100)
 	})
 	t.Run("should handle error in use case", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
@@ -253,16 +257,20 @@ func TestBtcReleaseWatcher_Start_ErrorCases(t *testing.T) {
 		useCase.EXPECT().Run(mock.Anything, mock.Anything).Return(uint(0), assert.AnError).Once()
 		tickerChannel := make(chan time.Time)
 		ticker.EXPECT().C().Return(tickerChannel)
-		assertNoQuotesLog := test.AssertLogContains(t, "error processing BatchPegOut")
+		assertNoQuotesLog := test.LogContains(t, "error processing BatchPegOut")
 
 		err := watcher.Prepare(context.Background())
 		require.NoError(t, err)
 		go watcher.Start()
 
 		tickerChannel <- time.Now()
-		assert.Eventually(t, func() bool {
-			return useCase.AssertExpectations(t) && bridge.AssertExpectations(t) && rskRpc.AssertExpectations(t) && assertNoQuotesLog()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			useCase.AssertExpectations(mt)
+			bridge.AssertExpectations(mt)
+			rskRpc.AssertExpectations(mt)
 		}, time.Second*3, time.Millisecond*100)
+		assert.Eventually(t, assertNoQuotesLog, time.Second*3, time.Millisecond*100)
 	})
 }
 
