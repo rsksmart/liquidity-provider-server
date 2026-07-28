@@ -314,3 +314,100 @@ export function nextTrustedAccountsControls(page: Page) {
     saveButton: page.getByTestId('save-trusted-account-button'),
   }
 }
+
+// ---------------------------------------------------------------------------
+// Configuration card — parity locators.
+//
+// Reference: Bootstrap Configuration `.card` (`#configTabs`).
+// React target: card with `data-testid`s `configuration-card`, `config-tab-*`,
+// `config-save-button`, `config-<section>-<key>-input`, `config-<confKey>-<index>`.
+// ---------------------------------------------------------------------------
+
+export type ConfigTabKind = 'general' | 'pegin' | 'pegout'
+
+export function referenceConfigurationCard(referencePage: Page): Locator {
+  return referencePage
+    .locator('.card')
+    .filter({ has: referencePage.locator('#configTabs') })
+}
+
+export function referenceConfigurationControls(referencePage: Page) {
+  const card = referenceConfigurationCard(referencePage)
+  return {
+    card,
+    header: card.locator('.card-header').first(),
+    title: card.locator('.card-body > h5.card-title').first(),
+    tabs: referencePage.locator('#configTabs'),
+    generalTab: referencePage.locator('#general-tab'),
+    peginTab: referencePage.locator('#peginConfig-tab'),
+    pegoutTab: referencePage.locator('#pegoutConfig-tab'),
+    saveButton: referencePage.locator('#saveConfig'),
+    maxLiquidityInput: referencePage.locator(
+      '[data-testid="config-general-maxLiquidity-input"]',
+    ),
+    excessToleranceInput: referencePage.locator(
+      '[data-testid="config-general-excessTolerance-input"]',
+    ),
+    peginFixedFeeInput: referencePage.locator(
+      '[data-testid="config-pegin-fixedFee-input"]',
+    ),
+    peginFixedFeeCheckbox: referencePage.locator(
+      '[data-testid="config-pegin-fixedFee-checkbox"]',
+    ),
+    confirmationAmountInput: referencePage
+      .locator(
+        '#generalConfig .confirmation-config[data-config-key="rskConfirmations"] input[data-field="amount"]',
+      )
+      .first(),
+    confirmationInput: referencePage.locator(
+      '[data-testid="config-rskConfirmations-0"]',
+    ),
+    confirmationRemoveButton: referencePage
+      .locator('#generalConfig .confirmation-config .btn-danger')
+      .first(),
+    confirmationAddButton: referencePage
+      .locator('#generalConfig .confirmation-config .btn-secondary')
+      .first(),
+    questionIcon: referencePage.locator('.card .question-mark img').first(),
+    tab: (kind: ConfigTabKind): Locator =>
+      referencePage.locator(
+        kind === 'general' ? '#general-tab' : `#${kind}Config-tab`,
+      ),
+  }
+}
+
+export function nextConfigurationCard(page: Page): Locator {
+  return page.getByTestId('configuration-card')
+}
+
+export function nextConfigurationControls(page: Page) {
+  const card = nextConfigurationCard(page)
+  return {
+    card,
+    header: card.locator('[data-slot="card-header"]').first(),
+    title: card.getByRole('heading', { name: 'Current Configuration' }),
+    tabs: card.locator('[role="tablist"]').first(),
+    generalTab: page.getByTestId('config-tab-general'),
+    peginTab: page.getByTestId('config-tab-pegin'),
+    pegoutTab: page.getByTestId('config-tab-pegout'),
+    saveButton: page.getByTestId('config-save-button'),
+    maxLiquidityInput: page.getByTestId('config-general-maxLiquidity-input'),
+    excessToleranceInput: page.getByTestId('config-general-excessTolerance-input'),
+    peginFixedFeeInput: page.getByTestId('config-pegin-fixedFee-input'),
+    peginFixedFeeCheckbox: page.getByTestId('config-pegin-fixedFee-checkbox'),
+    confirmationAmountInput: card
+      .locator(
+        '[data-config-key="rskConfirmations"] input[data-field="amount"]',
+      )
+      .first(),
+    confirmationInput: page.getByTestId('config-rskConfirmations-0'),
+    confirmationRemoveButton: card
+      .locator('[data-testid$="-remove"]')
+      .first(),
+    confirmationAddButton: card
+      .locator('[data-testid="config-rskConfirmations-add"]')
+      .first(),
+    questionIcon: card.locator('.question-mark img, [data-slot="tooltip-trigger"]').first(),
+    tab: (kind: ConfigTabKind): Locator => page.getByTestId(`config-tab-${kind}`),
+  }
+}

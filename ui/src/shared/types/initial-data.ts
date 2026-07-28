@@ -36,7 +36,7 @@ export interface GeneralConfiguration {
   excessTolerance: ExcessTolerance
 }
 
-interface QuoteConfigurationBase {
+export interface QuoteConfigurationBase {
   timeForDeposit: number
   penaltyFee: WeiValue
   fixedFee: WeiValue

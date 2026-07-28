@@ -44,6 +44,10 @@ When automatic code quality and security checks are ready in the pipeline for ex
 
 ## Style guidelines
 
+### React UI (`ui/`)
+
+* Do **not** declare functions inline in JSX props (`onClick={() => …}`, `onChange={(v) => …}`). Create stable handlers with `useCallback` / `useMemo` (or pass already-stable callbacks). Enforced in `src/` by ESLint: `react-perf/jsx-no-new-function-as-prop` (**error**). Disabled under `tests/` where fixtures routinely pass fresh mocks/literals.
+
 ### Pull request etiquette
 
 * Separate your changes into multiple commits

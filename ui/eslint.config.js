@@ -28,7 +28,8 @@ const sharedReactRules = {
   ],
   'react-perf/jsx-no-new-object-as-prop': 'warn',
   'react-perf/jsx-no-new-array-as-prop': 'warn',
-  'react-perf/jsx-no-new-function-as-prop': 'warn',
+  // Inline JSX handlers recreate every render; use useCallback/useMemo (or stable refs).
+  'react-perf/jsx-no-new-function-as-prop': 'error',
   'simple-import-sort/imports': 'error',
   'simple-import-sort/exports': 'error',
   'no-restricted-imports': [
@@ -91,7 +92,14 @@ export default defineConfig(
       'react-perf': reactPerf,
       'simple-import-sort': simpleImportSort,
     },
-    rules: sharedReactRules,
+    rules: {
+      ...sharedReactRules,
+      // Test helpers routinely pass fresh literals/mocks into JSX; keep the
+      // production `error` for jsx-no-new-function-as-prop in src only.
+      'react-perf/jsx-no-new-function-as-prop': 'off',
+      'react-perf/jsx-no-new-object-as-prop': 'off',
+      'react-perf/jsx-no-new-array-as-prop': 'off',
+    },
   },
   {
     files: ['test/**/*.{ts,tsx}'],

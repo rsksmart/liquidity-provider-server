@@ -1,4 +1,9 @@
 import type {
+  SetGeneralConfigurationRequest,
+  SetPeginConfigurationRequest,
+  SetPegoutConfigurationRequest,
+} from '@api/management/types/configuration'
+import type {
   AddCollateralRequest,
   LoginRequest,
   SetCredentialsRequest,
@@ -11,6 +16,9 @@ export interface ManagementPostBodies {
   '/management/login': LoginRequest
   '/management/credentials': SetCredentialsRequest
   '/management/trusted-accounts': AddTrustedAccountRequest
+  '/configuration': SetGeneralConfigurationRequest
+  '/pegin/configuration': SetPeginConfigurationRequest
+  '/pegout/configuration': SetPegoutConfigurationRequest
 }
 
 export type ManagementPostPath = keyof ManagementPostBodies

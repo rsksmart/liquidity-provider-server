@@ -1,6 +1,7 @@
 import { LogoutButton } from '@feature/auth/components/LogoutButton'
 import {
   CollateralCard,
+  ConfigurationCard,
   ProviderCard,
   TrustedAccountsCard,
 } from '@feature/management/components'
@@ -27,6 +28,7 @@ export function ManagementPage() {
           <CollateralCard />
           <TrustedAccountsCard />
         </div>
+        <ConfigurationCard />
       </div>
     </main>
   )

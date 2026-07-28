@@ -33,6 +33,22 @@ export function etherToWei(ether: string | number): string {
   }
 }
 
+/**
+ * Converts ether to wei, returning `fallback` when the input is invalid.
+ * Empty / `'0'` normalizes to `'0'` without throwing.
+ */
+export function etherToWeiOr(ether: string, fallback: string): string {
+  const trimmed = ether.trim()
+  if (trimmed === '' || trimmed === '0') {
+    return '0'
+  }
+  try {
+    return etherToWei(trimmed)
+  } catch {
+    return fallback
+  }
+}
+
 /** Wei as JSON number for pkg.AddCollateralRequest (legacy management.js parity). */
 export function weiToApiAmount(wei: string): number {
   return Number(wei)
