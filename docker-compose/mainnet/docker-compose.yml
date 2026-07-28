@@ -165,7 +165,8 @@ services:
       - ${LPS_HOME:-/mnt/lps/logs}:/home/lps/logs
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_started
+    restart: on-failure:3
     networks:
       - net_lps
     command: ["liquidity-provider-server"]
