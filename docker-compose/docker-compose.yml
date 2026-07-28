@@ -213,7 +213,7 @@ services:
       - /mnt/lps/logs:/home/lps/logs
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_started
       bitcoind:
         condition: service_started
 
