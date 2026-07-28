@@ -10,7 +10,6 @@ const managementRoute = '/management'
 
 function renderGuardedRoute(path: string, requireAuth: boolean, label: string) {
   return render(
-    // eslint-disable-next-line react-perf/jsx-no-new-array-as-prop -- RTL setup, not production re-renders
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route

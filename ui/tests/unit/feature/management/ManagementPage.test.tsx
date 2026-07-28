@@ -67,5 +67,11 @@ describe('ManagementPage', () => {
       screen.getByRole('button', { name: /add account/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument()
+
+    expect(screen.getByTestId('configuration-card')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Current Configuration' }),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('config-save-button')).toBeInTheDocument()
   })
 })

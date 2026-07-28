@@ -1,4 +1,4 @@
-import { etherToWei, weiToApiAmount, weiToEther } from '@shared/utils/wei'
+import { etherToWei, etherToWeiOr, weiToApiAmount, weiToEther } from '@shared/utils/wei'
 import { describe, expect, it } from 'vitest'
 
 describe('wei conversion', () => {
@@ -36,5 +36,12 @@ describe('wei conversion', () => {
   it('keeps sub-wei fractional digits (caller must reject before BigInt)', () => {
     // Documented edge case: values smaller than 1 wei stay fractional after *1e18.
     expect(etherToWei('0.0000000000000000001')).toBe('0.1')
+  })
+
+  it('etherToWeiOr maps empty/zero to 0 and falls back on invalid input', () => {
+    expect(etherToWeiOr('', 'fallback')).toBe('0')
+    expect(etherToWeiOr('0', 'fallback')).toBe('0')
+    expect(etherToWeiOr('1', 'fallback')).toBe('1000000000000000000')
+    expect(etherToWeiOr('nope', 'fallback')).toBe('fallback')
   })
 })
