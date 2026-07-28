@@ -216,6 +216,7 @@ services:
         condition: service_started
       bitcoind:
         condition: service_started
+    restart: on-failure:3
 
     networks:
       - net_lps

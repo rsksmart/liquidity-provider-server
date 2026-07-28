@@ -166,6 +166,7 @@ services:
     depends_on:
       mongodb:
         condition: service_started
+    restart: on-failure:3
     networks:
       - net_lps
     command: ["liquidity-provider-server"]
