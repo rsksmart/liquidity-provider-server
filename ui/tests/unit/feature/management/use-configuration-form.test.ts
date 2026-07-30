@@ -1,11 +1,12 @@
 import { useConfigurationForm } from '@feature/management/hooks/use-configuration-form'
 import type {
   FullConfiguration,
-  InitialDataPayload,
+  WireFullConfiguration,
+  WireInitialDataPayload,
 } from '@shared/types/initial-data'
 import { etherToWei, weiToEther } from '@shared/utils/wei'
 import { act, renderHook } from '@testing-library/react'
-import { loggedInFixture } from '@tests/fixtures'
+import { loggedInFixture, wireConfigurationFixture } from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -44,8 +45,10 @@ const sampleConfiguration: FullConfiguration = {
   },
 }
 
-function seedConfiguration(configuration: FullConfiguration): void {
-  const payload: InitialDataPayload = {
+function seedConfiguration(
+  configuration: FullConfiguration | WireFullConfiguration,
+): void {
+  const payload: WireInitialDataPayload = {
     ...loggedInFixture,
     data: { ...loggedInFixture.data, Configuration: configuration },
   }
@@ -153,6 +156,20 @@ describe('useConfigurationForm', () => {
     const built = result.current.build()
     expect(built.general.config).toBeNull()
     expect(built.general.errors.length).toBeGreaterThan(0)
+  })
+
+  it('derives fee toggles from the numeric configuration a live LPS sends', () => {
+    seedConfiguration(wireConfigurationFixture)
+    const { result } = renderHook(() => useConfigurationForm())
+
+    expect(result.current.pegin.fixedFee).toBe('0.0002')
+    expect(result.current.pegin.fixedFeeEnabled).toBe(true)
+    expect(result.current.pegin.feePercentage).toBe('0.33')
+    expect(result.current.pegin.feePercentageEnabled).toBe(true)
+    expect(result.current.pegout.fixedFeeEnabled).toBe(false)
+    expect(result.current.pegout.feePercentageEnabled).toBe(false)
+    expect(result.current.general.maxLiquidity).toBe('2000')
+    expect(result.current.dirty.any).toBe(false)
   })
 
   it('clears dirtiness after markSaved', () => {

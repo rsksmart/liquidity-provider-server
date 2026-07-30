@@ -1,4 +1,9 @@
-import type { FullConfiguration, InitialDataPayload } from '@shared/types/initial-data'
+import type {
+  FullConfiguration,
+  InitialDataPayload,
+  WireFullConfiguration,
+  WireInitialDataPayload,
+} from '@shared/types/initial-data'
 
 const emptyConfiguration: FullConfiguration = {
   general: {
@@ -57,6 +62,51 @@ export const loggedInFixture: InitialDataPayload = {
     },
     Configuration: emptyConfiguration,
   },
+}
+
+/**
+ * Configuration exactly as a live LPS marshals it (regtest defaults captured
+ * from `/management/next/management`): every wei and percentage field is a JSON
+ * number, and large wei values exceed what `Number` prints without an exponent.
+ */
+export const wireConfigurationFixture: WireFullConfiguration = {
+  general: {
+    rskConfirmations: { '100000000000000000': 4, '2000000000000000000': 20 },
+    btcConfirmations: { '100000000000000000': 2, '2000000000000000000': 10 },
+    publicLiquidityCheck: true,
+    maxLiquidity: 2e21,
+    reimbursementWindowBlocks: 100,
+    excessTolerance: {
+      isFixed: false,
+      percentageValue: 15,
+      fixedValue: 0,
+    },
+  },
+  pegin: {
+    timeForDeposit: 3600,
+    callTime: 7200,
+    penaltyFee: 1000000000000000,
+    fixedFee: 200000000000000,
+    feePercentage: 0.33,
+    maxValue: 10000000000000000000,
+    minValue: 600000000000000000,
+  },
+  pegout: {
+    timeForDeposit: 3600,
+    expireTime: 28800,
+    penaltyFee: 1000000000000000,
+    fixedFee: 0,
+    feePercentage: 0,
+    maxValue: 10000000000000000000,
+    minValue: 600000000000000000,
+    expireBlocks: 1000,
+    bridgeTransactionMin: 1500000000000000000,
+  },
+}
+
+export const wireLoggedInFixture: WireInitialDataPayload = {
+  ...loggedInFixture,
+  data: { ...loggedInFixture.data, Configuration: wireConfigurationFixture },
 }
 
 export const loggedOutFixture: InitialDataPayload = {

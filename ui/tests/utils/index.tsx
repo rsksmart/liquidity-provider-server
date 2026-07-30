@@ -1,4 +1,7 @@
-import type { InitialDataPayload } from '@shared/types/initial-data'
+import type {
+  InitialDataPayload,
+  WireInitialDataPayload,
+} from '@shared/types/initial-data'
 import { replaceInitialDataPayload } from '@shared/utils/initial-data'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -8,7 +11,7 @@ import { App } from '@/App'
 export const appBasename = '/management/next'
 
 export function seedInitialData(
-  payload: InitialDataPayload,
+  payload: WireInitialDataPayload,
   options?: { csrfToken?: string },
 ): void {
   document.querySelector('meta[name="csrf-token"]')?.remove()
