@@ -2,6 +2,10 @@
 export const managementShellClass: string =
   'mx-auto my-8 w-full max-w-[1140px] px-3 2xl:max-w-[1320px]'
 
+/** Two-column card grid — `gap-x-6` reproduces Bootstrap `.row`'s 1.5rem `--bs-gutter-x`. */
+export const managementCardsGridClass: string =
+  'grid grid-cols-1 gap-x-6 md:grid-cols-2'
+
 export const managementCardsColumnClass: string =
   'col-span-1 flex min-w-0 flex-col gap-3'
 
@@ -36,11 +40,15 @@ export const managementBootstrapSmButtonClass: string =
 export const managementBootstrapInputClass: string =
   'h-auto min-h-[38px] rounded-[0.375rem] border !border-[#dee2e6] !bg-white px-3 py-1.5 text-base leading-normal !text-[#212529] shadow-none md:text-base'
 
+/** Configuration card text fields — Bootstrap chrome at 40% width. */
+export const managementConfigFieldInputClass: string =
+  `${managementBootstrapInputClass} w-[40%]`
+
 export const managementBootstrapLabelClass: string =
   'text-base font-normal text-[#212529]'
 
 export const managementTabTriggerClass: string =
-  'flex-none rounded-none !px-4 !py-2 text-base text-[#0d6efd] data-active:text-[#212529]'
+  'flex-none rounded-none !px-4 !py-2 text-base text-[#0d6efd] data-active:text-black'
 
 export const managementCollateralButtonsClass: string = 'mt-[15px]'
 

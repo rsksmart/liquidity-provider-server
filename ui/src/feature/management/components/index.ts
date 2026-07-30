@@ -1,6 +1,7 @@
 export { AddCollateralForm } from './AddCollateralForm'
 export { AddTrustedAccountDialog } from './AddTrustedAccountDialog'
 export { CollateralCard } from './CollateralCard'
+export { ConfigurationCard } from './ConfigurationCard'
 export { ManagementPage } from './ManagementPage'
 export { ProviderCard } from './ProviderCard'
 export { TrustedAccountsCard } from './TrustedAccountsCard'

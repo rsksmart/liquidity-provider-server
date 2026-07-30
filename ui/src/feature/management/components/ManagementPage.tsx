@@ -1,11 +1,13 @@
 import { LogoutButton } from '@feature/auth/components/LogoutButton'
 import {
   CollateralCard,
+  ConfigurationCard,
   ProviderCard,
   TrustedAccountsCard,
 } from '@feature/management/components'
 import {
   managementCardsColumnClass,
+  managementCardsGridClass,
   managementPageTitleClass,
   managementShellClass,
 } from '@feature/management/management-styles'
@@ -18,7 +20,7 @@ export function ManagementPage() {
         <LogoutButton className="absolute top-0 right-0" />
       </div>
       <hr className="mb-4 border-[#dee2e6]" />
-      <div className="grid grid-cols-1 md:grid-cols-2">
+      <div className={managementCardsGridClass}>
         <div
           className={managementCardsColumnClass}
           data-testid="management-cards-column"
@@ -27,6 +29,7 @@ export function ManagementPage() {
           <CollateralCard />
           <TrustedAccountsCard />
         </div>
+        <ConfigurationCard />
       </div>
     </main>
   )

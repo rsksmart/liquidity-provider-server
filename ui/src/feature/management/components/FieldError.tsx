@@ -8,7 +8,7 @@ interface FieldErrorProps {
   className?: string
 }
 
-/** Accessible inline field error — mirrors legacy Bootstrap invalid-feedback. */
+/** Accessible inline field error — Bootstrap invalid-feedback styling. */
 export function FieldError({ id, message, className }: FieldErrorProps) {
   if (!message) {
     return null

@@ -6,7 +6,12 @@ import {
   useInitialData,
 } from '@shared/utils/initial-data'
 import { renderHook } from '@testing-library/react'
-import { loggedInFixture, loggedOutFixture } from '@tests/fixtures'
+import {
+  loggedInFixture,
+  loggedOutFixture,
+  wireConfigurationFixture,
+  wireLoggedInFixture,
+} from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -53,6 +58,60 @@ describe('useInitialData', () => {
 
   it('throws when the initial-data script is missing', () => {
     expect(() => getInitialData()).toThrow(/initial-data script element missing or empty/)
+  })
+})
+
+describe('numeric wire payload normalization', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    resetInitialDataCache()
+  })
+
+  it('narrows wei and percentage numbers to display-domain strings', () => {
+    seedInitialData(wireLoggedInFixture)
+
+    const { general, pegin, pegout } = getInitialData().data.Configuration
+
+    expect(general.excessTolerance.percentageValue).toBe('15')
+    expect(general.excessTolerance.fixedValue).toBe('0')
+    expect(pegin.penaltyFee).toBe('1000000000000000')
+    expect(pegin.fixedFee).toBe('200000000000000')
+    expect(pegin.feePercentage).toBe('0.33')
+    expect(pegout.fixedFee).toBe('0')
+    expect(pegout.bridgeTransactionMin).toBe('1500000000000000000')
+  })
+
+  it('spells out large wei values instead of exponential notation', () => {
+    seedInitialData(wireLoggedInFixture)
+
+    const { general, pegin } = getInitialData().data.Configuration
+
+    expect(general.maxLiquidity).toBe('2000000000000000000000')
+    expect(pegin.maxValue).toBe('10000000000000000000')
+  })
+
+  it('keeps a null maxLiquidity null', () => {
+    seedInitialData({
+      ...wireLoggedInFixture,
+      data: {
+        ...wireLoggedInFixture.data,
+        Configuration: {
+          ...wireConfigurationFixture,
+          general: { ...wireConfigurationFixture.general, maxLiquidity: null },
+        },
+      },
+    })
+
+    expect(getInitialData().data.Configuration.general.maxLiquidity).toBeNull()
+  })
+
+  it('leaves values that already arrive as strings untouched', () => {
+    seedInitialData(loggedInFixture)
+
+    const { pegin } = getInitialData().data.Configuration
+
+    expect(pegin.fixedFee).toBe('0')
+    expect(pegin.feePercentage).toBe('0')
   })
 })
 

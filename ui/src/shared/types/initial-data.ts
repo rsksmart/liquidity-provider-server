@@ -36,7 +36,7 @@ export interface GeneralConfiguration {
   excessTolerance: ExcessTolerance
 }
 
-interface QuoteConfigurationBase {
+export interface QuoteConfigurationBase {
   timeForDeposit: number
   penaltyFee: WeiValue
   fixedFee: WeiValue
@@ -74,4 +74,62 @@ export interface ManagementTemplateData {
 export interface InitialDataPayload {
   loggedIn: boolean
   data: ManagementTemplateData
+}
+
+/**
+ * Wire shape of the bootstrap payload. `entities.Wei` and `utils.BigFloat`
+ * marshal through `big.Int` / `big.Float`, so every wei and percentage field
+ * reaches the browser as an unquoted JSON number. These are narrowed to the
+ * display-domain strings above when initial-data is read.
+ */
+export type WireNumeric = string | number
+
+export interface WireExcessTolerance {
+  isFixed: boolean
+  percentageValue: WireNumeric
+  fixedValue: WireNumeric
+}
+
+export interface WireGeneralConfiguration
+  extends Omit<GeneralConfiguration, 'maxLiquidity' | 'excessTolerance'> {
+  maxLiquidity: WireNumeric | null
+  excessTolerance: WireExcessTolerance
+}
+
+export interface WireQuoteConfigurationBase
+  extends Omit<
+    QuoteConfigurationBase,
+    'penaltyFee' | 'fixedFee' | 'feePercentage' | 'maxValue' | 'minValue'
+  > {
+  penaltyFee: WireNumeric
+  fixedFee: WireNumeric
+  feePercentage: WireNumeric
+  maxValue: WireNumeric
+  minValue: WireNumeric
+}
+
+export interface WirePeginConfiguration extends WireQuoteConfigurationBase {
+  callTime: number
+}
+
+export interface WirePegoutConfiguration extends WireQuoteConfigurationBase {
+  expireTime: number
+  expireBlocks: number
+  bridgeTransactionMin: WireNumeric
+}
+
+export interface WireFullConfiguration {
+  general: WireGeneralConfiguration
+  pegin: WirePeginConfiguration
+  pegout: WirePegoutConfiguration
+}
+
+export interface WireManagementTemplateData
+  extends Omit<ManagementTemplateData, 'Configuration'> {
+  Configuration: WireFullConfiguration
+}
+
+export interface WireInitialDataPayload {
+  loggedIn: boolean
+  data: WireManagementTemplateData
 }

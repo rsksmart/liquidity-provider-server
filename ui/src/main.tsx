@@ -1,5 +1,6 @@
 import './index.css'
 
+import { AppErrorBoundary } from '@feature/error/components/AppErrorBoundary'
 import { bootstrapDevEnvironment } from '@shared/utils/initial-data'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -22,10 +23,12 @@ async function start() {
 
   createRoot(appRoot).render(
     <StrictMode>
-      <BrowserRouter basename="/management/next">
-        <App />
-        <Toaster />
-      </BrowserRouter>
+      <AppErrorBoundary>
+        <BrowserRouter basename="/management/next">
+          <App />
+          <Toaster />
+        </BrowserRouter>
+      </AppErrorBoundary>
     </StrictMode>,
   )
 }

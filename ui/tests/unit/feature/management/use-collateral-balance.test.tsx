@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { loggedInFixture } from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
+import { useCallback } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { apiFetchMock } = vi.hoisted(() => {
@@ -23,10 +24,13 @@ function mockBalance(wei: string) {
 
 function BalanceProbe({ endpoint }: { endpoint: string }) {
   const { balance, loading, refresh } = useCollateralBalance(endpoint)
+  const handleRefresh = useCallback(() => {
+    void refresh()
+  }, [refresh])
   return (
     <div>
       <span data-testid="balance">{loading ? 'loading' : (balance ?? 'none')}</span>
-      <button type="button" onClick={() => void refresh()}>
+      <button type="button" onClick={handleRefresh}>
         refresh
       </button>
     </div>

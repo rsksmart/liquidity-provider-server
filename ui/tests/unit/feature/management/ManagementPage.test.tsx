@@ -1,6 +1,6 @@
 import { ManagementPage } from '@feature/management/components'
 import { render, screen, waitFor } from '@testing-library/react'
-import { loggedInFixture } from '@tests/fixtures'
+import { loggedInFixture, wireLoggedInFixture } from '@tests/fixtures'
 import { seedInitialData } from '@tests/utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -67,5 +67,22 @@ describe('ManagementPage', () => {
       screen.getByRole('button', { name: /add account/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Logout' })).toBeInTheDocument()
+
+    expect(screen.getByTestId('configuration-card')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Current Configuration' }),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('config-save-button')).toBeInTheDocument()
+  })
+
+  it('renders against the numeric configuration a live LPS sends', async () => {
+    seedInitialData(wireLoggedInFixture, { csrfToken: 'csrf-token' })
+
+    render(<ManagementPage />)
+
+    expect(await screen.findByTestId('configuration-card')).toBeInTheDocument()
+    expect(screen.getByTestId('config-general-maxLiquidity-input')).toHaveValue(
+      '2000',
+    )
   })
 })
