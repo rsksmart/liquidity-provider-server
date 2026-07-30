@@ -78,6 +78,16 @@ export async function readBox(locator: Locator): Promise<BoxMetrics> {
   })
 }
 
+/** Gap between two side-by-side elements — the column gutter Bootstrap `.row` supplies. */
+export async function horizontalGap(
+  left: Locator,
+  right: Locator,
+): Promise<number> {
+  const leftBox = await readBox(left)
+  const rightBox = await readBox(right)
+  return rightBox.x - (leftBox.x + leftBox.width)
+}
+
 export async function readStyles(locator: Locator): Promise<StyleMetrics> {
   return locator.evaluate((element) => {
     const view = element.ownerDocument.defaultView

@@ -2,6 +2,10 @@
 export const managementShellClass: string =
   'mx-auto my-8 w-full max-w-[1140px] px-3 2xl:max-w-[1320px]'
 
+/** Two-column card grid — `gap-x-6` reproduces Bootstrap `.row`'s 1.5rem `--bs-gutter-x`. */
+export const managementCardsGridClass: string =
+  'grid grid-cols-1 gap-x-6 md:grid-cols-2'
+
 export const managementCardsColumnClass: string =
   'col-span-1 flex min-w-0 flex-col gap-3'
 

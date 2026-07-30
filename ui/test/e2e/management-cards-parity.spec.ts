@@ -5,8 +5,10 @@ import {
   expectNextAtLeastReference,
   expectNextMatchesReference,
   expectPxClose,
+  horizontalGap,
   nextCollateralCard,
   nextCollateralControls,
+  nextConfigurationCard,
   nextProviderCard,
   openReferencePage,
   parsePx,
@@ -14,6 +16,7 @@ import {
   readStyles,
   referenceCollateralCard,
   referenceCollateralControls,
+  referenceConfigurationCard,
   referenceProviderCard,
 } from './management-parity-helpers'
 
@@ -256,6 +259,26 @@ test.describe('management cards parity (AC-5)', () => {
     expectPxClose(nextTitleStyles.fontSize, parsePx(referenceTitleStyles.fontSize), 4)
     expectPxClose(nextFieldStyles.fontSize, parsePx(referenceFieldStyles.fontSize), 1)
     expectPxClose(nextFieldStyles.fontSize, 16, 1)
+
+    await closeReference()
+  })
+
+  test('column gutter matches reference row gutter', async ({ page, context }) => {
+    const { referencePage, closeReference } = await openReferencePage(context)
+    await page.goto('management')
+
+    const referenceGutter = await horizontalGap(
+      referenceProviderCard(referencePage),
+      referenceConfigurationCard(referencePage),
+    )
+    const nextGutter = await horizontalGap(
+      nextProviderCard(page),
+      nextConfigurationCard(page),
+    )
+
+    // Guards against a false pass if the reference ever collapses to a single column.
+    expect(referenceGutter).toBeGreaterThan(0)
+    expectPxClose(nextGutter, referenceGutter, 2)
 
     await closeReference()
   })
