@@ -134,6 +134,23 @@ describe('validateConfirmationRows', () => {
     )
   })
 
+  it('reports invalid amount and non-integer confirmation values', () => {
+    const errors = validateConfirmationRows(
+      [
+        { amountEther: 'not-a-number', confirmations: '2' },
+        { amountEther: '1', confirmations: '1.5' },
+      ],
+      'rskConfirmations',
+    )
+
+    expect(errors).toContain(
+      'Invalid input "not-a-number" for rBTC amount. Please enter a valid non-negative number.',
+    )
+    expect(errors).toContain(
+      'Invalid input "1.5" for confirmations. Please enter a valid non-negative integer.',
+    )
+  })
+
   it('returns no errors for a valid, unique, complete set', () => {
     const errors = validateConfirmationRows(
       [

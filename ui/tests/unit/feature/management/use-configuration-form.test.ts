@@ -185,4 +185,80 @@ describe('useConfigurationForm', () => {
     })
     expect(result.current.dirty.any).toBe(false)
   })
+
+  it('keeps non-numeric strings when building numeric fields', () => {
+    const { result } = renderHook(() => useConfigurationForm())
+
+    act(() => {
+      result.current.updateGeneral({ reimbursementWindowBlocks: 'abc' })
+      result.current.updatePegin({ timeForDeposit: 'nope' })
+      result.current.updatePegout({ expireBlocks: 'nope' })
+    })
+
+    const built = result.current.build()
+    // toNumericField preserves the raw string; validateConfig then rejects the type mismatch.
+    expect(built.general.config).toBeNull()
+    expect(built.general.errors.length).toBeGreaterThan(0)
+    expect(built.pegin.config).toBeNull()
+    expect(built.pegin.errors.length).toBeGreaterThan(0)
+    expect(built.pegout.config).toBeNull()
+    expect(built.pegout.errors.length).toBeGreaterThan(0)
+  })
+
+  it('records fee conversion errors and percentage parse errors', () => {
+    const { result } = renderHook(() => useConfigurationForm())
+
+    act(() => {
+      result.current.updatePegin({
+        penaltyFee: 'bad',
+        feePercentageEnabled: true,
+        feePercentage: 'nope%',
+      })
+      result.current.updatePegout({
+        bridgeTransactionMin: 'bad',
+        fixedFeeEnabled: true,
+        fixedFee: 'also-bad',
+      })
+    })
+
+    const built = result.current.build()
+    expect(built.pegin.config).toBeNull()
+    expect(built.pegin.errors.length).toBeGreaterThan(0)
+    expect(built.pegout.config).toBeNull()
+    expect(built.pegout.errors.length).toBeGreaterThan(0)
+  })
+
+  it('builds fixed excess tolerance and rejects invalid percentage values', () => {
+    const { result } = renderHook(() => useConfigurationForm())
+
+    act(() => {
+      result.current.updateGeneral({
+        excessTolerance: {
+          isFixed: true,
+          fixedValue: etherToWei('0.5'),
+          percentageValue: '10',
+        },
+      })
+    })
+
+    const ok = result.current.build()
+    expect(ok.general.config?.excessTolerance).toEqual({
+      isFixed: true,
+      fixedValue: etherToWei('0.5'),
+      percentageValue: '0',
+    })
+
+    act(() => {
+      result.current.updateGeneral({
+        excessTolerance: {
+          isFixed: false,
+          fixedValue: '0',
+          percentageValue: 'not-a-percent',
+        },
+      })
+    })
+    const bad = result.current.build()
+    expect(bad.general.config).toBeNull()
+    expect(bad.general.errors.length).toBeGreaterThan(0)
+  })
 })

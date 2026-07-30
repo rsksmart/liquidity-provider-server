@@ -103,4 +103,32 @@ describe('ToggableFeeInput', () => {
     await user.click(screen.getByTestId('config-pegin-fixedFee-checkbox'))
     expect(onFeeToggleChange).toHaveBeenLastCalledWith(false)
   })
+
+  it('propagates typed input values through onChange', async () => {
+    const user = userEvent.setup()
+    const onDirty = vi.fn()
+    function Harness() {
+      const [value, setValue] = useState('0.5')
+      const [enabled, setEnabled] = useState(true)
+      return (
+        <ToggableFeeInput
+          sectionPrefix="pegin"
+          fieldKey="fixedFee"
+          value={value}
+          onChange={setValue}
+          enabled={enabled}
+          onEnabledChange={setEnabled}
+          onDirty={onDirty}
+        />
+      )
+    }
+    render(<Harness />)
+
+    const input = screen.getByTestId('config-pegin-fixedFee-input')
+    await user.clear(input)
+    await user.type(input, '1.25')
+
+    expect(input).toHaveValue('1.25')
+    expect(onDirty).toHaveBeenCalled()
+  })
 })

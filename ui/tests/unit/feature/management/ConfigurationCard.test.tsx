@@ -1,3 +1,4 @@
+import { ApiFetchError } from '@api/management/types/errors'
 import { ConfigurationCard } from '@feature/management/components'
 import { ZERO_FEE_WARNING_MESSAGE } from '@feature/management/config/fee-warnings'
 import type {
@@ -321,5 +322,184 @@ describe('ConfigurationCard', () => {
     })
     expect(toastSuccessMock).not.toHaveBeenCalled()
     expect(screen.getByTestId('config-save-button')).toBeEnabled()
+  })
+
+  it('ignores overlapping save clicks while a request is in flight', async () => {
+    const user = userEvent.setup()
+    render(<ConfigurationCard />)
+
+    await user.clear(screen.getByTestId('config-general-maxLiquidity-input'))
+    await user.type(screen.getByTestId('config-general-maxLiquidity-input'), '7')
+
+    let release!: (value: Response) => void
+    apiFetchPostMock.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve
+        }),
+    )
+
+    const save = screen.getByTestId('config-save-button')
+    await user.click(save)
+    await user.click(save)
+
+    expect(apiFetchPostMock).toHaveBeenCalledTimes(1)
+    release(okResponse())
+
+    await waitFor(() => {
+      expect(toastSuccessMock).toHaveBeenCalledWith(
+        'Configuration saved successfully!',
+      )
+    })
+  })
+
+  it('surfaces ApiFetchError body.message for general/pegin/pegout save failures', async () => {
+    const user = userEvent.setup()
+    render(<ConfigurationCard />)
+
+    await user.clear(screen.getByTestId('config-general-maxLiquidity-input'))
+    await user.type(screen.getByTestId('config-general-maxLiquidity-input'), '7')
+    await user.clear(screen.getByTestId('config-pegin-maxValue-input'))
+    await user.type(screen.getByTestId('config-pegin-maxValue-input'), '11')
+    await user.clear(screen.getByTestId('config-pegout-maxValue-input'))
+    await user.type(screen.getByTestId('config-pegout-maxValue-input'), '12')
+
+    apiFetchPostMock
+      .mockRejectedValueOnce(
+        new ApiFetchError(400, 'Bad Request', { message: 'general rejected' }),
+      )
+      .mockRejectedValueOnce(
+        new ApiFetchError(400, 'Bad Request', { message: 'pegin rejected' }),
+      )
+      .mockRejectedValueOnce(new ApiFetchError(500, 'Error', null))
+
+    await user.click(screen.getByTestId('config-save-button'))
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith('general rejected')
+    })
+    expect(toastErrorMock).toHaveBeenCalledWith('pegin rejected')
+    expect(toastErrorMock).toHaveBeenCalledWith('API request failed: 500 Error')
+    expect(toastSuccessMock).not.toHaveBeenCalled()
+  })
+
+  it('toasts validation errors instead of posting when a dirty section is invalid', async () => {
+    const user = userEvent.setup()
+    render(<ConfigurationCard />)
+
+    await user.clear(screen.getByTestId('config-general-maxLiquidity-input'))
+    await user.type(screen.getByTestId('config-general-maxLiquidity-input'), '-1')
+    await user.clear(screen.getByTestId('config-pegin-penaltyFee-input'))
+    await user.type(screen.getByTestId('config-pegin-penaltyFee-input'), 'not-a-number')
+    await user.clear(screen.getByTestId('config-pegout-bridgeTransactionMin-input'))
+    await user.type(
+      screen.getByTestId('config-pegout-bridgeTransactionMin-input'),
+      'also-bad',
+    )
+
+    await user.click(screen.getByTestId('config-save-button'))
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalled()
+    })
+    expect(apiFetchPostMock).not.toHaveBeenCalled()
+    expect(toastSuccessMock).not.toHaveBeenCalled()
+  })
+
+  it('saves dirty general/pegin/pegout sections with edited values and preserved siblings', async () => {
+    const user = userEvent.setup()
+    render(<ConfigurationCard />)
+
+    // General — checkbox, numeric, percentage, confirmation tiers
+    await user.click(screen.getByTestId('config-general-publicLiquidityCheck-checkbox'))
+    await user.clear(screen.getByTestId('config-general-reimbursementWindowBlocks-input'))
+    await user.type(
+      screen.getByTestId('config-general-reimbursementWindowBlocks-input'),
+      '200',
+    )
+    await user.clear(screen.getByTestId('config-general-excessTolerance-input'))
+    await user.type(screen.getByTestId('config-general-excessTolerance-input'), '12')
+    await user.clear(screen.getByTestId('config-rskConfirmations-amount-0'))
+    await user.type(screen.getByTestId('config-rskConfirmations-amount-0'), '1.5')
+    await user.clear(screen.getByTestId('config-btcConfirmations-0'))
+    await user.type(screen.getByTestId('config-btcConfirmations-0'), '7')
+
+    // Pegin — timing + fee fields (fixed/% already enabled in fixture)
+    await user.clear(screen.getByTestId('config-pegin-timeForDeposit-input'))
+    await user.type(screen.getByTestId('config-pegin-timeForDeposit-input'), '4000')
+    await user.clear(screen.getByTestId('config-pegin-fixedFee-input'))
+    await user.type(screen.getByTestId('config-pegin-fixedFee-input'), '0.003')
+    await user.clear(screen.getByTestId('config-pegin-feePercentage-input'))
+    await user.type(screen.getByTestId('config-pegin-feePercentage-input'), '2')
+
+    // Pegout — enable toggled fees, timing, bridge min
+    await user.clear(screen.getByTestId('config-pegout-expireBlocks-input'))
+    await user.type(screen.getByTestId('config-pegout-expireBlocks-input'), '600')
+    await user.click(screen.getByTestId('config-pegout-fixedFee-checkbox'))
+    await user.clear(screen.getByTestId('config-pegout-fixedFee-input'))
+    await user.type(screen.getByTestId('config-pegout-fixedFee-input'), '0.005')
+    await user.click(screen.getByTestId('config-pegout-feePercentage-checkbox'))
+    await user.clear(screen.getByTestId('config-pegout-feePercentage-input'))
+    await user.type(screen.getByTestId('config-pegout-feePercentage-input'), '3')
+    await user.clear(screen.getByTestId('config-pegout-bridgeTransactionMin-input'))
+    await user.type(
+      screen.getByTestId('config-pegout-bridgeTransactionMin-input'),
+      '3.5',
+    )
+
+    apiFetchPostMock
+      .mockResolvedValueOnce(okResponse())
+      .mockResolvedValueOnce(okResponse())
+      .mockResolvedValueOnce(okResponse())
+
+    await user.click(screen.getByTestId('config-save-button'))
+
+    await waitFor(() => {
+      expect(apiFetchPostMock).toHaveBeenCalledTimes(3)
+    })
+
+    expect(apiFetchPostMock).toHaveBeenCalledWith('/configuration', {
+      configuration: {
+        publicLiquidityCheck: false,
+        maxLiquidity: etherToWei('5'),
+        reimbursementWindowBlocks: 200,
+        excessTolerance: {
+          isFixed: false,
+          fixedValue: '0',
+          percentageValue: '12',
+        },
+        rskConfirmations: { [etherToWei('1.5')]: 2 },
+        btcConfirmations: { [etherToWei('2')]: 7 },
+      },
+    })
+    expect(apiFetchPostMock).toHaveBeenCalledWith('/pegin/configuration', {
+      configuration: {
+        timeForDeposit: 4000,
+        callTime: 7200,
+        penaltyFee: etherToWei('0.001'),
+        fixedFee: etherToWei('0.003'),
+        feePercentage: '2',
+        maxValue: etherToWei('10'),
+        minValue: etherToWei('1'),
+      },
+    })
+    expect(apiFetchPostMock).toHaveBeenCalledWith('/pegout/configuration', {
+      configuration: {
+        timeForDeposit: 3600,
+        expireTime: 7200,
+        expireBlocks: 600,
+        bridgeTransactionMin: etherToWei('3.5'),
+        penaltyFee: etherToWei('0.001'),
+        fixedFee: etherToWei('0.005'),
+        feePercentage: '3',
+        maxValue: etherToWei('10'),
+        minValue: etherToWei('1'),
+      },
+    })
+    await waitFor(() => {
+      expect(toastSuccessMock).toHaveBeenCalledWith(
+        'Configuration saved successfully!',
+      )
+    })
   })
 })
