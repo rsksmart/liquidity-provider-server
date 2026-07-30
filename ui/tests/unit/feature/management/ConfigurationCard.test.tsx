@@ -111,6 +111,72 @@ describe('ConfigurationCard', () => {
     expect(save).toBeDisabled()
   })
 
+  /**
+   * The legacy card renders `Object.entries(config)`, so its field order is the
+   * JSON key order of the Go structs — `callTime` sits directly under
+   * `timeForDeposit`, and `expireTime` likewise for pegout.
+   */
+  it.each([
+    {
+      section: 'pegin',
+      expected: [
+        'timeForDeposit',
+        'callTime',
+        'penaltyFee',
+        'fixedFee',
+        'feePercentage',
+        'maxValue',
+        'minValue',
+      ],
+    },
+    {
+      section: 'pegout',
+      expected: [
+        'timeForDeposit',
+        'expireTime',
+        'penaltyFee',
+        'fixedFee',
+        'feePercentage',
+        'maxValue',
+        'minValue',
+        'expireBlocks',
+        'bridgeTransactionMin',
+      ],
+    },
+  ])('orders $section fields as the legacy card does', ({ section, expected }) => {
+    render(<ConfigurationCard />)
+
+    const inputs = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        `[data-testid^="config-${section}-"][data-testid$="-input"]`,
+      ),
+    ).map((input) =>
+      input.dataset.testid?.replace(`config-${section}-`, '').replace('-input', ''),
+    )
+
+    expect(inputs).toEqual(expected)
+  })
+
+  it('orders general fields as the legacy card does', () => {
+    render(<ConfigurationCard />)
+
+    const markers = [
+      'config-rskConfirmations',
+      'config-btcConfirmations',
+      'config-general-publicLiquidityCheck-checkbox',
+      'config-general-maxLiquidity-input',
+      'config-general-reimbursementWindowBlocks-input',
+      'config-general-excessTolerance-input',
+    ]
+    const rendered = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        markers.map((testId) => `[data-testid="${testId}"]`).join(','),
+      ),
+    ).map((element) => element.dataset.testid)
+
+    expect(rendered).toEqual(markers)
+  })
+
   it('enables save on edit, disables on round-trip, and disables after a successful save', async () => {
     const user = userEvent.setup()
     render(<ConfigurationCard />)

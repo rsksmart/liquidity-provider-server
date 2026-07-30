@@ -70,6 +70,12 @@ export function ConfigurationCard() {
 
   const generalHandlers = useMemo(
     () => ({
+      rskConfirmations: (rskConfirmations: ConfirmationRow[]) => {
+        updateGeneral({ rskConfirmations })
+      },
+      btcConfirmations: (btcConfirmations: ConfirmationRow[]) => {
+        updateGeneral({ btcConfirmations })
+      },
       publicLiquidityCheck: (publicLiquidityCheck: boolean) => {
         updateGeneral({ publicLiquidityCheck })
       },
@@ -82,12 +88,6 @@ export function ConfigurationCard() {
       excessTolerance: (excessTolerance: ExcessTolerance) => {
         updateGeneral({ excessTolerance })
       },
-      rskConfirmations: (rskConfirmations: ConfirmationRow[]) => {
-        updateGeneral({ rskConfirmations })
-      },
-      btcConfirmations: (btcConfirmations: ConfirmationRow[]) => {
-        updateGeneral({ btcConfirmations })
-      },
     }),
     [updateGeneral],
   )
@@ -96,6 +96,9 @@ export function ConfigurationCard() {
     () => ({
       timeForDeposit: (timeForDeposit: string) => {
         updatePegin({ timeForDeposit })
+      },
+      callTime: (callTime: string) => {
+        updatePegin({ callTime })
       },
       penaltyFee: (penaltyFee: string) => {
         updatePegin({ penaltyFee })
@@ -118,9 +121,6 @@ export function ConfigurationCard() {
       minValue: (minValue: string) => {
         updatePegin({ minValue })
       },
-      callTime: (callTime: string) => {
-        updatePegin({ callTime })
-      },
     }),
     [updatePegin],
   )
@@ -129,6 +129,9 @@ export function ConfigurationCard() {
     () => ({
       timeForDeposit: (timeForDeposit: string) => {
         updatePegout({ timeForDeposit })
+      },
+      expireTime: (expireTime: string) => {
+        updatePegout({ expireTime })
       },
       penaltyFee: (penaltyFee: string) => {
         updatePegout({ penaltyFee })
@@ -150,9 +153,6 @@ export function ConfigurationCard() {
       },
       minValue: (minValue: string) => {
         updatePegout({ minValue })
-      },
-      expireTime: (expireTime: string) => {
-        updatePegout({ expireTime })
       },
       expireBlocks: (expireBlocks: string) => {
         updatePegout({ expireBlocks })
@@ -293,6 +293,16 @@ export function ConfigurationCard() {
           </TabsList>
 
           <TabsContent value="general" keepMounted className="pt-3 text-base">
+            <ConfirmationTiersEditor
+              configKey="rskConfirmations"
+              value={general.rskConfirmations}
+              onChange={generalHandlers.rskConfirmations}
+            />
+            <ConfirmationTiersEditor
+              configKey="btcConfirmations"
+              value={general.btcConfirmations}
+              onChange={generalHandlers.btcConfirmations}
+            />
             <CheckboxInput
               sectionPrefix="general"
               fieldKey="publicLiquidityCheck"
@@ -316,16 +326,6 @@ export function ConfigurationCard() {
               value={general.excessTolerance}
               onChange={generalHandlers.excessTolerance}
             />
-            <ConfirmationTiersEditor
-              configKey="rskConfirmations"
-              value={general.rskConfirmations}
-              onChange={generalHandlers.rskConfirmations}
-            />
-            <ConfirmationTiersEditor
-              configKey="btcConfirmations"
-              value={general.btcConfirmations}
-              onChange={generalHandlers.btcConfirmations}
-            />
           </TabsContent>
 
           <TabsContent value="pegin" keepMounted className="pt-3 text-base">
@@ -334,6 +334,12 @@ export function ConfigurationCard() {
               fieldKey="timeForDeposit"
               value={pegin.timeForDeposit}
               onChange={peginHandlers.timeForDeposit}
+            />
+            <DefaultInput
+              sectionPrefix="pegin"
+              fieldKey="callTime"
+              value={pegin.callTime}
+              onChange={peginHandlers.callTime}
             />
             <FeeInput
               sectionPrefix="pegin"
@@ -369,12 +375,6 @@ export function ConfigurationCard() {
               value={pegin.minValue}
               onChange={peginHandlers.minValue}
             />
-            <DefaultInput
-              sectionPrefix="pegin"
-              fieldKey="callTime"
-              value={pegin.callTime}
-              onChange={peginHandlers.callTime}
-            />
           </TabsContent>
 
           <TabsContent value="pegout" keepMounted className="pt-3 text-base">
@@ -383,6 +383,12 @@ export function ConfigurationCard() {
               fieldKey="timeForDeposit"
               value={pegout.timeForDeposit}
               onChange={pegoutHandlers.timeForDeposit}
+            />
+            <DefaultInput
+              sectionPrefix="pegout"
+              fieldKey="expireTime"
+              value={pegout.expireTime}
+              onChange={pegoutHandlers.expireTime}
             />
             <FeeInput
               sectionPrefix="pegout"
@@ -417,12 +423,6 @@ export function ConfigurationCard() {
               fieldKey="minValue"
               value={pegout.minValue}
               onChange={pegoutHandlers.minValue}
-            />
-            <DefaultInput
-              sectionPrefix="pegout"
-              fieldKey="expireTime"
-              value={pegout.expireTime}
-              onChange={pegoutHandlers.expireTime}
             />
             <DefaultInput
               sectionPrefix="pegout"
