@@ -6,7 +6,7 @@ import (
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	otellog "go.opentelemetry.io/otel/log"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/redact"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/redact"
 )
 
 // Options configures the OpenTelemetry handler backend.

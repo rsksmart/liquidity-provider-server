@@ -1,10 +1,10 @@
 package core_test
 
 import (
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/core"
 	"log/slog"
 	"testing"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

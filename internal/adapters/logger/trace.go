@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/trace"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/trace"
 )
 
 // TraceContext holds the W3C Trace Context identifiers (trace id, span id,

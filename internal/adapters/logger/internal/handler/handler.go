@@ -8,10 +8,10 @@ import (
 
 	otellog "go.opentelemetry.io/otel/log"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/core"
-	otelhandler "github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/handler/otel"
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/redact"
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/trace"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/core"
+	otelhandler "github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/handler/otel"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/redact"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/trace"
 )
 
 // contextHandler is the outermost handler. It injects the traceId (always)

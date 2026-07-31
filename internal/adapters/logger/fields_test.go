@@ -1,11 +1,11 @@
 package logger_test
 
 import (
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger"
 	"log/slog"
 	"testing"
 	"time"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

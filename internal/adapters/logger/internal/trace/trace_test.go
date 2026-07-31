@@ -2,11 +2,11 @@ package trace_test
 
 import (
 	"context"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/trace"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/trace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

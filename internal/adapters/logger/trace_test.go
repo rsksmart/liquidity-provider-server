@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

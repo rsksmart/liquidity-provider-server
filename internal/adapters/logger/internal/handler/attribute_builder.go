@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/core"
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/redact"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/core"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/redact"
 )
 
 // attrBuilder normalises attributes: it renames the slog built-in keys to the

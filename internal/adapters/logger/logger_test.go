@@ -10,12 +10,11 @@ import (
 	"testing"
 	"time"
 
-	sdklog "go.opentelemetry.io/otel/sdk/log"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logcheck"
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 )
 
 type codedError struct {
@@ -75,9 +74,9 @@ func TestJSONHandlerWritesBaseFields(t *testing.T) {
 	m := decodeLine(t, &buf)
 	assert.Equal(t, "2026-04-14T15:30:00.123Z", m["timestamp"])
 	assert.Equal(t, "info", m["level"])
-	assert.Equal(t, "rsk-bridge-api", m["service"])
+	assert.Equal(t, "lps", m["service"])
 	assert.Equal(t, "production", m["environment"])
-	assert.Equal(t, "v1.4.2", m["version"])
+	assert.Equal(t, "v2.5.2", m["version"])
 	assert.Equal(t, "Bridge transaction initiated", m["message"])
 	assert.Equal(t, "0x1234abcd", m["txHash"])
 	assert.Contains(t, m, "traceId")
@@ -294,7 +293,7 @@ func TestGroupNestingKeepsBaseFieldsTopLevel(t *testing.T) {
 	m := decodeLine(t, &buf)
 	// Base fields stay at the top level even when the caller nests via Group.
 	assert.Equal(t, "4bf92f3577b34da6a3ce929d0e0e4736", m["traceId"])
-	assert.Equal(t, "rsk-bridge-api", m["service"])
+	assert.Equal(t, "lps", m["service"])
 
 	request, ok := m["request"].(map[string]any)
 	require.True(t, ok, "request should be a nested object")
@@ -310,7 +309,7 @@ func TestLogfmtHandlerOutput(t *testing.T) {
 
 	line := buf.String()
 	assert.Contains(t, line, "level=info")
-	assert.Contains(t, line, "service=rsk-bridge-api")
+	assert.Contains(t, line, "service=lps")
 	assert.Contains(t, line, `message="block processed"`)
 	assert.Contains(t, line, "timestamp=2026-04-14T15:30:00.123Z")
 }
@@ -428,31 +427,74 @@ func TestUnknownFormatFallsBackToJSON(t *testing.T) {
 // Ensure failingWriter satisfies io.Writer at compile time.
 var _ io.Writer = failingWriter{}
 
-// TestOutputPassesConformance is the key round-trip: records produced by the
-// logger must validate against the standard for every supported format.
-func TestOutputPassesConformance(t *testing.T) {
-	formats := []struct {
-		format     logger.Format
-		confFormat logcheck.Format
-	}{
-		{logger.FormatJSON, logcheck.FormatJSON},
-		{logger.FormatLogfmt, logcheck.FormatLogfmt},
-	}
+// TestFormatsEmitRequiredBaseFields checks that JSON and logfmt records carry
+// the mandatory identity and tracing fields without relying on an external
+// conformance validator.
+func TestFormatsEmitRequiredBaseFields(t *testing.T) {
+	formats := []logger.Format{logger.FormatJSON, logger.FormatLogfmt}
 
-	for _, tc := range formats {
-		t.Run(string(tc.format), func(t *testing.T) {
+	for _, format := range formats {
+		t.Run(string(format), func(t *testing.T) {
 			var buf bytes.Buffer
-			log := newTestLogger(t, &buf, tc.format)
+			log := newTestLogger(t, &buf, format)
 
-			trace := logger.TraceContext{TraceID: "4bf92f3577b34da6a3ce929d0e0e4736", SpanID: "00f067aa0ba902b7", Flags: "01"}
+			trace := logger.TraceContext{
+				TraceID: "4bf92f3577b34da6a3ce929d0e0e4736",
+				SpanID:  "00f067aa0ba902b7",
+				Flags:   "01",
+			}
 			ctx := logger.ContextWithTrace(context.Background(), trace)
-			log.Info(ctx, "block processed", logger.Uint64("blockNumber", 12345), logger.String("txHash", "0xdeadbeef"))
+			log.Info(ctx, "block processed",
+				logger.Uint64("blockNumber", 12345),
+				logger.String("txHash", "0xdeadbeef"),
+			)
 			log.Error(ctx, "db write failed", logger.Err(context.DeadlineExceeded))
 
-			result, err := logcheck.Validate(bytes.NewReader(buf.Bytes()), logcheck.Options{Format: tc.confFormat, Strict: true})
-			require.NoError(t, err)
-			assert.True(t, result.OK(), "expected conformance to pass, result: %+v", result.Lines)
-			assert.Equal(t, 2, result.Passed)
+			lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+			require.Len(t, lines, 2)
+
+			switch format {
+			case logger.FormatJSON:
+				info := decodeJSONLine(t, lines[0])
+				assert.Equal(t, "info", info["level"])
+				assert.Equal(t, "lps", info["service"])
+				assert.Equal(t, "production", info["environment"])
+				assert.Equal(t, "v2.5.2", info["version"])
+				assert.Equal(t, "block processed", info["message"])
+				assert.Equal(t, "4bf92f3577b34da6a3ce929d0e0e4736", info["traceId"])
+				assert.Equal(t, "00f067aa0ba902b7", info["spanId"])
+				assert.Equal(t, "0xdeadbeef", info["txHash"])
+				assert.Contains(t, info, "timestamp")
+
+				errLine := decodeJSONLine(t, lines[1])
+				assert.Equal(t, "error", errLine["level"])
+				assert.Equal(t, context.DeadlineExceeded.Error(), errLine["errorMessage"])
+				assert.Contains(t, errLine, "errorStack")
+
+			case logger.FormatLogfmt:
+				info := lines[0]
+				assert.Contains(t, info, "level=info")
+				assert.Contains(t, info, "service=lps")
+				assert.Contains(t, info, "environment=production")
+				assert.Contains(t, info, "version=v2.5.2")
+				assert.Contains(t, info, `message="block processed"`)
+				assert.Contains(t, info, "traceId=4bf92f3577b34da6a3ce929d0e0e4736")
+				assert.Contains(t, info, "spanId=00f067aa0ba902b7")
+				assert.Contains(t, info, "txHash=0xdeadbeef")
+				assert.Contains(t, info, "timestamp=")
+
+				errLine := lines[1]
+				assert.Contains(t, errLine, "level=error")
+				assert.Contains(t, errLine, "errorMessage=")
+				assert.Contains(t, errLine, "errorStack=")
+			}
 		})
 	}
+}
+
+func decodeJSONLine(t *testing.T, line string) map[string]any {
+	t.Helper()
+	var m map[string]any
+	require.NoError(t, json.Unmarshal([]byte(line), &m))
+	return m
 }

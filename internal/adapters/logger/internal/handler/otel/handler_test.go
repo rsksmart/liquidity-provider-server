@@ -10,8 +10,8 @@ import (
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 
-	otelhandler "github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/handler/otel"
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/redact"
+	otelhandler "github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/handler/otel"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/redact"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding"
 	"encoding/json"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger"
 	"testing"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/core"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/core"
 )
 
 // maxStackDepth caps the number of frames captured for errorStack.

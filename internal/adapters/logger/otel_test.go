@@ -5,10 +5,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger"
+
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,7 +52,7 @@ func newOTelTestLogger(t *testing.T, exp *memExporter) *logger.Logger {
 	})
 
 	log, err := logger.New(logger.Config{
-		Service:            "rsk-bridge-api",
+		Service:            "lps",
 		Environment:        "production",
 		Version:            "v1.4.2",
 		Level:              logger.LevelTrace,
@@ -108,7 +109,7 @@ func TestOTelHandlerShape(t *testing.T) {
 
 	attrs := attrMap(r)
 	assert.Equal(t, "0x1234abcd", attrs["txHash"])
-	assert.Equal(t, "rsk-bridge-api", attrs["service"])
+	assert.Equal(t, "lps", attrs["service"])
 	assert.Equal(t, "production", attrs["environment"])
 	assert.Equal(t, "v1.4.2", attrs["version"])
 	assert.Equal(t, "4bf92f3577b34da6a3ce929d0e0e4736", attrs["traceId"])

@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/redact"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/redact"
 )
 
 // redactHandler applies the redactor to every attribute before forwarding to

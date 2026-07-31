@@ -1,6 +1,6 @@
 package logger
 
-import "github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/core"
+import "github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/core"
 
 // Level is the severity of a log record. See the level constants below.
 type Level = core.Level

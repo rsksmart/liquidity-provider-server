@@ -11,9 +11,9 @@ import (
 
 	otellog "go.opentelemetry.io/otel/log"
 
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/core"
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/handler"
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/redact"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/core"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/handler"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/redact"
 )
 
 // callerSkip is the number of stack frames between runtime.Callers (invoked

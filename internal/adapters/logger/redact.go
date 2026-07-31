@@ -1,6 +1,6 @@
 package logger
 
-import "github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/redact"
+import "github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/redact"
 
 // RedactionConfig controls censorship of sensitive data. The zero value keeps
 // redaction enabled with the built-in key denylists and value scanning.

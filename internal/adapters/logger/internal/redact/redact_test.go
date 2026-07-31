@@ -3,12 +3,11 @@ package redact_test
 import (
 	"encoding"
 	"encoding/json"
-	"log/slog"
-	"testing"
-
-	"github.com/rsksmart/liquidity-provider-server/pkg/logger/internal/redact"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/logger/internal/redact"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"log/slog"
+	"testing"
 )
 
 func TestApplyDropAndMaskKeys(t *testing.T) {
