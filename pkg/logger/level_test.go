@@ -33,8 +33,19 @@ func TestParseLevelUnknown(t *testing.T) {
 }
 
 func TestLevelString(t *testing.T) {
-	assert.Equal(t, "info", logger.LevelInfo.String())
-	assert.Equal(t, "fatal", logger.LevelFatal.String())
+	cases := map[logger.Level]string{
+		logger.LevelTrace: "trace",
+		logger.LevelDebug: "debug",
+		logger.LevelInfo:  "info",
+		logger.LevelWarn:  "warn",
+		logger.LevelError: "error",
+		logger.LevelFatal: "fatal",
+	}
+	for level, want := range cases {
+		assert.Equal(t, want, level.String(), want)
+	}
+	// Non-canonical levels fall back to slog's naming.
+	assert.Equal(t, "ERROR+2", logger.Level(10).String())
 }
 
 func TestConfigFromEnv(t *testing.T) {
@@ -57,5 +68,25 @@ func TestConfigFromEnvDefaults(t *testing.T) {
 	cfg := logger.ConfigFromEnv("svc", "production", "v1")
 
 	assert.Equal(t, logger.LevelInfo, cfg.Level)
+	assert.Equal(t, logger.FormatJSON, cfg.Format)
+}
+
+func TestConfigFromEnvOTelAndInvalidLevel(t *testing.T) {
+	t.Setenv("LOG_LEVEL", "verbose")
+	t.Setenv("LOG_FORMAT", "otel")
+
+	cfg := logger.ConfigFromEnv("svc", "production", "v1")
+
+	assert.Equal(t, logger.LevelInfo, cfg.Level) // invalid level keeps default
+	assert.Equal(t, logger.FormatOTel, cfg.Format)
+}
+
+func TestConfigFromEnvJSONFormat(t *testing.T) {
+	t.Setenv("LOG_LEVEL", "error")
+	t.Setenv("LOG_FORMAT", "json")
+
+	cfg := logger.ConfigFromEnv("svc", "production", "v1")
+
+	assert.Equal(t, logger.LevelError, cfg.Level)
 	assert.Equal(t, logger.FormatJSON, cfg.Format)
 }
