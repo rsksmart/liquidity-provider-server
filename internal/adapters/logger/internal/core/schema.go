@@ -1,10 +1,9 @@
 package core
 
-import "time"
-
 // TimestampLayout renders ISO-8601 with a timezone offset and millisecond
-// precision (e.g. 2026-04-14T15:30:00.123Z for UTC).
-const TimestampLayout = time.RFC3339Nano
+// precision (e.g. 2026-04-14T15:30:00.123Z for UTC). Layout is hardcoded as
+// this specific version is not part of the standard library.
+const TimestampLayout = "2006-01-02T15:04:05.000Z07:00"
 
 // CanonicalField represents the canonical field names. The base fields are mandatory on every record.
 type CanonicalField string

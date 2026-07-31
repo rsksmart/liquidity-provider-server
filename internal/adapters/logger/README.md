@@ -1,7 +1,7 @@
 # Fluent logger
 
 A structured logging library built on top of the standard library's
-`[log/slog](https://pkg.go.dev/log/slog)`. It implements the organisation's
+[log/slog](https://pkg.go.dev/log/slog). It implements the organisation's
 logging standard so compliant logging is the default.
 
 - **Structured & machine-parseable**: JSON (default), logfmt, or OpenTelemetry

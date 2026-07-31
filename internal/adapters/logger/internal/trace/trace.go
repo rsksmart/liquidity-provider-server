@@ -115,6 +115,9 @@ func ParseTraceparent(header string) (TraceContext, error) {
 	if parts[0] == invalidVersion {
 		return TraceContext{}, ErrInvalidTraceparent
 	}
+	if parts[1] == "00000000000000000000000000000000" || parts[2] == "0000000000000000" {
+		return TraceContext{}, ErrInvalidTraceparent
+	}
 	return TraceContext{
 		Version:  parts[0],
 		TraceID:  parts[1],
@@ -145,6 +148,9 @@ type traceContextKey struct{}
 // reads it automatically so every log line within the operation includes the
 // traceId.
 func ContextWithTrace(ctx context.Context, tc TraceContext) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	return context.WithValue(ctx, traceContextKey{}, tc)
 }
 
