@@ -44,17 +44,19 @@ type MongoEnv struct {
 }
 
 type RskEnv struct {
-	Endpoint                    string   `env:"RSK_ENDPOINT" validate:"required"`
-	ChainId                     uint64   `env:"CHAIN_ID" validate:"required"`
-	PeginContractAddress        string   `env:"PEGIN_CONTRACT_ADDRESS" validate:"required"`
-	PegoutContractAddress       string   `env:"PEGOUT_CONTRACT_ADDRESS" validate:"required"`
-	CollateralManagementAddress string   `env:"COLLATERAL_MANAGEMENT_ADDRESS" validate:"required"`
-	DiscoveryAddress            string   `env:"DISCOVERY_ADDRESS" validate:"required"`
-	BridgeAddress               string   `env:"RSK_BRIDGE_ADDR" validate:"required"`
-	BridgeRequiredConfirmations uint64   `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
-	ErpKeys                     []string `env:"ERP_KEYS" validate:"required"`
-	UseSegwitFederation         bool     `env:"USE_SEGWIT_FEDERATION"`
-	AccountNumber               int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
+	Endpoint                     string   `env:"RSK_ENDPOINT" validate:"required"`
+	ChainId                      uint64   `env:"CHAIN_ID" validate:"required"`
+	PeginContractAddress         string   `env:"PEGIN_CONTRACT_ADDRESS" validate:"required"`
+	PegoutContractAddress        string   `env:"PEGOUT_CONTRACT_ADDRESS" validate:"required"`
+	CollateralManagementAddress  string   `env:"COLLATERAL_MANAGEMENT_ADDRESS" validate:"required"`
+	DiscoveryAddress             string   `env:"DISCOVERY_ADDRESS" validate:"required"`
+	BridgeAddress                string   `env:"RSK_BRIDGE_ADDR" validate:"required"`
+	BridgeRequiredConfirmations  uint64   `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
+	PegInAddressRegistryAddress  string   `env:"PEGIN_ADDRESS_REGISTRY_ADDRESS"`
+	FlyoverConfigurationsAddress string   `env:"FLYOVER_CONFIGURATIONS_ADDRESS"`
+	ErpKeys                      []string `env:"ERP_KEYS" validate:"required"`
+	UseSegwitFederation          bool     `env:"USE_SEGWIT_FEDERATION"`
+	AccountNumber                int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine
 	// Only if secret source is aws & wallet is native
 	WalletSecret   string `env:"WALLET_SECRET"`
 	PasswordSecret string `env:"PASSWORD_SECRET"`
