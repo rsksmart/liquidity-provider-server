@@ -7,9 +7,10 @@ These are the environment variables required by the liquidity provider server (L
 | Name | Description | Example | Mandatory |
 | --- | --- | --- | --- |
 | `LPS_STAGE` | The network where LPS will be running on. | One of the following: `regtest`, `testnet`, `mainnet` | YES |
-| `PORT` | The port number to run the http server of the LPS. | `8080` | YES |
+| `SERVER_PORT` | The port number to run the http server of the LPS. | `8080` | YES |
 | `LOG_LEVEL` | Level for the application logs. | One of the following: `panic`, `fatal`, `error`, `warn`, `info`, `debug`, `trace` | YES |
 | `LOG_FILE` | File to send the logs to. If not provided logs will be sent to standard output | `/home/lps.log` | NO |
+| `LOG_FORMAT` | Intended output format for application logs. Validated at startup and defaults to `json` if not provided. **Not yet applied** — log output still uses logrus default text format until a follow-up change wires `log.SetFormatter`. | One of the following: `json`, `logfmt` | NO |
 | `ENABLE_MANAGEMENT_API` | Whether to enable the management API endpoints or not. To know more read the [LP Management Documentation](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md#context) file. If not provided, the default value will be `false`. | `true` or `false` | NO |
 | `AWS_LOCAL_ENDPOINT` | Endpoint for the AWS local instance (localstack). Only required if LPS is running in regtest mode. | `http://localhost:4444` | NO |
 | `WALLET` | Type of the wallet management implementation. To know more read the wallet management section of the [LP Management file](https://github.com/rsksmart/liquidity-provider-server/blob/master/docs/LP-Management.md#context). | One of the following: `native` | YES |

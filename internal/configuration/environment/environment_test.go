@@ -3,6 +3,7 @@ package environment_test
 import (
 	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/require"
@@ -122,7 +123,7 @@ func TestEclipseEnv_ToConfig(t *testing.T) {
 }
 
 func TestEnvironment_String_RedactsSecrets(t *testing.T) {
-	env := environment.Environment{
+	env := &environment.Environment{
 		LpsStage:         "regtest",
 		Port:             8080,
 		LogLevel:         "debug",
@@ -198,4 +199,122 @@ func TestEnvironment_String_RedactsThroughDebugLogFormat(t *testing.T) {
 
 	require.NotContains(t, output, "mongo-secret")
 	require.Contains(t, output, expectedSecretMask)
+}
+
+func TestEnvironment_FillWithDefaults(t *testing.T) {
+	t.Run("should default LogFormat to json when empty", func(t *testing.T) {
+		env := &environment.Environment{}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, "json", defaults.LogFormat)
+	})
+	t.Run("should keep custom LogFormat when set", func(t *testing.T) {
+		env := &environment.Environment{LogFormat: "logfmt"}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, "logfmt", defaults.LogFormat)
+	})
+}
+
+func TestEnvironment_LogFormat_Validation(t *testing.T) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	t.Run("defaults to json when unset and passes validation", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("LOG_FORMAT", "")
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		require.Equal(t, "json", env.LogFormat)
+		require.NoError(t, validate.Struct(env))
+	})
+
+	for _, format := range []string{"json", "logfmt"} {
+		t.Run("accepts "+format, func(t *testing.T) {
+			setUpEnv(t)
+			t.Setenv("LOG_FORMAT", format)
+			env := &environment.Environment{}
+			require.NoError(t, environment.Load(env))
+			env.FillWithDefaults()
+			require.Equal(t, format, env.LogFormat)
+			require.NoError(t, validate.Struct(env))
+		})
+	}
+
+	t.Run("rejects invalid value", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("LOG_FORMAT", "text")
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		err := validate.Struct(env)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "LogFormat")
+	})
+}
+
+func TestEnvironment_BtcExtraSources_Validation(t *testing.T) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	t.Run("accepts valid sources through Load and validate.Struct", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("BTC_EXTRA_SOURCES", `[{"format": "rpc", "url": "http://example.com"}, {"format": "mempool", "url": "https://mempool.space"}]`)
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		require.NoError(t, validate.Struct(env))
+	})
+
+	t.Run("rejects invalid format through Load and validate.Struct", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("BTC_EXTRA_SOURCES", `[{"format": "invalid-format", "url": "http://example.com"}]`)
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		err := validate.Struct(env)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "Format")
+	})
+
+	t.Run("rejects invalid url through Load and validate.Struct", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("BTC_EXTRA_SOURCES", `[{"format": "rpc", "url": "not-a-url"}]`)
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+		env.FillWithDefaults()
+		err := validate.Struct(env)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "Url")
+	})
+}
+
+func TestBtcExtraSource_FormatValidation(t *testing.T) {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+
+	for _, format := range []string{"rpc", "mempool"} {
+		t.Run("accepts "+format, func(t *testing.T) {
+			source := environment.BtcExtraSource{
+				Format: format,
+				Url:    "http://example.com",
+			}
+			require.NoError(t, validate.Struct(source))
+		})
+	}
+
+	t.Run("rejects invalid format", func(t *testing.T) {
+		source := environment.BtcExtraSource{
+			Format: "invalid",
+			Url:    "http://example.com",
+		}
+		err := validate.Struct(source)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "Format")
+	})
+}
+
+func TestLoadEnv(t *testing.T) {
+	setUpEnv(t)
+	t.Setenv("LOG_FORMAT", "")
+
+	env := environment.LoadEnv()
+
+	require.Equal(t, "json", env.LogFormat)
 }
