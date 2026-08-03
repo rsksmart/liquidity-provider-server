@@ -74,12 +74,9 @@ func redactAttr(groups []string, attr slog.Attr) slog.Attr {
 	}
 	if attr.Value.Kind() == slog.KindGroup {
 		groupAttrs := attr.Value.Group()
-		for i := range groupAttrs {
-			groupAttrs[i] = redactAttr(append(groups, attr.Key), groupAttrs[i])
-		}
 		args := make([]any, len(groupAttrs))
-		for i, groupAttr := range groupAttrs {
-			args[i] = groupAttr
+		for i, a := range groupAttrs {
+			args[i] = redactAttr(append(groups, attr.Key), a)
 		}
 		return slog.Group(attr.Key, args...)
 	}
@@ -88,7 +85,6 @@ func redactAttr(groups []string, attr slog.Attr) slog.Attr {
 	}
 	return attr
 }
-
 
 func isPIIKey(key string) bool {
 	_, ok := piiDenyList[strings.ToLower(key)]
