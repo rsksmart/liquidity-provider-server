@@ -21,6 +21,8 @@ CONTRACTS=(
   "IBridge                 RskBridge                      bridge"
   "IFlyoverDiscovery       FlyoverDiscovery               discovery"
   "Flyover                 Flyover                        flyover"
+  "IPegInAddressRegistry   PegInAddressRegistryContract   pegin_address_registry"
+  "IFlyoverConfigurations  FlyoverConfigurationsContract  flyover_configurations"
 )
 
 for entry in "${CONTRACTS[@]}"; do
