@@ -66,8 +66,8 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 	abis := rootstock.MustLoadFlyoverABIs()
 
 	// Optional adapters: only constructed when their bound contract exists (see
-	// createBoundContracts' boot-safety branch). Left nil otherwise — nothing reads these
-	// fields this ticket (brief Non-goal).
+	// createBoundContracts' boot-safety branch). Left nil otherwise so the server can boot
+	// without these contract addresses configured; callers must nil-check before use.
 	var peginAddressRegistry blockchain.PegInAddressRegistryContract
 	if boundContracts.peginAddressRegistry != nil {
 		peginAddressRegistry = rootstock.NewPegInAddressRegistryContractImpl(
@@ -193,11 +193,11 @@ func createBoundContracts(
 	discovery := bindings.discovery.Instance(client.Rpc(), discoveryAddress)
 	bridge := bindings.bridge.Instance(client.Rpc(), bridgeAddress)
 
-	// PegInAddressRegistry and FlyoverConfigurations are optional wiring slots (ticket AC #5):
-	// both env vars may be absent, and ParseAddress rejects "" as an invalid address rather than
-	// treating it as "skip" — so the bound contract (and downstream adapter) is only constructed
-	// when the address is actually configured. Leaving it nil here is safe: nothing reads
-	// RskContracts.PegInAddressRegistry/.FlyoverConfigurations this ticket (brief Non-goal).
+	// PegInAddressRegistry and FlyoverConfigurations are optional wiring slots: both env vars
+	// may be absent, and ParseAddress rejects "" as an invalid address rather than treating it
+	// as "skip" — so the bound contract (and downstream adapter) is only constructed when the
+	// address is actually configured. Leaving it nil here is safe as long as callers nil-check
+	// RskContracts.PegInAddressRegistry/.FlyoverConfigurations before use.
 	var peginAddressRegistry, flyoverConfigurations *bind.BoundContract
 	if env.Rsk.PegInAddressRegistryAddress != "" {
 		var peginAddressRegistryAddress common.Address

@@ -9,18 +9,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// S4 (fly-2513): FlyoverConfigurationsContract exposes exactly the two AC-listed reads.
+// FlyoverConfigurationsContract must expose exactly its two read methods.
 // getPegInConfiguration and the time-locked admin writes (queueChange/applyChange) are out
-// of scope for this ticket and must never appear on this interface.
+// of scope for this read-only port and must never appear on this interface.
 func TestFlyoverConfigurationsContract_MethodSet(t *testing.T) {
-	contractType := reflect.TypeOf((*blockchain.FlyoverConfigurationsContract)(nil)).Elem()
+	contractType := reflect.TypeFor[blockchain.FlyoverConfigurationsContract]()
 	expectedMethods := []string{
 		"GetAddress",
 		"CalculatePegInFee",
 		"GetRequiredPegInBtcConfirmations",
 	}
 
-	assert.Equal(t, len(expectedMethods), contractType.NumMethod(), "FlyoverConfigurationsContract must expose exactly the read-only surface required by the ticket AC")
+	assert.Equal(t, len(expectedMethods), contractType.NumMethod(), "FlyoverConfigurationsContract must expose exactly its intended read-only surface")
 
 	actualMethods := make([]string, contractType.NumMethod())
 	for i := 0; i < contractType.NumMethod(); i++ {
@@ -35,8 +35,8 @@ func TestFlyoverConfigurationsContract_MethodSet(t *testing.T) {
 	}
 }
 
-// S5 (fly-2513): the regenerated mock must still compile against, and satisfy, the port
-// interface it mocks.
+// Guards against the mock and the interface it mocks drifting apart after either one is
+// regenerated.
 func TestFlyoverConfigurationsContractMock_SatisfiesInterface(t *testing.T) {
 	var _ blockchain.FlyoverConfigurationsContract = &mocks.FlyoverConfigurationsContractMock{}
 }

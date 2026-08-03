@@ -12,6 +12,17 @@ import (
 	"testing"
 )
 
+// newRskWalletFactoryMock returns a wallet factory mock wired to a signer wallet mock that
+// resolves to a fixed address, covering the happy-path wallet setup shared by most test cases
+// below.
+func newRskWalletFactoryMock() (*mocks.AbstractFactoryMock, *mocks.RskSignerWalletMock) {
+	rskWalletMock := new(mocks.RskSignerWalletMock)
+	rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
+	walletFactoryMock := new(mocks.AbstractFactoryMock)
+	walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
+	return walletFactoryMock, rskWalletMock
+}
+
 // nolint:funlen
 func TestNewRootstockRegistry(t *testing.T) {
 	testEnv := environment.Environment{
@@ -26,10 +37,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 	}
 	t.Run("should create a new Rootstock registry", func(t *testing.T) {
 		env := testEnv
-		walletFactoryMock := new(mocks.AbstractFactoryMock)
-		rskWalletMock := new(mocks.RskSignerWalletMock)
-		rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
-		walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
+		walletFactoryMock, rskWalletMock := newRskWalletFactoryMock()
 		rskConnBinding := new(mocks.RpcClientBindingMock)
 		rskClient := rootstock.NewRskClient(rskConnBinding)
 		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
@@ -44,24 +52,21 @@ func TestNewRootstockRegistry(t *testing.T) {
 		require.Equal(t, rskWalletMock, rskRegistry.Wallet)
 		require.Equal(t, rskClient, rskRegistry.Client)
 	})
-	// S1 (fly-2513): with both new env vars absent, LPS boots unchanged and the two new
-	// optional adapter fields stay nil — this is decision 1's boot-safety mechanism
-	// (rootstock.ParseAddress rejects "" rather than skipping it, so the DI must branch first).
-	t.Run("should boot successfully and leave the new optional contracts nil when their env vars are absent (fly-2513 S1)", func(t *testing.T) {
+	// With both new env vars absent, the registry must still boot successfully and leave the
+	// two optional adapter fields nil, since rootstock.ParseAddress rejects "" rather than
+	// skipping it, so the DI wiring must branch on presence before parsing.
+	t.Run("should boot successfully and leave the new optional contracts nil when their env vars are absent", func(t *testing.T) {
 		env := testEnv
 		require.Empty(t, env.Rsk.PegInAddressRegistryAddress)
 		require.Empty(t, env.Rsk.FlyoverConfigurationsAddress)
-		walletFactoryMock := new(mocks.AbstractFactoryMock)
-		rskWalletMock := new(mocks.RskSignerWalletMock)
-		rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
-		walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
+		walletFactoryMock, _ := newRskWalletFactoryMock()
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
 		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, rskRegistry)
 		require.Nil(t, rskRegistry.Contracts.PegInAddressRegistry)
 		require.Nil(t, rskRegistry.Contracts.FlyoverConfigurations)
-		// Existing five stay wired exactly as before (S6).
+		// The pre-existing contracts must stay wired exactly as before.
 		require.NotNil(t, rskRegistry.Contracts.Discovery)
 		require.NotNil(t, rskRegistry.Contracts.CollateralManagement)
 		require.NotNil(t, rskRegistry.Contracts.PegIn)
@@ -72,10 +77,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.PegInAddressRegistryAddress = "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4"
 		env.Rsk.FlyoverConfigurationsAddress = "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3"
-		walletFactoryMock := new(mocks.AbstractFactoryMock)
-		rskWalletMock := new(mocks.RskSignerWalletMock)
-		rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
-		walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
+		walletFactoryMock, _ := newRskWalletFactoryMock()
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
 		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
