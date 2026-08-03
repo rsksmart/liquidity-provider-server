@@ -22,7 +22,8 @@ type peginAddressRegistryContractImpl struct {
 
 // NewPegInAddressRegistryContractImpl builds the read-only adapter for the frozen
 // IPegInAddressRegistry ABI. Registration (registerAddress) is deliberately not adapted
-// here: it is the watchtower's job (FLY-2446), never the LPS's.
+// here: writing registrations belongs to a separate on-chain watcher process, not the
+// liquidity provider server.
 func NewPegInAddressRegistryContractImpl(
 	client *RskClient,
 	address string,
@@ -139,8 +140,8 @@ func (registry *peginAddressRegistryContractImpl) GetRegistrationRoot() ([32]byt
 }
 
 // GetAddressRegisteredEvents replicates pegoutContractImpl.GetDepositEvents' filter-and-decode
-// pattern for the registry's AddressRegistered event. Read-and-return only: no watcher is
-// wired here, per this ticket's brief.
+// pattern for the registry's AddressRegistered event. It only reads and returns matching
+// events; watching for new ones and reacting to them is the caller's responsibility.
 func (registry *peginAddressRegistryContractImpl) GetAddressRegisteredEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]blockchain.AddressRegistered, error) {
 	var lbcEvent *bindings.PegInAddressRegistryContractAddressRegistered
 	result := make([]blockchain.AddressRegistered, 0)

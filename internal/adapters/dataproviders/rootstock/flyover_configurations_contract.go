@@ -19,8 +19,8 @@ type flyoverConfigurationsContractImpl struct {
 }
 
 // NewFlyoverConfigurationsContractImpl builds the read-only adapter for the frozen
-// IFlyoverConfigurations ABI. Only the two AC-listed reads are exposed; getPegInConfiguration
-// and the time-locked admin writes (queueChange/applyChange) are out of scope for this ticket.
+// IFlyoverConfigurations ABI. Only the fee/confirmation reads are exposed; getPegInConfiguration
+// and the time-locked admin writes (queueChange/applyChange) are out of scope for this adapter.
 func NewFlyoverConfigurationsContractImpl(
 	client *RskClient,
 	address string,

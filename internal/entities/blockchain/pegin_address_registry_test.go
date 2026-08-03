@@ -9,11 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// S4 (fly-2513): PegInAddressRegistryContract must be a read-only port. registerAddress is the
-// watchtower's job (FLY-2446), never the LPS's, so it must never appear on this interface.
+// PegInAddressRegistryContract must be a read-only port: registerAddress belongs to a
+// separate on-chain watcher process, not the liquidity provider server, so it must never
+// appear on this interface.
 // nolint:funlen
 func TestPegInAddressRegistryContract_MethodSet(t *testing.T) {
-	contractType := reflect.TypeOf((*blockchain.PegInAddressRegistryContract)(nil)).Elem()
+	contractType := reflect.TypeFor[blockchain.PegInAddressRegistryContract]()
 	expectedMethods := []string{
 		"GetAddress",
 		"GetPegInAddress",
@@ -24,7 +25,7 @@ func TestPegInAddressRegistryContract_MethodSet(t *testing.T) {
 		"GetAddressRegisteredEvents",
 	}
 
-	assert.Equal(t, len(expectedMethods), contractType.NumMethod(), "PegInAddressRegistryContract must expose exactly the read-only surface required by the ticket AC")
+	assert.Equal(t, len(expectedMethods), contractType.NumMethod(), "PegInAddressRegistryContract must expose exactly its intended read-only surface")
 
 	actualMethods := make([]string, contractType.NumMethod())
 	for i := 0; i < contractType.NumMethod(); i++ {
@@ -39,8 +40,8 @@ func TestPegInAddressRegistryContract_MethodSet(t *testing.T) {
 	}
 }
 
-// S5 (fly-2513): the regenerated mock must still compile against, and satisfy, the port
-// interface it mocks.
+// Guards against the mock and the interface it mocks drifting apart after either one is
+// regenerated.
 func TestPegInAddressRegistryContractMock_SatisfiesInterface(t *testing.T) {
 	var _ blockchain.PegInAddressRegistryContract = &mocks.PegInAddressRegistryContractMock{}
 }

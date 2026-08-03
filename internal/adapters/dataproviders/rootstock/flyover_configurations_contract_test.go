@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	bindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/flyover_configurations"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -36,10 +37,17 @@ func TestFlyoverConfigurationsContractImpl_GetAddress(t *testing.T) {
 	assert.Equal(t, test.AnyAddress, configurations.GetAddress())
 }
 
-func TestFlyoverConfigurationsContractImpl_CalculatePegInFee(t *testing.T) {
+// newFlyoverConfigurationsTestContract builds a configurations adapter wired to a fresh
+// bound-contract mock, matching the setup every read-method test case below needs.
+func newFlyoverConfigurationsTestContract() (boundContractMock, *bindings.FlyoverConfigurationsContract, blockchain.FlyoverConfigurationsContract) {
 	contractMock := createBoundContractMock()
 	configurationsBinding := bindings.NewFlyoverConfigurationsContract()
 	configurations := rootstock.NewFlyoverConfigurationsContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, configurationsBinding, Abis)
+	return contractMock, configurationsBinding, configurations
+}
+
+func TestFlyoverConfigurationsContractImpl_CalculatePegInFee(t *testing.T) {
+	contractMock, configurationsBinding, configurations := newFlyoverConfigurationsTestContract()
 	amount := entities.NewWei(1000)
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
@@ -66,9 +74,7 @@ func TestFlyoverConfigurationsContractImpl_CalculatePegInFee(t *testing.T) {
 }
 
 func TestFlyoverConfigurationsContractImpl_GetRequiredPegInBtcConfirmations(t *testing.T) {
-	contractMock := createBoundContractMock()
-	configurationsBinding := bindings.NewFlyoverConfigurationsContract()
-	configurations := rootstock.NewFlyoverConfigurationsContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, configurationsBinding, Abis)
+	contractMock, configurationsBinding, configurations := newFlyoverConfigurationsTestContract()
 	amount := entities.NewWei(2000)
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(

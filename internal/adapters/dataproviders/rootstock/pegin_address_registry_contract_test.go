@@ -20,28 +20,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mustPackPayloadAndEncoding(t *testing.T, payload []byte, encoding uint8) []byte {
+// mustPackWithEncoding ABI-encodes a payload of the given Solidity type alongside the trailing
+// uint8 encoding tag every registry read returns, so tests can build fixtures for both the
+// single-address and batch variants of that return shape without duplicating the packing logic.
+func mustPackWithEncoding(t *testing.T, solidityType string, payload any, encoding uint8) []byte {
 	t.Helper()
-	bytesType, err := abi.NewType("bytes", "", nil)
+	payloadType, err := abi.NewType(solidityType, "", nil)
 	require.NoError(t, err)
 	uint8Type, err := abi.NewType("uint8", "", nil)
 	require.NoError(t, err)
-	args := abi.Arguments{{Type: bytesType}, {Type: uint8Type}}
+	args := abi.Arguments{{Type: payloadType}, {Type: uint8Type}}
 	out, err := args.Pack(payload, encoding)
 	require.NoError(t, err)
 	return out
 }
 
-func mustPackPayloadsAndEncoding(t *testing.T, payloads [][]byte, encoding uint8) []byte {
-	t.Helper()
-	bytesSliceType, err := abi.NewType("bytes[]", "", nil)
-	require.NoError(t, err)
-	uint8Type, err := abi.NewType("uint8", "", nil)
-	require.NoError(t, err)
-	args := abi.Arguments{{Type: bytesSliceType}, {Type: uint8Type}}
-	out, err := args.Pack(payloads, encoding)
-	require.NoError(t, err)
-	return out
+// newPegInAddressRegistryTestContract builds a registry adapter wired to a fresh bound-contract
+// mock, matching the setup every read-method test case below needs.
+func newPegInAddressRegistryTestContract() (boundContractMock, *bindings.PegInAddressRegistryContract, blockchain.PegInAddressRegistryContract) {
+	contractMock := createBoundContractMock()
+	registryBinding := bindings.NewPegInAddressRegistryContract()
+	registry := rootstock.NewPegInAddressRegistryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, registryBinding, Abis)
+	return contractMock, registryBinding, registry
 }
 
 func mustPackRegistration(t *testing.T, registrant common.Address, registrationBlock *big.Int) []byte {
@@ -80,16 +80,14 @@ func TestPegInAddressRegistryContractImpl_GetAddress(t *testing.T) {
 }
 
 func TestPegInAddressRegistryContractImpl_GetPegInAddress(t *testing.T) {
-	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	registry := rootstock.NewPegInAddressRegistryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, registryBinding, Abis)
+	contractMock, registryBinding, registry := newPegInAddressRegistryTestContract()
 	payload := []byte{0x01, 0x02, 0x03}
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
 			matchCallData(registryBinding.PackGetPegInAddress(parsedAddress)),
 			mock.Anything,
-		).Return(mustPackPayloadAndEncoding(t, payload, 1), nil).Once()
+		).Return(mustPackWithEncoding(t, "bytes", payload, 1), nil).Once()
 		resultPayload, resultEncoding, err := registry.GetPegInAddress(parsedAddress.String())
 		require.NoError(t, err)
 		assert.Equal(t, payload, resultPayload)
@@ -117,9 +115,7 @@ func TestPegInAddressRegistryContractImpl_GetPegInAddress(t *testing.T) {
 }
 
 func TestPegInAddressRegistryContractImpl_GetPegInAddresses(t *testing.T) {
-	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	registry := rootstock.NewPegInAddressRegistryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, registryBinding, Abis)
+	contractMock, registryBinding, registry := newPegInAddressRegistryTestContract()
 	otherAddress := common.HexToAddress("0x00000000000000000000000000000000000abc")
 	payloads := [][]byte{{0x01, 0x02}, {0x03, 0x04}}
 	t.Run("Success", func(t *testing.T) {
@@ -127,7 +123,7 @@ func TestPegInAddressRegistryContractImpl_GetPegInAddresses(t *testing.T) {
 			mock.Anything,
 			matchCallData(registryBinding.PackGetPegInAddresses([]common.Address{parsedAddress, otherAddress})),
 			mock.Anything,
-		).Return(mustPackPayloadsAndEncoding(t, payloads, 0), nil).Once()
+		).Return(mustPackWithEncoding(t, "bytes[]", payloads, 0), nil).Once()
 		resultPayloads, resultEncoding, err := registry.GetPegInAddresses([]string{parsedAddress.String(), otherAddress.String()})
 		require.NoError(t, err)
 		assert.Equal(t, payloads, resultPayloads)
@@ -153,9 +149,7 @@ func TestPegInAddressRegistryContractImpl_GetPegInAddresses(t *testing.T) {
 }
 
 func TestPegInAddressRegistryContractImpl_IsRegistered(t *testing.T) {
-	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	registry := rootstock.NewPegInAddressRegistryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, registryBinding, Abis)
+	contractMock, registryBinding, registry := newPegInAddressRegistryTestContract()
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
@@ -186,9 +180,7 @@ func TestPegInAddressRegistryContractImpl_IsRegistered(t *testing.T) {
 }
 
 func TestPegInAddressRegistryContractImpl_GetRegistration(t *testing.T) {
-	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	registry := rootstock.NewPegInAddressRegistryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, registryBinding, Abis)
+	contractMock, registryBinding, registry := newPegInAddressRegistryTestContract()
 	registrant := common.HexToAddress("0x00000000000000000000000000000000000def")
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
@@ -223,9 +215,7 @@ func TestPegInAddressRegistryContractImpl_GetRegistration(t *testing.T) {
 }
 
 func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
-	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	registry := rootstock.NewPegInAddressRegistryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, registryBinding, Abis)
+	contractMock, registryBinding, registry := newPegInAddressRegistryTestContract()
 	var root [32]byte
 	root[31] = 0x2b
 	t.Run("Success", func(t *testing.T) {
@@ -254,9 +244,7 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 
 // nolint:funlen
 func TestPegInAddressRegistryContractImpl_GetAddressRegisteredEvents(t *testing.T) {
-	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	registry := rootstock.NewPegInAddressRegistryContractImpl(dummyClient, test.AnyAddress, contractMock.contract, rootstock.RetryParams{}, registryBinding, Abis)
+	contractMock, _, registry := newPegInAddressRegistryTestContract()
 
 	registryAbi, err := bindings.PegInAddressRegistryContractMetaData.ParseABI()
 	require.NoError(t, err)

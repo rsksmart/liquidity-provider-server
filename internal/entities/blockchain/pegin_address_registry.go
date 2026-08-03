@@ -31,8 +31,8 @@ type AddressRegistered struct {
 }
 
 // PegInAddressRegistryContract is a read-only port over the frozen IPegInAddressRegistry ABI.
-// Registration (registerAddress) is intentionally not exposed: it is the watchtower's job
-// (FLY-2446), never the LPS's.
+// Registration (registerAddress) is intentionally not exposed: writing registrations is the
+// responsibility of a separate on-chain watcher process, not the liquidity provider server.
 type PegInAddressRegistryContract interface {
 	GetAddress() string
 	GetPegInAddress(rskAddr string) (payload []byte, encoding PegInAddressRegistryEncoding, err error)
