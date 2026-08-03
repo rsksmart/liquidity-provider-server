@@ -97,6 +97,8 @@ packages:
       PegoutContract:
       DiscoveryContract:
       CollateralManagementContract:
+      PegInAddressRegistryContract:
+      FlyoverConfigurationsContract:
   github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
     interfaces:
       BatchPegOutRepository:
