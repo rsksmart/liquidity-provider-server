@@ -29,7 +29,6 @@ func ResetErrorSentinelsForTest() {
 	errorSentinels = nil
 }
 
-
 // CaptureStackForTest exposes stack capture for tests.
 func CaptureStackForTest(skip int) string {
 	return captureStack(skip)
