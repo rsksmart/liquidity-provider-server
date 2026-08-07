@@ -15,8 +15,31 @@ Before writing a single comment, use the GitHub MCP server to read the current s
 pull request. Do not rely on recollection of earlier passes and do not assume this is a fresh
 pull request.
 
-Call `pull_request_read` for the current owner, repo, and pull request number, using these
-methods:
+### Resolving the pull request coordinates
+
+The `pull_request_read` tool requires `owner`, `repo`, and `pullNumber`. These are always
+obtainable — never skip this step on the grounds that they were not supplied.
+
+- `owner` is `rsksmart` and `repo` is `liquidity-provider-server`. These are fixed for this
+  repository. Confirm with `git remote get-url origin` if needed.
+- `pullNumber` is the number of the pull request currently being reviewed. Use it directly if it
+  is available in the review context.
+
+If the pull request number is not directly available, resolve it in this order:
+
+1. Get the head commit with `git rev-parse HEAD` and the current branch with
+   `git rev-parse --abbrev-ref HEAD`.
+2. Call `list_pull_requests` with `owner: "rsksmart"`, `repo: "liquidity-provider-server"`,
+   `state: "open"`, and `head: "rsksmart:BRANCH"` using the branch from the previous step.
+3. Match the returned pull request's head SHA against the local head commit and use that pull
+   request's number.
+4. If the branch filter returns nothing, call `list_pull_requests` with `state: "open"` and no
+   head filter, then match on head SHA or branch name.
+
+Only report the context as unavailable after all four steps have failed, and when you do, name
+the steps you attempted and what each returned.
+
+Once the coordinates are resolved, call `pull_request_read` with them, using these methods:
 
 - `get` — title, body, base and head refs, draft state, and linked issues.
 - `get_files` and `get_diff` — the changed lines that are actually under review.
@@ -31,9 +54,11 @@ methods:
 Paginate until the review history is complete. A truncated list of prior comments produces a
 wrong "addressed" accounting, which is worse than no accounting at all.
 
-If the GitHub MCP server is unavailable or a call fails, state that at the top of the pull
-request summary and note that the review ran without prior-review context. Do not silently skip
-the reconciliation described below.
+If the GitHub MCP server is genuinely unavailable, or a `pull_request_read` call fails, state
+that at the top of the pull request summary and note that the review ran without prior-review
+context. Name the specific tool and method that failed and the error it returned. Missing
+arguments are not a valid reason to report the context as unavailable; resolve them as described
+above. Do not silently skip the reconciliation below.
 
 ## Step 2 — Determine whether this is a first pass or a repeat pass
 
