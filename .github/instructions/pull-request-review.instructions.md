@@ -54,6 +54,8 @@ Once the coordinates are resolved, call `pull_request_read` with them, using the
 - `get_files` and `get_diff` — the changed lines that are actually under review.
 - `get_reviews` — the full review history. Identify reviews authored by Copilot
   (`copilot-pull-request-reviewer[bot]`, or any review whose author is the Copilot reviewer bot).
+  Read each review's `body`, not just its metadata: findings that were withheld instead of posted
+  are listed there and exist nowhere else.
 - `get_review_comments` — review threads, including their `isResolved`, `isOutdated`, and
   `isCollapsed` metadata, along with the comments in each thread. Read every comment in a thread,
   not only the first one: a developer's decision to decline a comment lives in a reply.
@@ -92,8 +94,20 @@ In this step you may read any file at any path, whether or not the latest push t
 "was this prior comment addressed?" requires reading the current state of that code wherever it
 lives.
 
-Build an inventory of every comment from every prior Copilot review on this pull request.
-Classify each one as:
+Build an inventory of every prior Copilot finding on this pull request. They live in two places and
+both count:
+
+- **Posted comments** — the review threads returned by `get_review_comments`.
+- **Suppressed findings** — those listed in the `body` of each prior Copilot review returned by
+  `get_reviews`, usually under a heading such as "Comments suppressed due to low confidence". These
+  are findings you already made on this pull request; the fact that they were withheld from display
+  does not make them new next time.
+
+A suppressed finding has no thread, so it carries no `isResolved` or `isOutdated` metadata and no
+comment URL. Classify it from code evidence exactly as you would a posted comment, and when you
+refer to one, link the review that contains it instead of a comment.
+
+Classify each finding as:
 
 - **Addressed** — the code now does what the comment asked.
 - **Partially addressed** — some of the comment was acted on, some was not.
@@ -118,12 +132,25 @@ followed by a reason. For example:
 Won't fix: the nil case is unreachable here, the caller validates the pointer before the call.
 ```
 
+A suppressed finding has no thread to reply in, so it can also be declined from a top-level pull
+request comment that names the location:
+
+```text
+Won't fix: internal/usecases/pegin/call_for_user.go:96 — the nil case is unreachable, the caller
+validates the pointer before the call.
+```
+
+Read those from `get_comments`, and match the named location to the finding by file path and line,
+allowing for line drift caused by later edits. When a top-level decline is ambiguous because it
+could match more than one finding in that file, do not guess: leave the findings as they are and
+say in the record that the decline could not be matched to a single location.
+
 Honor a decline under these conditions:
 
 - Match the marker case-insensitively and tolerate a missing apostrophe, so `Won't fix:`,
   `won't fix:`, and `Wont fix:` all count.
-- The reply must come from a human. Ignore the marker in replies authored by Copilot or any other
-  bot.
+- The decline must come from a human, in either form. Ignore the marker when it appears in a
+  comment authored by Copilot or any other bot.
 - Any human commenter on the pull request can decline, including the author.
 - A reason is required. If the marker appears with nothing substantive after the colon, do **not**
   honor it: keep the comment classified as **Not addressed**. That classification produces an
@@ -164,15 +191,26 @@ request did not touch, leave it alone even if it violates the checklist.
 
 On a first pass, the diff under review is the full pull request diff from `get_diff`.
 
-On a repeat pass, narrow it to what changed since the last Copilot review:
+On a repeat pass, narrow it to what changed since the last Copilot review. Take the `commit_id` of
+the most recent Copilot review from `get_reviews`, then establish the incremental change set:
 
-1. Take the `commit_id` of the most recent Copilot review from `get_reviews`.
-2. Diff that commit against the current head with `git diff <commit_id>...HEAD`.
-3. Raise new findings only on lines that appear in that incremental diff.
+1. Confirm the commit exists in the local checkout with `git cat-file -e <commit_id>^{commit}`.
+   Never assume it does — the checkout may be shallow, and the branch may have been rebased or
+   force-pushed since that review.
+2. If the commit is present, diff it against the current head with `git diff <commit_id>...HEAD`.
+3. If the commit is missing, rebuild the change set through the API instead of giving up on it.
+   Call `get_commits` for the pull request, take every commit made after the `submitted_at` of the
+   most recent Copilot review, and call `get_commit` on each one to collect the files and lines it
+   changed. The union of those changes is the incremental diff.
+4. Raise new findings only on lines in that incremental change set.
 
-If the review carries no `commit_id`, call `get_commits` and use the last commit whose timestamp is
-at or before that review's `submitted_at`. If the baseline still cannot be determined, fall back to
-the full pull request diff and say so.
+If the review carries no `commit_id` at all, skip straight to the API path in step 3, using the
+review's `submitted_at` as the cutoff.
+
+Fall back to the full pull request diff only when neither git nor the API can produce a change set,
+and say plainly that you did. That fallback re-reviews code that was already reviewed on an earlier
+pass, which is the exact behavior this step exists to prevent, so treat it as a last resort rather
+than a convenience.
 
 A file that was reviewed in an earlier pass and has not changed since should produce no new
 comments. If you are about to comment on such a file, the only valid reasons are that it is a
@@ -243,8 +281,10 @@ If none of the prior comments were addressed, say so directly.
 ## Step 6 — Say when a finding is a repeat
 
 When a finding was already raised in a prior Copilot review on this pull request, state that fact
-in the opening sentence of the comment and link the original. This is a requirement about content,
-not styling: what matters is that the reader learns this is not the first time it has come up.
+in the opening sentence of the comment and link the original. If the earlier finding was suppressed
+rather than posted, link the review that listed it, since there is no comment to link. This is a
+requirement about content, not styling: what matters is that the reader learns this is not the
+first time it has come up.
 
 For example: "This was already raised earlier in this pull request (link), and the code has not
 changed since."
