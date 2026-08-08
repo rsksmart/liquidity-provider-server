@@ -64,17 +64,17 @@ Once the coordinates are resolved, call `pull_request_read` with them, using the
 Paginate until the review history is complete. A truncated list of prior comments produces a
 wrong "addressed" accounting, which is worse than no accounting at all.
 
-If the GitHub MCP server is genuinely unavailable, or a `pull_request_read` call fails, state
-that at the top of the pull request summary and note that the review ran without prior-review
-context. Name the specific tool and method that failed and the error it returned. Missing
-arguments are not a valid reason to report the context as unavailable; resolve them as described
-above. Do not silently skip the reconciliation below.
+If the GitHub MCP server is genuinely unavailable, or a `pull_request_read` call fails, say so
+explicitly rather than staying silent, and note that the review ran without prior-review context.
+Name the specific tool and method that failed and the error it returned. Missing arguments are not
+a valid reason to report the context as unavailable; resolve them as described above. Do not
+silently skip the reconciliation below.
 
 ## Step 2 — Determine whether this is a first pass or a repeat pass
 
 **First pass** — no prior review on this pull request was authored by Copilot. Perform the review
-normally against the checklist. In the summary, include a single line stating that this is the
-first Copilot review of this pull request, and omit the follow-up section entirely.
+normally against the checklist. There is nothing to reconcile, so skip Step 3 and omit the
+follow-up record entirely.
 
 **Repeat pass** — at least one prior Copilot review exists. Reconcile the prior comments per Step 3,
 then review the new changes per Step 4, then report both per Step 5.
@@ -101,6 +101,8 @@ Classify each one as:
 - **Declined** — a human deliberately decided not to act on it, following the convention below.
 - **No longer applicable** — the code the comment referred to was deleted or reworked such that
   the concern no longer exists.
+- **Unverified** — the evidence was inconclusive and you could not determine whether it was
+  addressed.
 
 Classify based on evidence in the head commit, not on thread state. A resolved, collapsed, or
 outdated thread is a hint only. GitHub's own documentation notes that resolving a conversation
@@ -124,9 +126,11 @@ Honor a decline under these conditions:
   bot.
 - Any human commenter on the pull request can decline, including the author.
 - A reason is required. If the marker appears with nothing substantive after the colon, do **not**
-  honor it: keep the comment classified as **Not addressed**, and state in the follow-up section
-  that a decline was found but was not honored because no reason was given. Never leave the
-  developer guessing why their decline had no effect.
+  honor it: keep the comment classified as **Not addressed**. That classification produces an
+  inline comment, so say it there rather than only in the record — state that a decline was found,
+  that it was not honored because no reason was given, and that adding a reason will retire the
+  comment. The developer who declined has to be able to see why it had no effect without opening
+  the session log.
 
 Resolving the conversation is not a decline on its own, and neither is a thumbs-down. Only the
 marker with a reason counts.
@@ -168,7 +172,7 @@ On a repeat pass, narrow it to what changed since the last Copilot review:
 
 If the review carries no `commit_id`, call `get_commits` and use the last commit whose timestamp is
 at or before that review's `submitted_at`. If the baseline still cannot be determined, fall back to
-the full pull request diff and note that in the summary.
+the full pull request diff and say so.
 
 A file that was reviewed in an earlier pass and has not changed since should produce no new
 comments. If you are about to comment on such a file, the only valid reasons are that it is a
@@ -178,49 +182,28 @@ Do not reopen reconciliation here, and do not let this narrower scope walk back 
 verified in Step 3. The classifications from that step stand as recorded, including for files that
 fall outside this diff.
 
-## Step 5 — Report the results in the pull request overview
+## Step 5 — Record the reconciliation
 
-### The tally comes first
+The pull request overview comment is written by GitHub, not by you. Do not attempt to change its
+wording, structure, or content, and do not treat it as the place where the reconciliation lands.
 
-Begin the pull request overview with a review tally, before any prose and before the follow-up
-detail. Include it on every review, first pass or repeat, and include it even when there are no new
-comments to post. An overview that says only how many files were reviewed and that no new comments
-were generated tells the reader nothing about the state of earlier feedback, and it does not account
-for comments that were withheld.
+Everything a reviewer needs to act on must therefore reach the pull request as inline comments.
+Every prior comment classified **Not addressed** or **Partially addressed** gets an inline comment
+that says it has come up before, following Step 6. That channel is the one that reliably reaches
+the reader, so nothing actionable may exist only in the reconciliation record.
 
-Use this shape. Omit any line whose count is zero, except "New findings", which is always shown:
+A prior comment classified **Unverified** also gets an inline comment, but phrased as a question
+rather than a finding. Say that the point was raised earlier, that you could not determine whether
+it was addressed, and what specifically blocked the determination, then ask the author to confirm.
+Do not assert that the code is unfixed, and do not give it an occurrence count — you do not know
+that it recurred. Silence is the worst outcome here, because an unverified item is the one most
+likely to be a real problem nobody looked at.
 
-```markdown
-**Review tally**
+Do not post inline comments for prior comments classified **Addressed**, **Declined**, or **No
+longer applicable**. Those belong in the record only.
 
-- New findings: 4 (2 critical, 2 suggestions)
-- Repeat findings still unfixed: 3
-- Fixed since the last Copilot review: 5
-- Partially fixed: 1
-- Declined by a reviewer: 2
-- No longer applicable: 2
-- Unverified: 1
-- Withheld as low confidence: 2
-```
-
-On a first pass, show only the "New findings" line and follow the tally with the sentence stating
-that this is the first Copilot review of this pull request.
-
-Every number in the tally must be traceable to something in the review. "New findings" counts only
-issues raised for the first time on this pull request and must equal the number of new inline
-comments posted. "Repeat findings still unfixed" must equal the number of inline comments carrying
-the repeat marker from Step 6. The remaining lines must equal the entry counts in the corresponding
-subsections below.
-
-If any finding was withheld or suppressed rather than posted as an inline comment, count it on the
-"Withheld as low confidence" line and describe those findings briefly in the overview body. The
-reader should never see a count in the tally that has no corresponding detail anywhere.
-
-### Then the follow-up detail
-
-On a repeat pass, follow the tally with a section titled **Previous Copilot review follow-up**,
-placed before the summary of the new changes. Use this shape, and omit any subsection that has no
-entries:
+Where you summarize the review, organize the reconciliation with this structure, omitting any
+subsection that has no entries:
 
 ```markdown
 ## Previous Copilot review follow-up
@@ -251,48 +234,49 @@ entries:
 List each declined comment with who declined it and the reason they gave, so the record is visible
 without opening every thread.
 
-If you believe a decline rests on a factual mistake, you may say so once, in the overview body,
-next to that entry. State the disagreement in one sentence and leave it there. Do not re-post the
-inline comment, do not repeat the disagreement on later passes, and do not reclassify the comment
-away from **Declined**.
+If you believe a decline rests on a factual mistake, you may say so once, in one sentence, next to
+that entry. Do not re-post the inline comment, do not repeat the disagreement on later passes, and
+do not reclassify the comment away from **Declined**.
 
-If none of the prior comments were addressed, say so directly. Follow this section with the normal
-review summary, covering only what changed since the last pass.
+If none of the prior comments were addressed, say so directly.
 
-## Step 6 — Mark repeat findings in inline comments
+## Step 6 — Say when a finding is a repeat
 
-When a finding was already raised in a prior Copilot review on this pull request, say so in the
-comment itself. Begin the comment with a marker that links to the original:
+When a finding was already raised in a prior Copilot review on this pull request, state that fact
+in the opening sentence of the comment and link the original. This is a requirement about content,
+not styling: what matters is that the reader learns this is not the first time it has come up.
 
-```markdown
-**Repeat finding — this was already raised in this pull request** ([original comment](URL))
-```
+For example: "This was already raised earlier in this pull request (link), and the code has not
+changed since."
 
-If the same point has been raised more than twice, include the count, for example
-`**Repeat finding (3rd time) — ...**`.
+If the same point has been raised more than twice, say how many times it has come up.
 
-After the marker, restate the issue and why it still matters. A bare link is not enough; the
-reader should not have to open the original comment to understand the problem.
+Then restate the issue and why it still matters. A bare link is not enough; the reader should not
+have to open the original comment to understand the problem.
 
-Severity does not decrease on repetition. A finding raised before is at minimum a 🟡 suggestion,
-and anything previously marked 🔴 critical stays 🔴 critical.
+A repeated finding is never less important than it was the first time. If it was reported as a
+blocking problem before, report it as a blocking problem again.
 
-Do **not** apply the repeat marker when:
+The exception is an **Unverified** item. State its history, but not a verdict: you are asking
+whether it was handled, not reporting that it was not.
+
+Do **not** describe a finding as a repeat when:
 
 - The code at that location changed and this is a genuinely different problem, even if it is in
   the same file or of the same category.
 - The earlier mention came from a human reviewer rather than Copilot.
 - The original comment cannot be located. Treat the finding as new instead of guessing.
 
-Never post an inline comment at all for a finding classified as **Declined**, with or without the
-repeat marker. A declined comment belongs in the follow-up section and nowhere else. Repeating it
-inline is the specific behavior the decline convention exists to prevent.
+Never post an inline comment at all for a finding classified as **Declined**. Repeating a declined
+comment inline is the specific behavior the decline convention exists to prevent.
 
 ## Step 7 — Constraints
 
-- Never omit the review tally, including when there are no new comments to post.
-- Never report a count in the tally that has no corresponding detail in the review.
-- Never re-post a prior comment verbatim without the repeat marker.
+- Never try to change the pull request overview comment; it is generated by GitHub.
+- Never leave an actionable prior comment visible only in the reconciliation record. If it still
+  needs work, or you could not tell whether it does, it needs an inline comment.
+- Never report an **Unverified** item as though you had determined it was unfixed.
+- Never re-post a prior comment without saying that it has come up before.
 - Never re-raise a comment that was declined with a reason, on this pass or any later one.
 - Never silently ignore a decline that lacked a reason; say that it was not honored and why.
 - Never treat a thumbs-down reaction, a dismissed review, or a resolved conversation as evidence
