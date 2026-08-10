@@ -134,7 +134,6 @@ func TestEnvironment_String_RedactsSecrets(t *testing.T) {
 			EnableManagementApi:   true,
 			SessionAuthKey:        "auth-secret",
 			SessionEncryptionKey:  "encryption-secret",
-			SessionTokenAuthKey:   "token-secret",
 			UseHttps:              true,
 			EnableSecurityHeaders: true,
 		},
@@ -170,7 +169,6 @@ func TestEnvironment_String_RedactsSecrets(t *testing.T) {
 	require.NotContains(t, output, "mongo-secret")
 	require.NotContains(t, output, "auth-secret")
 	require.NotContains(t, output, "encryption-secret")
-	require.NotContains(t, output, "token-secret")
 	require.NotContains(t, output, "keystore-secret")
 	require.NotContains(t, output, "btc-secret")
 	require.NotContains(t, output, "captcha-secret")
@@ -180,7 +178,7 @@ func TestEnvironment_String_RedactsSecrets(t *testing.T) {
 	require.Contains(t, output, "captcha-site")
 	require.Contains(t, output, "key-secret-id")
 	require.Contains(t, output, "password-secret-id")
-	require.Equal(t, 7, strings.Count(output, expectedSecretMask))
+	require.Equal(t, 6, strings.Count(output, expectedSecretMask))
 }
 
 func TestEnvironment_String_KeepsEmptySecretFieldsEmpty(t *testing.T) {

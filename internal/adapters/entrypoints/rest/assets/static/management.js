@@ -31,13 +31,12 @@ const setTextContent = (id, text) => {
     element.textContent = text;
 };
 
-const fetchData = async (url, elementId, csrfToken) => {
+const fetchData = async (url, elementId) => {
     try {
         const response = await fetch(url, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
+                'Content-Type': 'application/json'
             }
         });
         const responseData = await response.json();
@@ -745,7 +744,7 @@ function getConfig(sectionId) {
     return config;
 }
 
-const saveConfig = async (csrfToken, configurations) => {
+const saveConfig = async (configurations) => {
     let saveSuccess = true;
 
     let generalConfig, peginConfigData, pegoutConfigData;
@@ -777,7 +776,7 @@ const saveConfig = async (csrfToken, configurations) => {
         saveSuccess = false;
     } else if (generalChanged.value) {
         try {
-            await postConfig('generalConfig', '/configuration', formatGeneralConfig(generalConfig), csrfToken);
+            await postConfig('generalConfig', '/configuration', formatGeneralConfig(generalConfig));
         } catch (error) {
             showErrorToast(error.message);
             saveSuccess = false;
@@ -790,7 +789,7 @@ const saveConfig = async (csrfToken, configurations) => {
         saveSuccess = false;
     } else if (peginChanged.value) {
         try {
-            await postConfig('peginConfig', '/pegin/configuration', peginConfigData, csrfToken);
+            await postConfig('peginConfig', '/pegin/configuration', peginConfigData);
         } catch (error) {
             showErrorToast(error.message);
             saveSuccess = false;
@@ -803,7 +802,7 @@ const saveConfig = async (csrfToken, configurations) => {
         saveSuccess = false;
     } else if (pegoutChanged.value) {
         try {
-            await postConfig('pegoutConfig', '/pegout/configuration', pegoutConfigData, csrfToken);
+            await postConfig('pegoutConfig', '/pegout/configuration', pegoutConfigData);
         } catch (error) {
             showErrorToast(error.message);
             saveSuccess = false;
@@ -813,7 +812,7 @@ const saveConfig = async (csrfToken, configurations) => {
     if (saveSuccess) showSuccessToast();
 };
 
-const addCollateral = async (amountId, endpoint, elementId, loadingBarId, buttonId, csrfToken) => {
+const addCollateral = async (amountId, endpoint, elementId, loadingBarId, buttonId) => {
     const amountInEther = document.getElementById(amountId).value;
     const loadingBar = document.getElementById(loadingBarId);
     const button = document.getElementById(buttonId);
@@ -823,11 +822,11 @@ const addCollateral = async (amountId, endpoint, elementId, loadingBarId, button
         const amountInWei = Number(etherToWei(amountInEther));
         const response = await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ amount: amountInWei })
         });
         if (response.ok) {
-            fetchData(endpoint.replace('/addCollateral', '/collateral'), elementId, csrfToken);
+            fetchData(endpoint.replace('/addCollateral', '/collateral'), elementId);
         } else {
             const errorData = await response.json();
             showErrorToast(`Error adding collateral: ${errorData.message || 'Unknown error'}`);
@@ -868,7 +867,7 @@ const displaySummaryData = (container, data) => {
     container.appendChild(table);
 };
 
-const fetchSummariesReport = async (csrfToken) => {
+const fetchSummariesReport = async () => {
     const startDate = document.getElementById('summaryStartDate').value;
     const endDate = document.getElementById('summaryEndDate').value;
     if (!startDate || !endDate) {
@@ -879,8 +878,7 @@ const fetchSummariesReport = async (csrfToken) => {
         const response = await fetch(`/reports/summaries?startDate=${startDate}&endDate=${endDate}`, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
+                'Content-Type': 'application/json'
             }
         });
         if (!response.ok) {
@@ -898,36 +896,35 @@ const fetchSummariesReport = async (csrfToken) => {
     }
 };
 
-const fetchTrustedAccounts = async (csrfToken) => {
+const fetchTrustedAccounts = async () => {
     const loadingBar = document.getElementById('trustedAccountsLoadingBar');
     loadingBar.style.display = 'block';
     try {
         const response = await fetch('/management/trusted-accounts', {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
+                'Content-Type': 'application/json'
             }
         });
         const data = await response.json();
         if (!response.ok) {
             const errorMessage = data.details?.error || data.message || 'Unknown error';
-            populateTrustedAccountsTable([], csrfToken, errorMessage);
+            populateTrustedAccountsTable([], errorMessage);
             showErrorToast(`Failed to load trusted accounts: ${errorMessage}`);
         } else {
             const accountsData = data.accounts || [];
-            populateTrustedAccountsTable(accountsData, csrfToken);
+            populateTrustedAccountsTable(accountsData);
         }
     } catch (error) {
         console.error('Error fetching trusted accounts:', error);
-        populateTrustedAccountsTable([], csrfToken, error.message);
+        populateTrustedAccountsTable([], error.message);
         showErrorToast(`Failed to load trusted accounts: ${error.message}`);
     } finally {
         loadingBar.style.display = 'none';
     }
 };
 
-const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) => {
+const populateTrustedAccountsTable = (accounts, errorMessage = null) => {
     const tableBody = document.getElementById('trustedAccountsTable');
     tableBody.innerHTML = '';
 
@@ -976,7 +973,7 @@ const populateTrustedAccountsTable = (accounts, csrfToken, errorMessage = null) 
         deleteButton.type = 'button';
         deleteButton.classList.add('btn', 'btn-danger', 'btn-sm');
         deleteButton.textContent = 'Remove';
-        deleteButton.addEventListener('click', () => removeTrustedAccount(account.address, csrfToken));
+        deleteButton.addEventListener('click', () => removeTrustedAccount(account.address));
         actionsCell.appendChild(deleteButton);
 
         row.appendChild(nameCell);
@@ -1035,7 +1032,7 @@ const validatePositiveNumber = (value, fieldName) => {
     return null;
 };
 
-const addTrustedAccount = async (csrfToken) => {
+const addTrustedAccount = async () => {
     // Clear any previous validation states
     clearFormValidation();
 
@@ -1080,8 +1077,7 @@ const addTrustedAccount = async (csrfToken) => {
         const response = await fetch('/management/trusted-accounts', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
+                'Content-Type': 'application/json'
             },
             body: `{
                 "name": ${JSON.stringify(name)},
@@ -1100,7 +1096,7 @@ const addTrustedAccount = async (csrfToken) => {
             document.getElementById('rbtc_locking_cap').value = '';
             clearFormValidation();
             showSuccessToast();
-            fetchTrustedAccounts(csrfToken);
+            fetchTrustedAccounts();
         } else {
             const errorData = await response.json();
 
@@ -1138,19 +1134,18 @@ const addTrustedAccount = async (csrfToken) => {
     }
 };
 
-const removeTrustedAccount = async (address, csrfToken) => {
+const removeTrustedAccount = async (address) => {
     if (!confirm(`Are you sure you want to remove the trusted account with address ${address}?`)) return;
     try {
         const response = await fetch(`/management/trusted-accounts?address=${encodeURIComponent(address)}`, {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
+                'Content-Type': 'application/json'
             }
         });
         if (response.ok) {
             showSuccessToast();
-            fetchTrustedAccounts(csrfToken);
+            fetchTrustedAccounts();
         } else {
             const errorData = await response.json();
             const errorMessage = errorData.details?.error || errorData.message || 'Unknown error';
@@ -1220,7 +1215,7 @@ const populateRatioCard = (ratioData) => {
     document.getElementById('ratioImpact').classList.remove('d-none');
 };
 
-const fetchLiquidityRatio = async (csrfToken, btcPercentage) => {
+const fetchLiquidityRatio = async (btcPercentage) => {
     try {
         let url = '/management/liquidity-ratio';
         if (btcPercentage !== undefined) {
@@ -1229,8 +1224,7 @@ const fetchLiquidityRatio = async (csrfToken, btcPercentage) => {
         const response = await fetch(url, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
+                'Content-Type': 'application/json'
             }
         });
         if (!response.ok) {
@@ -1262,14 +1256,14 @@ const populateConfirmModal = (ratioData) => {
     document.getElementById('confirmExcessWarning').classList.toggle('d-none', !hasExcess);
 };
 
-const saveRatio = async (csrfToken) => {
+const saveRatio = async () => {
     const btcPercentage = parseInt(document.getElementById('ratioSlider').value, 10);
     if (btcPercentage === savedBtcPercentage) {
         showSuccessToast();
         return;
     }
 
-    const ratioData = await fetchLiquidityRatio(csrfToken, btcPercentage);
+    const ratioData = await fetchLiquidityRatio(btcPercentage);
     if (!ratioData) return;
 
     populateConfirmModal(ratioData);
@@ -1277,7 +1271,7 @@ const saveRatio = async (csrfToken) => {
     modal.show();
 };
 
-const confirmSaveRatio = async (csrfToken) => {
+const confirmSaveRatio = async () => {
     const btcPct = parseInt(document.getElementById('ratioSlider').value, 10);
     const confirmBtn = document.getElementById('confirmRatioSave');
     confirmBtn.disabled = true;
@@ -1285,8 +1279,7 @@ const confirmSaveRatio = async (csrfToken) => {
         const response = await fetch('/management/liquidity-ratio', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ btcPercentage: btcPct })
         });
@@ -1296,7 +1289,7 @@ const confirmSaveRatio = async (csrfToken) => {
         }
         bootstrap.Modal.getInstance(document.getElementById('confirmRatioModal')).hide();
         showSuccessToast();
-        await fetchLiquidityRatio(csrfToken);
+        await fetchLiquidityRatio();
     } catch (error) {
         showErrorToast(`Error saving liquidity ratio: ${error.message}`);
     } finally {
@@ -1305,19 +1298,18 @@ const confirmSaveRatio = async (csrfToken) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    const csrfToken = data.CsrfToken;
     const configurations = data.Configuration;
     const providerData = data.ProviderData;
     const rskAddress = data.RskAddress;
     const btcAddress = data.BtcAddress;
     const coldWallet = data.ColdWallet;
-    document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton', csrfToken));
-    document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton', csrfToken));
-    document.getElementById('saveConfig').addEventListener('click', () => saveConfig(csrfToken, configurations));
-    document.getElementById('fetchSummariesButton').addEventListener('click', () => fetchSummariesReport(csrfToken));
-    document.getElementById('saveAccountButton').addEventListener('click', () => addTrustedAccount(csrfToken));
-    document.getElementById('saveRatio').addEventListener('click', () => saveRatio(csrfToken));
-    document.getElementById('confirmRatioSave').addEventListener('click', () => confirmSaveRatio(csrfToken));
+    document.getElementById('addPeginCollateralButton').addEventListener('click', () => addCollateral('addPeginCollateralAmount', '/pegin/addCollateral', 'peginCollateral', 'peginLoadingBar', 'addPeginCollateralButton'));
+    document.getElementById('addPegoutCollateralButton').addEventListener('click', () => addCollateral('addPegoutCollateralAmount', '/pegout/addCollateral', 'pegoutCollateral', 'pegoutLoadingBar', 'addPegoutCollateralButton'));
+    document.getElementById('saveConfig').addEventListener('click', () => saveConfig(configurations));
+    document.getElementById('fetchSummariesButton').addEventListener('click', () => fetchSummariesReport());
+    document.getElementById('saveAccountButton').addEventListener('click', () => addTrustedAccount());
+    document.getElementById('saveRatio').addEventListener('click', () => saveRatio());
+    document.getElementById('confirmRatioSave').addEventListener('click', () => confirmSaveRatio());
 
     let ratioDebounceTimer = null;
     const ratioSlider = document.getElementById('ratioSlider');
@@ -1325,7 +1317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btcPct = parseInt(ratioSlider.value, 10);
         updateRatioLabels(btcPct);
         clearTimeout(ratioDebounceTimer);
-        ratioDebounceTimer = setTimeout(() => fetchLiquidityRatio(csrfToken, btcPct), 500);
+        ratioDebounceTimer = setTimeout(() => fetchLiquidityRatio(btcPct), 500);
     });
 
     // Clear validation states when modal is opened
@@ -1353,15 +1345,15 @@ document.addEventListener('DOMContentLoaded', () => {
     populateConfigSection('pegoutConfig', configurations.pegout);
     populateProviderData(providerData, rskAddress, btcAddress, coldWallet);
 
-    fetchData('/pegin/collateral', 'peginCollateral', csrfToken);
-    fetchData('/pegout/collateral', 'pegoutCollateral', csrfToken);
-    fetchLiquidityRatio(csrfToken);
+    fetchData('/pegin/collateral', 'peginCollateral');
+    fetchData('/pegout/collateral', 'pegoutCollateral');
+    fetchLiquidityRatio();
     checkFeeWarnings();
 
     const today = new Date();
     const lastMonth = new Date(today);
     lastMonth.setMonth(today.getMonth() - 1);
-    fetchTrustedAccounts(csrfToken);
+    fetchTrustedAccounts();
     document.getElementById('summaryStartDate').value = lastMonth.toISOString().split('T')[0];
     document.getElementById('summaryEndDate').value = today.toISOString().split('T')[0];
 });

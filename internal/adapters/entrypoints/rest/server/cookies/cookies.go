@@ -12,7 +12,6 @@ import (
 
 const (
 	ManagementSessionCookieName = "lp-session"
-	CsrfCookieName              = "lps-csrf-cookie"
 	KeysBytesLength             = 32
 	SessionMaxSeconds           = 60 * 30
 )

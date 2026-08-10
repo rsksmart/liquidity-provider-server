@@ -23,7 +23,7 @@ func NewCorsMiddleware(allowedOrigins []string) func(next http.Handler) http.Han
 			}
 
 			headers.Set("Vary", "Origin")
-			headers.Set("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token, X-Captcha-Token, X-Csrf-Token")
+			headers.Set("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token, X-Captcha-Token")
 			headers.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			next.ServeHTTP(w, r)
 		})

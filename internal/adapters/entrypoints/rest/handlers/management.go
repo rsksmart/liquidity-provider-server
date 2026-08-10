@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
@@ -58,11 +57,9 @@ func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions
 
 		err = tmpl.Execute(w, struct {
 			liquidity_provider.ManagementTemplateData
-			CsrfToken   string
 			ScriptNonce string
 		}{
 			ManagementTemplateData: result.Data,
-			CsrfToken:              csrf.Token(req),
 			ScriptNonce:            nonce,
 		})
 		if err != nil {
