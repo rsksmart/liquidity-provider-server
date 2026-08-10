@@ -1,0 +1,154 @@
+package mongo
+
+import (
+	"context"
+	"errors"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongoDb "go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+)
+
+const (
+	PegInAddressRegistryWatchCollection = "peginAddressRegistryWatch"
+	peginAddressRegistryCursorId        = "scanCursor"
+)
+
+type peginAddressRegistryWatchMongoRepository struct {
+	conn *Connection
+}
+
+type peginAddressRegistryCursor struct {
+	Id               string `bson:"_id"`
+	LastScannedBlock uint64 `bson:"last_scanned_block"`
+}
+
+func NewPegInAddressRegistryWatchMongoRepository(conn *Connection) rootstock.PegInAddressRegistryWatchRepository {
+	return &peginAddressRegistryWatchMongoRepository{conn: conn}
+}
+
+func (repo *peginAddressRegistryWatchMongoRepository) Upsert(
+	ctx context.Context,
+	entry rootstock.PegInAddressRegistryWatchEntry,
+) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	filter := eventIdentity(entry.TxHash, entry.LogIndex)
+	update := bson.M{"$setOnInsert": entry}
+	_, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).UpdateOne(
+		dbCtx,
+		filter,
+		update,
+		options.UpdateOne().SetUpsert(true),
+	)
+	if mongoDb.IsDuplicateKeyError(err) {
+		return nil
+	}
+	return err
+}
+
+func (repo *peginAddressRegistryWatchMongoRepository) Get(
+	ctx context.Context,
+	txHash string,
+	logIndex uint,
+) (*rootstock.PegInAddressRegistryWatchEntry, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	var entry rootstock.PegInAddressRegistryWatchEntry
+	err := repo.conn.Collection(PegInAddressRegistryWatchCollection).
+		FindOne(dbCtx, eventIdentity(txHash, logIndex)).
+		Decode(&entry)
+	if errors.Is(err, mongoDb.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &entry, nil
+}
+
+func (repo *peginAddressRegistryWatchMongoRepository) List(
+	ctx context.Context,
+) ([]rootstock.PegInAddressRegistryWatchEntry, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	cursor, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).Find(
+		dbCtx,
+		bson.M{"tx_hash": bson.M{"$exists": true}},
+		options.Find().SetSort(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(dbCtx)
+
+	entries := make([]rootstock.PegInAddressRegistryWatchEntry, 0)
+	if err = cursor.All(dbCtx, &entries); err != nil {
+		return nil, err
+	}
+	return entries, nil
+}
+
+func (repo *peginAddressRegistryWatchMongoRepository) Update(
+	ctx context.Context,
+	entry rootstock.PegInAddressRegistryWatchEntry,
+) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	result, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).ReplaceOne(
+		dbCtx,
+		eventIdentity(entry.TxHash, entry.LogIndex),
+		entry,
+	)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount != 1 {
+		return errors.New("pegin address registry watch entry not found")
+	}
+	return nil
+}
+
+func (repo *peginAddressRegistryWatchMongoRepository) GetCursor(
+	ctx context.Context,
+) (uint64, bool, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	var cursor peginAddressRegistryCursor
+	err := repo.conn.Collection(PegInAddressRegistryWatchCollection).
+		FindOne(dbCtx, bson.M{"_id": peginAddressRegistryCursorId}).
+		Decode(&cursor)
+	if errors.Is(err, mongoDb.ErrNoDocuments) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return cursor.LastScannedBlock, true, nil
+}
+
+func (repo *peginAddressRegistryWatchMongoRepository) SetCursor(
+	ctx context.Context,
+	lastScannedBlock uint64,
+) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	_, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).UpdateOne(
+		dbCtx,
+		bson.M{"_id": peginAddressRegistryCursorId},
+		bson.M{"$set": bson.M{"last_scanned_block": lastScannedBlock}},
+		options.UpdateOne().SetUpsert(true),
+	)
+	return err
+}
+
+func eventIdentity(txHash string, logIndex uint) bson.M {
+	return bson.M{"tx_hash": txHash, "log_index": logIndex}
+}
