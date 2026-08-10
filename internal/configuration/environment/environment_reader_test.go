@@ -2,6 +2,7 @@ package environment_test
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -76,6 +77,63 @@ func TestLoad(t *testing.T) {
 		env := &environment.Environment{}
 		err := environment.Load(env)
 		require.NoError(t, err)
+	})
+	t.Run("preserves an explicitly configured zero start block", func(t *testing.T) {
+		t.Setenv("PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK", "0")
+		t.Setenv("PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE", "10")
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+
+		config, err := env.Pegin.AddressRegistryWatcherConfig()
+		require.NoError(t, err)
+		assert.True(t, config.Enabled)
+		assert.Zero(t, config.StartBlock)
+		assert.Equal(t, uint64(10), config.PageSize)
+	})
+}
+
+func TestPeginEnv_AddressRegistryWatcherConfig(t *testing.T) {
+	present := func(value uint64) *environment.OptionalUint64 {
+		return &environment.OptionalUint64{Value: value, Present: true}
+	}
+
+	tests := []struct {
+		name       string
+		env        environment.PeginEnv
+		enabled    bool
+		missingVar string
+	}{
+		{name: "both present", env: environment.PeginEnv{
+			AddressRegistryWatcherStartBlock: present(0),
+			AddressRegistryWatcherPageSize:   present(10),
+		}, enabled: true},
+		{name: "start only", env: environment.PeginEnv{
+			AddressRegistryWatcherStartBlock: present(1),
+		}, missingVar: "PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"},
+		{name: "page only", env: environment.PeginEnv{
+			AddressRegistryWatcherPageSize: present(10),
+		}, missingVar: "PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"},
+		{name: "neither present", env: environment.PeginEnv{}},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			if testCase.missingVar != "" {
+				defer test.AssertLogContains(t, testCase.missingVar)()
+			}
+			config, err := testCase.env.AddressRegistryWatcherConfig()
+			require.NoError(t, err)
+			assert.Equal(t, testCase.enabled, config.Enabled)
+		})
+	}
+
+	t.Run("rejects zero page size when enabled", func(t *testing.T) {
+		env := environment.PeginEnv{
+			AddressRegistryWatcherStartBlock: present(1),
+			AddressRegistryWatcherPageSize:   present(0),
+		}
+		_, err := env.AddressRegistryWatcherConfig()
+		require.ErrorContains(t, err, "must be greater than zero")
 	})
 }
 
