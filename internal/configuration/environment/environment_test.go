@@ -132,7 +132,6 @@ func TestEnvironment_String_RedactsSecrets(t *testing.T) {
 		AllowedOrigins:   []string{"http://localhost:3000"},
 		Management: environment.ManagementEnv{
 			EnableManagementApi:   true,
-			SessionAuthKey:        "auth-secret",
 			SessionEncryptionKey:  "encryption-secret",
 			UseHttps:              true,
 			EnableSecurityHeaders: true,
@@ -178,7 +177,7 @@ func TestEnvironment_String_RedactsSecrets(t *testing.T) {
 	require.Contains(t, output, "captcha-site")
 	require.Contains(t, output, "key-secret-id")
 	require.Contains(t, output, "password-secret-id")
-	require.Equal(t, 6, strings.Count(output, expectedSecretMask))
+	require.Equal(t, 5, strings.Count(output, expectedSecretMask))
 }
 
 func TestEnvironment_String_KeepsEmptySecretFieldsEmpty(t *testing.T) {
