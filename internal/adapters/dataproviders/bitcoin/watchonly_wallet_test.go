@@ -251,6 +251,31 @@ func TestWatchOnlyWallet_GetTransactions(t *testing.T) {
 	})
 }
 
+func TestWatchOnlyWallet_GetTransaction(t *testing.T) {
+	const txID = "2ba6da53badd14349c5d6379e88c345e88193598aad714815d4b57c691a9fbdf"
+	client := mocks.NewClientAdapterMock(t)
+	client.EXPECT().GetWalletInfo().
+		Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+		Twice()
+	parsedTxID, err := chainhash.NewHashFromStr(txID)
+	require.NoError(t, err)
+	client.EXPECT().GetTransaction(parsedTxID).
+		Return(&btcjson.GetTransactionResult{TxID: txID, Confirmations: -2}, nil).
+		Once()
+	wallet, err := bitcoin.NewWatchOnlyWallet(
+		bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+	)
+	require.NoError(t, err)
+
+	transaction, err := wallet.GetTransaction(txID)
+
+	require.NoError(t, err)
+	assert.Equal(t, blockchain.BitcoinWalletTransaction{
+		Hash:          txID,
+		Confirmations: -2,
+	}, transaction)
+}
+
 // TestWatchOnlyWallet_ImportAddress This test are reused from the bitcoind wallet tests suite since they share behavior
 func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 	t.Run("valid address", func(t *testing.T) {
@@ -284,6 +309,16 @@ func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 		require.NoError(t, err)
 		err = wallet.ImportAddress(mainnetAddress)
 		require.Error(t, err)
+	})
+	t.Run("valid address with rescan", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.On("ImportAddressRescan", testnetAddress, "", true).Return(nil).Once()
+		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
+		wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
+		require.NoError(t, err)
+
+		require.NoError(t, wallet.ImportAddressWithRescan(testnetAddress))
+		client.AssertExpectations(t)
 	})
 }
 

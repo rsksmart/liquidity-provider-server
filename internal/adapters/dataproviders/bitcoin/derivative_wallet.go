@@ -284,11 +284,22 @@ func (wallet *DerivativeWallet) ImportAddress(address string) error {
 	return errors.New("address importing is not supported in this type of wallet")
 }
 
+func (wallet *DerivativeWallet) ImportAddressWithRescan(address string) error {
+	return errors.New("address importing is not supported in this type of wallet")
+}
+
 func (wallet *DerivativeWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return nil, err
 	}
 	return getTransactionsToAddress(address, wallet.conn.NetworkParams, wallet.conn.client)
+}
+
+func (wallet *DerivativeWallet) GetTransaction(hash string) (blockchain.BitcoinWalletTransaction, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return blockchain.BitcoinWalletTransaction{}, err
+	}
+	return getWalletTransaction(hash, wallet.conn.client)
 }
 
 func (wallet *DerivativeWallet) Address() string {

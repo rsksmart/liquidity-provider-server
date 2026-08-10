@@ -5,7 +5,6 @@ package mocks
 import (
 	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
 	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -241,6 +240,62 @@ func (_c *BitcoinWalletMock_GetBalance_Call) RunAndReturn(run func() (*entities.
 	return _c
 }
 
+// GetTransaction provides a mock function with given fields: hash
+func (_m *BitcoinWalletMock) GetTransaction(hash string) (blockchain.BitcoinWalletTransaction, error) {
+	ret := _m.Called(hash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTransaction")
+	}
+
+	var r0 blockchain.BitcoinWalletTransaction
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (blockchain.BitcoinWalletTransaction, error)); ok {
+		return rf(hash)
+	}
+	if rf, ok := ret.Get(0).(func(string) blockchain.BitcoinWalletTransaction); ok {
+		r0 = rf(hash)
+	} else {
+		r0 = ret.Get(0).(blockchain.BitcoinWalletTransaction)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(hash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// BitcoinWalletMock_GetTransaction_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTransaction'
+type BitcoinWalletMock_GetTransaction_Call struct {
+	*mock.Call
+}
+
+// GetTransaction is a helper method to define mock.On call
+//   - hash string
+func (_e *BitcoinWalletMock_Expecter) GetTransaction(hash interface{}) *BitcoinWalletMock_GetTransaction_Call {
+	return &BitcoinWalletMock_GetTransaction_Call{Call: _e.mock.On("GetTransaction", hash)}
+}
+
+func (_c *BitcoinWalletMock_GetTransaction_Call) Run(run func(hash string)) *BitcoinWalletMock_GetTransaction_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *BitcoinWalletMock_GetTransaction_Call) Return(_a0 blockchain.BitcoinWalletTransaction, _a1 error) *BitcoinWalletMock_GetTransaction_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *BitcoinWalletMock_GetTransaction_Call) RunAndReturn(run func(string) (blockchain.BitcoinWalletTransaction, error)) *BitcoinWalletMock_GetTransaction_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetTransactions provides a mock function with given fields: address
 func (_m *BitcoinWalletMock) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
 	ret := _m.Called(address)
@@ -341,6 +396,52 @@ func (_c *BitcoinWalletMock_ImportAddress_Call) Return(_a0 error) *BitcoinWallet
 }
 
 func (_c *BitcoinWalletMock_ImportAddress_Call) RunAndReturn(run func(string) error) *BitcoinWalletMock_ImportAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ImportAddressWithRescan provides a mock function with given fields: address
+func (_m *BitcoinWalletMock) ImportAddressWithRescan(address string) error {
+	ret := _m.Called(address)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ImportAddressWithRescan")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(address)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// BitcoinWalletMock_ImportAddressWithRescan_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ImportAddressWithRescan'
+type BitcoinWalletMock_ImportAddressWithRescan_Call struct {
+	*mock.Call
+}
+
+// ImportAddressWithRescan is a helper method to define mock.On call
+//   - address string
+func (_e *BitcoinWalletMock_Expecter) ImportAddressWithRescan(address interface{}) *BitcoinWalletMock_ImportAddressWithRescan_Call {
+	return &BitcoinWalletMock_ImportAddressWithRescan_Call{Call: _e.mock.On("ImportAddressWithRescan", address)}
+}
+
+func (_c *BitcoinWalletMock_ImportAddressWithRescan_Call) Run(run func(address string)) *BitcoinWalletMock_ImportAddressWithRescan_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *BitcoinWalletMock_ImportAddressWithRescan_Call) Return(_a0 error) *BitcoinWalletMock_ImportAddressWithRescan_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *BitcoinWalletMock_ImportAddressWithRescan_Call) RunAndReturn(run func(string) error) *BitcoinWalletMock_ImportAddressWithRescan_Call {
 	_c.Call.Return(run)
 	return _c
 }
