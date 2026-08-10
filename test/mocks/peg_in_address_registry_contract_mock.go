@@ -239,6 +239,64 @@ func (_c *PegInAddressRegistryContractMock_GetPegInAddresses_Call) RunAndReturn(
 	return _c
 }
 
+// GetRegisteredBtcTransactionHash provides a mock function with given fields: ctx, registrationTxHash, rskAddr
+func (_m *PegInAddressRegistryContractMock) GetRegisteredBtcTransactionHash(ctx context.Context, registrationTxHash string, rskAddr string) (string, error) {
+	ret := _m.Called(ctx, registrationTxHash, rskAddr)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRegisteredBtcTransactionHash")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (string, error)); ok {
+		return rf(ctx, registrationTxHash, rskAddr)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
+		r0 = rf(ctx, registrationTxHash, rskAddr)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, registrationTxHash, rskAddr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRegisteredBtcTransactionHash'
+type PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call struct {
+	*mock.Call
+}
+
+// GetRegisteredBtcTransactionHash is a helper method to define mock.On call
+//   - ctx context.Context
+//   - registrationTxHash string
+//   - rskAddr string
+func (_e *PegInAddressRegistryContractMock_Expecter) GetRegisteredBtcTransactionHash(ctx interface{}, registrationTxHash interface{}, rskAddr interface{}) *PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call {
+	return &PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call{Call: _e.mock.On("GetRegisteredBtcTransactionHash", ctx, registrationTxHash, rskAddr)}
+}
+
+func (_c *PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call) Run(run func(ctx context.Context, registrationTxHash string, rskAddr string)) *PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call) Return(_a0 string, _a1 error) *PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call) RunAndReturn(run func(context.Context, string, string) (string, error)) *PegInAddressRegistryContractMock_GetRegisteredBtcTransactionHash_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRegistration provides a mock function with given fields: rskAddr
 func (_m *PegInAddressRegistryContractMock) GetRegistration(rskAddr string) (blockchain.PegInRegistration, error) {
 	ret := _m.Called(rskAddr)
