@@ -127,6 +127,9 @@ validates the pointer before the call.
 
 ## Step 4 — Review the new changes, scoped to the diff
 
+A finding is new only if it is absent from the Step 3 inventory. Deriving it in this step does not
+make it new, and neither does its appearing in the diff.
+
 Raise new findings only on lines that appear in the diff under review. Unchanged surrounding code is
 context for understanding the change, not review surface. Leave problems in untouched code alone even
 when they violate the checklist.
@@ -144,12 +147,27 @@ when they violate the checklist.
 - If the review carries no `commit_id`, go straight to the API path using `submitted_at` as the
   cutoff.
 - Fall back to the full pull request diff only when neither git nor the API can produce a change set,
-  and say plainly that you did.
+  and say plainly that you did. When the pull request adds a file, the full diff contains every line
+  of it, so every earlier finding in that file will look like it is in scope. The inventory check
+  below is what stops that from turning old findings into new ones.
 - A file that was reviewed in an earlier pass and has not changed since produces no new comments.
   Comment on it only for a repeat finding under Step 6, or when a change elsewhere in this push broke
   it.
 - Do not reopen reconciliation here. The Step 3 classifications stand as recorded, including for
   files outside this diff.
+
+### Check every finding against the inventory before posting it
+
+Match each finding you are about to post against the Step 3 inventory. Do this for every finding,
+however you arrived at it and whether or not it fell inside the diff.
+
+- If it matches an inventory entry, it is not new. Report it under Step 6 with the repeat marker,
+  even though you derived it here.
+- Match on the substance of the problem and the code it concerns, not on line numbers. Lines drift
+  between passes, so the same finding rarely sits at the same line twice.
+- A finding on a line this push did not change is almost always an inventory entry. If you cannot
+  match it to one, say so in the comment rather than presenting it as new.
+- Report a finding as new only after this check fails to match it.
 
 ## Step 5 — Report the reconciliation
 
@@ -192,6 +210,9 @@ Declined, No longer applicable, Unverified — omitting any that have no entries
 When a finding was already raised in a prior Copilot review on this pull request, say so in the
 comment and link the original. Link the review instead when the earlier finding was suppressed rather
 than posted.
+
+This covers every finding that matched the inventory check in Step 4, not only the ones carried over
+from the reconciliation. A repeat that reaches the reader through the diff review is still a repeat.
 
 For example: "This was already raised earlier in this pull request (link), and the code has not
 changed since."

@@ -47,6 +47,14 @@ func dayBucketKey(timestamp uint32) string {
 	return time.Unix(int64(timestamp), 0).UTC().Format("2006-01-02")
 }
 
+// weiOrZero converts an aggregated amount to Wei, treating a missing day as zero volume
+func weiOrZero(amount *big.Int) *entities.Wei {
+	if amount == nil {
+		return entities.NewWei(0)
+	}
+	return entities.NewBigWei(amount)
+}
+
 //nolint:cyclop // aggregation needs all the branches in one place
 func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, endTime time.Time, page, perPage int) (GetDailyVolumeReportResponse, error) {
 	if perPage <= 0 {
@@ -82,8 +90,8 @@ func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, 
 	for _, day := range days {
 		items = append(items, DailyVolumeItem{
 			Day:          day,
-			PeginVolume:  entities.NewBigWei(peginVolume[day]),
-			PegoutVolume: entities.NewBigWei(pegoutVolume[day]),
+			PeginVolume:  weiOrZero(peginVolume[day]),
+			PegoutVolume: weiOrZero(pegoutVolume[day]),
 			PeginCount:   peginCounts[day],
 			PegoutCount:  pegoutCounts[day],
 		})
@@ -91,8 +99,8 @@ func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, 
 
 	return GetDailyVolumeReportResponse{
 		Data:              items,
-		TotalPeginVolume:  entities.NewBigWei(peginTotal),
-		TotalPegoutVolume: entities.NewBigWei(pegoutTotal),
+		TotalPeginVolume:  weiOrZero(peginTotal),
+		TotalPegoutVolume: weiOrZero(pegoutTotal),
 	}, nil
 }
 
