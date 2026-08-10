@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/assets"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
@@ -30,11 +29,10 @@ type GetManagementUiDataUseCase interface {
 // @Description Serves the static site for the Management UI
 // @Success 200 object
 // @Route /management [get]
-func NewManagementInterfaceHandler(env environment.ManagementEnv, store sessions.Store, useCase GetManagementUiDataUseCase) http.HandlerFunc {
+func NewManagementInterfaceHandler(env environment.ManagementEnv, store cookies.SessionStore, useCase GetManagementUiDataUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		const errorGeneratingTemplate = "Error generating template: %v"
-		session, err := store.Get(req, cookies.ManagementSessionCookieName)
-		loggedIn := err == nil && !session.IsNew
+		loggedIn := store.Validate(req) == nil
 		result, err := useCase.Run(req.Context(), loggedIn)
 		if err != nil {
 			log.Errorf(errorGeneratingTemplate, err)
