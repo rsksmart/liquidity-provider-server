@@ -225,7 +225,6 @@ type CaptchaEnv struct {
 
 type ManagementEnv struct {
 	EnableManagementApi   bool   `env:"ENABLE_MANAGEMENT_API"`
-	SessionAuthKey        string `env:"MANAGEMENT_AUTH_KEY"`
 	SessionEncryptionKey  string `env:"MANAGEMENT_ENCRYPTION_KEY"`
 	UseHttps              bool   `env:"MANAGEMENT_USE_HTTPS"`
 	EnableSecurityHeaders bool   `env:"ENABLE_SECURITY_HEADERS"`
@@ -279,7 +278,6 @@ func (env Environment) String() string {
 	redacted.Rsk.KeystorePassword = maskSecret(redacted.Rsk.KeystorePassword)
 	redacted.Btc.Password = maskSecret(redacted.Btc.Password)
 	redacted.Captcha.SecretKey = maskSecret(redacted.Captcha.SecretKey)
-	redacted.Management.SessionAuthKey = maskSecret(redacted.Management.SessionAuthKey)
 	redacted.Management.SessionEncryptionKey = maskSecret(redacted.Management.SessionEncryptionKey)
 	return fmt.Sprintf("%+v", redacted)
 }
