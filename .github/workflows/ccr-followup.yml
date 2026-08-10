@@ -34,7 +34,7 @@ permissions:
   copilot-requests: write
 
 env:
-  COPILOT_MODEL: claude-sonnet-4.6
+  COPILOT_MODEL: gpt-5.3-codex
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   REPO: ${{ github.repository }}
 
@@ -164,16 +164,31 @@ jobs:
           OUT_FILE: ${{ runner.temp }}/ccr/lessons-comment.md
           ERROR_FILE: ${{ runner.temp }}/ccr/copilot.err
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          rc=0
+          # The prompt only generates text, so expose no tools at all
           copilot -p "$(cat "$PROMPT_FILE")" \
             --model "$COPILOT_MODEL" \
-            -s --no-ask-user \
-            > "$OUT_FILE" 2> "$ERROR_FILE"
-          if [ ! -s "$OUT_FILE" ]; then
-            echo "Copilot CLI returned an empty lessons comment" >&2
+            --available-tools='' \
+            --disable-builtin-mcps \
+            --no-ask-user -s \
+            > "$OUT_FILE" 2> "$ERROR_FILE" || rc=$?
+
+          if [ "$rc" -ne 0 ] || [ ! -s "$OUT_FILE" ]; then
+            echo "Copilot CLI failed (exit $rc) or produced no output" >&2
+            echo "----- copilot stderr -----" >&2
             cat "$ERROR_FILE" >&2 || true
+            echo "----- copilot stdout -----" >&2
+            cat "$OUT_FILE" >&2 || true
+            {
+              echo "## Lessons authoring failed (exit $rc)"
+              echo '```'
+              cat "$ERROR_FILE" || true
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+
           {
             echo "## Lessons draft"
             echo '```markdown'
