@@ -41,7 +41,40 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 	return client, nil
 }
 
+// indexCreator applies an index model to a collection, so index definitions
+// can be asserted without a live MongoDB.
+type indexCreator interface {
+	CreateIndex(ctx context.Context, collection string, model mongo.IndexModel) error
+}
+
+type databaseIndexCreator struct {
+	db *mongo.Database
+}
+
+func (creator databaseIndexCreator) CreateIndex(ctx context.Context, collection string, model mongo.IndexModel) error {
+	_, err := creator.db.Collection(collection).Indexes().CreateOne(ctx, model)
+	return err
+}
+
+func pegInAddressRegistryWatchEventIdentityIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys:    bson.D{{Key: "tx_hash", Value: 1}, {Key: "log_index", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	}
+}
+
+func ensurePegInAddressRegistryWatchEventIdentityIndex(ctx context.Context, creator indexCreator) error {
+	if err := creator.CreateIndex(ctx, PegInAddressRegistryWatchCollection, pegInAddressRegistryWatchEventIdentityIndex()); err != nil {
+		return fmt.Errorf("error creating unique index on %s event identity: %w", PegInAddressRegistryWatchCollection, err)
+	}
+	return nil
+}
+
 func createIndexes(ctx context.Context, db *mongo.Database) error {
+	if err := ensurePegInAddressRegistryWatchEventIdentityIndex(ctx, databaseIndexCreator{db: db}); err != nil {
+		return err
+	}
+
 	uniqueIndexes := []struct {
 		collection string
 		field      string
@@ -63,6 +96,8 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: RetainedPegoutQuoteCollection, field: "bridge_rebalances.tx_hash"},
 		{collection: RetainedPeginQuoteCollection, field: "state"},
 		{collection: RetainedPegoutQuoteCollection, field: "state"},
+		{collection: PegInAddressRegistryWatchCollection, field: "rsk_address"},
+		{collection: PegInAddressRegistryWatchCollection, field: "state"},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.
 		{collection: PeginQuoteCollection, field: "agreement_timestamp"},
