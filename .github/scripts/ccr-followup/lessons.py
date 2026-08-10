@@ -21,6 +21,9 @@ import sys
 from pathlib import Path
 
 
+LESSONS_HEADER = "## Suggested lessons for the Rootstock lessons DB"
+
+
 def log(msg: str) -> None:
     print(msg, file=sys.stderr)
 
@@ -72,7 +75,7 @@ def post_lessons() -> int:
     if marker not in body:
         body = marker + "\n" + body
 
-    if not body.lstrip().startswith("<!--") and "## Suggested lessons" not in body:
+    if LESSONS_HEADER not in body:
         log("model output does not look like a lessons comment; refusing to post")
         log(body[:500])
         return 1

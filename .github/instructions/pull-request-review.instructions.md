@@ -232,19 +232,3 @@ Do not call a finding a repeat when:
   same file or of the same category.
 - The earlier mention came from a human reviewer rather than Copilot.
 - The original comment cannot be located. Treat the finding as new instead of guessing.
-
-## Step 7 — Do not publish follow-up artifacts from the review agent
-
-Reconciliation and Rootstock lessons comments are posted by the
-`.github/workflows/ccr-followup.yml` workflow after this review is submitted.
-That workflow reads the review via the API and posts with `GITHUB_TOKEN`.
-
-Do **not**:
-
-- Call MCP write tools such as `add_issue_comment`.
-- Put reconciliation or lessons text in the pull request overview (the platform
-  discards custom overview content).
-- Attempt to substitute for the workflow when it is missing.
-
-Keep Steps 1–6 accurate: the workflow depends on your inventory, decline
-handling, suppressed findings, and repeat markers.
