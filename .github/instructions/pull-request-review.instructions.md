@@ -235,6 +235,6 @@ Do not call a finding a repeat when:
 
 ## Step 7 — Publish follow-up artifacts
 
-After Steps 5 and 6 are complete, if `.github/skills/pr-review-followup/SKILL.md`
-exists, follow that skill to post the reconciliation and lessons comments via the
-GitHub MCP server. If the skill is missing, do nothing extra.
+After Steps 5 and 6 are complete, if `.github/skills/code-review/SKILL.md` exists,
+follow that skill to post the reconciliation and lessons comments via the GitHub
+MCP server. If the skill is missing, do nothing extra.

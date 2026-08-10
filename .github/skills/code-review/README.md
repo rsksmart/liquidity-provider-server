@@ -1,8 +1,11 @@
-# pr-review-followup skill
+# code-review skill
 
 Posts the Copilot reconciliation follow-up and suggested Rootstock lessons as
 separate pull request conversation comments after a review that used
 `.github/instructions/pull-request-review.instructions.md`.
+
+The directory is named `code-review` because Copilot code review is documented to
+favour review-focused skill directory names when deciding which skills apply.
 
 ## Required repository MCP settings
 
