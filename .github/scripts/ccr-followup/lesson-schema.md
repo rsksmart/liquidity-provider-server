@@ -34,8 +34,8 @@ why: |
 
 ## Install path
 
-This section is for the agent writing the lessons comment. Put the install path
-in that comment (see the skill template), not as a dump of this reference file.
+Put the install path in the lessons comment; do not paste this reference file
+into the pull request.
 
 Save each card as `skills/lessons/<category>/<id>.yaml`, then add a row to
 `skills/lessons/README.md` under the matching category table.
@@ -68,11 +68,10 @@ bad: |
   total.Add(total, pair.Quote.Value.AsBigInt())
 good: |
   for _, amount := range []*entities.Wei{pair.Quote.Value, pair.Quote.CallFee} {
-      if amount == nil {
-          continue
+      if amount != nil {
+          volumeByDay[day].Add(volumeByDay[day], amount.AsBigInt())
+          total.Add(total, amount.AsBigInt())
       }
-      volumeByDay[day].Add(volumeByDay[day], amount.AsBigInt())
-      total.Add(total, amount.AsBigInt())
   }
 why: |
   CallFee is a pointer and older or incomplete quotes leave it nil. The same
