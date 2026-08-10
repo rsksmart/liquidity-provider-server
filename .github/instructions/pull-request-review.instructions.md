@@ -5,134 +5,102 @@ excludeAgent: "cloud-agent"
 
 # Pull request review procedure
 
-These instructions govern *how* to conduct a review across repeated passes on the same pull
-request. They do not replace the review checklist in `.github/prompts/review-code.prompt.md`,
-which defines *what* to look for. Apply both.
+## Purpose and scope
 
-A repeat pass has two phases and they run in this order: reconcile the prior Copilot comments
-first (Step 3), then review what changed since the last pass (Step 4). Do not interleave them.
-Reconciliation may read anywhere in the codebase; the search for new findings may not.
+- These instructions define *how* to review across repeated passes on the same pull request.
+- The checklist in `.github/prompts/review-code.prompt.md` defines *what* to look for. Apply both.
+- On a repeat pass, run the phases in this order: reconcile prior comments (Step 3), then review
+  the new diff (Step 4). Do not interleave them.
 
-## Step 1 — Establish pull request context with the GitHub MCP server
+## Step 1 — Read the pull request with the GitHub MCP server
 
-Before writing a single comment, use the GitHub MCP server to read the current state of this
-pull request. Do not rely on recollection of earlier passes and do not assume this is a fresh
-pull request.
+Read the current state of the pull request before writing any comment.
 
-### Resolving the pull request coordinates
+### Resolve the coordinates
 
-The `pull_request_read` tool requires `owner`, `repo`, and `pullNumber`. These are always
-obtainable — never skip this step on the grounds that they were not supplied.
+`pull_request_read` requires `owner`, `repo`, and `pullNumber`. Missing arguments are never a valid
+reason to report the context as unavailable.
 
-- Read `owner` and `repo` from the `origin` remote rather than assuming a name. Run
-  `git remote get-url origin`, take the last two path segments, and strip any trailing `.git`.
-  For example `git@github.com:rsksmart/liquidity-provider-server.git` yields owner `rsksmart` and
-  repo `liquidity-provider-server`. Use `origin` specifically — this repository also has remotes
-  pointing at security advisory forks whose names differ from the real repository.
-- If `origin` is missing or unparseable, use `rsksmart` as the owner and take the repository name
-  from the root directory of the checkout.
-- `pullNumber` is the number of the pull request currently being reviewed. Use it directly if it
-  is available in the review context.
+- Derive `owner` and `repo` from `git remote get-url origin`: take the last two path segments and
+  strip a trailing `.git`. `git@github.com:rsksmart/liquidity-provider-server.git` yields owner
+  `rsksmart` and repo `liquidity-provider-server`.
+- Use `origin` specifically. Other remotes point at security advisory forks with different names.
+- If `origin` is missing or unparseable, use owner `rsksmart` and the checkout's root directory name
+  as the repo.
+- Use `pullNumber` from the review context when available. Otherwise:
+  1. Run `git rev-parse HEAD` and `git rev-parse --abbrev-ref HEAD`.
+  2. Call `list_pull_requests` with `state: "open"` and `head: "OWNER:BRANCH"`.
+  3. Match the returned head SHA against the local head commit.
+  4. If the branch filter returns nothing, call `list_pull_requests` with `state: "open"` and no head
+     filter, then match on head SHA or branch name.
+- Report the context as unavailable only after all four steps fail, and name what each returned.
 
-If the pull request number is not directly available, resolve it in this order:
+### Read these methods
 
-1. Get the head commit with `git rev-parse HEAD` and the current branch with
-   `git rev-parse --abbrev-ref HEAD`.
-2. Call `list_pull_requests` with the resolved `owner` and `repo`, `state: "open"`, and
-   `head: "OWNER:BRANCH"` using the owner and branch from the previous steps.
-3. Match the returned pull request's head SHA against the local head commit and use that pull
-   request's number.
-4. If the branch filter returns nothing, call `list_pull_requests` with `state: "open"` and no
-   head filter, then match on head SHA or branch name.
+- `get` — title, body, base and head refs, draft state, linked issues.
+- `get_files` and `get_diff` — the lines under review.
+- `get_reviews` — the full review history. Copilot's reviews are authored by
+  `copilot-pull-request-reviewer[bot]`. Read each review `body`: withheld findings are listed there
+  and nowhere else.
+- `get_review_comments` — threads with their `isResolved`, `isOutdated`, and `isCollapsed` metadata.
+  Read every reply, not just the first comment; declines live in replies.
+- `get_comments` — the pull request conversation.
+- `get_commits` — the commits that landed after the most recent Copilot review.
 
-Only report the context as unavailable after all four steps have failed, and when you do, name
-the steps you attempted and what each returned.
+Paginate until the review history is complete.
 
-Once the coordinates are resolved, call `pull_request_read` with them, using these methods:
+If a call fails, say so, name the tool and method and the error it returned, and note that the review
+ran without prior-review context. Do not skip reconciliation silently.
 
-- `get` — title, body, base and head refs, draft state, and linked issues.
-- `get_files` and `get_diff` — the changed lines that are actually under review.
-- `get_reviews` — the full review history. Identify reviews authored by Copilot
-  (`copilot-pull-request-reviewer[bot]`, or any review whose author is the Copilot reviewer bot).
-  Read each review's `body`, not just its metadata: findings that were withheld instead of posted
-  are listed there and exist nowhere else.
-- `get_review_comments` — review threads, including their `isResolved`, `isOutdated`, and
-  `isCollapsed` metadata, along with the comments in each thread. Read every comment in a thread,
-  not only the first one: a developer's decision to decline a comment lives in a reply.
-- `get_comments` — the pull request conversation, where an author's explanation of how they
-  handled earlier feedback often lives.
-- `get_commits` — which commits landed after the most recent Copilot review.
+## Step 2 — First pass or repeat pass
 
-Paginate until the review history is complete. A truncated list of prior comments produces a
-wrong "addressed" accounting, which is worse than no accounting at all.
+- **First pass** — no prior Copilot review exists. Review normally against the checklist. Skip Step 3
+  and omit the follow-up record entirely.
+- **Repeat pass** — at least one prior Copilot review exists. Do Steps 3, 4, and 5.
+- Track only Copilot's own prior comments. Human review comments inform the review but are never
+  counted as addressed or unaddressed, and never make a finding a repeat.
 
-If the GitHub MCP server is genuinely unavailable, or a `pull_request_read` call fails, say so
-explicitly rather than staying silent, and note that the review ran without prior-review context.
-Name the specific tool and method that failed and the error it returned. Missing arguments are not
-a valid reason to report the context as unavailable; resolve them as described above. Do not
-silently skip the reconciliation below.
+## Step 3 — Reconcile prior Copilot comments
 
-## Step 2 — Determine whether this is a first pass or a repeat pass
+Complete this step before looking for anything new. Here you may read any file at any path, whether
+or not the latest push touched it.
 
-**First pass** — no prior review on this pull request was authored by Copilot. Perform the review
-normally against the checklist. There is nothing to reconcile, so skip Step 3 and omit the
-follow-up record entirely.
+Inventory every prior Copilot finding. They come from two sources and both count:
 
-**Repeat pass** — at least one prior Copilot review exists. Reconcile the prior comments per Step 3,
-then review the new changes per Step 4, then report both per Step 5.
-
-Only Copilot's own prior comments are tracked in the addressed accounting. Comments from human
-reviewers are useful context and may inform the review, but they are never listed as addressed or
-unaddressed, and they never make a finding a "repeat".
-
-## Step 3 — First, reconcile prior Copilot comments against the current code
-
-Do this before looking for anything new. Reconciliation and the new review are separate phases and
-must not be interleaved: finish this step completely, then move to Step 4.
-
-In this step you may read any file at any path, whether or not the latest push touched it. Answering
-"was this prior comment addressed?" requires reading the current state of that code wherever it
-lives.
-
-Build an inventory of every prior Copilot finding on this pull request. They live in two places and
-both count:
-
-- **Posted comments** — the review threads returned by `get_review_comments`.
-- **Suppressed findings** — those listed in the `body` of each prior Copilot review returned by
-  `get_reviews`, usually under a heading such as "Comments suppressed due to low confidence". These
-  are findings you already made on this pull request; the fact that they were withheld from display
-  does not make them new next time.
-
-A suppressed finding has no thread, so it carries no `isResolved` or `isOutdated` metadata and no
-comment URL. Classify it from code evidence exactly as you would a posted comment, and when you
-refer to one, link the review that contains it instead of a comment.
+- **Posted comments** — the threads from `get_review_comments`.
+- **Suppressed findings** — those listed in each prior Copilot review `body`, usually under a heading
+  such as "Comments suppressed due to low confidence". Being withheld does not make a finding new. A
+  suppressed finding has no thread, so it carries no thread metadata and no comment URL; link the
+  review that contains it instead.
 
 Classify each finding as:
 
 - **Addressed** — the code now does what the comment asked.
 - **Partially addressed** — some of the comment was acted on, some was not.
 - **Not addressed** — the code is unchanged in the relevant respect.
-- **Declined** — a human deliberately decided not to act on it, following the convention below.
-- **No longer applicable** — the code the comment referred to was deleted or reworked such that
-  the concern no longer exists.
-- **Unverified** — the evidence was inconclusive and you could not determine whether it was
-  addressed.
+- **Declined** — a human deliberately declined it, per the convention below.
+- **No longer applicable** — the code was deleted or reworked and the concern no longer exists.
+- **Unverified** — the evidence was inconclusive.
 
-Classify based on evidence in the head commit, not on thread state. A resolved, collapsed, or
-outdated thread is a hint only. GitHub's own documentation notes that resolving a conversation
-does not mean the underlying issue was fixed, so read the file at the comment's path in the
-current head and confirm the change is really there before calling anything addressed.
+Classify from code evidence in the head commit, not from thread state. Resolved, collapsed, and
+outdated threads, dismissed reviews, and reactions are hints only. Read the file at the comment's
+path in the current head before calling anything addressed, and never assert that something was
+addressed without checking.
 
-### How a developer declines a comment
+Record per item: the file and line, a one-sentence restatement of the original point, the
+classification, and the evidence — the commit that changed it, or the current code showing it
+unchanged. For **Unverified**, record what blocked the determination.
 
-A comment is **Declined** when someone replied in its thread with a message beginning `Won't fix:`
-followed by a reason. For example:
+### How a developer declines a finding
+
+A finding is **Declined** when a human replies in its thread with a message beginning `Won't fix:`
+followed by a reason:
 
 ```text
 Won't fix: the nil case is unreachable here, the caller validates the pointer before the call.
 ```
 
-A suppressed finding has no thread to reply in, so it can also be declined from a top-level pull
+A suppressed finding has no thread to reply in, so it may also be declined from a top-level pull
 request comment that names the location:
 
 ```text
@@ -140,190 +108,104 @@ Won't fix: internal/usecases/pegin/call_for_user.go:96 — the nil case is unrea
 validates the pointer before the call.
 ```
 
-Read those from `get_comments`, and match the named location to the finding by file path and line,
-allowing for line drift caused by later edits. When a top-level decline is ambiguous because it
-could match more than one finding in that file, do not guess: leave the findings as they are and
-say in the record that the decline could not be matched to a single location.
-
-Honor a decline under these conditions:
-
+- Read top-level declines from `get_comments` and match them by file path and line, allowing for line
+  drift caused by later edits.
+- If a top-level decline could match more than one finding in that file, do not guess: leave the
+  findings unchanged and say the decline could not be matched to a single location.
 - Match the marker case-insensitively and tolerate a missing apostrophe, so `Won't fix:`,
   `won't fix:`, and `Wont fix:` all count.
-- The decline must come from a human, in either form. Ignore the marker when it appears in a
-  comment authored by Copilot or any other bot.
-- Any human commenter on the pull request can decline, including the author.
-- A reason is required. If the marker appears with nothing substantive after the colon, do **not**
-  honor it: keep the comment classified as **Not addressed**. That classification produces an
-  inline comment, so say it there rather than only in the record — state that a decline was found,
-  that it was not honored because no reason was given, and that adding a reason will retire the
-  comment. The developer who declined has to be able to see why it had no effect without opening
-  the session log.
+- Ignore the marker in comments authored by Copilot or any other bot. Any human commenter may
+  decline, including the author.
+- A reason is required. Without one, keep the finding **Not addressed** and use its inline comment to
+  say that a decline was found, that it was not honored because no reason was given, and that adding
+  a reason will retire the comment.
+- Resolving a conversation is not a decline, and neither is a thumbs-down.
+- If the code satisfies the comment, classify it **Addressed** even when a decline reply is present.
+  Evidence in the code wins.
+- A decline covers the point that was raised, not the location forever. A different problem
+  introduced on those lines by a later push is a new finding.
 
-Resolving the conversation is not a decline on its own, and neither is a thumbs-down. Only the
-marker with a reason counts.
-
-If the code actually satisfies the comment, classify it as **Addressed** even when a decline reply
-is present — evidence in the code wins. **Declined** applies only where the code still does not
-satisfy the comment and a human said so deliberately.
-
-A decline covers the specific point that was raised, not the location forever. If a later push
-changes those lines and introduces a different problem, that is a new finding under the normal
-rules.
-
-Record for each item: the file and line, a one-sentence restatement of the original point, the
-classification, and the evidence (the commit that changed it, or the current code that shows it
-unchanged).
-
-If a prior comment cannot be verified either way, classify it as **Unverified** and say why.
-Never assert that something was addressed without having checked.
-
-This step is complete when every prior Copilot comment carries a classification and its supporting
-evidence. Only then continue.
-
-## Step 4 — Then review the new changes, scoped to the diff
-
-Reconciliation is finished by the time you reach this step. Everything from here on is about finding
-new problems, and it is strictly limited to the diff.
+## Step 4 — Review the new changes, scoped to the diff
 
 Raise new findings only on lines that appear in the diff under review. Unchanged surrounding code is
-context for understanding the change, not review surface. When a problem sits in code this pull
-request did not touch, leave it alone even if it violates the checklist.
+context for understanding the change, not review surface. Leave problems in untouched code alone even
+when they violate the checklist.
 
-On a first pass, the diff under review is the full pull request diff from `get_diff`.
+- On a first pass, the diff under review is the full pull request diff from `get_diff`.
+- On a repeat pass, narrow it to what changed since the most recent Copilot review. Take that
+  review's `commit_id` from `get_reviews`, then:
+  1. Confirm the commit exists locally with `git cat-file -e <commit_id>^{commit}`. Never assume it
+     does; the checkout may be shallow, and the branch may have been rebased or force-pushed.
+  2. If it is present, use `git diff <commit_id>...HEAD`.
+  3. If it is missing, rebuild the change set through the API: call `get_commits`, take every commit
+     made after the review's `submitted_at`, and call `get_commit` on each one. The union of those
+     changes is the incremental diff.
+  4. Raise new findings only on lines in that change set.
+- If the review carries no `commit_id`, go straight to the API path using `submitted_at` as the
+  cutoff.
+- Fall back to the full pull request diff only when neither git nor the API can produce a change set,
+  and say plainly that you did.
+- A file that was reviewed in an earlier pass and has not changed since produces no new comments.
+  Comment on it only for a repeat finding under Step 6, or when a change elsewhere in this push broke
+  it.
+- Do not reopen reconciliation here. The Step 3 classifications stand as recorded, including for
+  files outside this diff.
 
-On a repeat pass, narrow it to what changed since the last Copilot review. Take the `commit_id` of
-the most recent Copilot review from `get_reviews`, then establish the incremental change set:
+## Step 5 — Report the reconciliation
 
-1. Confirm the commit exists in the local checkout with `git cat-file -e <commit_id>^{commit}`.
-   Never assume it does — the checkout may be shallow, and the branch may have been rebased or
-   force-pushed since that review.
-2. If the commit is present, diff it against the current head with `git diff <commit_id>...HEAD`.
-3. If the commit is missing, rebuild the change set through the API instead of giving up on it.
-   Call `get_commits` for the pull request, take every commit made after the `submitted_at` of the
-   most recent Copilot review, and call `get_commit` on each one to collect the files and lines it
-   changed. The union of those changes is the incremental diff.
-4. Raise new findings only on lines in that incremental change set.
+Inline comments are the channel that reliably reaches the reader, so nothing actionable may exist
+only in the reconciliation record. The pull request overview is generated by GitHub; do not treat it
+as where the reconciliation lands.
 
-If the review carries no `commit_id` at all, skip straight to the API path in step 3, using the
-review's `submitted_at` as the cutoff.
+- Post an inline comment for every **Not addressed** and **Partially addressed** finding, following
+  Step 6.
+- Post an inline comment for every **Unverified** finding, phrased as a question: say the point was
+  raised earlier, that you could not determine whether it was addressed, and what blocked the
+  determination, then ask the author to confirm. Do not assert that the code is unfixed and do not
+  give it an occurrence count.
+- Post no inline comment for **Addressed**, **Declined**, or **No longer applicable** findings.
 
-Fall back to the full pull request diff only when neither git nor the API can produce a change set,
-and say plainly that you did. That fallback re-reviews code that was already reviewed on an earlier
-pass, which is the exact behavior this step exists to prevent, so treat it as a last resort rather
-than a convenience.
-
-A file that was reviewed in an earlier pass and has not changed since should produce no new
-comments. If you are about to comment on such a file, the only valid reasons are that it is a
-repeat finding under Step 6, or that a change elsewhere in this push broke it.
-
-Do not reopen reconciliation here, and do not let this narrower scope walk back anything you
-verified in Step 3. The classifications from that step stand as recorded, including for files that
-fall outside this diff.
-
-## Step 5 — Record the reconciliation
-
-The pull request overview comment is written by GitHub, not by you. Do not attempt to change its
-wording, structure, or content, and do not treat it as the place where the reconciliation lands.
-
-Everything a reviewer needs to act on must therefore reach the pull request as inline comments.
-Every prior comment classified **Not addressed** or **Partially addressed** gets an inline comment
-that says it has come up before, following Step 6. That channel is the one that reliably reaches
-the reader, so nothing actionable may exist only in the reconciliation record.
-
-A prior comment classified **Unverified** also gets an inline comment, but phrased as a question
-rather than a finding. Say that the point was raised earlier, that you could not determine whether
-it was addressed, and what specifically blocked the determination, then ask the author to confirm.
-Do not assert that the code is unfixed, and do not give it an occurrence count — you do not know
-that it recurred. Silence is the worst outcome here, because an unverified item is the one most
-likely to be a real problem nobody looked at.
-
-Do not post inline comments for prior comments classified **Addressed**, **Declined**, or **No
-longer applicable**. Those belong in the record only.
-
-Where you summarize the review, organize the reconciliation with this structure, omitting any
-subsection that has no entries:
+Where you summarize the review, group the findings under a `Previous Copilot review follow-up`
+heading with one subsection per classification — Addressed, Partially addressed, Not addressed,
+Declined, No longer applicable, Unverified — omitting any that have no entries. Give each entry as
+`path:line`, the restatement, and the evidence:
 
 ```markdown
-## Previous Copilot review follow-up
-
-### Addressed
-- `internal/usecases/pegout/send_pegout.go:142` — nil check missing before dereferencing the
-  quote pointer. Fixed in abc1234; the pointer is now validated before use.
-
-### Partially addressed
-- `internal/adapters/dataproviders/rootstock/common.go:88` — repeated string literal moved to a
-  constant, but two of the four occurrences still inline the literal.
-
 ### Not addressed
 - `pkg/liquidity_provider.go:210` — handler still returns the domain entity instead of a DTO.
 
 ### Declined
 - `internal/usecases/pegin/call_for_user.go:96` — declined by @someuser: the nil case is
   unreachable because the caller validates the pointer first.
-
-### No longer applicable
-- `internal/usecases/reports/get_assets_report.go:55` — the function this referred to was removed.
-
-### Unverified
-- `internal/adapters/entrypoints/watcher/pegout_rsk_watcher.go:71` — could not determine whether
-  the goroutine nil check was added; the surrounding code was restructured.
 ```
 
-List each declined comment with who declined it and the reason they gave, so the record is visible
-without opening every thread.
+- Name who declined each declined finding and the reason they gave.
+- If a decline rests on a factual mistake, say so once, in one sentence, next to that entry. Do not
+  re-post the inline comment, do not repeat the disagreement on later passes, and do not reclassify
+  the finding away from **Declined**.
+- If none of the prior comments were addressed, say so directly.
+- Keep the record factual. Report what is and is not addressed without editorializing about the
+  author.
 
-If you believe a decline rests on a factual mistake, you may say so once, in one sentence, next to
-that entry. Do not re-post the inline comment, do not repeat the disagreement on later passes, and
-do not reclassify the comment away from **Declined**.
+## Step 6 — Mark repeat findings
 
-If none of the prior comments were addressed, say so directly.
-
-## Step 6 — Say when a finding is a repeat
-
-When a finding was already raised in a prior Copilot review on this pull request, state that fact
-in the opening sentence of the comment and link the original. If the earlier finding was suppressed
-rather than posted, link the review that listed it, since there is no comment to link. This is a
-requirement about content, not styling: what matters is that the reader learns this is not the
-first time it has come up.
+When a finding was already raised in a prior Copilot review on this pull request, say so in the
+comment and link the original. Link the review instead when the earlier finding was suppressed rather
+than posted.
 
 For example: "This was already raised earlier in this pull request (link), and the code has not
 changed since."
 
-If the same point has been raised more than twice, say how many times it has come up.
+- Restate the issue and why it still matters. A bare link is not enough.
+- If the same point has come up more than twice, say how many times.
+- Report a repeat at the same severity as the first time. A blocking problem stays blocking.
+- For an **Unverified** item, state the history but give no verdict; you are asking whether it was
+  handled, not reporting that it was not.
+- Never post an inline comment for a **Declined** finding, on this pass or any later one.
 
-Then restate the issue and why it still matters. A bare link is not enough; the reader should not
-have to open the original comment to understand the problem.
+Do not call a finding a repeat when:
 
-A repeated finding is never less important than it was the first time. If it was reported as a
-blocking problem before, report it as a blocking problem again.
-
-The exception is an **Unverified** item. State its history, but not a verdict: you are asking
-whether it was handled, not reporting that it was not.
-
-Do **not** describe a finding as a repeat when:
-
-- The code at that location changed and this is a genuinely different problem, even if it is in
-  the same file or of the same category.
+- The code at that location changed and this is a genuinely different problem, even if it is in the
+  same file or of the same category.
 - The earlier mention came from a human reviewer rather than Copilot.
 - The original comment cannot be located. Treat the finding as new instead of guessing.
-
-Never post an inline comment at all for a finding classified as **Declined**. Repeating a declined
-comment inline is the specific behavior the decline convention exists to prevent.
-
-## Step 7 — Constraints
-
-- Never try to change the pull request overview comment; it is generated by GitHub.
-- Never leave an actionable prior comment visible only in the reconciliation record. If it still
-  needs work, or you could not tell whether it does, it needs an inline comment.
-- Never report an **Unverified** item as though you had determined it was unfixed.
-- Never re-post a prior comment without saying that it has come up before.
-- Never re-raise a comment that was declined with a reason, on this pass or any later one.
-- Never silently ignore a decline that lacked a reason; say that it was not honored and why.
-- Never treat a thumbs-down reaction, a dismissed review, or a resolved conversation as evidence
-  that the code was fixed, or as a decline.
-- Never include the follow-up section on a first pass.
-- Never begin looking for new findings before reconciliation is complete.
-- Do not raise new findings on code outside the diff scope from Step 4, and do not re-audit files
-  that this push did not touch.
-- Keep the follow-up section factual and neutral. Report what is and is not addressed without
-  editorializing about the author.
