@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/chaincfg"
@@ -27,6 +28,7 @@ type Environment struct {
 	Rsk              RskEnv
 	Btc              BtcEnv
 	Provider         ProviderEnv
+	Pegin            PeginEnv
 	Pegout           PegoutEnv
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
@@ -207,8 +209,40 @@ func (env *ProviderEnv) ProviderType() liquidity_provider.ProviderType {
 	}
 }
 
-// PeginEnv This structure was kept just in case, right now all the parameters are manipulated through management API
-type PeginEnv struct{}
+type PeginEnv struct {
+	AddressRegistryWatcherStartBlock *OptionalUint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"`
+	AddressRegistryWatcherPageSize   *OptionalUint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"`
+}
+
+type PegInAddressRegistryWatcherConfig struct {
+	StartBlock uint64
+	PageSize   uint64
+	Enabled    bool
+}
+
+func (env *PeginEnv) AddressRegistryWatcherConfig() (PegInAddressRegistryWatcherConfig, error) {
+	startPresent := env.AddressRegistryWatcherStartBlock != nil && env.AddressRegistryWatcherStartBlock.Present
+	pagePresent := env.AddressRegistryWatcherPageSize != nil && env.AddressRegistryWatcherPageSize.Present
+	if startPresent != pagePresent {
+		missing := "PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"
+		if startPresent {
+			missing = "PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"
+		}
+		log.Errorf("PegIn address registry watcher is disabled because %s is missing", missing)
+		return PegInAddressRegistryWatcherConfig{}, nil
+	}
+	if !startPresent {
+		return PegInAddressRegistryWatcherConfig{}, nil
+	}
+	if env.AddressRegistryWatcherPageSize.Value == 0 {
+		return PegInAddressRegistryWatcherConfig{}, errors.New("PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE must be greater than zero")
+	}
+	return PegInAddressRegistryWatcherConfig{
+		StartBlock: env.AddressRegistryWatcherStartBlock.Value,
+		PageSize:   env.AddressRegistryWatcherPageSize.Value,
+		Enabled:    true,
+	}, nil
+}
 
 type PegoutEnv struct {
 	DepositCacheStartBlock      uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
