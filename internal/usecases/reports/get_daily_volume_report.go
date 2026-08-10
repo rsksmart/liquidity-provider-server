@@ -3,28 +3,29 @@ package reports
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"sort"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
 )
 
 // DailyVolumeItem holds the aggregated pegin and pegout volume for a single day
 type DailyVolumeItem struct {
 	Day          string   `json:"day"`
-	PeginVolume  *big.Int `json:"pegin_volume"`
-	PegoutVolume *big.Int `json:"pegout_volume"`
+	PeginVolume  *big.Int `json:"peginVolume"`
+	PegoutVolume *big.Int `json:"pegoutVolume"`
 	PeginCount   int      `json:"peginCount"`
 	PegoutCount  int      `json:"pegoutCount"`
 }
 
-// GetDailyVolumeReportResponse is the day by day volume breakdown for the requested range
-type GetDailyVolumeReportResponse struct {
+// GetDailyVolumeReportResult is the day by day volume breakdown for the requested range
+type GetDailyVolumeReportResult struct {
 	Data              []DailyVolumeItem `json:"data"`
-	TotalPeginVolume  *big.Int          `json:"total_pegin_volume"`
+	TotalPeginVolume  *big.Int          `json:"totalPeginVolume"`
 	TotalPegoutVolume *big.Int          `json:"totalPegoutVolume"`
 }
 
@@ -44,28 +45,38 @@ func NewGetDailyVolumeReportUseCase(
 }
 
 func dayBucketKey(timestamp uint32) string {
-	return time.Unix(int64(timestamp), 0).UTC().Format("2006-01-02")
+	return time.Unix(int64(timestamp), 0).UTC().Format(time.DateOnly)
+}
+
+// quoteVolume is the amount a single quote contributes to both its day bucket and
+// the report total. CallFee is optional, so it is only added when present.
+func quoteVolume(value, callFee *entities.Wei) *big.Int {
+	volume := new(big.Int).Set(value.AsBigInt())
+	if callFee != nil {
+		volume.Add(volume, callFee.AsBigInt())
+	}
+	return volume
 }
 
 //nolint:cyclop // aggregation needs all the branches in one place
-func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, endTime time.Time, page, perPage int, includeEmptyDays bool) (GetDailyVolumeReportResponse, error) {
+func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, endTime time.Time, page, perPage int, includeEmptyDays bool) (GetDailyVolumeReportResult, error) {
 	if perPage <= 0 {
-		return GetDailyVolumeReportResponse{}, errors.New("daily volume report requires a positive page size")
+		return GetDailyVolumeReportResult{}, errors.New("daily volume report requires a positive page size")
 	}
 
-	fmt.Printf("building daily volume report from %s to %s\n", startTime.Format("2006-01-02"), endTime.Format("2006-01-02"))
+	log.Debugf("building daily volume report from %s to %s", startTime.Format(time.DateOnly), endTime.Format(time.DateOnly))
 
 	peginVolume, peginCounts, peginTotal, err := useCase.collectPeginVolume(ctx, startTime, endTime, page, perPage)
 	if err != nil {
 		if err.Error() == "not found" {
-			return GetDailyVolumeReportResponse{}, errors.New("no pegin quotes in the requested range")
+			return GetDailyVolumeReportResult{}, errors.New("no pegin quotes in the requested range")
 		}
-		return GetDailyVolumeReportResponse{}, usecases.WrapUseCaseError(usecases.GetDailyVolumeReportId, err)
+		return GetDailyVolumeReportResult{}, usecases.WrapUseCaseError(usecases.GetDailyVolumeReportId, err)
 	}
 
 	pegoutVolume, pegoutCounts, pegoutTotal, err := useCase.collectPegoutVolume(ctx, startTime, endTime, page, perPage)
 	if err != nil {
-		return GetDailyVolumeReportResponse{}, usecases.WrapUseCaseError(usecases.GetDailyVolumeReportId, err)
+		return GetDailyVolumeReportResult{}, usecases.WrapUseCaseError(usecases.GetDailyVolumeReportId, err)
 	}
 
 	days := make([]string, 0, len(peginVolume)+len(pegoutVolume))
@@ -96,9 +107,9 @@ func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, 
 		})
 	}
 
-	fmt.Printf("daily volume report completed with %d days\n", len(items))
+	log.Debugf("daily volume report completed with %d days", len(items))
 
-	return GetDailyVolumeReportResponse{
+	return GetDailyVolumeReportResult{
 		Data:              items,
 		TotalPeginVolume:  peginTotal,
 		TotalPegoutVolume: pegoutTotal,
@@ -106,7 +117,7 @@ func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, 
 }
 
 // RunForSingleDay returns the daily volume report for one specific day
-func (useCase *GetDailyVolumeReportUseCase) RunForSingleDay(ctx context.Context, day time.Time) (GetDailyVolumeReportResponse, error) {
+func (useCase *GetDailyVolumeReportUseCase) RunForSingleDay(ctx context.Context, day time.Time) (GetDailyVolumeReportResult, error) {
 	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
 	return useCase.Run(ctx, start, start.Add(24*time.Hour), 1, 100, false)
 }
@@ -129,10 +140,10 @@ func (useCase *GetDailyVolumeReportUseCase) collectPeginVolume(ctx context.Conte
 		if volumeByDay[day] == nil {
 			volumeByDay[day] = new(big.Int)
 		}
-		volumeByDay[day].Add(volumeByDay[day], pair.Quote.Value.AsBigInt())
-		volumeByDay[day].Add(volumeByDay[day], pair.Quote.CallFee.AsBigInt())
+		volume := quoteVolume(pair.Quote.Value, pair.Quote.CallFee)
+		volumeByDay[day].Add(volumeByDay[day], volume)
 		countByDay[day]++
-		total.Add(total, pair.Quote.Value.AsBigInt())
+		total.Add(total, volume)
 	}
 
 	return volumeByDay, countByDay, total, nil
@@ -152,14 +163,14 @@ func (useCase *GetDailyVolumeReportUseCase) collectPegoutVolume(ctx context.Cont
 		if pair.Quote.Value == nil {
 			continue
 		}
-		day := dayBucketKey(pair.Quote.DepositDateLimit)
+		day := dayBucketKey(pair.Quote.AgreementTimestamp)
 		if volumeByDay[day] == nil {
 			volumeByDay[day] = new(big.Int)
 		}
-		volumeByDay[day].Add(volumeByDay[day], pair.Quote.Value.AsBigInt())
-		volumeByDay[day].Add(volumeByDay[day], pair.Quote.CallFee.AsBigInt())
+		volume := quoteVolume(pair.Quote.Value, pair.Quote.CallFee)
+		volumeByDay[day].Add(volumeByDay[day], volume)
 		countByDay[day]++
-		total.Add(total, pair.Quote.Value.AsBigInt())
+		total.Add(total, volume)
 	}
 
 	return volumeByDay, countByDay, total, nil
