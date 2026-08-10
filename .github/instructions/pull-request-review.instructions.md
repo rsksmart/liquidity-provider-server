@@ -232,3 +232,9 @@ Do not call a finding a repeat when:
   same file or of the same category.
 - The earlier mention came from a human reviewer rather than Copilot.
 - The original comment cannot be located. Treat the finding as new instead of guessing.
+
+## Step 7 — Publish follow-up artifacts
+
+After Steps 5 and 6 are complete, if `.github/skills/pr-review-followup/SKILL.md`
+exists, follow that skill to post the reconciliation and lessons comments via the
+GitHub MCP server. If the skill is missing, do nothing extra.
