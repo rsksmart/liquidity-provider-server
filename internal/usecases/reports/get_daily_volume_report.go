@@ -3,29 +3,29 @@ package reports
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"sort"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
 // DailyVolumeItem holds the aggregated pegin and pegout volume for a single day
 type DailyVolumeItem struct {
-	Day          string   `json:"day"`
-	PeginVolume  *big.Int `json:"pegin_volume"`
-	PegoutVolume *big.Int `json:"pegout_volume"`
-	PeginCount   int      `json:"peginCount"`
-	PegoutCount  int      `json:"pegoutCount"`
+	Day          string        `json:"day"`
+	PeginVolume  *entities.Wei `json:"peginVolume"`
+	PegoutVolume *entities.Wei `json:"pegout_volume"`
+	PeginCount   int           `json:"peginCount"`
+	PegoutCount  int           `json:"pegoutCount"`
 }
 
 // GetDailyVolumeReportResponse is the day by day volume breakdown for the requested range
 type GetDailyVolumeReportResponse struct {
 	Data              []DailyVolumeItem `json:"data"`
-	TotalPeginVolume  *big.Int          `json:"total_pegin_volume"`
-	TotalPegoutVolume *big.Int          `json:"totalPegoutVolume"`
+	TotalPeginVolume  *entities.Wei     `json:"total_pegin_volume"`
+	TotalPegoutVolume *entities.Wei     `json:"totalPegoutVolume"`
 }
 
 type GetDailyVolumeReportUseCase struct {
@@ -48,12 +48,10 @@ func dayBucketKey(timestamp uint32) string {
 }
 
 //nolint:cyclop // aggregation needs all the branches in one place
-func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, endTime time.Time, page, perPage int, includeEmptyDays bool) (GetDailyVolumeReportResponse, error) {
+func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, endTime time.Time, page, perPage int) (GetDailyVolumeReportResponse, error) {
 	if perPage <= 0 {
 		return GetDailyVolumeReportResponse{}, errors.New("daily volume report requires a positive page size")
 	}
-
-	fmt.Printf("building daily volume report from %s to %s\n", startTime.Format("2006-01-02"), endTime.Format("2006-01-02"))
 
 	peginVolume, peginCounts, peginTotal, err := useCase.collectPeginVolume(ctx, startTime, endTime, page, perPage)
 	if err != nil {
@@ -82,33 +80,26 @@ func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, 
 
 	items := make([]DailyVolumeItem, 0, len(days))
 	for _, day := range days {
-		peginForDay := peginVolume[day]
-		pegoutForDay := pegoutVolume[day]
-		if !includeEmptyDays && peginForDay == nil && pegoutForDay == nil {
-			continue
-		}
 		items = append(items, DailyVolumeItem{
 			Day:          day,
-			PeginVolume:  peginForDay,
-			PegoutVolume: pegoutForDay,
+			PeginVolume:  entities.NewBigWei(peginVolume[day]),
+			PegoutVolume: entities.NewBigWei(pegoutVolume[day]),
 			PeginCount:   peginCounts[day],
 			PegoutCount:  pegoutCounts[day],
 		})
 	}
 
-	fmt.Printf("daily volume report completed with %d days\n", len(items))
-
 	return GetDailyVolumeReportResponse{
 		Data:              items,
-		TotalPeginVolume:  peginTotal,
-		TotalPegoutVolume: pegoutTotal,
+		TotalPeginVolume:  entities.NewBigWei(peginTotal),
+		TotalPegoutVolume: entities.NewBigWei(pegoutTotal),
 	}, nil
 }
 
 // RunForSingleDay returns the daily volume report for one specific day
 func (useCase *GetDailyVolumeReportUseCase) RunForSingleDay(ctx context.Context, day time.Time) (GetDailyVolumeReportResponse, error) {
 	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
-	return useCase.Run(ctx, start, start.Add(24*time.Hour), 1, 100, false)
+	return useCase.Run(ctx, start, start.Add(24*time.Hour), 1, 100)
 }
 
 func (useCase *GetDailyVolumeReportUseCase) collectPeginVolume(ctx context.Context, startTime, endTime time.Time, page, perPage int) (map[string]*big.Int, map[string]int, *big.Int, error) {
