@@ -52,8 +52,8 @@ func NewAcceptQuoteUseCase(
 }
 
 func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature string) (quote.AcceptedQuote, error) {
-	logger := log.WithField("quoteHash", usecases.SafeLogStr(quoteHash))
-	logger.WithField("hasSignature", signature != "").Debug("Accepting pegin quote")
+	logger := log.WithField("quote_hash", usecases.SafeLogStr(quoteHash))
+	logger.WithField("has_signature", signature != "").Debug("Accepting pegin quote")
 
 	peginQuote, err := useCase.loadValidQuote(ctx, quoteHash)
 	if err != nil {
@@ -77,6 +77,8 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 	if existing != nil {
+		logger.WithField("deposit_address", existing.DepositAddress).
+			Info("Accept pegin: returning cached signature")
 		return quote.AcceptedQuote{
 			Signature:      existing.Signature,
 			DepositAddress: existing.DepositAddress,
@@ -87,8 +89,21 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 	if err != nil {
 		return quote.AcceptedQuote{}, err
 	}
-	if err = useCase.quoteRepository.InsertRetainedQuote(ctx, *retainedQuote); err != nil {
-		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+	if err = useCase.persistAndPublish(ctx, quoteHash, peginQuote, retainedQuote); err != nil {
+		return quote.AcceptedQuote{}, err
+	}
+
+	return quote.AcceptedQuote{
+		Signature:      retainedQuote.Signature,
+		DepositAddress: retainedQuote.DepositAddress,
+	}, nil
+}
+
+func (useCase *AcceptQuoteUseCase) persistAndPublish(ctx context.Context, quoteHash string, peginQuote *quote.PeginQuote, retainedQuote *quote.RetainedPeginQuote) error {
+	logger := log.WithField("quote_hash", usecases.SafeLogStr(quoteHash))
+	if err := useCase.quoteRepository.InsertRetainedQuote(ctx, *retainedQuote); err != nil {
+		logger.WithError(err).Error("Accept pegin: failed to persist retained quote")
+		return usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 
 	creationData := useCase.quoteRepository.GetPeginCreationData(ctx, quoteHash)
@@ -100,16 +115,19 @@ func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature
 		CreationData:  creationData,
 	})
 
-	return quote.AcceptedQuote{
-		Signature:      retainedQuote.Signature,
-		DepositAddress: retainedQuote.DepositAddress,
-	}, nil
+	logger.WithFields(log.Fields{
+		"deposit_address":    retainedQuote.DepositAddress,
+		"required_liquidity": retainedQuote.RequiredLiquidity.String(),
+		"owner":              retainedQuote.OwnerAccountAddress,
+	}).Info("Accepted pegin quote")
+
+	return nil
 }
 
 func (useCase *AcceptQuoteUseCase) loadValidQuote(
 	ctx context.Context, quoteHash string,
 ) (*quote.PeginQuote, error) {
-	logger := log.WithField("quoteHash", usecases.SafeLogStr(quoteHash))
+	logger := log.WithField("quote_hash", usecases.SafeLogStr(quoteHash))
 	if err := usecases.CheckPauseState(useCase.contracts.PegIn); err != nil {
 		logger.WithError(err).Warn("Accept pegin rejected: contract paused")
 		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
@@ -129,7 +147,7 @@ func (useCase *AcceptQuoteUseCase) loadValidQuote(
 	}
 
 	if peginQuote.IsExpired() {
-		logger.WithField("expireTime", peginQuote.ExpireTime()).
+		logger.WithField("expire_time", peginQuote.ExpireTime()).
 			Warn("Accept pegin rejected: quote expired")
 		return nil, usecases.WrapUseCaseErrorArgs(
 			usecases.AcceptPeginQuoteId, usecases.ExpiredQuoteError,
@@ -214,10 +232,10 @@ func (useCase *AcceptQuoteUseCase) checkLockingCap(ctx context.Context, logger *
 	// Check if the sum exceeds the locking cap
 	if totalWithNewQuote.Cmp(trustedAccount.RbtcLockingCap) > 0 {
 		logger.WithFields(log.Fields{
-			"trustedAccount": usecases.SafeLogStr(trustedAccount.Address),
-			"currentLocked":  totalLocked.String(),
-			"lockingCap":     trustedAccount.RbtcLockingCap.String(),
-			"newQuoteValue":  newQuoteValue.String(),
+			"trusted_account": usecases.SafeLogStr(trustedAccount.Address),
+			"current_locked":  totalLocked.String(),
+			"locking_cap":     trustedAccount.RbtcLockingCap.String(),
+			"new_quote_value": newQuoteValue.String(),
 		}).Warn("Accept pegin rejected: locking cap exceeded")
 		errorArgs["address"] = trustedAccount.Address
 		errorArgs["currentLocked"] = totalLocked.String()
@@ -261,7 +279,7 @@ func (useCase *AcceptQuoteUseCase) calculateDerivationAddress(quoteHashBytes []b
 	})
 }
 
-func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Context, peginQuote quote.PeginQuote) (*entities.Wei, error) {
+func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Context, quoteHash string, peginQuote quote.PeginQuote) (*entities.Wei, error) {
 	var err error
 	var gasPrice *entities.Wei
 	errorArgs := usecases.NewErrorArgs()
@@ -277,6 +295,10 @@ func (useCase *AcceptQuoteUseCase) calculateAndCheckLiquidity(ctx context.Contex
 	requiredLiquidity := new(entities.Wei).Add(gasCost, peginQuote.Value)
 
 	if err = useCase.peginLp.HasPeginLiquidity(ctx, requiredLiquidity); err != nil {
+		log.WithFields(log.Fields{
+			"quote_hash": usecases.SafeLogStr(quoteHash),
+			"required":   requiredLiquidity.String(),
+		}).Warn("Accept pegin rejected: insufficient liquidity")
 		errorArgs["amount"] = requiredLiquidity.String()
 		return nil, usecases.WrapUseCaseErrorArgs(usecases.AcceptPeginQuoteId, usecases.NoLiquidityError, errorArgs)
 	}
@@ -296,10 +318,12 @@ func (useCase *AcceptQuoteUseCase) buildRetainedQuote(ctx context.Context, quote
 	if derivation, err = useCase.calculateDerivationAddress(quoteHashBytes, *peginQuote); err != nil {
 		return nil, err
 	}
-	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, *peginQuote); err != nil {
+	if requiredLiquidity, err = useCase.calculateAndCheckLiquidity(ctx, quoteHash, *peginQuote); err != nil {
 		return nil, err
 	}
 	if quoteSignature, err = useCase.lp.SignPeginQuote(ctx, quoteHash); err != nil {
+		log.WithField("quote_hash", usecases.SafeLogStr(quoteHash)).WithError(err).
+			Error("Accept pegin: failed to sign quote")
 		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 
