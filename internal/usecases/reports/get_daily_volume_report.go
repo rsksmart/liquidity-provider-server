@@ -2,29 +2,67 @@ package reports
 
 import (
 	"context"
-	"errors"
 	"math/big"
-	"sort"
+	"slices"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
 
-// DailyVolumeItem holds the aggregated pegin and pegout volume for a single day
+// The repositories treat a zero page and page size as "return the whole range". The report
+// aggregates over the full range, so it must not constrain the query to a single page.
+const (
+	unpaginatedPage    = 0
+	unpaginatedPerPage = 0
+)
+
+// DailyVolumeItem holds the aggregated pegin and pegout volume for a single day.
+// Volumes stay as *big.Int to match an external report consumer (declined Wei conversion).
 type DailyVolumeItem struct {
 	Day          string   `json:"day"`
 	PeginVolume  *big.Int `json:"peginVolume"`
-	PegoutVolume *big.Int `json:"pegout_volume"`
+	PegoutVolume *big.Int `json:"pegoutVolume"`
 	PeginCount   int      `json:"peginCount"`
 	PegoutCount  int      `json:"pegoutCount"`
 }
 
-// GetDailyVolumeReportResponse is the day by day volume breakdown for the requested range
-type GetDailyVolumeReportResponse struct {
+// GetDailyVolumeReportResult is the day by day volume breakdown for the requested range
+type GetDailyVolumeReportResult struct {
 	Data              []DailyVolumeItem `json:"data"`
-	TotalPeginVolume  *big.Int          `json:"total_pegin_volume"`
+	TotalPeginVolume  *big.Int          `json:"totalPeginVolume"`
 	TotalPegoutVolume *big.Int          `json:"totalPegoutVolume"`
+}
+
+type dailyVolume struct {
+	volumeByDay map[string]*big.Int
+	countByDay  map[string]int
+	total       *big.Int
+}
+
+func newDailyVolume() dailyVolume {
+	return dailyVolume{
+		volumeByDay: make(map[string]*big.Int),
+		countByDay:  make(map[string]int),
+		total:       new(big.Int),
+	}
+}
+
+// add accumulates one quote into the given day. A nil amount counts as zero so incomplete
+// records cannot panic, and the total is built from the same amounts as the per-day volumes.
+func (aggregation dailyVolume) add(day string, amounts ...*entities.Wei) {
+	if aggregation.volumeByDay[day] == nil {
+		aggregation.volumeByDay[day] = new(big.Int)
+	}
+	for _, amount := range amounts {
+		if amount == nil {
+			continue
+		}
+		aggregation.volumeByDay[day].Add(aggregation.volumeByDay[day], amount.AsBigInt())
+		aggregation.total.Add(aggregation.total, amount.AsBigInt())
+	}
+	aggregation.countByDay[day]++
 }
 
 type GetDailyVolumeReportUseCase struct {
@@ -42,112 +80,98 @@ func NewGetDailyVolumeReportUseCase(
 	}
 }
 
-func dayBucketKey(timestamp uint32) string {
-	return time.Unix(int64(timestamp), 0).UTC().Format(time.DateOnly)
+func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, endTime time.Time) (GetDailyVolumeReportResult, error) {
+	pegin, err := useCase.collectPeginVolume(ctx, startTime, endTime)
+	if err != nil {
+		return GetDailyVolumeReportResult{}, usecases.WrapUseCaseError(usecases.GetDailyVolumeReportId, err)
+	}
+
+	pegout, err := useCase.collectPegoutVolume(ctx, startTime, endTime)
+	if err != nil {
+		return GetDailyVolumeReportResult{}, usecases.WrapUseCaseError(usecases.GetDailyVolumeReportId, err)
+	}
+
+	return GetDailyVolumeReportResult{
+		Data:              useCase.buildItems(pegin, pegout),
+		TotalPeginVolume:  pegin.total,
+		TotalPegoutVolume: pegout.total,
+	}, nil
 }
 
-//nolint:cyclop // aggregation needs all the branches in one place
-func (useCase *GetDailyVolumeReportUseCase) Run(ctx context.Context, startTime, endTime time.Time, page, perPage int) (GetDailyVolumeReportResponse, error) {
-	if perPage <= 0 {
-		return GetDailyVolumeReportResponse{}, errors.New("daily volume report requires a positive page size")
-	}
+// RunForSingleDay returns the daily volume report for one specific day.
+// Kept exported deliberately; it will be wired by the reporting endpoint in a follow-up.
+func (useCase *GetDailyVolumeReportUseCase) RunForSingleDay(ctx context.Context, day time.Time) (GetDailyVolumeReportResult, error) {
+	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
+	return useCase.Run(ctx, start, start.Add(24*time.Hour))
+}
 
-	peginVolume, peginCounts, peginTotal, err := useCase.collectPeginVolume(ctx, startTime, endTime, page, perPage)
+func (useCase *GetDailyVolumeReportUseCase) collectPeginVolume(ctx context.Context, startTime, endTime time.Time) (dailyVolume, error) {
+	pairs, _, err := useCase.peginRepo.ListQuotesByDateRange(ctx, startTime, endTime, unpaginatedPage, unpaginatedPerPage)
 	if err != nil {
-		return GetDailyVolumeReportResponse{}, usecases.WrapUseCaseError(usecases.GetDailyVolumeReportId, err)
+		return dailyVolume{}, err
 	}
 
-	pegoutVolume, pegoutCounts, pegoutTotal, err := useCase.collectPegoutVolume(ctx, startTime, endTime, page, perPage)
+	aggregation := newDailyVolume()
+	for _, pair := range pairs {
+		day := useCase.dayBucketKey(pair.Quote.AgreementTimestamp)
+		aggregation.add(day, pair.Quote.Value, pair.Quote.CallFee)
+	}
+
+	return aggregation, nil
+}
+
+func (useCase *GetDailyVolumeReportUseCase) collectPegoutVolume(ctx context.Context, startTime, endTime time.Time) (dailyVolume, error) {
+	pairs, _, err := useCase.pegoutRepo.ListQuotesByDateRange(ctx, startTime, endTime, unpaginatedPage, unpaginatedPerPage)
 	if err != nil {
-		return GetDailyVolumeReportResponse{}, usecases.WrapUseCaseError(usecases.GetDailyVolumeReportId, err)
+		return dailyVolume{}, err
 	}
 
-	days := make([]string, 0, len(peginVolume)+len(pegoutVolume))
-	for day := range peginVolume {
-		days = append(days, day)
+	aggregation := newDailyVolume()
+	for _, pair := range pairs {
+		// Match the repository filter, which uses agreement_timestamp.
+		day := useCase.dayBucketKey(pair.Quote.AgreementTimestamp)
+		aggregation.add(day, pair.Quote.Value, pair.Quote.CallFee)
 	}
-	for day := range pegoutVolume {
-		if _, alreadyAdded := peginVolume[day]; alreadyAdded {
-			continue
-		}
-		days = append(days, day)
-	}
-	sort.Strings(days)
 
+	return aggregation, nil
+}
+
+func (useCase *GetDailyVolumeReportUseCase) buildItems(pegin, pegout dailyVolume) []DailyVolumeItem {
+	days := useCase.sortedDays(pegin, pegout)
 	items := make([]DailyVolumeItem, 0, len(days))
 	for _, day := range days {
 		items = append(items, DailyVolumeItem{
 			Day:          day,
-			PeginVolume:  peginVolume[day],
-			PegoutVolume: pegoutVolume[day],
-			PeginCount:   peginCounts[day],
-			PegoutCount:  pegoutCounts[day],
+			PeginVolume:  useCase.bigIntOrZero(pegin.volumeByDay[day]),
+			PegoutVolume: useCase.bigIntOrZero(pegout.volumeByDay[day]),
+			PeginCount:   pegin.countByDay[day],
+			PegoutCount:  pegout.countByDay[day],
 		})
 	}
-
-	return GetDailyVolumeReportResponse{
-		Data:              items,
-		TotalPeginVolume:  peginTotal,
-		TotalPegoutVolume: pegoutTotal,
-	}, nil
+	return items
 }
 
-// RunForSingleDay returns the daily volume report for one specific day
-func (useCase *GetDailyVolumeReportUseCase) RunForSingleDay(ctx context.Context, day time.Time) (GetDailyVolumeReportResponse, error) {
-	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
-	return useCase.Run(ctx, start, start.Add(24*time.Hour), 1, 100)
+func (useCase *GetDailyVolumeReportUseCase) sortedDays(pegin, pegout dailyVolume) []string {
+	days := make([]string, 0, len(pegin.volumeByDay)+len(pegout.volumeByDay))
+	for day := range pegin.volumeByDay {
+		days = append(days, day)
+	}
+	for day := range pegout.volumeByDay {
+		if _, alreadyAdded := pegin.volumeByDay[day]; !alreadyAdded {
+			days = append(days, day)
+		}
+	}
+	slices.Sort(days)
+	return days
 }
 
-func (useCase *GetDailyVolumeReportUseCase) collectPeginVolume(ctx context.Context, startTime, endTime time.Time, page, perPage int) (map[string]*big.Int, map[string]int, *big.Int, error) {
-	pairs, _, err := useCase.peginRepo.ListQuotesByDateRange(ctx, startTime, endTime, page, perPage)
-	if err != nil {
-		return nil, nil, nil, err
+func (useCase *GetDailyVolumeReportUseCase) bigIntOrZero(volume *big.Int) *big.Int {
+	if volume == nil {
+		return big.NewInt(0)
 	}
-
-	volumeByDay := make(map[string]*big.Int)
-	countByDay := make(map[string]int)
-	total := new(big.Int)
-
-	for _, pair := range pairs {
-		if pair.Quote.Value == nil {
-			continue
-		}
-		day := dayBucketKey(pair.Quote.AgreementTimestamp)
-		if volumeByDay[day] == nil {
-			volumeByDay[day] = new(big.Int)
-		}
-		volumeByDay[day].Add(volumeByDay[day], pair.Quote.Value.AsBigInt())
-		volumeByDay[day].Add(volumeByDay[day], pair.Quote.CallFee.AsBigInt())
-		countByDay[day]++
-		total.Add(total, pair.Quote.Value.AsBigInt())
-	}
-
-	return volumeByDay, countByDay, total, nil
+	return volume
 }
 
-func (useCase *GetDailyVolumeReportUseCase) collectPegoutVolume(ctx context.Context, startTime, endTime time.Time, page, perPage int) (map[string]*big.Int, map[string]int, *big.Int, error) {
-	pairs, _, err := useCase.pegoutRepo.ListQuotesByDateRange(ctx, startTime, endTime, page, perPage)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	volumeByDay := make(map[string]*big.Int)
-	countByDay := make(map[string]int)
-	total := new(big.Int)
-
-	for _, pair := range pairs {
-		if pair.Quote.Value == nil {
-			continue
-		}
-		day := dayBucketKey(pair.Quote.DepositDateLimit)
-		if volumeByDay[day] == nil {
-			volumeByDay[day] = new(big.Int)
-		}
-		volumeByDay[day].Add(volumeByDay[day], pair.Quote.Value.AsBigInt())
-		volumeByDay[day].Add(volumeByDay[day], pair.Quote.CallFee.AsBigInt())
-		countByDay[day]++
-		total.Add(total, pair.Quote.Value.AsBigInt())
-	}
-
-	return volumeByDay, countByDay, total, nil
+func (useCase *GetDailyVolumeReportUseCase) dayBucketKey(timestamp uint32) string {
+	return time.Unix(int64(timestamp), 0).UTC().Format(time.DateOnly)
 }
