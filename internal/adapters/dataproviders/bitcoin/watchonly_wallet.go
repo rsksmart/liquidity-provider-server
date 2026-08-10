@@ -75,6 +75,14 @@ func (wallet *WatchOnlyWallet) CreateUnfundedTransactionWithOpReturn(address str
 }
 
 func (wallet *WatchOnlyWallet) ImportAddress(address string) error {
+	return wallet.importAddress(address, false)
+}
+
+func (wallet *WatchOnlyWallet) ImportAddressWithRescan(address string) error {
+	return wallet.importAddress(address, true)
+}
+
+func (wallet *WatchOnlyWallet) importAddress(address string, rescan bool) error {
 	_, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
 	if err != nil {
 		return err
@@ -82,7 +90,7 @@ func (wallet *WatchOnlyWallet) ImportAddress(address string) error {
 	if err = EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return err
 	}
-	return wallet.conn.client.ImportAddressRescan(address, "", false)
+	return wallet.conn.client.ImportAddressRescan(address, "", rescan)
 }
 
 func (wallet *WatchOnlyWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
@@ -90,6 +98,13 @@ func (wallet *WatchOnlyWallet) GetTransactions(address string) ([]blockchain.Bit
 		return nil, err
 	}
 	return getTransactionsToAddress(address, wallet.conn.NetworkParams, wallet.conn.client)
+}
+
+func (wallet *WatchOnlyWallet) GetTransaction(hash string) (blockchain.BitcoinWalletTransaction, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return blockchain.BitcoinWalletTransaction{}, err
+	}
+	return getWalletTransaction(hash, wallet.conn.client)
 }
 
 func (wallet *WatchOnlyWallet) Address() string {
