@@ -8,7 +8,8 @@ excludeAgent: "cloud-agent"
 ## Purpose and scope
 
 - These instructions define *how* to review across repeated passes on the same pull request.
-- The checklist in `.github/prompts/review-code.prompt.md` defines *what* to look for. Apply both.
+- They do not define *what* to look for. Apply any repository review checklist or coding standards
+  alongside this procedure.
 - On a repeat pass, run the phases in this order: reconcile prior comments (Step 3), then review
   the new diff (Step 4). Do not interleave them.
 
@@ -22,9 +23,10 @@ Read the current state of the pull request before writing any comment.
 reason to report the context as unavailable.
 
 - Derive `owner` and `repo` from `git remote get-url origin`: take the last two path segments and
-  strip a trailing `.git`. `git@github.com:rsksmart/liquidity-provider-server.git` yields owner
-  `rsksmart` and repo `liquidity-provider-server`.
-- Use `origin` specifically. Other remotes point at security advisory forks with different names.
+  strip a trailing `.git`. For example `git@github.com:org/repo.git` yields owner `org` and repo
+  `repo`.
+- Use `origin` specifically when more than one remote is configured; other remotes may point at
+  forks whose names differ from the repository under review.
 - If `origin` is missing or unparseable, use owner `rsksmart` and the checkout's root directory name
   as the repo.
 - Use `pullNumber` from the review context when available. Otherwise:
@@ -54,8 +56,8 @@ ran without prior-review context. Do not skip reconciliation silently.
 
 ## Step 2 — First pass or repeat pass
 
-- **First pass** — no prior Copilot review exists. Review normally against the checklist. Skip Step 3
-  and omit the follow-up record entirely.
+- **First pass** — no prior Copilot review exists. Review normally against the repository's review
+  standards. Skip Step 3 and omit the follow-up record entirely.
 - **Repeat pass** — at least one prior Copilot review exists. Do Steps 3, 4, and 5.
 - Track only Copilot's own prior comments. Human review comments inform the review but are never
   counted as addressed or unaddressed, and never make a finding a repeat.
@@ -104,8 +106,8 @@ A suppressed finding has no thread to reply in, so it may also be declined from 
 request comment that names the location:
 
 ```text
-Won't fix: internal/usecases/pegin/call_for_user.go:96 — the nil case is unreachable, the caller
-validates the pointer before the call.
+Won't fix: path/to/file.go:96 — the nil case is unreachable, the caller validates the pointer
+before the call.
 ```
 
 - Read top-level declines from `get_comments` and match them by file path and line, allowing for line
@@ -132,7 +134,7 @@ make it new, and neither does its appearing in the diff.
 
 Raise new findings only on lines that appear in the diff under review. Unchanged surrounding code is
 context for understanding the change, not review surface. Leave problems in untouched code alone even
-when they violate the checklist.
+when they violate the repository's review standards.
 
 - On a first pass, the diff under review is the full pull request diff from `get_diff`.
 - On a repeat pass, narrow it to what changed since the most recent Copilot review. Take that
@@ -190,11 +192,11 @@ Declined, No longer applicable, Unverified — omitting any that have no entries
 
 ```markdown
 ### Not addressed
-- `pkg/liquidity_provider.go:210` — handler still returns the domain entity instead of a DTO.
+- `path/to/file.go:210` — handler still returns the domain entity instead of a DTO.
 
 ### Declined
-- `internal/usecases/pegin/call_for_user.go:96` — declined by @someuser: the nil case is
-  unreachable because the caller validates the pointer first.
+- `path/to/file.go:96` — declined by @someuser: the nil case is unreachable because the caller
+  validates the pointer first.
 ```
 
 - Name who declined each declined finding and the reason they gave.
