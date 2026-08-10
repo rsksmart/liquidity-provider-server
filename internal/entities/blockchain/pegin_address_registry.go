@@ -1,27 +1,36 @@
 package blockchain
 
-import (
-	"context"
-
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-)
+import "context"
 
 // PegInAddressRegistryEncoding mirrors the on-chain IPegInAddressRegistry.Encoding enum.
 type PegInAddressRegistryEncoding uint8
 
 const (
-	PegInAddressRegistryEncodingBase58  PegInAddressRegistryEncoding = 0
-	PegInAddressRegistryEncodingBech32  PegInAddressRegistryEncoding = 1
-	PegInAddressRegistryEncodingBech32M PegInAddressRegistryEncoding = 2
+	PegInAddressRegistryEncodingBase58 PegInAddressRegistryEncoding = iota
+	PegInAddressRegistryEncodingBech32
+	PegInAddressRegistryEncodingBech32M
 )
+
+// PegInAddress is a registered BTC address payload together with the encoding needed to read it.
+type PegInAddress struct {
+	Payload  []byte
+	Encoding PegInAddressRegistryEncoding
+}
+
+// PegInAddressBatch is the result of a batch lookup. The registry returns a single encoding
+// shared by every payload in the batch.
+type PegInAddressBatch struct {
+	Payloads [][]byte
+	Encoding PegInAddressRegistryEncoding
+}
 
 // PegInRegistration is the decoded registration record for a single RSK destination address.
 type PegInRegistration struct {
 	Registrant        string
-	RegistrationBlock *entities.Wei
+	RegistrationBlock uint64
 }
 
-// AddressRegistered is the decoded AddressRegistered event emitted by the PegInAddressRegistry contract.
+// AddressRegistered is the decoded AddressRegistered event of the PegInAddressRegistry contract.
 type AddressRegistered struct {
 	RskAddress       string
 	Registrant       string
@@ -30,15 +39,14 @@ type AddressRegistered struct {
 	BlockNumber      uint64
 }
 
-// PegInAddressRegistryContract is a read-only port over the frozen IPegInAddressRegistry ABI.
-// Registration (registerAddress) is intentionally not exposed: writing registrations is the
-// responsibility of a separate on-chain watcher process, not the liquidity provider server.
 type PegInAddressRegistryContract interface {
 	GetAddress() string
-	GetPegInAddress(rskAddr string) (payload []byte, encoding PegInAddressRegistryEncoding, err error)
-	GetPegInAddresses(rskAddrs []string) (payloads [][]byte, encoding PegInAddressRegistryEncoding, err error)
+	GetPegInAddress(rskAddr string) (PegInAddress, error)
+	GetPegInAddresses(rskAddrs []string) (PegInAddressBatch, error)
 	IsRegistered(rskAddr string) (bool, error)
 	GetRegistration(rskAddr string) (PegInRegistration, error)
 	GetRegistrationRoot() ([32]byte, error)
+	// GetAddressRegisteredEvents returns the AddressRegistered events in [fromBlock, toBlock].
+	// A nil toBlock reads up to the latest block.
 	GetAddressRegisteredEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]AddressRegistered, error)
 }

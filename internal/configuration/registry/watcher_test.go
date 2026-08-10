@@ -23,11 +23,13 @@ func TestNewWatcherRegistry(t *testing.T) {
 	t.Run("Watcher registry constructor should initialize every watcher", func(t *testing.T) {
 		env := environment.Environment{
 			Rsk: environment.RskEnv{
-				DiscoveryAddress:            "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
-				CollateralManagementAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
-				PeginContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
-				PegoutContractAddress:       "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
-				BridgeAddress:               "0x0000000000000000000000000000000001000006",
+				DiscoveryAddress:             "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
+				CollateralManagementAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
+				PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
+				PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
+				PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
+				FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
+				BridgeAddress:                "0x0000000000000000000000000000000001000006",
 			},
 			Btc:    environment.BtcEnv{Network: "testnet"},
 			Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},

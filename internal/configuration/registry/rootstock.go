@@ -65,36 +65,8 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 
 	abis := rootstock.MustLoadFlyoverABIs()
 
-	// Optional adapters: only constructed when their bound contract exists (see
-	// createBoundContracts' boot-safety branch). Left nil otherwise so the server can boot
-	// without these contract addresses configured; callers must nil-check before use.
-	var peginAddressRegistry blockchain.PegInAddressRegistryContract
-	if boundContracts.peginAddressRegistry != nil {
-		peginAddressRegistry = rootstock.NewPegInAddressRegistryContractImpl(
-			client,
-			env.Rsk.PegInAddressRegistryAddress,
-			boundContracts.peginAddressRegistry,
-			rootstock.DefaultRetryParams,
-			contractBindings.peginAddressRegistry,
-			abis,
-		)
-	}
-	var flyoverConfigurations blockchain.FlyoverConfigurationsContract
-	if boundContracts.flyoverConfigurations != nil {
-		flyoverConfigurations = rootstock.NewFlyoverConfigurationsContractImpl(
-			client,
-			env.Rsk.FlyoverConfigurationsAddress,
-			boundContracts.flyoverConfigurations,
-			rootstock.DefaultRetryParams,
-			contractBindings.flyoverConfigurations,
-			abis,
-		)
-	}
-
 	return &Rootstock{
 		Contracts: blockchain.RskContracts{
-			PegInAddressRegistry:  peginAddressRegistry,
-			FlyoverConfigurations: flyoverConfigurations,
 			Bridge: rootstock.NewRskBridgeImpl(
 				rootstock.RskBridgeConfig{
 					Address:               env.Rsk.BridgeAddress,
@@ -152,6 +124,22 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				contractBindings.discovery,
 				abis,
 			),
+			PegInAddressRegistry: rootstock.NewPegInAddressRegistryContractImpl(
+				client,
+				env.Rsk.PegInAddressRegistryAddress,
+				boundContracts.peginAddressRegistry,
+				rootstock.DefaultRetryParams,
+				contractBindings.peginAddressRegistry,
+				abis,
+			),
+			FlyoverConfigurations: rootstock.NewFlyoverConfigurationsContractImpl(
+				client,
+				env.Rsk.FlyoverConfigurationsAddress,
+				boundContracts.flyoverConfigurations,
+				rootstock.DefaultRetryParams,
+				contractBindings.flyoverConfigurations,
+				abis,
+			),
 		},
 		Wallet: wallet,
 		Client: client,
@@ -164,12 +152,14 @@ func createBoundContracts(
 	client *rootstock.RskClient,
 ) (rskBoundContracts, error) {
 	var (
-		err                         error
-		bridgeAddress               common.Address
-		peginContractAddress        common.Address
-		pegoutContractAddress       common.Address
-		collateralManagementAddress common.Address
-		discoveryAddress            common.Address
+		err                          error
+		bridgeAddress                common.Address
+		peginContractAddress         common.Address
+		pegoutContractAddress        common.Address
+		collateralManagementAddress  common.Address
+		discoveryAddress             common.Address
+		peginAddressRegistryAddress  common.Address
+		flyoverConfigurationsAddress common.Address
 	)
 	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
 		return rskBoundContracts{}, err
@@ -186,33 +176,20 @@ func createBoundContracts(
 	if err = rootstock.ParseAddress(&bridgeAddress, env.Rsk.BridgeAddress); err != nil {
 		return rskBoundContracts{}, err
 	}
+	if err = rootstock.ParseAddress(&peginAddressRegistryAddress, env.Rsk.PegInAddressRegistryAddress); err != nil {
+		return rskBoundContracts{}, err
+	}
+	if err = rootstock.ParseAddress(&flyoverConfigurationsAddress, env.Rsk.FlyoverConfigurationsAddress); err != nil {
+		return rskBoundContracts{}, err
+	}
 
 	peginContract := bindings.peginContract.Instance(client.Rpc(), peginContractAddress)
 	pegoutContract := bindings.pegoutContract.Instance(client.Rpc(), pegoutContractAddress)
 	collateralManagement := bindings.collateralManagement.Instance(client.Rpc(), collateralManagementAddress)
 	discovery := bindings.discovery.Instance(client.Rpc(), discoveryAddress)
 	bridge := bindings.bridge.Instance(client.Rpc(), bridgeAddress)
-
-	// PegInAddressRegistry and FlyoverConfigurations are optional wiring slots: both env vars
-	// may be absent, and ParseAddress rejects "" as an invalid address rather than treating it
-	// as "skip" — so the bound contract (and downstream adapter) is only constructed when the
-	// address is actually configured. Leaving it nil here is safe as long as callers nil-check
-	// RskContracts.PegInAddressRegistry/.FlyoverConfigurations before use.
-	var peginAddressRegistry, flyoverConfigurations *bind.BoundContract
-	if env.Rsk.PegInAddressRegistryAddress != "" {
-		var peginAddressRegistryAddress common.Address
-		if err = rootstock.ParseAddress(&peginAddressRegistryAddress, env.Rsk.PegInAddressRegistryAddress); err != nil {
-			return rskBoundContracts{}, err
-		}
-		peginAddressRegistry = bindings.peginAddressRegistry.Instance(client.Rpc(), peginAddressRegistryAddress)
-	}
-	if env.Rsk.FlyoverConfigurationsAddress != "" {
-		var flyoverConfigurationsAddress common.Address
-		if err = rootstock.ParseAddress(&flyoverConfigurationsAddress, env.Rsk.FlyoverConfigurationsAddress); err != nil {
-			return rskBoundContracts{}, err
-		}
-		flyoverConfigurations = bindings.flyoverConfigurations.Instance(client.Rpc(), flyoverConfigurationsAddress)
-	}
+	peginAddressRegistry := bindings.peginAddressRegistry.Instance(client.Rpc(), peginAddressRegistryAddress)
+	flyoverConfigurations := bindings.flyoverConfigurations.Instance(client.Rpc(), flyoverConfigurationsAddress)
 
 	return rskBoundContracts{
 		bridge:                bridge,

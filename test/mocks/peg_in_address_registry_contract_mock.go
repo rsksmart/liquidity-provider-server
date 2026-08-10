@@ -128,40 +128,31 @@ func (_c *PegInAddressRegistryContractMock_GetAddressRegisteredEvents_Call) RunA
 }
 
 // GetPegInAddress provides a mock function with given fields: rskAddr
-func (_m *PegInAddressRegistryContractMock) GetPegInAddress(rskAddr string) ([]byte, blockchain.PegInAddressRegistryEncoding, error) {
+func (_m *PegInAddressRegistryContractMock) GetPegInAddress(rskAddr string) (blockchain.PegInAddress, error) {
 	ret := _m.Called(rskAddr)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPegInAddress")
 	}
 
-	var r0 []byte
-	var r1 blockchain.PegInAddressRegistryEncoding
-	var r2 error
-	if rf, ok := ret.Get(0).(func(string) ([]byte, blockchain.PegInAddressRegistryEncoding, error)); ok {
+	var r0 blockchain.PegInAddress
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (blockchain.PegInAddress, error)); ok {
 		return rf(rskAddr)
 	}
-	if rf, ok := ret.Get(0).(func(string) []byte); ok {
+	if rf, ok := ret.Get(0).(func(string) blockchain.PegInAddress); ok {
 		r0 = rf(rskAddr)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]byte)
-		}
+		r0 = ret.Get(0).(blockchain.PegInAddress)
 	}
 
-	if rf, ok := ret.Get(1).(func(string) blockchain.PegInAddressRegistryEncoding); ok {
+	if rf, ok := ret.Get(1).(func(string) error); ok {
 		r1 = rf(rskAddr)
 	} else {
-		r1 = ret.Get(1).(blockchain.PegInAddressRegistryEncoding)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(string) error); ok {
-		r2 = rf(rskAddr)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // PegInAddressRegistryContractMock_GetPegInAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPegInAddress'
@@ -182,51 +173,42 @@ func (_c *PegInAddressRegistryContractMock_GetPegInAddress_Call) Run(run func(rs
 	return _c
 }
 
-func (_c *PegInAddressRegistryContractMock_GetPegInAddress_Call) Return(payload []byte, encoding blockchain.PegInAddressRegistryEncoding, err error) *PegInAddressRegistryContractMock_GetPegInAddress_Call {
-	_c.Call.Return(payload, encoding, err)
+func (_c *PegInAddressRegistryContractMock_GetPegInAddress_Call) Return(_a0 blockchain.PegInAddress, _a1 error) *PegInAddressRegistryContractMock_GetPegInAddress_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *PegInAddressRegistryContractMock_GetPegInAddress_Call) RunAndReturn(run func(string) ([]byte, blockchain.PegInAddressRegistryEncoding, error)) *PegInAddressRegistryContractMock_GetPegInAddress_Call {
+func (_c *PegInAddressRegistryContractMock_GetPegInAddress_Call) RunAndReturn(run func(string) (blockchain.PegInAddress, error)) *PegInAddressRegistryContractMock_GetPegInAddress_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetPegInAddresses provides a mock function with given fields: rskAddrs
-func (_m *PegInAddressRegistryContractMock) GetPegInAddresses(rskAddrs []string) ([][]byte, blockchain.PegInAddressRegistryEncoding, error) {
+func (_m *PegInAddressRegistryContractMock) GetPegInAddresses(rskAddrs []string) (blockchain.PegInAddressBatch, error) {
 	ret := _m.Called(rskAddrs)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPegInAddresses")
 	}
 
-	var r0 [][]byte
-	var r1 blockchain.PegInAddressRegistryEncoding
-	var r2 error
-	if rf, ok := ret.Get(0).(func([]string) ([][]byte, blockchain.PegInAddressRegistryEncoding, error)); ok {
+	var r0 blockchain.PegInAddressBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func([]string) (blockchain.PegInAddressBatch, error)); ok {
 		return rf(rskAddrs)
 	}
-	if rf, ok := ret.Get(0).(func([]string) [][]byte); ok {
+	if rf, ok := ret.Get(0).(func([]string) blockchain.PegInAddressBatch); ok {
 		r0 = rf(rskAddrs)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([][]byte)
-		}
+		r0 = ret.Get(0).(blockchain.PegInAddressBatch)
 	}
 
-	if rf, ok := ret.Get(1).(func([]string) blockchain.PegInAddressRegistryEncoding); ok {
+	if rf, ok := ret.Get(1).(func([]string) error); ok {
 		r1 = rf(rskAddrs)
 	} else {
-		r1 = ret.Get(1).(blockchain.PegInAddressRegistryEncoding)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func([]string) error); ok {
-		r2 = rf(rskAddrs)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // PegInAddressRegistryContractMock_GetPegInAddresses_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPegInAddresses'
@@ -247,12 +229,12 @@ func (_c *PegInAddressRegistryContractMock_GetPegInAddresses_Call) Run(run func(
 	return _c
 }
 
-func (_c *PegInAddressRegistryContractMock_GetPegInAddresses_Call) Return(payloads [][]byte, encoding blockchain.PegInAddressRegistryEncoding, err error) *PegInAddressRegistryContractMock_GetPegInAddresses_Call {
-	_c.Call.Return(payloads, encoding, err)
+func (_c *PegInAddressRegistryContractMock_GetPegInAddresses_Call) Return(_a0 blockchain.PegInAddressBatch, _a1 error) *PegInAddressRegistryContractMock_GetPegInAddresses_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *PegInAddressRegistryContractMock_GetPegInAddresses_Call) RunAndReturn(run func([]string) ([][]byte, blockchain.PegInAddressRegistryEncoding, error)) *PegInAddressRegistryContractMock_GetPegInAddresses_Call {
+func (_c *PegInAddressRegistryContractMock_GetPegInAddresses_Call) RunAndReturn(run func([]string) (blockchain.PegInAddressBatch, error)) *PegInAddressRegistryContractMock_GetPegInAddresses_Call {
 	_c.Call.Return(run)
 	return _c
 }
