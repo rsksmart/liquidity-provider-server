@@ -49,7 +49,6 @@ func managementAPIHandler(t *testing.T) http.Handler {
 	env := environment.Environment{
 		Management: environment.ManagementEnv{
 			EnableManagementApi:  true,
-			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},

@@ -7,9 +7,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/gorilla/sessions"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/routes"
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
@@ -36,7 +36,6 @@ func TestConfigureRoutes_Public(t *testing.T) {
 	onlyPublicEnv := environment.Environment{
 		Management: environment.ManagementEnv{
 			EnableManagementApi:  false,
-			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
@@ -68,7 +67,7 @@ func TestConfigureRoutes_Public(t *testing.T) {
 	})
 
 	t.Run("should register management routes only if Management API is enabled", func(t *testing.T) {
-		managementRoutes := routes.GetManagementEndpoints(onlyPublicEnv, useCaseRegistry, &mocks.StoreMock{})
+		managementRoutes := routes.GetManagementEndpoints(onlyPublicEnv, useCaseRegistry, nil)
 		for _, endpoint := range managementRoutes {
 			req := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
 			_, pattern := router.Handler(req)
@@ -85,7 +84,6 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	managementEnv := environment.Environment{
 		Management: environment.ManagementEnv{
 			EnableManagementApi:  true,
-			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
@@ -94,7 +92,7 @@ func TestConfigureRoutes_Management(t *testing.T) {
 	routes.ConfigureRoutes(router, managementEnv, useCaseRegistry, newBlockedEndpointFactory())
 	handler := router.BuildHandler()
 
-	managementEndpoints := routes.GetManagementEndpoints(managementEnv, useCaseRegistry, &mocks.StoreMock{})
+	managementEndpoints := routes.GetManagementEndpoints(managementEnv, useCaseRegistry, nil)
 	allEndpoints := append(toEndpoints(routes.GetPublicEndpoints(useCaseRegistry)), managementEndpoints...)
 
 	t.Run("should configure cors middleware", func(t *testing.T) {
@@ -131,7 +129,8 @@ func TestConfigureRoutes_Management(t *testing.T) {
 				}
 				// Routes outside AllowedPaths additionally require a valid session.
 				if !slices.Contains(routes.AllowedPaths[:], endpoint.Path) {
-					assertHasSessionMiddleware(t, handler, endpoint)
+					assertSessionMiddlewareRejectsWithoutCookie(t, handler, endpoint)
+					assertSessionMiddlewareAcceptsValidCookie(t, handler, endpoint, managementEnv.Management)
 				}
 			}
 		})
@@ -145,7 +144,6 @@ func TestConfigureRoutes_HeadReturnsMethodNotAllowed(t *testing.T) {
 	env := environment.Environment{
 		Management: environment.ManagementEnv{
 			EnableManagementApi:  false,
-			SessionAuthKey:       hex.EncodeToString(make([]byte, 32)),
 			SessionEncryptionKey: hex.EncodeToString(make([]byte, 32)),
 			UseHttps:             false,
 		},
@@ -229,7 +227,7 @@ func testPublicRoutesRegistration(t *testing.T, useCaseRegistry registry.UseCase
 	})
 }
 
-func assertHasSessionMiddleware(t *testing.T, handler http.Handler, endpoint routes.Endpoint) {
+func assertSessionMiddlewareRejectsWithoutCookie(t *testing.T, handler http.Handler, endpoint routes.Endpoint) {
 	// A request with no Origin nor Sec-Fetch-Site header (same-origin or non-browser) clears the
 	// cross-origin gate and reaches the session validator, which rejects it because there is no
 	// recognized session.
@@ -239,6 +237,26 @@ func assertHasSessionMiddleware(t *testing.T, handler http.Handler, endpoint rou
 	// nolint:bodyclose
 	assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)
 	assert.Contains(t, response.Body.String(), "session not recognized")
+	require.NoError(t, response.Result().Body.Close())
+}
+
+func assertSessionMiddlewareAcceptsValidCookie(t *testing.T, handler http.Handler, endpoint routes.Endpoint, mgmt environment.ManagementEnv) {
+	store, err := cookies.GetSessionCookieStore(mgmt)
+	require.NoError(t, err)
+
+	createReq := httptest.NewRequest(http.MethodGet, "/", nil)
+	createRec := httptest.NewRecorder()
+	require.NoError(t, store.Create(createRec, createReq))
+	createResult := createRec.Result()
+	require.NoError(t, createResult.Body.Close())
+	sessionCookie := createResult.Cookies()[0]
+
+	request := httptest.NewRequest(endpoint.Method, requestPath(endpoint.Path), nil)
+	request.AddCookie(sessionCookie)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	// nolint:bodyclose
+	assert.Equal(t, http.StatusTeapot, response.Result().StatusCode)
 	require.NoError(t, response.Result().Body.Close())
 }
 
@@ -344,7 +362,7 @@ func (f *blockedEndpointFactory) GetPublic(useCaseRegistry registry.UseCaseRegis
 	return dummyEndpoints
 }
 
-func (f *blockedEndpointFactory) GetPrivate(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store sessions.Store) []routes.Endpoint {
+func (f *blockedEndpointFactory) GetPrivate(env environment.Environment, useCaseRegistry registry.UseCaseRegistry, store cookies.SessionStore) []routes.Endpoint {
 	dummyEndpoints := make([]routes.Endpoint, 0)
 	endpoints := f.realFactory.GetPrivate(env, useCaseRegistry, store)
 	for _, endpoint := range endpoints {
