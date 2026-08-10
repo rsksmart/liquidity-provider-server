@@ -109,6 +109,9 @@ packages:
   github.com/gorilla/sessions:
     interfaces:
       Store:
+  github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server/cookies:
+    interfaces:
+      SessionStore:
   net/http:
     interfaces:
       Handler:
