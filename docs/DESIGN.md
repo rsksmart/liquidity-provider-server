@@ -4,6 +4,15 @@ The Flyover system allows a user to transfer BTC from Bitcoin to Rootstock and v
 
 The outstanding feature of the Flyover system is that it accomplishes the above without giving any third party custody of the transferred funds. This is an outstanding security guarantee to the user. The system comprises one or more liquidity providers (LPs) that store their BTC in Rootstock and Bitcoin. The first version of the Flyover protocol supports only the peg-in process (BTC to RBTC). Later versions will also support the peg-out process (RBTC to BTC).
 
+## Peg-in address registry and Flyover configurations
+
+The LPS consumes two LBC contracts as read-only ports:
+
+* `PegInAddressRegistry` maps an RSK destination address to the BTC address registered for it. The LPS reads registrations and `AddressRegistered` events. It never registers an address: registration is the job of the watchtower.
+* `FlyoverConfigurations` holds the protocol-level peg-in fee and confirmation rules. The LPS reads the values that apply to a quote. It never queues or applies a configuration change: that is a time-locked admin operation.
+
+Both contract addresses are mandatory. The server does not start without them.
+
 ## Workflow
 
 The following diagram shows the interaction of the different components during the peg-in process. Note that the call

@@ -11,7 +11,6 @@ import (
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	bindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_address_registry"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -20,9 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mustPackWithEncoding ABI-encodes a payload of the given Solidity type alongside the trailing
-// uint8 encoding tag every registry read returns, so tests can build fixtures for both the
-// single-address and batch variants of that return shape without duplicating the packing logic.
+// mustPackWithEncoding ABI-encodes a payload of the given Solidity type followed by the uint8
+// encoding tag, which is the return shape of both registry address reads.
 func mustPackWithEncoding(t *testing.T, solidityType string, payload any, encoding uint8) []byte {
 	t.Helper()
 	payloadType, err := abi.NewType(solidityType, "", nil)
@@ -35,8 +33,7 @@ func mustPackWithEncoding(t *testing.T, solidityType string, payload any, encodi
 	return out
 }
 
-// newPegInAddressRegistryTestContract builds a registry adapter wired to a fresh bound-contract
-// mock, matching the setup every read-method test case below needs.
+// newPegInAddressRegistryTestContract builds a registry adapter wired to a fresh bound-contract mock.
 func newPegInAddressRegistryTestContract() (boundContractMock, *bindings.PegInAddressRegistryContract, blockchain.PegInAddressRegistryContract) {
 	contractMock := createBoundContractMock()
 	registryBinding := bindings.NewPegInAddressRegistryContract()
@@ -88,10 +85,12 @@ func TestPegInAddressRegistryContractImpl_GetPegInAddress(t *testing.T) {
 			matchCallData(registryBinding.PackGetPegInAddress(parsedAddress)),
 			mock.Anything,
 		).Return(mustPackWithEncoding(t, "bytes", payload, 1), nil).Once()
-		resultPayload, resultEncoding, err := registry.GetPegInAddress(parsedAddress.String())
+		result, err := registry.GetPegInAddress(parsedAddress.String())
 		require.NoError(t, err)
-		assert.Equal(t, payload, resultPayload)
-		assert.Equal(t, blockchain.PegInAddressRegistryEncodingBech32, resultEncoding)
+		assert.Equal(t, blockchain.PegInAddress{
+			Payload:  payload,
+			Encoding: blockchain.PegInAddressRegistryEncodingBech32,
+		}, result)
 		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on call fail", func(t *testing.T) {
@@ -100,17 +99,15 @@ func TestPegInAddressRegistryContractImpl_GetPegInAddress(t *testing.T) {
 			matchCallData(registryBinding.PackGetPegInAddress(parsedAddress)),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
-		resultPayload, resultEncoding, err := registry.GetPegInAddress(parsedAddress.String())
+		result, err := registry.GetPegInAddress(parsedAddress.String())
 		require.Error(t, err)
-		assert.Nil(t, resultPayload)
-		assert.Zero(t, resultEncoding)
+		assert.Empty(t, result)
 		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Invalid address", func(t *testing.T) {
-		resultPayload, resultEncoding, err := registry.GetPegInAddress(test.AnyString)
+		result, err := registry.GetPegInAddress(test.AnyString)
 		require.ErrorIs(t, err, blockchain.InvalidAddressError)
-		assert.Nil(t, resultPayload)
-		assert.Zero(t, resultEncoding)
+		assert.Empty(t, result)
 	})
 }
 
@@ -124,10 +121,12 @@ func TestPegInAddressRegistryContractImpl_GetPegInAddresses(t *testing.T) {
 			matchCallData(registryBinding.PackGetPegInAddresses([]common.Address{parsedAddress, otherAddress})),
 			mock.Anything,
 		).Return(mustPackWithEncoding(t, "bytes[]", payloads, 0), nil).Once()
-		resultPayloads, resultEncoding, err := registry.GetPegInAddresses([]string{parsedAddress.String(), otherAddress.String()})
+		result, err := registry.GetPegInAddresses([]string{parsedAddress.String(), otherAddress.String()})
 		require.NoError(t, err)
-		assert.Equal(t, payloads, resultPayloads)
-		assert.Equal(t, blockchain.PegInAddressRegistryEncodingBase58, resultEncoding)
+		assert.Equal(t, blockchain.PegInAddressBatch{
+			Payloads: payloads,
+			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
+		}, result)
 		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on call fail", func(t *testing.T) {
@@ -136,15 +135,15 @@ func TestPegInAddressRegistryContractImpl_GetPegInAddresses(t *testing.T) {
 			matchCallData(registryBinding.PackGetPegInAddresses([]common.Address{parsedAddress, otherAddress})),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
-		resultPayloads, _, err := registry.GetPegInAddresses([]string{parsedAddress.String(), otherAddress.String()})
+		result, err := registry.GetPegInAddresses([]string{parsedAddress.String(), otherAddress.String()})
 		require.Error(t, err)
-		assert.Nil(t, resultPayloads)
+		assert.Empty(t, result)
 		contractMock.caller.AssertExpectations(t)
 	})
 	t.Run("Invalid address", func(t *testing.T) {
-		resultPayloads, _, err := registry.GetPegInAddresses([]string{test.AnyString})
+		result, err := registry.GetPegInAddresses([]string{test.AnyString})
 		require.ErrorIs(t, err, blockchain.InvalidAddressError)
-		assert.Nil(t, resultPayloads)
+		assert.Empty(t, result)
 	})
 }
 
@@ -192,7 +191,7 @@ func TestPegInAddressRegistryContractImpl_GetRegistration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.PegInRegistration{
 			Registrant:        registrant.String(),
-			RegistrationBlock: entities.NewBigWei(big.NewInt(555)),
+			RegistrationBlock: 555,
 		}, result)
 		contractMock.caller.AssertExpectations(t)
 	})

@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_address_registry"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,10 +19,6 @@ type peginAddressRegistryContractImpl struct {
 	binding     *bindings.PegInAddressRegistryContract
 }
 
-// NewPegInAddressRegistryContractImpl builds the read-only adapter for the frozen
-// IPegInAddressRegistry ABI. Registration (registerAddress) is deliberately not adapted
-// here: writing registrations belongs to a separate on-chain watcher process, not the
-// liquidity provider server.
 func NewPegInAddressRegistryContractImpl(
 	client *RskClient,
 	address string,
@@ -46,10 +41,10 @@ func (registry *peginAddressRegistryContractImpl) GetAddress() string {
 	return registry.address
 }
 
-func (registry *peginAddressRegistryContractImpl) GetPegInAddress(rskAddr string) ([]byte, blockchain.PegInAddressRegistryEncoding, error) {
+func (registry *peginAddressRegistryContractImpl) GetPegInAddress(rskAddr string) (blockchain.PegInAddress, error) {
 	var parsedAddress common.Address
 	if err := ParseAddress(&parsedAddress, rskAddr); err != nil {
-		return nil, 0, err
+		return blockchain.PegInAddress{}, err
 	}
 	opts := &bind.CallOpts{}
 	result, err := rskRetry(registry.retryParams.Retries, registry.retryParams.Sleep,
@@ -61,16 +56,19 @@ func (registry *peginAddressRegistryContractImpl) GetPegInAddress(rskAddr string
 			return bind.Call(registry.contract, opts, callData, registry.binding.UnpackGetPegInAddress)
 		})
 	if err != nil {
-		return nil, 0, err
+		return blockchain.PegInAddress{}, err
 	}
-	return result.Payload, blockchain.PegInAddressRegistryEncoding(result.Encoding), nil
+	return blockchain.PegInAddress{
+		Payload:  result.Payload,
+		Encoding: blockchain.PegInAddressRegistryEncoding(result.Encoding),
+	}, nil
 }
 
-func (registry *peginAddressRegistryContractImpl) GetPegInAddresses(rskAddrs []string) ([][]byte, blockchain.PegInAddressRegistryEncoding, error) {
+func (registry *peginAddressRegistryContractImpl) GetPegInAddresses(rskAddrs []string) (blockchain.PegInAddressBatch, error) {
 	parsedAddresses := make([]common.Address, len(rskAddrs))
 	for i, rskAddr := range rskAddrs {
 		if err := ParseAddress(&parsedAddresses[i], rskAddr); err != nil {
-			return nil, 0, err
+			return blockchain.PegInAddressBatch{}, err
 		}
 	}
 	opts := &bind.CallOpts{}
@@ -83,9 +81,12 @@ func (registry *peginAddressRegistryContractImpl) GetPegInAddresses(rskAddrs []s
 			return bind.Call(registry.contract, opts, callData, registry.binding.UnpackGetPegInAddresses)
 		})
 	if err != nil {
-		return nil, 0, err
+		return blockchain.PegInAddressBatch{}, err
 	}
-	return result.Payloads, blockchain.PegInAddressRegistryEncoding(result.Encoding), nil
+	return blockchain.PegInAddressBatch{
+		Payloads: result.Payloads,
+		Encoding: blockchain.PegInAddressRegistryEncoding(result.Encoding),
+	}, nil
 }
 
 func (registry *peginAddressRegistryContractImpl) IsRegistered(rskAddr string) (bool, error) {
@@ -123,7 +124,7 @@ func (registry *peginAddressRegistryContractImpl) GetRegistration(rskAddr string
 	}
 	return blockchain.PegInRegistration{
 		Registrant:        result.Registrant.String(),
-		RegistrationBlock: entities.NewBigWei(result.RegistrationBlock),
+		RegistrationBlock: result.RegistrationBlock.Uint64(),
 	}, nil
 }
 
@@ -139,9 +140,6 @@ func (registry *peginAddressRegistryContractImpl) GetRegistrationRoot() ([32]byt
 		})
 }
 
-// GetAddressRegisteredEvents replicates pegoutContractImpl.GetDepositEvents' filter-and-decode
-// pattern for the registry's AddressRegistered event. It only reads and returns matching
-// events; watching for new ones and reacting to them is the caller's responsibility.
 func (registry *peginAddressRegistryContractImpl) GetAddressRegisteredEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]blockchain.AddressRegistered, error) {
 	var lbcEvent *bindings.PegInAddressRegistryContractAddressRegistered
 	result := make([]blockchain.AddressRegistered, 0)

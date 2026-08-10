@@ -37,8 +37,7 @@ func TestFlyoverConfigurationsContractImpl_GetAddress(t *testing.T) {
 	assert.Equal(t, test.AnyAddress, configurations.GetAddress())
 }
 
-// newFlyoverConfigurationsTestContract builds a configurations adapter wired to a fresh
-// bound-contract mock, matching the setup every read-method test case below needs.
+// newFlyoverConfigurationsTestContract builds a configurations adapter wired to a fresh bound-contract mock.
 func newFlyoverConfigurationsTestContract() (boundContractMock, *bindings.FlyoverConfigurationsContract, blockchain.FlyoverConfigurationsContract) {
 	contractMock := createBoundContractMock()
 	configurationsBinding := bindings.NewFlyoverConfigurationsContract()

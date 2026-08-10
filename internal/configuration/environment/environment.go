@@ -50,10 +50,10 @@ type RskEnv struct {
 	PegoutContractAddress        string   `env:"PEGOUT_CONTRACT_ADDRESS" validate:"required"`
 	CollateralManagementAddress  string   `env:"COLLATERAL_MANAGEMENT_ADDRESS" validate:"required"`
 	DiscoveryAddress             string   `env:"DISCOVERY_ADDRESS" validate:"required"`
+	PegInAddressRegistryAddress  string   `env:"PEGIN_ADDRESS_REGISTRY_ADDRESS" validate:"required"`
+	FlyoverConfigurationsAddress string   `env:"FLYOVER_CONFIGURATIONS_ADDRESS" validate:"required"`
 	BridgeAddress                string   `env:"RSK_BRIDGE_ADDR" validate:"required"`
 	BridgeRequiredConfirmations  uint64   `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
-	PegInAddressRegistryAddress  string   `env:"PEGIN_ADDRESS_REGISTRY_ADDRESS"`
-	FlyoverConfigurationsAddress string   `env:"FLYOVER_CONFIGURATIONS_ADDRESS"`
 	ErpKeys                      []string `env:"ERP_KEYS" validate:"required"`
 	UseSegwitFederation          bool     `env:"USE_SEGWIT_FEDERATION"`
 	AccountNumber                int      `env:"ACCOUNT_NUM"` // no validation because 0 works fine

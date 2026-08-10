@@ -13,8 +13,7 @@ import (
 )
 
 // newRskWalletFactoryMock returns a wallet factory mock wired to a signer wallet mock that
-// resolves to a fixed address, covering the happy-path wallet setup shared by most test cases
-// below.
+// resolves to a fixed address.
 func newRskWalletFactoryMock() (*mocks.AbstractFactoryMock, *mocks.RskSignerWalletMock) {
 	rskWalletMock := new(mocks.RskSignerWalletMock)
 	rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
@@ -27,11 +26,13 @@ func newRskWalletFactoryMock() (*mocks.AbstractFactoryMock, *mocks.RskSignerWall
 func TestNewRootstockRegistry(t *testing.T) {
 	testEnv := environment.Environment{
 		Rsk: environment.RskEnv{
-			DiscoveryAddress:            "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
-			CollateralManagementAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
-			PeginContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
-			PegoutContractAddress:       "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
-			BridgeAddress:               "0x0000000000000000000000000000000001000006",
+			DiscoveryAddress:             "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
+			CollateralManagementAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
+			PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
+			PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
+			PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
+			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
+			BridgeAddress:                "0x0000000000000000000000000000000001000006",
 		},
 		Btc: environment.BtcEnv{Network: "testnet"},
 	}
@@ -49,45 +50,14 @@ func TestNewRootstockRegistry(t *testing.T) {
 		require.NotNil(t, rskRegistry.Contracts.PegIn)
 		require.NotNil(t, rskRegistry.Contracts.PegOut)
 		require.NotNil(t, rskRegistry.Contracts.Bridge)
-		require.Equal(t, rskWalletMock, rskRegistry.Wallet)
-		require.Equal(t, rskClient, rskRegistry.Client)
-	})
-	// With both new env vars absent, the registry must still boot successfully and leave the
-	// two optional adapter fields nil, since rootstock.ParseAddress rejects "" rather than
-	// skipping it, so the DI wiring must branch on presence before parsing.
-	t.Run("should boot successfully and leave the new optional contracts nil when their env vars are absent", func(t *testing.T) {
-		env := testEnv
-		require.Empty(t, env.Rsk.PegInAddressRegistryAddress)
-		require.Empty(t, env.Rsk.FlyoverConfigurationsAddress)
-		walletFactoryMock, _ := newRskWalletFactoryMock()
-		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
-		require.NoError(t, err)
-		require.NotNil(t, rskRegistry)
-		require.Nil(t, rskRegistry.Contracts.PegInAddressRegistry)
-		require.Nil(t, rskRegistry.Contracts.FlyoverConfigurations)
-		// The pre-existing contracts must stay wired exactly as before.
-		require.NotNil(t, rskRegistry.Contracts.Discovery)
-		require.NotNil(t, rskRegistry.Contracts.CollateralManagement)
-		require.NotNil(t, rskRegistry.Contracts.PegIn)
-		require.NotNil(t, rskRegistry.Contracts.PegOut)
-		require.NotNil(t, rskRegistry.Contracts.Bridge)
-	})
-	t.Run("should wire PegInAddressRegistry and FlyoverConfigurations when their env vars are set", func(t *testing.T) {
-		env := testEnv
-		env.Rsk.PegInAddressRegistryAddress = "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4"
-		env.Rsk.FlyoverConfigurationsAddress = "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3"
-		walletFactoryMock, _ := newRskWalletFactoryMock()
-		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
-		require.NoError(t, err)
-		require.NotNil(t, rskRegistry)
 		require.NotNil(t, rskRegistry.Contracts.PegInAddressRegistry)
 		require.NotNil(t, rskRegistry.Contracts.FlyoverConfigurations)
 		require.Equal(t, env.Rsk.PegInAddressRegistryAddress, rskRegistry.Contracts.PegInAddressRegistry.GetAddress())
 		require.Equal(t, env.Rsk.FlyoverConfigurationsAddress, rskRegistry.Contracts.FlyoverConfigurations.GetAddress())
+		require.Equal(t, rskWalletMock, rskRegistry.Wallet)
+		require.Equal(t, rskClient, rskRegistry.Client)
 	})
-	t.Run("should return an error when the pegin address registry address is set but invalid", func(t *testing.T) {
+	t.Run("should return an error when the pegin address registry address is invalid", func(t *testing.T) {
 		env := testEnv
 		env.Rsk.PegInAddressRegistryAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
@@ -95,7 +65,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
-	t.Run("should return an error when the flyover configurations address is set but invalid", func(t *testing.T) {
+	t.Run("should return an error when the flyover configurations address is invalid", func(t *testing.T) {
 		env := testEnv
 		env.Rsk.FlyoverConfigurationsAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
