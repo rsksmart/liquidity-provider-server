@@ -55,7 +55,8 @@ services:
       context: ../rskj
       args:
         UID: "${LPS_UID}"
-        RSKJ_VERSION: "${RSKJ_VERSION:-9.0.4~noble}"
+        # The rskj version is pinned by image digest in ../rskj/Dockerfile, so
+        # there is no version build-arg to override here.
     pull_policy: build
     image: rskj:latest
     container_name: rskj01
