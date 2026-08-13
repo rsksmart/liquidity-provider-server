@@ -90,6 +90,14 @@ func TestLoad(t *testing.T) {
 		assert.Zero(t, config.StartBlock)
 		assert.Equal(t, uint64(10), config.PageSize)
 	})
+	t.Run("rejects a damaged registry watcher start block", func(t *testing.T) {
+		setUpEnv(t)
+		t.Setenv("PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK", "not-a-block")
+
+		err := environment.Load(&environment.Environment{})
+
+		require.Error(t, err)
+	})
 }
 
 func TestPeginEnv_AddressRegistryWatcherConfig(t *testing.T) {

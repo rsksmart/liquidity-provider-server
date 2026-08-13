@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"syscall"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
@@ -35,6 +36,10 @@ type Application struct {
 	messagingRegistry    *registry.Messaging
 	runningServices      []entities.Closeable
 	doneChannel          chan os.Signal
+}
+
+type peginAddressRegistryDeploymentVerifier interface {
+	IsDeploymentBlock(ctx context.Context, blockNumber uint64) (bool, error)
 }
 
 func NewApplication(initCtx context.Context, env environment.Environment, timeouts environment.ApplicationTimeouts) *Application {
@@ -189,10 +194,14 @@ func (app *Application) addRunningService(service entities.Closeable) {
 
 func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher, error) {
 	var err error
-	watchers := app.enabledWatchers()
-
 	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
 	defer cancel()
+
+	if err = app.validatePegInAddressRegistryConfiguration(prepareCtx); err != nil {
+		return nil, err
+	}
+	watchers := app.enabledWatchers()
+
 	for _, w := range watchers {
 		if err = w.Prepare(prepareCtx); err != nil {
 			return nil, err
@@ -200,6 +209,125 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 		app.addRunningService(w)
 	}
 	return watchers, nil
+}
+
+func (app *Application) validatePegInAddressRegistryConfiguration(ctx context.Context) error {
+	if !app.peginAddressRegistry.Enabled {
+		return nil
+	}
+
+	contract, head, err := app.peginAddressRegistryValidationContext(ctx)
+	if err != nil {
+		return err
+	}
+	startBlock := app.peginAddressRegistry.StartBlock
+	if err = validatePegInAddressRegistryDeployment(ctx, contract, startBlock); err != nil {
+		return err
+	}
+	if head == startBlock {
+		return nil
+	}
+	if _, err = contract.GetRegistrationRoot(ctx, head); err != nil {
+		return fmt.Errorf("validate PegIn address registry at active RSK head %d: %w", head, err)
+	}
+	return nil
+}
+
+func (app *Application) peginAddressRegistryValidationContext(
+	ctx context.Context,
+) (blockchain.PegInAddressRegistryContract, uint64, error) {
+	if app.rskRegistry == nil || app.rskRegistry.Contracts.PegInAddressRegistry == nil {
+		return nil, 0, errors.New(
+			"PEGIN_ADDRESS_REGISTRY_ADDRESS is required when PegIn address registry watchers are enabled",
+		)
+	}
+	if app.messagingRegistry == nil || app.messagingRegistry.Rpc.Rsk == nil {
+		return nil, 0, errors.New("active RSK RPC is required to validate PegIn address registry configuration")
+	}
+
+	head, err := app.messagingRegistry.Rpc.Rsk.GetHeight(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("get active RSK head for PegIn address registry validation: %w", err)
+	}
+	startBlock := app.peginAddressRegistry.StartBlock
+	if startBlock > head {
+		return nil, 0, fmt.Errorf(
+			"PegIn address registry deployment block %d exceeds active RSK head %d",
+			startBlock,
+			head,
+		)
+	}
+	return app.rskRegistry.Contracts.PegInAddressRegistry, head, nil
+}
+
+func validatePegInAddressRegistryDeployment(
+	ctx context.Context,
+	contract blockchain.PegInAddressRegistryContract,
+	startBlock uint64,
+) error {
+	deploymentVerifier, ok := contract.(peginAddressRegistryDeploymentVerifier)
+	if !ok {
+		return errors.New("PegIn address registry adapter does not support exact deployment-block validation")
+	}
+	isDeploymentBlock, err := deploymentVerifier.IsDeploymentBlock(ctx, startBlock)
+	if err != nil {
+		return fmt.Errorf("prove PegIn address registry deployment block %d: %w", startBlock, err)
+	}
+	if !isDeploymentBlock {
+		return fmt.Errorf("configured start block %d is not the PegIn address registry deployment block", startBlock)
+	}
+	deploymentRoot, err := contract.GetRegistrationRoot(ctx, startBlock)
+	if err != nil {
+		return fmt.Errorf("validate PegIn address registry at deployment block %d: %w", startBlock, err)
+	}
+	toBlock := startBlock
+	deploymentEvents, err := contract.GetAddressRegisteredEvents(ctx, startBlock, &toBlock)
+	if err != nil {
+		return fmt.Errorf("read PegIn address registry events at deployment block %d: %w", startBlock, err)
+	}
+	replayedDeploymentRoot, err := replayPegInAddressRegistryDeployment(deploymentEvents, startBlock)
+	if err != nil {
+		return err
+	}
+	if deploymentRoot != replayedDeploymentRoot {
+		return fmt.Errorf("PegIn address registry deployment block %d already has registry state", startBlock)
+	}
+	return nil
+}
+
+func replayPegInAddressRegistryDeployment(
+	deploymentEvents []blockchain.AddressRegistered,
+	startBlock uint64,
+) ([32]byte, error) {
+	sort.Slice(deploymentEvents, func(first, second int) bool {
+		return deploymentEvents[first].LogIndex < deploymentEvents[second].LogIndex
+	})
+	replayedDeploymentRoot := [32]byte{}
+	for _, event := range deploymentEvents {
+		if event.BlockNumber != startBlock {
+			return [32]byte{}, fmt.Errorf(
+				"PegIn address registry returned block %d while validating deployment block %d",
+				event.BlockNumber,
+				startBlock,
+			)
+		}
+		var err error
+		replayedDeploymentRoot, err = blockchain.FoldPegInAddressRegistryRoot(replayedDeploymentRoot, event.RskAddress)
+		if err != nil {
+			return [32]byte{}, fmt.Errorf(
+				"validate PegIn address registry event at deployment block %d: %w",
+				startBlock,
+				err,
+			)
+		}
+		if event.RegistrationRoot != replayedDeploymentRoot {
+			return [32]byte{}, fmt.Errorf(
+				"PegIn address registry event root differs at deployment block %d",
+				startBlock,
+			)
+		}
+	}
+	return replayedDeploymentRoot, nil
 }
 
 func (app *Application) enabledWatchers() []watcher.Watcher {
@@ -222,6 +350,7 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 		app.watcherRegistry.BitcoinReorgWatcher,
 		app.watcherRegistry.RootstockReorgWatcher,
 		app.watcherRegistry.ReorgMetricsWatcher,
+		app.watcherRegistry.PegInAddressRegistryMetricsWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {
@@ -244,6 +373,7 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 
 func (app *Application) peginAddressRegistryWatchersEnabled() bool {
 	if !app.peginAddressRegistry.Enabled {
+		log.Info("PegIn address registry watchers are disabled")
 		return false
 	}
 	// The registry adapter is only built when its address is configured, so registering the
