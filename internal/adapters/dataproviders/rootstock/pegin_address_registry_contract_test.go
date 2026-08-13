@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type registrationRootContextKey struct{}
+
 // mustPackWithEncoding ABI-encodes a payload of the given Solidity type followed by the uint8
 // encoding tag, which is the return shape of both registry address reads.
 func mustPackWithEncoding(t *testing.T, solidityType string, payload any, encoding uint8) []byte {
@@ -74,6 +76,56 @@ func TestNewPegInAddressRegistryContractImpl(t *testing.T) {
 func TestPegInAddressRegistryContractImpl_GetAddress(t *testing.T) {
 	registry := rootstock.NewPegInAddressRegistryContractImpl(dummyClient, test.AnyAddress, nil, rootstock.RetryParams{}, nil, Abis)
 	assert.Equal(t, test.AnyAddress, registry.GetAddress())
+}
+
+func TestPegInAddressRegistryContractImpl_IsDeploymentBlock(t *testing.T) {
+	type deploymentBlockVerifier interface {
+		IsDeploymentBlock(context.Context, uint64) (bool, error)
+	}
+
+	t.Run("accepts the first block containing contract code", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
+		registry := rootstock.NewPegInAddressRegistryContractImpl(
+			rootstock.NewRskClient(client),
+			address.Hex(),
+			nil,
+			rootstock.RetryParams{},
+			nil,
+			Abis,
+		)
+		verifier, ok := registry.(deploymentBlockVerifier)
+		require.True(t, ok, "registry adapter does not expose an exact deployment-block proof")
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return([]byte{1}, nil).Once()
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(99)).Return(nil, nil).Once()
+
+		isDeploymentBlock, err := verifier.IsDeploymentBlock(context.Background(), 100)
+
+		require.NoError(t, err)
+		assert.True(t, isDeploymentBlock)
+	})
+
+	t.Run("returns false when contract code already exists in the previous block", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
+		registry := rootstock.NewPegInAddressRegistryContractImpl(
+			rootstock.NewRskClient(client),
+			address.Hex(),
+			nil,
+			rootstock.RetryParams{},
+			nil,
+			Abis,
+		)
+		verifier, ok := registry.(deploymentBlockVerifier)
+		require.True(t, ok, "registry adapter does not expose an exact deployment-block proof")
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return([]byte{1}, nil).Once()
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(99)).Return([]byte{1}, nil).Once()
+
+		isDeploymentBlock, err := verifier.IsDeploymentBlock(context.Background(), 100)
+
+		require.NoError(t, err)
+		assert.False(t, isDeploymentBlock)
+	})
 }
 
 func TestPegInAddressRegistryContractImpl_GetPegInAddress(t *testing.T) {
@@ -218,12 +270,14 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 	var root [32]byte
 	root[31] = 0x2b
 	t.Run("Success", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), registrationRootContextKey{}, "registration-root")
+		const blockNumber = uint64(778899)
 		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
+			ctx,
 			matchCallData(registryBinding.PackGetRegistrationRoot()),
-			mock.Anything,
+			new(big.Int).SetUint64(blockNumber),
 		).Return(mustPackBytes32(t, root), nil).Once()
-		result, err := registry.GetRegistrationRoot()
+		result, err := registry.GetRegistrationRoot(ctx, blockNumber)
 		require.NoError(t, err)
 		assert.Equal(t, root, result)
 		contractMock.caller.AssertExpectations(t)
@@ -234,7 +288,18 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 			matchCallData(registryBinding.PackGetRegistrationRoot()),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
-		result, err := registry.GetRegistrationRoot()
+		result, err := registry.GetRegistrationRoot(context.Background(), 778899)
+		require.Error(t, err)
+		assert.Equal(t, [32]byte{}, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+	t.Run("Error handling on decode fail", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(registryBinding.PackGetRegistrationRoot()),
+			mock.Anything,
+		).Return([]byte{0x01}, nil).Once()
+		result, err := registry.GetRegistrationRoot(context.Background(), 778899)
 		require.Error(t, err)
 		assert.Equal(t, [32]byte{}, result)
 		contractMock.caller.AssertExpectations(t)

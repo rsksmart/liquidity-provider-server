@@ -28,11 +28,25 @@ type PegInAddressRegistryWatchEntry struct {
 	UpdatedAt        time.Time                      `json:"updatedAt" bson:"updated_at"`
 }
 
+type PegInAddressRegistryWatchCheckpoint struct {
+	LocalRoot          [32]byte `json:"localRoot" bson:"local_root"`
+	LastProcessedBlock uint64   `json:"lastProcessedBlock" bson:"last_processed_block"`
+}
+
 type PegInAddressRegistryWatchRepository interface {
 	Upsert(context.Context, PegInAddressRegistryWatchEntry) error
 	Get(context.Context, string) (*PegInAddressRegistryWatchEntry, error)
 	List(context.Context) ([]PegInAddressRegistryWatchEntry, error)
 	Update(context.Context, PegInAddressRegistryWatchEntry) error
-	GetCursor(context.Context) (lastScannedBlock uint64, found bool, err error)
-	SetCursor(context.Context, uint64) error
+}
+
+type PegInAddressRegistryWatchCheckpointRepository interface {
+	GetCheckpoint(context.Context) (checkpoint PegInAddressRegistryWatchCheckpoint, found bool, err error)
+	SetCheckpoint(context.Context, PegInAddressRegistryWatchCheckpoint) error
+	DeleteCheckpoint(context.Context) error
+}
+
+type PegInAddressRegistryWatchRepositorySet interface {
+	PegInAddressRegistryWatchRepository
+	PegInAddressRegistryWatchCheckpointRepository
 }

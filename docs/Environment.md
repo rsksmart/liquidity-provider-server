@@ -22,6 +22,7 @@ These are the environment variables required by the liquidity provider server (L
 | `RSK_ENDPOINT` | URL to connect to the Rootstock node. Must be an http endpoint. | `http://rskj:4444` | YES |
 | `CHAIN_ID` | RSK chain id. | `33` | YES |
 | `LBC_ADDR` | Address of the Liquidity Bridge Contract (LBC). | `0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8` | YES |
+| `PEGIN_ADDRESS_REGISTRY_ADDRESS` | PegIn address registry deployed on the active Rootstock network. Required when the registry watchers are enabled. | `0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4` | NO |
 | `RSK_BRIDGE_ADDR` | Address of the Rootstock bridge. | `0x0000000000000000000000000000000001000006` | YES |
 | `RSK_REQUIRED_BRIDGE_CONFIRMATIONS` | The number of confirmations that need to pass before being able to register a pegin, it changes depending on the network. | `100` | YES |
 | `ERP_KEYS` | Keys that are used as a secondary multisig that would be allowed to spend UTXOs after a year they were created. |`0216c23b2ea8e4f11c3f9e22711addb1d16a93964796913830856b568cc3ea21d3`,`0275562901dd8faae20de0a4166362a4f82188db77dbed4ca887422ea1ec185f14`,`034db69f2112f4fb1bb6141bf6e2bd6631f0484d0bd95b16767902c9fe219d4a6f` | YES |
@@ -77,6 +78,19 @@ These are the environment variables required by the liquidity provider server (L
 | `COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS` | Number of seconds after which excess liquidity will be transferred to cold wallet even if below threshold | `1209600` (2 weeks) | No |
 | `HOT_WALLET_LOW_LIQUIDITY_WARNING` | Hot wallet liquidity threshold in whole coins (BTC/RBTC) below which a warning alert is emitted every check cycle | `3` | No |
 | `HOT_WALLET_LOW_LIQUIDITY_CRITICAL` | Hot wallet liquidity threshold in whole coins (BTC/RBTC) below which a critical alert is emitted every check cycle. Must be less than `HOT_WALLET_LOW_LIQUIDITY_WARNING` | `1` | No |
+
+## PegIn address registry watcher recovery
+Use this procedure after an incorrect registry address or deployment block, an LBC reference change, or a root mismatch that remains after automatic resync.
+
+1. **Disable.** Unset both `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` and `PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE`, restart LPS, and verify the log says `PegIn address registry watchers are disabled`. Do not modify watcher data while either loop is running.
+2. **Verify configuration.** Against the `RSK_ENDPOINT` selected by `LPS_STAGE` and `CHAIN_ID`, confirm that `PEGIN_ADDRESS_REGISTRY_ADDRESS` contains the expected registry bytecode and that `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` is its deployment block and is not ahead of the current head. Confirm that `LBC_ADDR` and the registry-producing watcher's LBC reference identify the same active-network LBC. If the LBC reference changed, use the replacement registry address and deployment block; do not mix records from the old registry.
+3. **Replay from empty state.** Back up MongoDB, then remove only the registry watch state while LPS is disabled:
+   ```javascript
+   db.peginAddressRegistryWatch.deleteMany({})
+   ```
+   Set the verified registry address, deployment block, and a non-zero page size. This deletion forces a full event replay; it does not delete quotes or deposits.
+4. **Enable and compare.** Restart LPS with both watcher variables set and verify the log reports the active chain id, deployment block, and page size. Read `_id: "checkpoint"` from `peginAddressRegistryWatch`, then compare its `local_root` with `getRegistrationRoot()` at the same `last_processed_block` on the configured registry.
+5. **Persistent difference.** If the roots still differ after one full replay, disable the watchers again. Record the compared block and both roots, verify the canonical Rootstock endpoint, registry address/deployment block, and both LBC references, and investigate or escalate before re-enabling.
 
 ## AWS variables
 You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidity-provider-server/blob/master/sample-config.env) there are some environment variables that are related to AWS. These variables are required to use AWS services, however, they are not listed in the table as the AWS SDK has the functionality to load them from multiple sources. For that reason, they are not accessed directly from the code and are not listed in the table above.

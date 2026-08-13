@@ -11,27 +11,28 @@ import (
 type WatcherRegistry struct {
 	PegInAddressRegistryWatcher *watcher.PegInAddressRegistryWatcher
 
-	PeginDepositAddressWatcher *watcher.PeginDepositAddressWatcher
-	PeginBridgeWatcher         *watcher.PeginBridgeWatcher
-	QuoteCleanerWatcher        *watcher.QuoteCleanerWatcher
-	PegoutRskDepositWatcher    *watcher.PegoutRskDepositWatcher
-	PegoutBtcTransferWatcher   *watcher.PegoutBtcTransferWatcher
-	LiquidityCheckWatcher      *watcher.LiquidityCheckWatcher
-	PenalizationAlertWatcher   *watcher.PenalizationAlertWatcher
-	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
-	BitcoinEclipseWatcher      *watcher.EclipseWatcher
-	RskEclipseWatcher          *watcher.EclipseWatcher
-	BtcReleaseWatcher          *watcher.BtcReleaseWatcher
-	BitcoinPeerWatcher         *watcher.BitcoinPeerWatcher
-	RootstockPeerWatcher       *watcher.RootstockPeerWatcher
-	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
-	PeerMetricsWatcher         *monitoring.PeerMetricsWatcher
-	AssetReportWatcher         *monitoring.AssetReportWatcher
-	TransferColdWalletWatcher  *watcher.TransferColdWalletWatcher
-	ColdWalletMetricsWatcher   *monitoring.ColdWalletMetricsWatcher
-	BitcoinReorgWatcher        *watcher.BitcoinReorgWatcher
-	RootstockReorgWatcher      *watcher.RootstockReorgWatcher
-	ReorgMetricsWatcher        *monitoring.ReorgMetricsWatcher
+	PeginDepositAddressWatcher         *watcher.PeginDepositAddressWatcher
+	PeginBridgeWatcher                 *watcher.PeginBridgeWatcher
+	QuoteCleanerWatcher                *watcher.QuoteCleanerWatcher
+	PegoutRskDepositWatcher            *watcher.PegoutRskDepositWatcher
+	PegoutBtcTransferWatcher           *watcher.PegoutBtcTransferWatcher
+	LiquidityCheckWatcher              *watcher.LiquidityCheckWatcher
+	PenalizationAlertWatcher           *watcher.PenalizationAlertWatcher
+	PegoutBridgeWatcher                *watcher.PegoutBridgeWatcher
+	BitcoinEclipseWatcher              *watcher.EclipseWatcher
+	RskEclipseWatcher                  *watcher.EclipseWatcher
+	BtcReleaseWatcher                  *watcher.BtcReleaseWatcher
+	BitcoinPeerWatcher                 *watcher.BitcoinPeerWatcher
+	RootstockPeerWatcher               *watcher.RootstockPeerWatcher
+	QuoteMetricsWatcher                *monitoring.QuoteMetricsWatcher
+	PeerMetricsWatcher                 *monitoring.PeerMetricsWatcher
+	AssetReportWatcher                 *monitoring.AssetReportWatcher
+	TransferColdWalletWatcher          *watcher.TransferColdWalletWatcher
+	ColdWalletMetricsWatcher           *monitoring.ColdWalletMetricsWatcher
+	BitcoinReorgWatcher                *watcher.BitcoinReorgWatcher
+	RootstockReorgWatcher              *watcher.RootstockReorgWatcher
+	ReorgMetricsWatcher                *monitoring.ReorgMetricsWatcher
+	PegInAddressRegistryMetricsWatcher *monitoring.PegInAddressRegistryMetricsWatcher
 }
 
 // nolint:funlen
@@ -62,6 +63,7 @@ func NewWatcherRegistry(
 			messaging.Rpc.Rsk,
 			messaging.Rpc.Btc,
 			btcRegistry.MonitoringWallet,
+			messaging.EventBus,
 			tickers.PegInAddressRegistryWatcherTicker,
 			peginAddressRegistry.StartBlock,
 			peginAddressRegistry.PageSize,
@@ -196,6 +198,10 @@ func NewWatcherRegistry(
 			timeouts.WatcherValidation.Seconds(),
 		),
 		ReorgMetricsWatcher: monitoring.NewReorgMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
+		),
+		PegInAddressRegistryMetricsWatcher: monitoring.NewPegInAddressRegistryMetricsWatcher(
 			appMetrics,
 			messaging.EventBus,
 		),
