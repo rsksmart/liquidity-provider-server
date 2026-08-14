@@ -86,9 +86,7 @@ func (wallet *WatchOnlyWallet) ImportAddress(address string) error {
 }
 
 func (wallet *WatchOnlyWallet) RescanBlockchain(fromHeight int64) (blockchain.BitcoinRescanResult, error) {
-	if fromHeight < 0 {
-		fromHeight = 0
-	}
+	fromHeight = max(fromHeight, 0)
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return blockchain.BitcoinRescanResult{}, err
 	}
