@@ -1,10 +1,4 @@
-// Package pegin_registry_test holds the registry discovery claims that only a live node can settle:
-// how a watch-only wallet answers about a deposit that confirmed before the address was imported,
-// and how the watch set behaves under a replayed event.
-//
-// It is outside the `make test` scope because it needs running Bitcoin and Mongo services. Point it
-// at them through BTC_NETWORK, BTC_USERNAME, BTC_PASSWORD, BTC_ENDPOINT, MONGODB_HOST, MONGODB_PORT,
-// MONGODB_USER and MONGODB_PASSWORD; the defaults match the repository's local regtest stack.
+// Live Bitcoin/Mongo tests. Defaults match the local regtest stack; override with BTC_* and MONGODB_*.
 package pegin_registry_test
 
 import (
@@ -50,7 +44,6 @@ func TestConfirmedDepositIsDiscoverableOnlyAfterARescanImport(t *testing.T) {
 	depositAddress, depositTxID := fundConfirmedDeposit(t, nodeClient, fundingClient)
 	t.Logf("deposit %s confirmed at %s before any import", depositTxID, depositAddress)
 
-	// Importing without a rescan is what leaves a real, confirmed payment unreported.
 	withoutRescan := newWatchOnlyWallet(t, env, nodeClient, "pegin-registry-norescan")
 	require.NoError(t, withoutRescan.ImportAddress(depositAddress))
 
@@ -70,10 +63,7 @@ func TestConfirmedDepositIsDiscoverableOnlyAfterARescanImport(t *testing.T) {
 	require.NoError(t, withRescan.ImportAddress(depositAddress))
 	tip, err := nodeClient.GetBlockCount()
 	require.NoError(t, err)
-	fromHeight := tip - 100
-	if fromHeight < 0 {
-		fromHeight = 0
-	}
+	fromHeight := max(tip-100, 0)
 	_, err = withRescan.RescanBlockchain(fromHeight)
 	require.NoError(t, err)
 
