@@ -205,7 +205,7 @@ func TestDerivativeWallet(t *testing.T) {
 	t.Run("Address", func(t *testing.T) { testAddress(t, rskAccount, existingAddressInfo) })
 	t.Run("Unlock", func(t *testing.T) { testUnlock(t, rskAccount, existingAddressInfo) })
 	t.Run("ImportAddress", func(t *testing.T) { testImportAddress(t, rskAccount, existingAddressInfo) })
-	t.Run("ImportAddressWithRescan", func(t *testing.T) { testImportAddressWithRescan(t, rskAccount, existingAddressInfo) })
+	t.Run("RescanBlockchain", func(t *testing.T) { testRescanBlockchain(t, rskAccount, existingAddressInfo) })
 
 	t.Run("GetTransactions", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) { testGetTransactions(t, rskAccount, existingAddressInfo) })
@@ -316,14 +316,14 @@ func testImportAddress(t *testing.T, rskAccount *account.RskAccount, addressInfo
 	require.ErrorContains(t, err, "address importing is not supported in this type of wallet")
 }
 
-func testImportAddressWithRescan(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
+func testRescanBlockchain(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
 	client := &mocks.ClientAdapterMock{}
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
 	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
 	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
 	require.NoError(t, err)
 
-	err = wallet.ImportAddressWithRescan("n12ja1bZfZhpkxy8KHkQvj6rZM74kbhUWs")
+	_, err = wallet.RescanBlockchain(0)
 	require.ErrorContains(t, err, "address importing is not supported in this type of wallet")
 }
 
@@ -385,7 +385,7 @@ func testGetTransaction(t *testing.T, rskAccount *account.RskAccount, addressInf
 		transaction, err := wallet.GetTransaction(txID)
 
 		require.NoError(t, err)
-		assert.Equal(t, blockchain.BitcoinWalletTransaction{Hash: txID, Confirmations: 7}, transaction)
+		assert.Equal(t, blockchain.BitcoinTransactionInformation{Hash: txID, Confirmations: 7}, transaction)
 	})
 
 	t.Run("Rejects a response bound to another transaction", func(t *testing.T) {

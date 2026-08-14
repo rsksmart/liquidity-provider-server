@@ -74,11 +74,8 @@ func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {
 	return buff.Bytes(), nil
 }
 
-// EncodeAddressBase58 renders a complete base58check payload as an address string. It exists for
-// callers that receive the checksummed payload rather than the address, as
-// IPegInAddressRegistry.getPegInAddress does: the contract returns version ++ hash ++ checksum and
-// names the caller as the party that encodes it. The checksum is verified rather than recomputed, so
-// a truncated or corrupted payload is rejected instead of being rendered as a plausible address.
+// EncodeAddressBase58 encodes a 25-byte checksummed payload (version ++ hash ++ checksum).
+// The payload already carries its checksum; CheckEncode would append a second one.
 func EncodeAddressBase58(payload []byte) (string, error) {
 	const (
 		versionSize  = 1
@@ -215,25 +212,29 @@ func getTransactionsToAddress(address string, params *chaincfg.Params, client bt
 	return result, nil
 }
 
-func getWalletTransaction(hash string, client btcclient.RpcClient) (blockchain.BitcoinWalletTransaction, error) {
+func getWalletTransaction(hash string, client btcclient.RpcClient) (blockchain.BitcoinTransactionInformation, error) {
 	parsedHash, err := chainhash.NewHashFromStr(hash)
 	if err != nil {
-		return blockchain.BitcoinWalletTransaction{}, err
+		return blockchain.BitcoinTransactionInformation{}, err
 	}
 	transaction, err := client.GetTransaction(parsedHash)
 	if err != nil {
-		return blockchain.BitcoinWalletTransaction{}, err
+		return blockchain.BitcoinTransactionInformation{}, err
 	}
 	if transaction.TxID != hash {
-		return blockchain.BitcoinWalletTransaction{}, fmt.Errorf(
+		return blockchain.BitcoinTransactionInformation{}, fmt.Errorf(
 			"wallet returned transaction %s for requested hash %s",
 			transaction.TxID,
 			hash,
 		)
 	}
-	return blockchain.BitcoinWalletTransaction{
+	confirmations := uint64(0)
+	if transaction.Confirmations > 0 {
+		confirmations = uint64(transaction.Confirmations)
+	}
+	return blockchain.BitcoinTransactionInformation{
 		Hash:          transaction.TxID,
-		Confirmations: transaction.Confirmations,
+		Confirmations: confirmations,
 	}, nil
 }
 
