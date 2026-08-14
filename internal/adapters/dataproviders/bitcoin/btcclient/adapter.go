@@ -105,9 +105,7 @@ func (c *BtcSuiteClientAdapter) CreateReadonlyWallet(bodyParams ReadonlyWalletRe
 }
 
 func (c *BtcSuiteClientAdapter) RescanBlockchain(startHeight int64) (RescanBlockchainResult, error) {
-	if startHeight < 0 {
-		startHeight = 0
-	}
+	startHeight = max(startHeight, 0)
 	startJSON, err := json.Marshal(startHeight)
 	if err != nil {
 		return RescanBlockchainResult{}, err

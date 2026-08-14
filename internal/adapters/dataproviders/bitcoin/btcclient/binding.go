@@ -69,7 +69,6 @@ type ClientAdapter interface {
 	RpcWallet
 	SignRawTransactionWithKey(tx *wire.MsgTx, privateKeysWIFs []string) (*wire.MsgTx, bool, error)
 	CreateReadonlyWallet(bodyParams ReadonlyWalletRequest) error
-	// RescanBlockchain is wallet-wide. The pinned btcd client has no typed wrapper, so the adapter
-	// issues rescanblockchain through RawRequest.
+	// RescanBlockchain is wallet-wide. btcd v0.25.0 has no typed wrapper; the adapter uses RawRequest.
 	RescanBlockchain(startHeight int64) (RescanBlockchainResult, error)
 }

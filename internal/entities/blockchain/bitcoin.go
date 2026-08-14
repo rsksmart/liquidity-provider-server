@@ -117,16 +117,12 @@ type BitcoinWallet interface {
 	Send(address string, value *entities.Wei) (BitcoinTransactionResult, error)
 	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (BitcoinTransactionResult, error)
 	CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error)
-	// ImportAddress watches an address without scanning history. Call RescanBlockchain separately
-	// to make deposits that confirmed before the import visible.
+	// ImportAddress watches an address without scanning history.
 	ImportAddress(address string) error
-	// RescanBlockchain scans wallet history from fromHeight. Negative heights are clamped to 0.
-	// The lookback window is chosen by the caller; this method does not apply a depth policy.
+	// RescanBlockchain scans from fromHeight. Negative heights are clamped to 0.
 	RescanBlockchain(fromHeight int64) (BitcoinRescanResult, error)
 	GetTransactions(address string) ([]BitcoinTransactionInformation, error)
-	// GetTransaction reads one transaction from the wallet's own history. Implementations must
-	// return the requested transaction or an error, never a different one. Hash and Confirmations
-	// are filled; conflicted confirmations (Bitcoin Core reports -1) are mapped to 0.
+	// GetTransaction returns the requested wallet transaction. Conflicted confirmations (-1) map to 0.
 	GetTransaction(hash string) (BitcoinTransactionInformation, error)
 	Address() string
 	Unlock() error

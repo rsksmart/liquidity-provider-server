@@ -74,8 +74,6 @@ func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {
 	return buff.Bytes(), nil
 }
 
-// EncodeAddressBase58 encodes a 25-byte checksummed payload (version ++ hash ++ checksum).
-// The payload already carries its checksum; CheckEncode would append a second one.
 func EncodeAddressBase58(payload []byte) (string, error) {
 	const (
 		versionSize  = 1
