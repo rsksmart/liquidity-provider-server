@@ -117,15 +117,17 @@ type BitcoinWallet interface {
 	Send(address string, value *entities.Wei) (BitcoinTransactionResult, error)
 	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (BitcoinTransactionResult, error)
 	CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error)
-	// ImportAddress watches an address expected to receive a future payment, without rescanning wallet history.
+	// ImportAddress watches an address without scanning history. Call RescanBlockchain separately
+	// to make deposits that confirmed before the import visible.
 	ImportAddress(address string) error
-	// ImportAddressWithRescan watches an address known to have received a payment and rescans wallet history.
-	ImportAddressWithRescan(address string) error
+	// RescanBlockchain scans wallet history from fromHeight. Negative heights are clamped to 0.
+	// The lookback window is chosen by the caller; this method does not apply a depth policy.
+	RescanBlockchain(fromHeight int64) (BitcoinRescanResult, error)
 	GetTransactions(address string) ([]BitcoinTransactionInformation, error)
-	// GetTransaction reads one transaction from the wallet's own history, so a spent output stays
-	// visible and no node-wide transaction index is required. Implementations must return the
-	// requested transaction or an error, never a different one.
-	GetTransaction(hash string) (BitcoinWalletTransaction, error)
+	// GetTransaction reads one transaction from the wallet's own history. Implementations must
+	// return the requested transaction or an error, never a different one. Hash and Confirmations
+	// are filled; conflicted confirmations (Bitcoin Core reports -1) are mapped to 0.
+	GetTransaction(hash string) (BitcoinTransactionInformation, error)
 	Address() string
 	Unlock() error
 }
@@ -162,9 +164,9 @@ type BitcoinTransactionInformation struct {
 	HasWitness    bool
 }
 
-type BitcoinWalletTransaction struct {
-	Hash          string
-	Confirmations int64
+type BitcoinRescanResult struct {
+	StartHeight int64
+	StopHeight  int64
 }
 
 type BitcoinBlockchainInfo struct {
