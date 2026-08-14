@@ -57,6 +57,7 @@ func NewWatcherRegistry(
 			dbRegistry.PegInAddressRegistryWatchRepository,
 			rskRegistry.Contracts.PegInAddressRegistry,
 			messaging.Rpc.Rsk,
+			messaging.Rpc.Btc,
 			btcRegistry.MonitoringWallet,
 			tickers.PegInAddressRegistryWatcherTicker,
 			peginAddressRegistry.StartBlock,
