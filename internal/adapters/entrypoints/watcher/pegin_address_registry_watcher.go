@@ -178,6 +178,9 @@ func (watcher *PegInAddressRegistryWatcher) processEvents(
 			watcher.rememberEntry(*persistedEntry)
 			continue
 		}
+		if pendingContains(*pending, persistedEntry.TxHash, persistedEntry.LogIndex) {
+			continue
+		}
 		imported, processErr := watcher.processDiscoveredEntry(ctx, persistedEntry)
 		if processErr != nil {
 			return processErr
@@ -345,6 +348,15 @@ func (watcher *PegInAddressRegistryWatcher) rememberEntry(entry rootstock.PegInA
 
 func isAlreadyImportedError(err error) bool {
 	return err != nil && strings.Contains(strings.ToLower(err.Error()), "already imported")
+}
+
+func pendingContains(pending []*rootstock.PegInAddressRegistryWatchEntry, txHash string, logIndex uint) bool {
+	for _, entry := range pending {
+		if entry.TxHash == txHash && entry.LogIndex == logIndex {
+			return true
+		}
+	}
+	return false
 }
 
 func (watcher *PegInAddressRegistryWatcher) nextRange(finalizedHead uint64) (uint64, uint64) {
