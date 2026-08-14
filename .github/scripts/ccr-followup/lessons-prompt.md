@@ -12,9 +12,16 @@ described below — no preamble, no analysis outside that comment.
 - Each lesson MUST match the schema in SCHEMA_MD exactly (no extra top-level fields).
 - Do not commit files. Do not call tools. Emit the comment body only.
 - `frequency` must be `1`.
-- Choose a category such as `go`, `reliability`, `security`, `testing`, `process`,
-  `observability`, `sql`, or `rpc`.
-- `why` must mention that this was found on the current pull request.
+- Choose a category that fits the lesson. Examples: `go`, `reliability`,
+  `security`, `testing`, `process`, `observability`, `sql`, `rpc`. Other
+  categories are fine when they better match the finding.
+- Lessons are exported into a durable lessons DB. Every field — especially `why` —
+  must be understandable without any pull-request context.
+- Never write PR-relative phrasing such as "this PR", "the current pull request",
+  "this change", "here", "in this review", or "on this pass". Name the durable
+  symbols instead (use case, function, type, contract, layer).
+- `why` must explain the lasting technical reason the pattern matters (contract,
+  failure mode, layer boundary), not where or when it was found.
 
 ## Comment shape (emit exactly this structure)
 
@@ -45,7 +52,8 @@ bad: |
 good: |
   Safer pattern.
 why: |
-  Why this matters, including that it was found on this pull request.
+  Lasting technical reason this pattern matters, naming durable symbols
+  (use case, function, contract). No PR-relative phrasing.
 ```
 
 </details>
