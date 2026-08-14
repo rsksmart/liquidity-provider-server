@@ -19,7 +19,7 @@ const spendFeeBtc = 0.0001
 // output is spent, and erase the txid with it. Wallet history keeps the transaction. Both halves are
 // properties of the node rather than of this repository, so only a live node can settle them.
 func TestSpentDepositStaysVisibleInWalletHistory(t *testing.T) {
-	env := btcEnvironment()
+	env := btcEnvironment(t)
 	nodeClient := newRpcClient(t, env, "")
 	fundingClient := openFundingWallet(t, env, nodeClient)
 	// Registered before the wallet below so that LIFO cleanup unloads it while the node client is
@@ -28,8 +28,16 @@ func TestSpentDepositStaysVisibleInWalletHistory(t *testing.T) {
 	t.Cleanup(fundingClient.Shutdown)
 
 	depositAddress, depositTxID := fundConfirmedDeposit(t, nodeClient, fundingClient)
-	monitoringWallet := newWatchOnlyWallet(t, env, nodeClient, "fly2514-spent")
-	require.NoError(t, monitoringWallet.ImportAddressWithRescan(depositAddress))
+	monitoringWallet := newWatchOnlyWallet(t, env, nodeClient, "pegin-registry-spent")
+	require.NoError(t, monitoringWallet.ImportAddress(depositAddress))
+	tip, err := nodeClient.GetBlockCount()
+	require.NoError(t, err)
+	fromHeight := tip - 100
+	if fromHeight < 0 {
+		fromHeight = 0
+	}
+	_, err = monitoringWallet.RescanBlockchain(fromHeight)
+	require.NoError(t, err)
 
 	deposits, err := monitoringWallet.GetTransactions(depositAddress)
 	require.NoError(t, err)

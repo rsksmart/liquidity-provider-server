@@ -1,12 +1,19 @@
 package btcclient
 
 import (
+	"encoding/json"
+
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/wire"
 )
+
+type RescanBlockchainResult struct {
+	StartHeight int64 `json:"start_height"`
+	StopHeight  int64 `json:"stop_height"`
+}
 
 func init() {
 	btcjson.MustRegisterCmd("signrawtransactionwithkey", (*SignRawTransactionWithKeyCmd)(nil), btcjson.UsageFlag(0))
@@ -54,6 +61,7 @@ type RpcClient interface {
 	LoadWallet(walletName string) (*btcjson.LoadWalletResult, error)
 	EstimateSmartFee(confTarget int64, mode *btcjson.EstimateSmartFeeMode) (*btcjson.EstimateSmartFeeResult, error)
 	GetConnectionCount() (int64, error)
+	RawRequest(method string, params []json.RawMessage) (json.RawMessage, error)
 }
 
 type ClientAdapter interface {
@@ -61,4 +69,7 @@ type ClientAdapter interface {
 	RpcWallet
 	SignRawTransactionWithKey(tx *wire.MsgTx, privateKeysWIFs []string) (*wire.MsgTx, bool, error)
 	CreateReadonlyWallet(bodyParams ReadonlyWalletRequest) error
+	// RescanBlockchain is wallet-wide. The pinned btcd client has no typed wrapper, so the adapter
+	// issues rescanblockchain through RawRequest.
+	RescanBlockchain(startHeight int64) (RescanBlockchainResult, error)
 }

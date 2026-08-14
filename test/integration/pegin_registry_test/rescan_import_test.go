@@ -10,7 +10,6 @@ package pegin_registry_test
 import (
 	"errors"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -31,7 +30,7 @@ const (
 	defaultBtcUser     = "test"
 	defaultBtcPassword = "test"
 
-	fundingWalletID    = "fly2514-funding"
+	fundingWalletID    = "pegin-registry-funding"
 	depositBtc         = 0.005
 	depositBlocks      = 6
 	coinbaseMaturity   = 101
@@ -40,7 +39,7 @@ const (
 )
 
 func TestConfirmedDepositIsDiscoverableOnlyAfterARescanImport(t *testing.T) {
-	env := btcEnvironment()
+	env := btcEnvironment(t)
 	nodeClient := newRpcClient(t, env, "")
 	fundingClient := openFundingWallet(t, env, nodeClient)
 	// Registered before the wallets below so that LIFO cleanup unloads them while the node client
@@ -52,7 +51,7 @@ func TestConfirmedDepositIsDiscoverableOnlyAfterARescanImport(t *testing.T) {
 	t.Logf("deposit %s confirmed at %s before any import", depositTxID, depositAddress)
 
 	// Importing without a rescan is what leaves a real, confirmed payment unreported.
-	withoutRescan := newWatchOnlyWallet(t, env, nodeClient, "fly2514-norescan")
+	withoutRescan := newWatchOnlyWallet(t, env, nodeClient, "pegin-registry-norescan")
 	require.NoError(t, withoutRescan.ImportAddress(depositAddress))
 
 	deposits, err := withoutRescan.GetTransactions(depositAddress)
@@ -67,34 +66,46 @@ func TestConfirmedDepositIsDiscoverableOnlyAfterARescanImport(t *testing.T) {
 		err,
 	)
 
-	withRescan := newWatchOnlyWallet(t, env, nodeClient, "fly2514-rescan")
-	require.NoError(t, withRescan.ImportAddressWithRescan(depositAddress))
+	withRescan := newWatchOnlyWallet(t, env, nodeClient, "pegin-registry-rescan")
+	require.NoError(t, withRescan.ImportAddress(depositAddress))
+	tip, err := nodeClient.GetBlockCount()
+	require.NoError(t, err)
+	fromHeight := tip - 100
+	if fromHeight < 0 {
+		fromHeight = 0
+	}
+	_, err = withRescan.RescanBlockchain(fromHeight)
+	require.NoError(t, err)
 
 	deposits, err = withRescan.GetTransactions(depositAddress)
 	require.NoError(t, err)
-	require.Len(t, deposits, 1, "the rescan import must find the already-confirmed deposit")
+	require.Len(t, deposits, 1, "a bounded rescan must find the already-confirmed deposit")
 	assert.Equal(t, depositTxID, deposits[0].Hash)
 
 	observed, err := withRescan.GetTransaction(depositTxID)
 	require.NoError(t, err)
 	assert.Equal(t, depositTxID, observed.Hash)
-	assert.GreaterOrEqual(t, observed.Confirmations, int64(depositBlocks))
+	assert.GreaterOrEqual(t, observed.Confirmations, uint64(depositBlocks))
 }
 
-func btcEnvironment() environment.BtcEnv {
-	return environment.BtcEnv{
-		Network:  valueOrDefault("BTC_NETWORK", defaultBtcNetwork),
-		Username: valueOrDefault("BTC_USERNAME", defaultBtcUser),
-		Password: valueOrDefault("BTC_PASSWORD", defaultBtcPassword),
-		Endpoint: valueOrDefault("BTC_ENDPOINT", defaultBtcEndpoint),
+func btcEnvironment(t *testing.T) environment.BtcEnv {
+	t.Helper()
+	var env environment.Environment
+	require.NoError(t, environment.Load(&env))
+	btc := env.Btc
+	if btc.Network == "" {
+		btc.Network = defaultBtcNetwork
 	}
-}
-
-func valueOrDefault(key, fallback string) string {
-	if value, present := os.LookupEnv(key); present && value != "" {
-		return value
+	if btc.Username == "" {
+		btc.Username = defaultBtcUser
 	}
-	return fallback
+	if btc.Password == "" {
+		btc.Password = defaultBtcPassword
+	}
+	if btc.Endpoint == "" {
+		btc.Endpoint = defaultBtcEndpoint
+	}
+	return btc
 }
 
 // newRpcClient talks to the node directly, so the test can act as the paying user and the miner

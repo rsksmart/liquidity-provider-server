@@ -146,3 +146,18 @@ func TestBtcSuiteClientAdapter_SignRawTransactionWithKey(t *testing.T) {
 	require.NoError(t, err)
 	client.AssertExpectations(t)
 }
+
+func TestBtcSuiteClientAdapter_RescanBlockchain(t *testing.T) {
+	client := &mocks.RpcClientMock{}
+	adapter := btcclient.NewBtcSuiteClientAdapter(rpcclient.ConnConfig{}, client)
+	startJSON, err := json.Marshal(int64(40))
+	require.NoError(t, err)
+	client.On("RawRequest", "rescanblockchain", []json.RawMessage{startJSON}).
+		Return(json.RawMessage(`{"start_height":40,"stop_height":140}`), nil).
+		Once()
+
+	result, err := adapter.RescanBlockchain(40)
+	require.NoError(t, err)
+	require.Equal(t, btcclient.RescanBlockchainResult{StartHeight: 40, StopHeight: 140}, result)
+	client.AssertExpectations(t)
+}

@@ -253,27 +253,39 @@ func TestWatchOnlyWallet_GetTransactions(t *testing.T) {
 
 func TestWatchOnlyWallet_GetTransaction(t *testing.T) {
 	const txID = "2ba6da53badd14349c5d6379e88c345e88193598aad714815d4b57c691a9fbdf"
-	client := mocks.NewClientAdapterMock(t)
-	client.EXPECT().GetWalletInfo().
-		Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
-		Twice()
 	parsedTxID, err := chainhash.NewHashFromStr(txID)
 	require.NoError(t, err)
-	client.EXPECT().GetTransaction(parsedTxID).
-		Return(&btcjson.GetTransactionResult{TxID: txID, Confirmations: -2}, nil).
-		Once()
-	wallet, err := bitcoin.NewWatchOnlyWallet(
-		bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
-	)
-	require.NoError(t, err)
 
-	transaction, err := wallet.GetTransaction(txID)
+	newWallet := func(t *testing.T, confirmations int64) blockchain.BitcoinWallet {
+		t.Helper()
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Twice()
+		client.EXPECT().GetTransaction(parsedTxID).
+			Return(&btcjson.GetTransactionResult{TxID: txID, Confirmations: confirmations}, nil).
+			Once()
+		wallet, walletErr := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
+		require.NoError(t, walletErr)
+		return wallet
+	}
 
-	require.NoError(t, err)
-	assert.Equal(t, blockchain.BitcoinWalletTransaction{
-		Hash:          txID,
-		Confirmations: -2,
-	}, transaction)
+	t.Run("returns hash and confirmations", func(t *testing.T) {
+		transaction, txErr := newWallet(t, 6).GetTransaction(txID)
+		require.NoError(t, txErr)
+		assert.Equal(t, blockchain.BitcoinTransactionInformation{
+			Hash:          txID,
+			Confirmations: 6,
+		}, transaction)
+	})
+
+	t.Run("maps a conflicted confirmation count to zero", func(t *testing.T) {
+		transaction, txErr := newWallet(t, -1).GetTransaction(txID)
+		require.NoError(t, txErr)
+		assert.Equal(t, uint64(0), transaction.Confirmations)
+	})
 }
 
 // TestWatchOnlyWallet_ImportAddress This test are reused from the bitcoind wallet tests suite since they share behavior
@@ -310,15 +322,43 @@ func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 		err = wallet.ImportAddress(mainnetAddress)
 		require.Error(t, err)
 	})
-	t.Run("valid address with rescan", func(t *testing.T) {
-		client := &mocks.ClientAdapterMock{}
-		client.On("ImportAddressRescan", testnetAddress, "", true).Return(nil).Once()
-		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
-		wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
+}
+
+func TestWatchOnlyWallet_RescanBlockchain(t *testing.T) {
+	t.Run("calls the node with the given start height", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Twice()
+		client.EXPECT().RescanBlockchain(int64(50)).
+			Return(btcclient.RescanBlockchainResult{StartHeight: 50, StopHeight: 150}, nil).
+			Once()
+		wallet, err := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
 		require.NoError(t, err)
 
-		require.NoError(t, wallet.ImportAddressWithRescan(testnetAddress))
-		client.AssertExpectations(t)
+		result, err := wallet.RescanBlockchain(50)
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.BitcoinRescanResult{StartHeight: 50, StopHeight: 150}, result)
+	})
+
+	t.Run("clamps a negative start height to zero", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Twice()
+		client.EXPECT().RescanBlockchain(int64(0)).
+			Return(btcclient.RescanBlockchainResult{StartHeight: 0, StopHeight: 10}, nil).
+			Once()
+		wallet, err := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
+		require.NoError(t, err)
+
+		result, err := wallet.RescanBlockchain(-5)
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.BitcoinRescanResult{StartHeight: 0, StopHeight: 10}, result)
 	})
 }
 
