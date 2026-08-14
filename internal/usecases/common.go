@@ -73,7 +73,6 @@ const (
 	GetPegoutReportId              UseCaseId = "GetPegoutReport"
 	GetRevenueReportId             UseCaseId = "GetRevenueReport"
 	GetTransactionsReportId        UseCaseId = "GetTransactionsReport"
-	GetDailyVolumeReportId         UseCaseId = "GetDailyVolumeReport"
 	EclipseCheckId                 UseCaseId = "EclipseCheck"
 	UpdateBtcReleaseId             UseCaseId = "UpdateBtcRelease"
 	RecommendedPegoutId            UseCaseId = "RecommendedPegout"
