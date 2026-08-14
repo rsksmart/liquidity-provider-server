@@ -3,6 +3,7 @@ package watcher_test
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"sync"
 	"testing"
@@ -23,6 +24,7 @@ type pegInAddressRegistryWatcherFixture struct {
 	repository *mocks.PegInAddressRegistryWatchRepositoryMock
 	registry   *mocks.PegInAddressRegistryContractMock
 	rskRpc     *mocks.RootstockRpcServerMock
+	btcNetwork *mocks.BtcRpcMock
 	wallet     *mocks.BitcoinWalletMock
 	ticker     *sessionTicker
 	watcher    *watcherAdapter.PegInAddressRegistryWatcher
@@ -41,13 +43,16 @@ func newPegInAddressRegistryWatcherFixture(
 		repository: mocks.NewPegInAddressRegistryWatchRepositoryMock(t),
 		registry:   mocks.NewPegInAddressRegistryContractMock(t),
 		rskRpc:     mocks.NewRootstockRpcServerMock(t),
+		btcNetwork: &mocks.BtcRpcMock{},
 		wallet:     mocks.NewBitcoinWalletMock(t),
 		ticker:     newSessionTicker(),
 	}
+	t.Cleanup(func() { fixture.btcNetwork.AssertExpectations(t) })
 	fixture.watcher = watcherAdapter.NewPegInAddressRegistryWatcher(
 		fixture.repository,
 		fixture.registry,
 		fixture.rskRpc,
+		fixture.btcNetwork,
 		fixture.wallet,
 		fixture.ticker,
 		startBlock,
@@ -55,6 +60,14 @@ func newPegInAddressRegistryWatcherFixture(
 		finalityDepth,
 	)
 	return fixture
+}
+
+func (fixture *pegInAddressRegistryWatcherFixture) expectBoundedRescan() {
+	fixture.t.Helper()
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
+		Once()
 }
 
 func (fixture *pegInAddressRegistryWatcherFixture) expectCursorAdvance(toBlock uint64) {
@@ -159,7 +172,7 @@ func TestPegInAddressRegistryWatcher_SortsEventsAndClampsToFinalizedHead(t *test
 		if event.TxHash == "second" {
 			importErr = errors.New("address already imported")
 		}
-		fixture.wallet.EXPECT().ImportAddressWithRescan(deposit.address).
+		fixture.wallet.EXPECT().ImportAddress(deposit.address).
 			Run(func(string) {
 				operationsMutex.Lock()
 				operations = append(operations, "import:"+event.TxHash)
@@ -179,6 +192,15 @@ func TestPegInAddressRegistryWatcher_SortsEventsAndClampsToFinalizedHead(t *test
 			operationsMutex.Unlock()
 		}).Return(nil).Once()
 	}
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
+		Run(func(int64) {
+			operationsMutex.Lock()
+			operations = append(operations, "rescan")
+			operationsMutex.Unlock()
+		}).
+		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
+		Once()
 	fixture.repository.On("SetCursor", mock.Anything, uint64(103)).
 		Run(func(mock.Arguments) {
 			operationsMutex.Lock()
@@ -191,9 +213,11 @@ func TestPegInAddressRegistryWatcher_SortsEventsAndClampsToFinalizedHead(t *test
 
 	operationsMutex.Lock()
 	assert.Equal(t, []string{
-		"upsert:101/9/first", "import:first", "update:first",
-		"upsert:102/1/second", "import:second", "update:second",
-		"upsert:102/5/third", "import:third", "update:third",
+		"upsert:101/9/first", "import:first",
+		"upsert:102/1/second", "import:second",
+		"upsert:102/5/third", "import:third",
+		"rescan",
+		"update:first", "update:second", "update:third",
 		"cursor",
 	}, operations)
 	operationsMutex.Unlock()
@@ -239,7 +263,8 @@ func TestPegInAddressRegistryWatcher_SkipsUnsupportedEncodingsAndContinues(t *te
 				GetRegisteredBtcTransactionHash(mock.Anything, event.TxHash, event.RskAddress).
 				Return(event.TxHash+"-deposit", nil).
 				Once()
-			fixture.wallet.EXPECT().ImportAddressWithRescan(deposit.address).Return(nil).Once()
+			fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
+			fixture.expectBoundedRescan()
 		}
 		fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInAddressRegistryWatchEntry) bool {
 			return entry.TxHash == event.TxHash &&
@@ -319,7 +344,8 @@ func TestPegInAddressRegistryWatcher_RecordsEntryErrorAndContinues(t *testing.T)
 		GetRegisteredBtcTransactionHash(mock.Anything, valid.TxHash, valid.RskAddress).
 		Return("valid-deposit", nil).
 		Once()
-	fixture.wallet.EXPECT().ImportAddressWithRescan(validDeposit.address).Return(nil).Once()
+	fixture.wallet.EXPECT().ImportAddress(validDeposit.address).Return(nil).Once()
+	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInAddressRegistryWatchEntry) bool {
 		return entry.TxHash == valid.TxHash &&
 			entry.State == rootstock.PegInAddressRegistryWatchImported &&
@@ -360,7 +386,8 @@ func TestPegInAddressRegistryWatcher_RetriesPersistedDiscoveredEntryOutsideOverl
 		GetRegisteredBtcTransactionHash(mock.Anything, entry.TxHash, entry.RskAddress).
 		Return("retry-deposit", nil).
 		Once()
-	fixture.wallet.EXPECT().ImportAddressWithRescan(deposit.address).Return(nil).Once()
+	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
+	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInAddressRegistryWatchEntry) bool {
 		return updated.TxHash == entry.TxHash &&
 			updated.BtcAddress == deposit.address &&
@@ -404,12 +431,49 @@ func TestPegInAddressRegistryWatcher_SuppressesRepeatedIdenticalEntryErrors(t *t
 		GetRegisteredBtcTransactionHash(mock.Anything, entry.TxHash, entry.RskAddress).
 		Return("stuck-deposit", nil).
 		Once()
-	fixture.wallet.EXPECT().ImportAddressWithRescan(deposit.address).Return(assert.AnError).Once()
+	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(assert.AnError).Once()
 	fixture.expectCursorAdvance(106)
 
 	fixture.runScan()
 
 	fixture.repository.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestPegInAddressRegistryWatcher_LeavesDiscoveredWhenRescanFails(t *testing.T) {
+	fixture := newPegInAddressRegistryWatcherFixture(t, 100, 1, 2)
+	event := blockchain.AddressRegistered{
+		TxHash: "needs-rescan", RskAddress: "needs-rescan-rsk", BlockNumber: 100, LogIndex: 1,
+	}
+	fixture.repository.EXPECT().List(mock.Anything).Return(nil, nil).Once()
+	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(0), false, nil).Once()
+	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
+	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
+		Return([]blockchain.AddressRegistered{event}, nil).Once()
+	fixture.repository.EXPECT().Upsert(mock.Anything, mock.Anything).Return(nil).Once()
+	persisted := discoveredWatchEntry(event)
+	fixture.repository.EXPECT().Get(mock.Anything, event.TxHash, event.LogIndex).Return(&persisted, nil).Once()
+	deposit := depositAddressFixture(0)
+	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).
+		Return(blockchain.PegInAddress{
+			Payload:  deposit.payload,
+			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
+		}, nil).
+		Once()
+	fixture.registry.EXPECT().
+		GetRegisteredBtcTransactionHash(mock.Anything, event.TxHash, event.RskAddress).
+		Return("needs-rescan-deposit", nil).
+		Once()
+	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).Return(blockchain.BitcoinRescanResult{}, assert.AnError).Once()
+	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInAddressRegistryWatchEntry) bool {
+		return entry.TxHash == event.TxHash &&
+			entry.State == rootstock.PegInAddressRegistryWatchDiscovered &&
+			entry.LastError != ""
+	})).Return(nil).Once()
+	fixture.expectCursorAdvance(100)
+
+	fixture.runScan()
 }
 
 // The registry returns a payload rather than an address, so a payload that cannot be encoded must
@@ -449,7 +513,8 @@ func TestPegInAddressRegistryWatcher_RecordsUnencodablePayload(t *testing.T) {
 
 	fixture.runScan()
 
-	fixture.wallet.AssertNotCalled(t, "ImportAddressWithRescan", mock.Anything)
+	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
+	fixture.wallet.AssertNotCalled(t, "RescanBlockchain", mock.Anything)
 	fixture.registry.AssertNotCalled(t, "GetRegisteredBtcTransactionHash", mock.Anything, mock.Anything, mock.Anything)
 }
 

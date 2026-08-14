@@ -26,6 +26,10 @@ const (
 	rootstockReorgCheckInterval      = 30 * time.Second
 	bitcoinPeerCheckInterval         = 1 * time.Minute
 	rootstockPeerCheckInterval       = 1 * time.Minute
+	// Accepted miss window, not a protocol invariant. Deposits older than 100 BTC blocks
+	// (~16.7h, Powpeg's confirmation window) stay invisible: late registration, LPS downtime,
+	// and first enable against an already-populated registry will miss them.
+	peginAddressRegistryRescanDepthBlocks int64 = 100
 )
 
 type Watcher interface {
