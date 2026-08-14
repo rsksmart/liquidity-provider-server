@@ -19,6 +19,7 @@ type PegInAddressRegistryWatcher struct {
 	repository         rootstock.PegInAddressRegistryWatchRepository
 	registry           blockchain.PegInAddressRegistryContract
 	rskRpc             blockchain.RootstockRpcServer
+	btcNetwork         blockchain.BitcoinNetwork
 	wallet             blockchain.BitcoinWallet
 	ticker             utils.Ticker
 	watcherStopChannel chan struct{}
@@ -35,6 +36,7 @@ func NewPegInAddressRegistryWatcher(
 	repository rootstock.PegInAddressRegistryWatchRepository,
 	registry blockchain.PegInAddressRegistryContract,
 	rskRpc blockchain.RootstockRpcServer,
+	btcNetwork blockchain.BitcoinNetwork,
 	wallet blockchain.BitcoinWallet,
 	ticker utils.Ticker,
 	startBlock uint64,
@@ -45,6 +47,7 @@ func NewPegInAddressRegistryWatcher(
 		repository:         repository,
 		registry:           registry,
 		rskRpc:             rskRpc,
+		btcNetwork:         btcNetwork,
 		wallet:             wallet,
 		ticker:             ticker,
 		watcherStopChannel: make(chan struct{}, 1),
@@ -95,7 +98,8 @@ func (watcher *PegInAddressRegistryWatcher) Shutdown(closeChannel chan<- bool) {
 }
 
 func (watcher *PegInAddressRegistryWatcher) scan(ctx context.Context) error {
-	if err := watcher.retryDiscoveredEntries(ctx); err != nil {
+	pending := make([]*rootstock.PegInAddressRegistryWatchEntry, 0)
+	if err := watcher.retryDiscoveredEntries(ctx, &pending); err != nil {
 		return err
 	}
 	head, err := watcher.rskRpc.GetHeight(ctx)
@@ -103,21 +107,24 @@ func (watcher *PegInAddressRegistryWatcher) scan(ctx context.Context) error {
 		return fmt.Errorf("get RSK height: %w", err)
 	}
 	if head < watcher.finalityDepth {
-		return nil
+		return watcher.rescanPendingImports(ctx, pending)
 	}
 
 	watcher.stateMutex.RLock()
 	fromBlock, toBlock := watcher.nextRange(head - watcher.finalityDepth)
 	watcher.stateMutex.RUnlock()
 	if fromBlock > toBlock {
-		return nil
+		return watcher.rescanPendingImports(ctx, pending)
 	}
 
 	events, err := watcher.registry.GetAddressRegisteredEvents(ctx, fromBlock, &toBlock)
 	if err != nil {
 		return fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err)
 	}
-	if err = watcher.processEvents(ctx, events); err != nil {
+	if err = watcher.processEvents(ctx, events, &pending); err != nil {
+		return err
+	}
+	if err = watcher.rescanPendingImports(ctx, pending); err != nil {
 		return err
 	}
 	if err = watcher.repository.SetCursor(ctx, toBlock); err != nil {
@@ -134,6 +141,7 @@ func (watcher *PegInAddressRegistryWatcher) scan(ctx context.Context) error {
 func (watcher *PegInAddressRegistryWatcher) processEvents(
 	ctx context.Context,
 	events []blockchain.AddressRegistered,
+	pending *[]*rootstock.PegInAddressRegistryWatchEntry,
 ) error {
 	var err error
 	sort.Slice(events, func(firstIndex, secondIndex int) bool {
@@ -170,14 +178,21 @@ func (watcher *PegInAddressRegistryWatcher) processEvents(
 			watcher.rememberEntry(*persistedEntry)
 			continue
 		}
-		if err = watcher.processDiscoveredEntry(ctx, persistedEntry); err != nil {
-			return err
+		imported, processErr := watcher.processDiscoveredEntry(ctx, persistedEntry)
+		if processErr != nil {
+			return processErr
+		}
+		if imported != nil {
+			*pending = append(*pending, imported)
 		}
 	}
 	return nil
 }
 
-func (watcher *PegInAddressRegistryWatcher) retryDiscoveredEntries(ctx context.Context) error {
+func (watcher *PegInAddressRegistryWatcher) retryDiscoveredEntries(
+	ctx context.Context,
+	pending *[]*rootstock.PegInAddressRegistryWatchEntry,
+) error {
 	watcher.stateMutex.RLock()
 	entries := append([]rootstock.PegInAddressRegistryWatchEntry(nil), watcher.entries...)
 	watcher.stateMutex.RUnlock()
@@ -185,8 +200,12 @@ func (watcher *PegInAddressRegistryWatcher) retryDiscoveredEntries(ctx context.C
 		if entries[index].State != rootstock.PegInAddressRegistryWatchDiscovered {
 			continue
 		}
-		if err := watcher.processDiscoveredEntry(ctx, &entries[index]); err != nil {
+		imported, err := watcher.processDiscoveredEntry(ctx, &entries[index])
+		if err != nil {
 			return err
+		}
+		if imported != nil {
+			*pending = append(*pending, imported)
 		}
 	}
 	return nil
@@ -195,10 +214,10 @@ func (watcher *PegInAddressRegistryWatcher) retryDiscoveredEntries(ctx context.C
 func (watcher *PegInAddressRegistryWatcher) processDiscoveredEntry(
 	ctx context.Context,
 	entry *rootstock.PegInAddressRegistryWatchEntry,
-) error {
+) (*rootstock.PegInAddressRegistryWatchEntry, error) {
 	pegInAddress, err := watcher.registry.GetPegInAddress(entry.RskAddress)
 	if err != nil {
-		return watcher.recordEntryError(
+		return nil, watcher.recordEntryError(
 			ctx,
 			entry,
 			fmt.Errorf("resolve PegIn address for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
@@ -213,7 +232,7 @@ func (watcher *PegInAddressRegistryWatcher) processDiscoveredEntry(
 		entry.State = rootstock.PegInAddressRegistryWatchUnsupportedEncoding
 		entry.LastError = ""
 		if err = watcher.repository.Update(ctx, *entry); err != nil {
-			return fmt.Errorf("persist unsupported encoding for event %s/%d: %w", entry.TxHash, entry.LogIndex, err)
+			return nil, fmt.Errorf("persist unsupported encoding for event %s/%d: %w", entry.TxHash, entry.LogIndex, err)
 		}
 		log.Errorf(
 			"PegIn address registry event %s/%d uses unsupported encoding %d",
@@ -222,12 +241,12 @@ func (watcher *PegInAddressRegistryWatcher) processDiscoveredEntry(
 			encoding,
 		)
 		watcher.rememberEntry(*entry)
-		return nil
+		return nil, nil
 	}
 	// The registry returns the base58check payload, not the address, and leaves the encoding to the
 	// caller, so this step is what makes the value importable by a Bitcoin node.
 	if entry.BtcAddress, err = bitcoin.EncodeAddressBase58(pegInAddress.Payload); err != nil {
-		return watcher.recordEntryError(
+		return nil, watcher.recordEntryError(
 			ctx,
 			entry,
 			fmt.Errorf("encode PegIn address for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
@@ -235,25 +254,62 @@ func (watcher *PegInAddressRegistryWatcher) processDiscoveredEntry(
 	}
 	entry.DepositTxID, err = watcher.registry.GetRegisteredBtcTransactionHash(ctx, entry.TxHash, entry.RskAddress)
 	if err != nil {
-		return watcher.recordEntryError(
+		return nil, watcher.recordEntryError(
 			ctx,
 			entry,
 			fmt.Errorf("resolve registered BTC transaction for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
 		)
 	}
-	if err = watcher.wallet.ImportAddressWithRescan(entry.BtcAddress); err != nil && !isAlreadyImportedError(err) {
-		return watcher.recordEntryError(
+	if err = watcher.wallet.ImportAddress(entry.BtcAddress); err != nil && !isAlreadyImportedError(err) {
+		return nil, watcher.recordEntryError(
 			ctx,
 			entry,
 			fmt.Errorf("import PegIn address for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
 		)
 	}
-	entry.State = rootstock.PegInAddressRegistryWatchImported
-	entry.LastError = ""
-	if err = watcher.repository.Update(ctx, *entry); err != nil {
-		return fmt.Errorf("persist imported state for event %s/%d: %w", entry.TxHash, entry.LogIndex, err)
+	return entry, nil
+}
+
+func (watcher *PegInAddressRegistryWatcher) rescanPendingImports(
+	ctx context.Context,
+	pending []*rootstock.PegInAddressRegistryWatchEntry,
+) error {
+	if len(pending) == 0 {
+		return nil
 	}
-	watcher.rememberEntry(*entry)
+	tip, err := watcher.btcNetwork.GetHeight()
+	if err != nil {
+		return watcher.recordPendingRescanError(ctx, pending, fmt.Errorf("get BTC height for registry rescan: %w", err))
+	}
+	fromHeight := tip.Int64() - peginAddressRegistryRescanDepthBlocks
+	if fromHeight < 0 {
+		fromHeight = 0
+	}
+	if _, err = watcher.wallet.RescanBlockchain(fromHeight); err != nil {
+		return watcher.recordPendingRescanError(ctx, pending, fmt.Errorf("rescan PegIn addresses: %w", err))
+	}
+	for _, entry := range pending {
+		entry.State = rootstock.PegInAddressRegistryWatchImported
+		entry.LastError = ""
+		entry.UpdatedAt = time.Now().UTC()
+		if err = watcher.repository.Update(ctx, *entry); err != nil {
+			return fmt.Errorf("persist imported state for event %s/%d: %w", entry.TxHash, entry.LogIndex, err)
+		}
+		watcher.rememberEntry(*entry)
+	}
+	return nil
+}
+
+func (watcher *PegInAddressRegistryWatcher) recordPendingRescanError(
+	ctx context.Context,
+	pending []*rootstock.PegInAddressRegistryWatchEntry,
+	rescanErr error,
+) error {
+	for _, entry := range pending {
+		if err := watcher.recordEntryError(ctx, entry, rescanErr); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
