@@ -104,6 +104,25 @@ func (c *BtcSuiteClientAdapter) CreateReadonlyWallet(bodyParams ReadonlyWalletRe
 	return nil
 }
 
+func (c *BtcSuiteClientAdapter) RescanBlockchain(startHeight int64) (RescanBlockchainResult, error) {
+	if startHeight < 0 {
+		startHeight = 0
+	}
+	startJSON, err := json.Marshal(startHeight)
+	if err != nil {
+		return RescanBlockchainResult{}, err
+	}
+	raw, err := c.RawRequest("rescanblockchain", []json.RawMessage{startJSON})
+	if err != nil {
+		return RescanBlockchainResult{}, err
+	}
+	var result RescanBlockchainResult
+	if err = json.Unmarshal(raw, &result); err != nil {
+		return RescanBlockchainResult{}, err
+	}
+	return result, nil
+}
+
 func (c *BtcSuiteClientAdapter) getUrl() string {
 	if c.config.DisableTLS {
 		return "http://" + c.config.Host

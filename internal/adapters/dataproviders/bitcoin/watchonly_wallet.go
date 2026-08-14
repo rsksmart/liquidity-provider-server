@@ -75,14 +75,6 @@ func (wallet *WatchOnlyWallet) CreateUnfundedTransactionWithOpReturn(address str
 }
 
 func (wallet *WatchOnlyWallet) ImportAddress(address string) error {
-	return wallet.importAddress(address, false)
-}
-
-func (wallet *WatchOnlyWallet) ImportAddressWithRescan(address string) error {
-	return wallet.importAddress(address, true)
-}
-
-func (wallet *WatchOnlyWallet) importAddress(address string, rescan bool) error {
 	_, err := btcutil.DecodeAddress(address, wallet.conn.NetworkParams)
 	if err != nil {
 		return err
@@ -90,7 +82,21 @@ func (wallet *WatchOnlyWallet) importAddress(address string, rescan bool) error 
 	if err = EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return err
 	}
-	return wallet.conn.client.ImportAddressRescan(address, "", rescan)
+	return wallet.conn.client.ImportAddressRescan(address, "", false)
+}
+
+func (wallet *WatchOnlyWallet) RescanBlockchain(fromHeight int64) (blockchain.BitcoinRescanResult, error) {
+	if fromHeight < 0 {
+		fromHeight = 0
+	}
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return blockchain.BitcoinRescanResult{}, err
+	}
+	result, err := wallet.conn.client.RescanBlockchain(fromHeight)
+	if err != nil {
+		return blockchain.BitcoinRescanResult{}, err
+	}
+	return blockchain.BitcoinRescanResult{StartHeight: result.StartHeight, StopHeight: result.StopHeight}, nil
 }
 
 func (wallet *WatchOnlyWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
@@ -100,9 +106,9 @@ func (wallet *WatchOnlyWallet) GetTransactions(address string) ([]blockchain.Bit
 	return getTransactionsToAddress(address, wallet.conn.NetworkParams, wallet.conn.client)
 }
 
-func (wallet *WatchOnlyWallet) GetTransaction(hash string) (blockchain.BitcoinWalletTransaction, error) {
+func (wallet *WatchOnlyWallet) GetTransaction(hash string) (blockchain.BitcoinTransactionInformation, error) {
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
-		return blockchain.BitcoinWalletTransaction{}, err
+		return blockchain.BitcoinTransactionInformation{}, err
 	}
 	return getWalletTransaction(hash, wallet.conn.client)
 }
