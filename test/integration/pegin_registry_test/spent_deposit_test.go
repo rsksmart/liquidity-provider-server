@@ -15,9 +15,6 @@ import (
 // estimation, which the stack's node cannot answer.
 const spendFeeBtc = 0.0001
 
-// A reconciler reading the address's unspent list would demote a valid entry the moment its deposit
-// output is spent, and erase the txid with it. Wallet history keeps the transaction. Both halves are
-// properties of the node rather than of this repository, so only a live node can settle them.
 func TestSpentDepositStaysVisibleInWalletHistory(t *testing.T) {
 	env := btcEnvironment(t)
 	nodeClient := newRpcClient(t, env, "")
@@ -32,10 +29,7 @@ func TestSpentDepositStaysVisibleInWalletHistory(t *testing.T) {
 	require.NoError(t, monitoringWallet.ImportAddress(depositAddress))
 	tip, err := nodeClient.GetBlockCount()
 	require.NoError(t, err)
-	fromHeight := tip - 100
-	if fromHeight < 0 {
-		fromHeight = 0
-	}
+	fromHeight := max(tip-100, 0)
 	_, err = monitoringWallet.RescanBlockchain(fromHeight)
 	require.NoError(t, err)
 
