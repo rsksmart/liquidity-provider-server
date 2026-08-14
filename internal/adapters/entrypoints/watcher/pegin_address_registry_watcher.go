@@ -284,10 +284,7 @@ func (watcher *PegInAddressRegistryWatcher) rescanPendingImports(
 	if err != nil {
 		return watcher.recordPendingRescanError(ctx, pending, fmt.Errorf("get BTC height for registry rescan: %w", err))
 	}
-	fromHeight := tip.Int64() - peginAddressRegistryRescanDepthBlocks
-	if fromHeight < 0 {
-		fromHeight = 0
-	}
+	fromHeight := max(tip.Int64()-peginAddressRegistryRescanDepthBlocks, 0)
 	if _, err = watcher.wallet.RescanBlockchain(fromHeight); err != nil {
 		return watcher.recordPendingRescanError(ctx, pending, fmt.Errorf("rescan PegIn addresses: %w", err))
 	}
