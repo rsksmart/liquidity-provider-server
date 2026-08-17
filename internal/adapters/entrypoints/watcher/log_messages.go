@@ -292,3 +292,16 @@ func LogPegoutEscrowChecking(fromBlock, toBlock uint64, requestedCount int) stri
 func LogPegoutEscrowStateError(requestHash string, err error) string {
 	return fmt.Sprintf(LogPegoutEscrowPrefix+"error reading peg-out state for %s: %v", requestHash, err)
 }
+
+const (
+	LogPegInClaimShutdown  = "PegInClaimWatcher shut down"
+	LogPegInClaimListError = "PegInClaimWatcher: error listing imported addresses: %v"
+)
+
+func LogPegInClaimWalletError(btcAddress string, err error) string {
+	return fmt.Sprintf("PegInClaimWatcher: error reading wallet history for %s: %v", btcAddress, err)
+}
+
+func LogPegInClaimRunError(rskAddress, depositTxID string, err error) string {
+	return fmt.Sprintf("PegInClaimWatcher: error claiming deposit %s for %s: %v", depositTxID, rskAddress, err)
+}
