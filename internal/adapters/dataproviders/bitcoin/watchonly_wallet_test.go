@@ -286,6 +286,62 @@ func TestWatchOnlyWallet_GetTransaction(t *testing.T) {
 		require.NoError(t, txErr)
 		assert.Equal(t, uint64(0), transaction.Confirmations)
 	})
+
+	t.Run("returns the node error when the wallet does not know the transaction", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Twice()
+		client.EXPECT().GetTransaction(parsedTxID).
+			Return(nil, assert.AnError).
+			Once()
+		wallet, walletErr := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
+		require.NoError(t, walletErr)
+
+		transaction, txErr := wallet.GetTransaction(txID)
+		require.Error(t, txErr)
+		assert.Equal(t, blockchain.BitcoinTransactionInformation{}, transaction)
+	})
+
+	t.Run("rejects a malformed transaction hash before calling the node", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Twice()
+		wallet, walletErr := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
+		require.NoError(t, walletErr)
+
+		transaction, txErr := wallet.GetTransaction("not-a-txid")
+		require.Error(t, txErr)
+		assert.Equal(t, blockchain.BitcoinTransactionInformation{}, transaction)
+		client.AssertNotCalled(t, "GetTransaction", mock.Anything)
+	})
+
+	t.Run("returns an error when the wallet cannot be reloaded", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Once()
+		client.EXPECT().GetWalletInfo().
+			Return(nil, assert.AnError).
+			Once()
+		client.EXPECT().LoadWallet(bitcoin.PeginWalletId).
+			Return(nil, assert.AnError).
+			Once()
+		wallet, walletErr := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
+		require.NoError(t, walletErr)
+
+		transaction, txErr := wallet.GetTransaction(txID)
+		require.Error(t, txErr)
+		assert.Equal(t, blockchain.BitcoinTransactionInformation{}, transaction)
+		client.AssertNotCalled(t, "GetTransaction", mock.Anything)
+	})
 }
 
 // TestWatchOnlyWallet_ImportAddress This test are reused from the bitcoind wallet tests suite since they share behavior
@@ -321,6 +377,37 @@ func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 		require.NoError(t, err)
 		err = wallet.ImportAddress(mainnetAddress)
 		require.Error(t, err)
+	})
+	t.Run("returns the node error after a valid address is decoded", func(t *testing.T) {
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
+		client.On("ImportAddressRescan", testnetAddress, "", false).Return(assert.AnError).Once()
+		wallet, err := bitcoin.NewWatchOnlyWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId))
+		require.NoError(t, err)
+
+		err = wallet.ImportAddress(testnetAddress)
+		require.Error(t, err)
+		client.AssertExpectations(t)
+	})
+	t.Run("returns an error when the wallet cannot be reloaded", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Once()
+		client.EXPECT().GetWalletInfo().
+			Return(nil, assert.AnError).
+			Once()
+		client.EXPECT().LoadWallet(bitcoin.PeginWalletId).
+			Return(nil, assert.AnError).
+			Once()
+		wallet, err := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
+		require.NoError(t, err)
+
+		err = wallet.ImportAddress(testnetAddress)
+		require.Error(t, err)
+		client.AssertNotCalled(t, "ImportAddressRescan", mock.Anything, mock.Anything, mock.Anything)
 	})
 }
 
@@ -359,6 +446,46 @@ func TestWatchOnlyWallet_RescanBlockchain(t *testing.T) {
 		result, err := wallet.RescanBlockchain(-5)
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.BitcoinRescanResult{StartHeight: 0, StopHeight: 10}, result)
+	})
+
+	t.Run("returns the node error", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Twice()
+		client.EXPECT().RescanBlockchain(int64(50)).
+			Return(btcclient.RescanBlockchainResult{}, assert.AnError).
+			Once()
+		wallet, err := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
+		require.NoError(t, err)
+
+		result, err := wallet.RescanBlockchain(50)
+		require.Error(t, err)
+		assert.Equal(t, blockchain.BitcoinRescanResult{}, result)
+	})
+
+	t.Run("returns an error when the wallet cannot be reloaded", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().
+			Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).
+			Once()
+		client.EXPECT().GetWalletInfo().
+			Return(nil, assert.AnError).
+			Once()
+		client.EXPECT().LoadWallet(bitcoin.PeginWalletId).
+			Return(nil, assert.AnError).
+			Once()
+		wallet, err := bitcoin.NewWatchOnlyWallet(
+			bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.PeginWalletId),
+		)
+		require.NoError(t, err)
+
+		result, err := wallet.RescanBlockchain(50)
+		require.Error(t, err)
+		assert.Equal(t, blockchain.BitcoinRescanResult{}, result)
+		client.AssertNotCalled(t, "RescanBlockchain", mock.Anything)
 	})
 }
 
