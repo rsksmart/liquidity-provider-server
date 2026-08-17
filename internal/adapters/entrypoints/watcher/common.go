@@ -26,11 +26,8 @@ const (
 	rootstockReorgCheckInterval      = 30 * time.Second
 	bitcoinPeerCheckInterval         = 1 * time.Minute
 	rootstockPeerCheckInterval       = 1 * time.Minute
-	// The registry scan and the deposit reconciliation run on separate tickers because RSK cursor
-	// progress and per-address BTC observation fail independently of each other.
-	peginAddressRegistryWatcherInterval        = 1 * time.Minute
-	peginAddressRegistryDepositWatcherInterval = 1 * time.Minute
 	// Deposits older than this stay invisible after import.
+	peginAddressRegistryWatcherInterval         = 1 * time.Minute
 	peginAddressRegistryRescanDepthBlocks int64 = 100
 )
 
