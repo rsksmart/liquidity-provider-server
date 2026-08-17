@@ -28,7 +28,7 @@ func registryDepositPayload(index int) ([]byte, string) {
 	return payload, decoded.Address
 }
 
-func TestDiscoverRegisteredAddressUseCase_Run_ImportsWithoutBindingAPayment(t *testing.T) {
+func TestDiscoverRegisteredAddressUseCase_Run_ImportsAddressAndRequestsRescan(t *testing.T) {
 	repository := mocks.NewPegInAddressRegistryWatchRepositoryMock(t)
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
 	wallet := mocks.NewBitcoinWalletMock(t)
