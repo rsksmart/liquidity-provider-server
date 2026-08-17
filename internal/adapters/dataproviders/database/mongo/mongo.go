@@ -57,6 +57,19 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		}
 		log.Infof("Created unique index on %s.%s", idx.collection, idx.field)
 	}
+	if _, err := db.Collection(PegInClaimCollection).Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys: bson.D{
+				{Key: "rsk_address", Value: 1},
+				{Key: "deposit_txid", Value: 1},
+			},
+			Options: options.Index().SetUnique(true),
+		},
+	); err != nil {
+		return fmt.Errorf("error creating unique index on %s (rsk_address, deposit_txid): %w", PegInClaimCollection, err)
+	}
+	log.Infof("Created unique index on %s (rsk_address, deposit_txid)", PegInClaimCollection)
 	nonUniqueIndexes := []struct {
 		collection string
 		field      string
@@ -65,6 +78,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: RetainedPeginQuoteCollection, field: "state"},
 		{collection: RetainedPegoutQuoteCollection, field: "state"},
 		{collection: PegInAddressRegistryWatchCollection, field: "state"},
+		{collection: PegInClaimCollection, field: "state"},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.
 		{collection: PeginQuoteCollection, field: "agreement_timestamp"},
