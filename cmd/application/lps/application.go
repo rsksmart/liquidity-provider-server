@@ -203,6 +203,7 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 	watchers := []watcher.Watcher{
 		app.watcherRegistry.PeginDepositAddressWatcher,
 		app.watcherRegistry.PegInAddressRegistryWatcher,
+		app.watcherRegistry.PegInClaimWatcher,
 		app.watcherRegistry.PeginBridgeWatcher,
 		app.watcherRegistry.PegoutRskDepositWatcher,
 		app.watcherRegistry.PegoutBtcTransferWatcher,

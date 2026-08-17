@@ -50,6 +50,7 @@ const (
 	GetPendingRegisteredAddressImportsId UseCaseId = "GetPendingRegisteredAddressImports"
 	ReplayRegisteredAddressesId          UseCaseId = "ReplayRegisteredAddresses"
 	FinalizeRegisteredAddressImportId    UseCaseId = "FinalizeRegisteredAddressImport"
+	ClaimPegInId                         UseCaseId = "ClaimPegIn"
 	ExpiredPeginQuoteId                  UseCaseId = "ExpiredPeginQuote"
 	ExpiredPegoutQuoteId                 UseCaseId = "ExpiredPegoutQuote"
 	UpdatePegoutDepositId                UseCaseId = "UpdatePegoutDeposit"
