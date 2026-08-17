@@ -222,23 +222,6 @@ func (lp *LocalLiquidityProvider) AvailableClaimLiquidity(
 	if err != nil {
 		return nil, err
 	}
-	lockedLiquidity := new(entities.Wei)
-	peginQuotes, err := lp.peginRepository.GetRetainedQuoteByState(ctx,
-		quote.PeginStateWaitingForDeposit, quote.PeginStateWaitingForDepositConfirmations,
-	)
-	if err != nil {
-		return nil, err
-	}
-	for _, retainedQuote := range peginQuotes {
-		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
-	}
-	pegoutQuotes, err := lp.pegoutRepository.GetRetainedQuoteByState(ctx, quote.PegoutStateRefundPegOutSucceeded)
-	if err != nil {
-		return nil, err
-	}
-	for _, retainedQuote := range pegoutQuotes {
-		lockedLiquidity.Add(lockedLiquidity, retainedQuote.RequiredLiquidity)
-	}
 	reserved := entities.NewWei(0)
 	if inFlightReserved != nil {
 		reserved = inFlightReserved
@@ -248,8 +231,7 @@ func (lp *LocalLiquidityProvider) AvailableClaimLiquidity(
 		return nil, err
 	}
 	gasBuffer := new(entities.Wei).Mul(entities.NewWei(requestPegInGasLimit), gasPrice)
-	deductions := new(entities.Wei).Add(lockedLiquidity, reserved)
-	deductions.Add(deductions, gasBuffer)
+	deductions := new(entities.Wei).Add(reserved, gasBuffer)
 	if wallet.Cmp(deductions) < 0 {
 		return entities.NewWei(0), nil
 	}
