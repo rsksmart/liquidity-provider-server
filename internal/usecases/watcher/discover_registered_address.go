@@ -89,11 +89,11 @@ func (useCase *DiscoverRegisteredAddressUseCase) loadOrCreate(
 	ctx context.Context,
 	event blockchain.AddressRegistered,
 ) (*rootstock.PegInAddressRegistryWatch, error) {
-	watch, err := useCase.repository.Get(ctx, event.TxHash, event.LogIndex)
+	watch, err := useCase.repository.Get(ctx, event.RskAddress)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(
 			usecases.DiscoverRegisteredAddressId,
-			fmt.Errorf("load AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err),
+			fmt.Errorf("load AddressRegistered event %s: %w", event.RskAddress, err),
 		)
 	}
 	if watch != nil {
@@ -114,17 +114,17 @@ func (useCase *DiscoverRegisteredAddressUseCase) loadOrCreate(
 			fmt.Errorf("persist AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err),
 		)
 	}
-	watch, err = useCase.repository.Get(ctx, event.TxHash, event.LogIndex)
+	watch, err = useCase.repository.Get(ctx, event.RskAddress)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(
 			usecases.DiscoverRegisteredAddressId,
-			fmt.Errorf("load AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err),
+			fmt.Errorf("load AddressRegistered event %s: %w", event.RskAddress, err),
 		)
 	}
 	if watch == nil {
 		return nil, usecases.WrapUseCaseError(
 			usecases.DiscoverRegisteredAddressId,
-			fmt.Errorf("load AddressRegistered event %s/%d: watch not found after upsert", event.TxHash, event.LogIndex),
+			fmt.Errorf("load AddressRegistered event %s: watch not found after upsert", event.RskAddress),
 		)
 	}
 	return watch, nil

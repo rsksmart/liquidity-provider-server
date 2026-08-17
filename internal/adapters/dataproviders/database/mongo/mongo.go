@@ -42,11 +42,6 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 }
 
 func createIndexes(ctx context.Context, db *mongo.Database) error {
-	if err := createUniqueCompoundIndex(ctx, db, PegInAddressRegistryWatchCollection, "tx_hash", "log_index"); err != nil {
-		return fmt.Errorf("error creating unique index on %s.(tx_hash, log_index): %w", PegInAddressRegistryWatchCollection, err)
-	}
-	log.Infof("Created unique index on %s.(tx_hash, log_index)", PegInAddressRegistryWatchCollection)
-
 	uniqueIndexes := []struct {
 		collection string
 		field      string
@@ -54,6 +49,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: DepositEventsCollection, field: "tx_hash"},
 		{collection: TrustedAccountCollection, field: "address"},
 		{collection: BatchPegOutEventsCollection, field: "transaction_hash"},
+		{collection: PegInAddressRegistryWatchCollection, field: "rsk_address"},
 	}
 	for _, idx := range uniqueIndexes {
 		if err := createUniqueIndex(ctx, db, idx.collection, idx.field); err != nil {
@@ -68,7 +64,6 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: RetainedPegoutQuoteCollection, field: "bridge_rebalances.tx_hash"},
 		{collection: RetainedPeginQuoteCollection, field: "state"},
 		{collection: RetainedPegoutQuoteCollection, field: "state"},
-		{collection: PegInAddressRegistryWatchCollection, field: "rsk_address"},
 		{collection: PegInAddressRegistryWatchCollection, field: "state"},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.
@@ -99,21 +94,6 @@ func createUniqueIndex(ctx context.Context, db *mongo.Database, collectionName, 
 		ctx,
 		mongo.IndexModel{
 			Keys:    bson.D{{Key: field, Value: 1}},
-			Options: options.Index().SetUnique(true),
-		},
-	)
-	return err
-}
-
-func createUniqueCompoundIndex(ctx context.Context, db *mongo.Database, collectionName string, fields ...string) error {
-	keys := make(bson.D, 0, len(fields))
-	for _, field := range fields {
-		keys = append(keys, bson.E{Key: field, Value: 1})
-	}
-	_, err := db.Collection(collectionName).Indexes().CreateOne(
-		ctx,
-		mongo.IndexModel{
-			Keys:    keys,
 			Options: options.Index().SetUnique(true),
 		},
 	)

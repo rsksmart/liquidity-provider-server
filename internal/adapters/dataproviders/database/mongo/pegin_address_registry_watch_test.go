@@ -27,7 +27,7 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	identity := bson.M{"tx_hash": entry.TxHash, "log_index": entry.LogIndex}
+	identity := bson.M{"rsk_address": entry.RskAddress}
 
 	t.Run("upserts with set-on-insert", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
@@ -69,7 +69,7 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(entry, nil, nil)).Once()
 
 		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		result, err := repo.Get(context.Background(), entry.TxHash, entry.LogIndex)
+		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.NoError(t, err)
 		assert.Equal(t, &entry, result)
 		collection.AssertExpectations(t)
@@ -105,7 +105,7 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 		second.LogIndex = 9
 		collection.EXPECT().Find(
 			mock.Anything,
-			bson.M{"tx_hash": bson.M{"$exists": true}},
+			bson.M{"rsk_address": bson.M{"$exists": true}},
 			sortedBy(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
 		).Return(mongoDb.NewCursorFromDocuments([]any{entry, second}, nil, nil)).Once()
 

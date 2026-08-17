@@ -23,8 +23,6 @@ type PegInAddressRegistryWatch struct {
 	Encoding         uint8                          `json:"encoding" bson:"encoding"`
 	BtcAddress       string                         `json:"btcAddress" bson:"btc_address"`
 	State            PegInAddressRegistryWatchState `json:"state" bson:"state"`
-	DepositTxID      string                         `json:"depositTxId" bson:"deposit_txid"`
-	Confirmations    uint64                         `json:"confirmations" bson:"confirmations"`
 	LastSeenAt       *time.Time                     `json:"lastSeenAt" bson:"last_seen_at"` // post-import wallet observation
 	LastError        string                         `json:"lastError" bson:"last_error"`
 	CreatedAt        time.Time                      `json:"createdAt" bson:"created_at"`
@@ -77,7 +75,7 @@ func (watch *PegInAddressRegistryWatch) RecordError(err error) bool {
 
 type PegInAddressRegistryWatchRepository interface {
 	Upsert(ctx context.Context, watch PegInAddressRegistryWatch) error
-	Get(ctx context.Context, txHash string, logIndex uint) (*PegInAddressRegistryWatch, error)
+	Get(ctx context.Context, rskAddress string) (*PegInAddressRegistryWatch, error)
 	List(ctx context.Context) ([]PegInAddressRegistryWatch, error)
 	Update(ctx context.Context, watch PegInAddressRegistryWatch) error
 	GetCursor(ctx context.Context) (lastScannedBlock uint64, found bool, err error)

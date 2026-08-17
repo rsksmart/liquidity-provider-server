@@ -224,7 +224,7 @@ func (watcher *PegInAddressRegistryWatcher) discoverEvent(
 		return nil
 	}
 	watcher.rememberWatch(*watch)
-	if !needsRescan || pendingContains(*pending, watch.TxHash, watch.LogIndex) {
+	if !needsRescan || pendingContains(*pending, watch.RskAddress) {
 		return nil
 	}
 	*pending = append(*pending, watch)
@@ -273,7 +273,7 @@ func (watcher *PegInAddressRegistryWatcher) rememberWatch(watch rootstock.PegInA
 	watcher.stateMutex.Lock()
 	defer watcher.stateMutex.Unlock()
 	for index := range watcher.watches {
-		if watcher.watches[index].TxHash == watch.TxHash && watcher.watches[index].LogIndex == watch.LogIndex {
+		if watcher.watches[index].RskAddress == watch.RskAddress {
 			watcher.watches[index] = watch
 			return
 		}
@@ -281,9 +281,9 @@ func (watcher *PegInAddressRegistryWatcher) rememberWatch(watch rootstock.PegInA
 	watcher.watches = append(watcher.watches, watch)
 }
 
-func pendingContains(pending []*rootstock.PegInAddressRegistryWatch, txHash string, logIndex uint) bool {
+func pendingContains(pending []*rootstock.PegInAddressRegistryWatch, rskAddress string) bool {
 	for _, watch := range pending {
-		if watch.TxHash == txHash && watch.LogIndex == logIndex {
+		if watch.RskAddress == rskAddress {
 			return true
 		}
 	}

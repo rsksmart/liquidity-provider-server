@@ -35,7 +35,7 @@ func (repo *peginAddressRegistryWatchMongoRepository) Upsert(
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	filter := eventIdentity(watch.TxHash, watch.LogIndex)
+	filter := rskAddressIdentity(watch.RskAddress)
 	update := bson.M{"$setOnInsert": watch}
 	_, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).UpdateOne(
 		dbCtx,
@@ -51,15 +51,14 @@ func (repo *peginAddressRegistryWatchMongoRepository) Upsert(
 
 func (repo *peginAddressRegistryWatchMongoRepository) Get(
 	ctx context.Context,
-	txHash string,
-	logIndex uint,
+	rskAddress string,
 ) (*rootstock.PegInAddressRegistryWatch, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	var watch rootstock.PegInAddressRegistryWatch
 	err := repo.conn.Collection(PegInAddressRegistryWatchCollection).
-		FindOne(dbCtx, eventIdentity(txHash, logIndex)).
+		FindOne(dbCtx, rskAddressIdentity(rskAddress)).
 		Decode(&watch)
 	if errors.Is(err, mongoDb.ErrNoDocuments) {
 		return nil, nil
@@ -78,7 +77,7 @@ func (repo *peginAddressRegistryWatchMongoRepository) List(
 
 	cursor, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).Find(
 		dbCtx,
-		bson.M{"tx_hash": bson.M{"$exists": true}},
+		bson.M{"rsk_address": bson.M{"$exists": true}},
 		options.Find().SetSort(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
 	)
 	if err != nil {
@@ -102,7 +101,7 @@ func (repo *peginAddressRegistryWatchMongoRepository) Update(
 
 	result, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).ReplaceOne(
 		dbCtx,
-		eventIdentity(watch.TxHash, watch.LogIndex),
+		rskAddressIdentity(watch.RskAddress),
 		watch,
 	)
 	if err != nil {
@@ -149,6 +148,6 @@ func (repo *peginAddressRegistryWatchMongoRepository) SetCursor(
 	return err
 }
 
-func eventIdentity(txHash string, logIndex uint) bson.M {
-	return bson.M{"tx_hash": txHash, "log_index": logIndex}
+func rskAddressIdentity(rskAddress string) bson.M {
+	return bson.M{"rsk_address": rskAddress}
 }

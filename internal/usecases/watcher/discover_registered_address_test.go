@@ -67,14 +67,14 @@ func TestDiscoverRegisteredAddressUseCase_Run_ImportsAddressAndRequestsRescan(t 
 		State:       rootstock.PegInAddressRegistryWatchDiscovered,
 	}
 
-	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(nil, nil).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.RskAddress).Return(nil, nil).Once()
 	fixture.repository.EXPECT().Upsert(test.AnyCtx, mock.MatchedBy(func(watch rootstock.PegInAddressRegistryWatch) bool {
 		return watch.RskAddress == event.RskAddress &&
 			watch.TxHash == event.TxHash &&
 			watch.LogIndex == event.LogIndex &&
 			watch.State == rootstock.PegInAddressRegistryWatchDiscovered
 	})).Return(nil).Once()
-	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.RskAddress).Return(&discovered, nil).Once()
 	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Payload:  payload,
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
@@ -102,7 +102,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_AlreadyImportedIsNoOp(t *testing.T
 		State:      rootstock.PegInAddressRegistryWatchImported,
 		BtcAddress: "n1BE7ioVukYS2GC88hT2K6cUvRiKwMwio7",
 	}
-	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&imported, nil).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.RskAddress).Return(&imported, nil).Once()
 
 	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
 
@@ -114,6 +114,33 @@ func TestDiscoverRegisteredAddressUseCase_Run_AlreadyImportedIsNoOp(t *testing.T
 	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 }
 
+func TestDiscoverRegisteredAddressUseCase_Run_DuplicateRskAddressKeepsFirstRow(t *testing.T) {
+	fixture := newDiscoverRegisteredAddressFixture(t)
+	payload, address := registryDepositPayload(0)
+	first := blockchain.AddressRegistered{TxHash: "0xfirst", LogIndex: 1, RskAddress: "0xshared"}
+	replay := blockchain.AddressRegistered{TxHash: "0xreplay", LogIndex: 2, RskAddress: "0xshared"}
+	discovered := rootstock.PegInAddressRegistryWatch{
+		TxHash:     first.TxHash,
+		LogIndex:   first.LogIndex,
+		RskAddress: first.RskAddress,
+		State:      rootstock.PegInAddressRegistryWatchDiscovered,
+	}
+	fixture.repository.EXPECT().Get(test.AnyCtx, first.RskAddress).Return(&discovered, nil).Once()
+	fixture.registry.EXPECT().GetPegInAddress(first.RskAddress).Return(blockchain.PegInAddress{
+		Payload:  payload,
+		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
+	}, nil).Once()
+	fixture.wallet.EXPECT().ImportAddress(address).Return(nil).Once()
+
+	watch, needsRescan, err := fixture.useCase.Run(context.Background(), replay)
+
+	require.NoError(t, err)
+	assert.True(t, needsRescan)
+	assert.Equal(t, first.TxHash, watch.TxHash)
+	assert.Equal(t, first.LogIndex, watch.LogIndex)
+	fixture.repository.AssertNotCalled(t, "Upsert", mock.Anything, mock.Anything)
+}
+
 func TestDiscoverRegisteredAddressUseCase_Run_PersistsUnsupportedEncoding(t *testing.T) {
 	fixture := newDiscoverRegisteredAddressFixture(t)
 	event := blockchain.AddressRegistered{TxHash: "0xbech32", LogIndex: 1, RskAddress: "0xbech32"}
@@ -121,7 +148,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_PersistsUnsupportedEncoding(t *tes
 		TxHash: event.TxHash, LogIndex: event.LogIndex, RskAddress: event.RskAddress,
 		State: rootstock.PegInAddressRegistryWatchDiscovered,
 	}
-	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.RskAddress).Return(&discovered, nil).Once()
 	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Encoding: blockchain.PegInAddressRegistryEncodingBech32,
 	}, nil).Once()
@@ -147,7 +174,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_RecordsUnencodablePayload(t *testi
 		State: rootstock.PegInAddressRegistryWatchDiscovered,
 	}
 	payload, _ := registryDepositPayload(0)
-	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.RskAddress).Return(&discovered, nil).Once()
 	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Payload:  payload[:20],
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
@@ -169,7 +196,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_RecordsUnencodablePayload(t *testi
 func TestDiscoverRegisteredAddressUseCase_Run_WrapsPersistErrors(t *testing.T) {
 	fixture := newDiscoverRegisteredAddressFixture(t)
 	event := blockchain.AddressRegistered{TxHash: "0xreg", LogIndex: 1, RskAddress: "0xrsk"}
-	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(nil, assert.AnError).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.RskAddress).Return(nil, assert.AnError).Once()
 
 	_, _, err := fixture.useCase.Run(context.Background(), event)
 	require.Error(t, err)
@@ -184,7 +211,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_WalletAlreadyImportedStillNeedsRes
 		TxHash: event.TxHash, LogIndex: event.LogIndex, RskAddress: event.RskAddress,
 		State: rootstock.PegInAddressRegistryWatchDiscovered,
 	}
-	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.RskAddress).Return(&discovered, nil).Once()
 	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Payload:  payload,
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
