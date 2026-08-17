@@ -543,7 +543,7 @@ func claimLiquidityFixture(
 }
 
 //nolint:funlen
-func TestLocalLiquidityProvider_HasClaimLiquidity_T7(t *testing.T) {
+func TestLocalLiquidityProvider_HasClaimLiquidity(t *testing.T) {
 	gasPrice := int64(1)
 	gasBuffer := requestPegInGasLimitForTest * gasPrice
 
