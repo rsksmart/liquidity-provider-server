@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/rpcclient"
@@ -148,16 +149,63 @@ func TestBtcSuiteClientAdapter_SignRawTransactionWithKey(t *testing.T) {
 }
 
 func TestBtcSuiteClientAdapter_RescanBlockchain(t *testing.T) {
-	client := &mocks.RpcClientMock{}
-	adapter := btcclient.NewBtcSuiteClientAdapter(rpcclient.ConnConfig{}, client)
-	startJSON, err := json.Marshal(int64(40))
-	require.NoError(t, err)
-	client.On("RawRequest", "rescanblockchain", []json.RawMessage{startJSON}).
-		Return(json.RawMessage(`{"start_height":40,"stop_height":140}`), nil).
-		Once()
+	t.Run("forwards a non-negative start height", func(t *testing.T) {
+		client := &mocks.RpcClientMock{}
+		adapter := btcclient.NewBtcSuiteClientAdapter(rpcclient.ConnConfig{}, client)
+		startJSON, err := json.Marshal(int64(40))
+		require.NoError(t, err)
+		client.On("RawRequest", "rescanblockchain", []json.RawMessage{startJSON}).
+			Return(json.RawMessage(`{"start_height":40,"stop_height":140}`), nil).
+			Once()
 
-	result, err := adapter.RescanBlockchain(40)
-	require.NoError(t, err)
-	require.Equal(t, btcclient.RescanBlockchainResult{StartHeight: 40, StopHeight: 140}, result)
-	client.AssertExpectations(t)
+		result, err := adapter.RescanBlockchain(40)
+		require.NoError(t, err)
+		require.Equal(t, btcclient.RescanBlockchainResult{StartHeight: 40, StopHeight: 140}, result)
+		client.AssertExpectations(t)
+	})
+
+	t.Run("sends zero when the start height is negative", func(t *testing.T) {
+		client := &mocks.RpcClientMock{}
+		adapter := btcclient.NewBtcSuiteClientAdapter(rpcclient.ConnConfig{}, client)
+		startJSON, err := json.Marshal(int64(0))
+		require.NoError(t, err)
+		client.On("RawRequest", "rescanblockchain", []json.RawMessage{startJSON}).
+			Return(json.RawMessage(`{"start_height":0,"stop_height":10}`), nil).
+			Once()
+
+		result, err := adapter.RescanBlockchain(-5)
+		require.NoError(t, err)
+		require.Equal(t, btcclient.RescanBlockchainResult{StartHeight: 0, StopHeight: 10}, result)
+		client.AssertExpectations(t)
+	})
+
+	t.Run("returns the node error", func(t *testing.T) {
+		client := &mocks.RpcClientMock{}
+		adapter := btcclient.NewBtcSuiteClientAdapter(rpcclient.ConnConfig{}, client)
+		startJSON, err := json.Marshal(int64(40))
+		require.NoError(t, err)
+		client.On("RawRequest", "rescanblockchain", []json.RawMessage{startJSON}).
+			Return(json.RawMessage(nil), errors.New("rescan aborted")).
+			Once()
+
+		result, err := adapter.RescanBlockchain(40)
+		require.ErrorContains(t, err, "rescan aborted")
+		require.Equal(t, btcclient.RescanBlockchainResult{}, result)
+		client.AssertExpectations(t)
+	})
+
+	t.Run("returns an error when the node body is not a rescan result", func(t *testing.T) {
+		client := &mocks.RpcClientMock{}
+		adapter := btcclient.NewBtcSuiteClientAdapter(rpcclient.ConnConfig{}, client)
+		startJSON, err := json.Marshal(int64(40))
+		require.NoError(t, err)
+		client.On("RawRequest", "rescanblockchain", []json.RawMessage{startJSON}).
+			Return(json.RawMessage(`"not a rescan result"`), nil).
+			Once()
+
+		result, err := adapter.RescanBlockchain(40)
+		require.Error(t, err)
+		require.Equal(t, btcclient.RescanBlockchainResult{}, result)
+		client.AssertExpectations(t)
+	})
 }
