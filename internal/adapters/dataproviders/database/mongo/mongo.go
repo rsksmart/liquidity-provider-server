@@ -56,22 +56,22 @@ func (creator databaseIndexCreator) CreateIndex(ctx context.Context, collection 
 	return err
 }
 
-func pegInAddressRegistryWatchEventIdentityIndex() mongo.IndexModel {
+func pegInAddressRegistryWatchRskAddressIndex() mongo.IndexModel {
 	return mongo.IndexModel{
-		Keys:    bson.D{{Key: "tx_hash", Value: 1}, {Key: "log_index", Value: 1}},
+		Keys:    bson.D{{Key: "rsk_address", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	}
 }
 
-func ensurePegInAddressRegistryWatchEventIdentityIndex(ctx context.Context, creator indexCreator) error {
-	if err := creator.CreateIndex(ctx, PegInAddressRegistryWatchCollection, pegInAddressRegistryWatchEventIdentityIndex()); err != nil {
-		return fmt.Errorf("error creating unique index on %s event identity: %w", PegInAddressRegistryWatchCollection, err)
+func ensurePegInAddressRegistryWatchRskAddressIndex(ctx context.Context, creator indexCreator) error {
+	if err := creator.CreateIndex(ctx, PegInAddressRegistryWatchCollection, pegInAddressRegistryWatchRskAddressIndex()); err != nil {
+		return fmt.Errorf("error creating unique index on %s rsk_address: %w", PegInAddressRegistryWatchCollection, err)
 	}
 	return nil
 }
 
 func createIndexes(ctx context.Context, db *mongo.Database) error {
-	if err := ensurePegInAddressRegistryWatchEventIdentityIndex(ctx, databaseIndexCreator{db: db}); err != nil {
+	if err := ensurePegInAddressRegistryWatchRskAddressIndex(ctx, databaseIndexCreator{db: db}); err != nil {
 		return err
 	}
 
@@ -96,7 +96,6 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: RetainedPegoutQuoteCollection, field: "bridge_rebalances.tx_hash"},
 		{collection: RetainedPeginQuoteCollection, field: "state"},
 		{collection: RetainedPegoutQuoteCollection, field: "state"},
-		{collection: PegInAddressRegistryWatchCollection, field: "rsk_address"},
 		{collection: PegInAddressRegistryWatchCollection, field: "state"},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.
