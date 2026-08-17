@@ -64,3 +64,59 @@ func TestPegInClaimMongoRepository(t *testing.T) {
 		collection.AssertExpectations(t)
 	})
 }
+
+func TestPegInClaimMongoRepository_Update(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	claim := rootstock.PegInClaim{
+		RskAddress:  "0xabcd",
+		DepositTxID: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+		BtcAddress:  "bcrt1qexample",
+		State:       rootstock.PegInClaimSubmitting,
+		TxHash:      "0xabc",
+		ReservedWei: entities.NewWei(1_000_000_000_000_000_000),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	identity := bson.M{
+		"rsk_address":  claim.RskAddress,
+		"deposit_txid": claim.DepositTxID,
+	}
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().ReplaceOne(mock.Anything, identity, claim).
+		Return(&mongoDb.UpdateResult{MatchedCount: 1, ModifiedCount: 1}, nil).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	require.NoError(t, repo.Update(context.Background(), claim))
+	collection.AssertExpectations(t)
+}
+
+func TestPegInClaimMongoRepository_ListByStates(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	claim := rootstock.PegInClaim{
+		RskAddress:  "0xabcd",
+		DepositTxID: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+		BtcAddress:  "bcrt1qexample",
+		State:       rootstock.PegInClaimCandidate,
+		ReservedWei: entities.NewWei(1_000_000_000_000_000_000),
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().Find(
+		mock.Anything,
+		bson.M{"state": bson.M{"$in": []rootstock.PegInClaimState{
+			rootstock.PegInClaimCandidate,
+			rootstock.PegInClaimSubmitting,
+		}}},
+	).Return(mongoDb.NewCursorFromDocuments([]any{claim}, nil, nil)).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.ListByStates(
+		context.Background(),
+		rootstock.PegInClaimCandidate,
+		rootstock.PegInClaimSubmitting,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, []rootstock.PegInClaim{claim}, result)
+	collection.AssertExpectations(t)
+}

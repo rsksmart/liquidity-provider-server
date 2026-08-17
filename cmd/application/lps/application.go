@@ -353,6 +353,10 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 		app.watcherRegistry.PegInAddressRegistryMetricsWatcher,
 	}
 
+	if app.watcherRegistry.PegInClaimWatcher != nil {
+		watchers = append(watchers, app.watcherRegistry.PegInClaimWatcher)
+	}
+
 	if app.env.Eclipse.Enabled {
 		watchers = append(watchers, app.watcherRegistry.RskEclipseWatcher)
 		watchers = append(watchers, app.watcherRegistry.BitcoinEclipseWatcher)

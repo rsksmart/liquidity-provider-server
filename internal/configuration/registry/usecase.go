@@ -93,6 +93,7 @@ type UseCaseRegistry struct {
 	nodePeerCheckUseCase                 *watcher.NodePeerCheckUseCase
 	discoverRegisteredAddressUseCase     *watcher.DiscoverRegisteredAddressUseCase
 	getWatchedRegisteredAddressesUseCase *watcher.GetWatchedRegisteredAddressesUseCase
+	claimPegInUseCase                    *pegin.ClaimPegInUseCase
 }
 
 // NewUseCaseRegistry
@@ -165,6 +166,14 @@ func NewUseCaseRegistry(
 		),
 		getWatchedRegisteredAddressesUseCase: watcher.NewGetWatchedRegisteredAddressesUseCase(
 			databaseRegistry.PegInAddressRegistryWatchRepository,
+		),
+		claimPegInUseCase: pegin.NewClaimPegInUseCase(
+			databaseRegistry.PegInClaimRepository,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			lpRegistry.LiquidityProvider,
+			mutexes.RskWalletMutex(),
+			env.Rsk.FillWithDefaults().MaxReorgDepth,
 		),
 		expiredPeginQuoteUseCase: pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(

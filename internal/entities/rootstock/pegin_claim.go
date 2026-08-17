@@ -8,7 +8,10 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 )
 
-var ErrPegInClaimAlreadyExists = errors.New("pegin claim already exists")
+var (
+	ErrPegInClaimAlreadyExists = errors.New("pegin claim already exists")
+	ErrPegInClaimNotFound      = errors.New("pegin claim not found")
+)
 
 type PegInClaimState string
 
@@ -35,4 +38,6 @@ type PegInClaim struct {
 type PegInClaimRepository interface {
 	Insert(context.Context, PegInClaim) error
 	Get(ctx context.Context, rskAddress, depositTxID string) (*PegInClaim, error)
+	Update(context.Context, PegInClaim) error
+	ListByStates(ctx context.Context, states ...PegInClaimState) ([]PegInClaim, error)
 }

@@ -10,6 +10,7 @@ import (
 
 type WatcherRegistry struct {
 	PegInAddressRegistryWatcher *watcher.PegInAddressRegistryWatcher
+	PegInClaimWatcher           *watcher.PegInClaimWatcher
 
 	PeginDepositAddressWatcher         *watcher.PeginDepositAddressWatcher
 	PeginBridgeWatcher                 *watcher.PeginBridgeWatcher
@@ -68,6 +69,12 @@ func NewWatcherRegistry(
 			peginAddressRegistry.StartBlock,
 			peginAddressRegistry.PageSize,
 			env.Rsk.FillWithDefaults().MaxReorgDepth,
+		),
+		PegInClaimWatcher: watcher.NewPegInClaimWatcher(
+			useCaseRegistry.claimPegInUseCase,
+			dbRegistry.PegInAddressRegistryWatchRepository,
+			btcRegistry.MonitoringWallet,
+			tickers.PegInClaimWatcherTicker,
 		),
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
 			watcher.NewPeginDepositAddressWatcherUseCases(
