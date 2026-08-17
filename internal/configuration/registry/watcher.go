@@ -10,6 +10,7 @@ import (
 
 type WatcherRegistry struct {
 	PegInAddressRegistryWatcher *watcher.PegInWatcher
+	PegInClaimWatcher           *watcher.PegInClaimWatcher
 
 	PeginDepositAddressWatcher         *watcher.PeginDepositAddressWatcher
 	PeginBridgeWatcher                 *watcher.PeginBridgeWatcher
@@ -42,6 +43,7 @@ func NewWatcherRegistry(
 	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
 	lpRegistry *LiquidityProvider,
+	dbRegistry *Database,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,
@@ -51,6 +53,12 @@ func NewWatcherRegistry(
 
 	return &WatcherRegistry{
 		PegInAddressRegistryWatcher: peginWatcher,
+		PegInClaimWatcher: watcher.NewPegInClaimWatcher(
+			useCaseRegistry.claimPegInUseCase,
+			dbRegistry.PegInWatchRepository,
+			btcRegistry.MonitoringWallet,
+			tickers.PegInClaimWatcherTicker,
+		),
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
 			watcher.NewPeginDepositAddressWatcherUseCases(
 				useCaseRegistry.callForUserUseCase,
