@@ -3,7 +3,6 @@ package mongo
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo/migrations"
@@ -45,18 +44,18 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 func createIndexes(ctx context.Context, db *mongo.Database) error {
 	uniqueIndexes := []struct {
 		collection string
-		fields     []string
+		field      string
 	}{
-		{collection: DepositEventsCollection, fields: []string{"tx_hash"}},
-		{collection: TrustedAccountCollection, fields: []string{"address"}},
-		{collection: BatchPegOutEventsCollection, fields: []string{"transaction_hash"}},
-		{collection: PegInWatchCollection, fields: []string{"tx_hash", "log_index"}},
+		{collection: DepositEventsCollection, field: "tx_hash"},
+		{collection: TrustedAccountCollection, field: "address"},
+		{collection: BatchPegOutEventsCollection, field: "transaction_hash"},
+		{collection: PegInWatchCollection, field: "rsk_address"},
 	}
 	for _, idx := range uniqueIndexes {
-		if err := createUniqueIndex(ctx, db, idx.collection, idx.fields...); err != nil {
-			return fmt.Errorf("error creating unique index on %s.%s: %w", idx.collection, indexFields(idx.fields), err)
+		if err := createUniqueIndex(ctx, db, idx.collection, idx.field); err != nil {
+			return fmt.Errorf("error creating unique index on %s.%s: %w", idx.collection, idx.field, err)
 		}
-		log.Infof("Created unique index on %s.%s", idx.collection, indexFields(idx.fields))
+		log.Infof("Created unique index on %s.%s", idx.collection, idx.field)
 	}
 	nonUniqueIndexes := []struct {
 		collection string
@@ -65,7 +64,6 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: RetainedPegoutQuoteCollection, field: "bridge_rebalances.tx_hash"},
 		{collection: RetainedPeginQuoteCollection, field: "state"},
 		{collection: RetainedPegoutQuoteCollection, field: "state"},
-		{collection: PegInWatchCollection, field: "rsk_address"},
 		{collection: PegInWatchCollection, field: "state"},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.
@@ -91,27 +89,15 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	return nil
 }
 
-func createUniqueIndex(ctx context.Context, db *mongo.Database, collectionName string, fields ...string) error {
+func createUniqueIndex(ctx context.Context, db *mongo.Database, collectionName, field string) error {
 	_, err := db.Collection(collectionName).Indexes().CreateOne(
 		ctx,
 		mongo.IndexModel{
-			Keys:    indexKeys(fields),
+			Keys:    bson.D{{Key: field, Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
 	)
 	return err
-}
-
-func indexKeys(fields []string) bson.D {
-	keys := make(bson.D, 0, len(fields))
-	for _, field := range fields {
-		keys = append(keys, bson.E{Key: field, Value: 1})
-	}
-	return keys
-}
-
-func indexFields(fields []string) string {
-	return strings.Join(fields, ",")
 }
 
 func createIndex(ctx context.Context, db *mongo.Database, collectionName, field string) error {
