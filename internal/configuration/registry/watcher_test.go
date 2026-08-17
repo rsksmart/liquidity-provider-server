@@ -12,7 +12,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"reflect"
@@ -73,10 +72,8 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 // default Prometheus registerer, which rejects a second registration.
 func TestNewWatcherRegistry(t *testing.T) {
 	scanTicker, scanTickerStopped := stopReportingTicker()
-	depositTicker, depositTickerStopped := stopReportingTicker()
 	tickers := watcher.NewApplicationTickers()
 	tickers.PegInAddressRegistryWatcherTicker = scanTicker
-	tickers.PegInAddressRegistryDepositWatcherTicker = depositTicker
 	watcherRegistry := buildWatcherRegistry(t, tickers)
 
 	t.Run("Watcher registry constructor should initialize every watcher", func(t *testing.T) {
@@ -88,17 +85,9 @@ func TestNewWatcherRegistry(t *testing.T) {
 			}
 		}
 	})
-	// Each PegIn address registry loop must be driven by its own ticker, so that stopping one loop
-	// cannot stop the other. Shutdown is what makes the binding observable: a running watcher stops
-	// the exact ticker instance it was constructed with.
-	t.Run("PegIn address registry loops should not share a ticker", func(t *testing.T) {
+	t.Run("PegIn address registry watcher should stop its ticker", func(t *testing.T) {
 		stopWatcher(t, watcherRegistry.PegInAddressRegistryWatcher)
 		require.True(t, stoppedWithin(scanTickerStopped, time.Second), "the scan loop did not stop its own ticker")
-		assert.False(t, stoppedWithin(depositTickerStopped, 50*time.Millisecond), "the scan loop stopped the deposit loop's ticker")
-
-		stopWatcher(t, watcherRegistry.PegInAddressRegistryDepositWatcher)
-		assert.True(t, stoppedWithin(depositTickerStopped, time.Second), "the deposit loop did not stop its own ticker")
-		assert.False(t, stoppedWithin(scanTickerStopped, 50*time.Millisecond), "the deposit loop stopped the scan loop's ticker")
 	})
 }
 
