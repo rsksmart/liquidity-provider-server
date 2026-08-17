@@ -74,3 +74,45 @@ func TestEnsurePegInAddressRegistryWatchRskAddressIndex(t *testing.T) {
 		assert.Contains(t, err.Error(), "error creating unique index on "+PegInAddressRegistryWatchCollection+" rsk_address")
 	})
 }
+
+func TestPegInClaimIdentityIndex(t *testing.T) {
+	model := pegInClaimIdentityIndex()
+
+	keys, ok := model.Keys.(bson.D)
+	require.True(t, ok, "Keys should be bson.D")
+	assert.Equal(t, bson.D{
+		{Key: "rsk_address", Value: 1},
+		{Key: "deposit_txid", Value: 1},
+	}, keys)
+
+	resolved := resolveIndexOptions(t, model)
+	require.NotNil(t, resolved.Unique)
+	assert.True(t, *resolved.Unique)
+}
+
+func TestEnsurePegInClaimIdentityIndex(t *testing.T) {
+	t.Run("applies the unique claim identity index to peginClaims", func(t *testing.T) {
+		creator := &capturingIndexCreator{}
+
+		require.NoError(t, ensurePegInClaimIdentityIndex(context.Background(), creator))
+
+		require.Equal(t, []string{PegInClaimCollection}, creator.collections)
+		require.Len(t, creator.models, 1)
+		assert.Equal(t, bson.D{
+			{Key: "rsk_address", Value: 1},
+			{Key: "deposit_txid", Value: 1},
+		}, creator.models[0].Keys)
+		resolved := resolveIndexOptions(t, creator.models[0])
+		require.NotNil(t, resolved.Unique)
+		assert.True(t, *resolved.Unique)
+	})
+	t.Run("preserves the underlying error with startup context", func(t *testing.T) {
+		creator := &capturingIndexCreator{err: assert.AnError}
+
+		err := ensurePegInClaimIdentityIndex(context.Background(), creator)
+
+		require.Error(t, err)
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "error creating unique index on "+PegInClaimCollection+" (rsk_address, deposit_txid)")
+	})
+}
