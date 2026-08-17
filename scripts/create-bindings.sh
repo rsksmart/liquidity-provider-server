@@ -16,6 +16,7 @@ docker cp temp_lbc_deployer:/home/node/out bindings/out
 
 CONTRACTS=(
   "IPegIn                  PeginContract                  pegin"
+  "IPegInCommitFirst       PeginCommitFirstContract       pegin_commit_first"
   "IPegOut                 PegoutContract                 pegout"
   "ICollateralManagement   CollateralManagementContract   collateral_management"
   "IBridge                 RskBridge                      bridge"
