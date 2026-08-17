@@ -231,13 +231,12 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 
 	if app.peginAddressRegistryWatchersEnabled() {
 		log.Infof(
-			"PegIn address registry watchers enabled on RSK chain id %d from block %d with page size %d",
+			"PegIn address registry watcher enabled on RSK chain id %d from block %d with page size %d",
 			app.env.Rsk.ChainId,
 			app.peginAddressRegistry.StartBlock,
 			app.peginAddressRegistry.PageSize,
 		)
 		watchers = append(watchers, app.watcherRegistry.PegInAddressRegistryWatcher)
-		watchers = append(watchers, app.watcherRegistry.PegInAddressRegistryDepositWatcher)
 	}
 
 	return watchers
@@ -248,7 +247,7 @@ func (app *Application) peginAddressRegistryWatchersEnabled() bool {
 		return false
 	}
 	// The registry adapter is only built when its address is configured, so registering the
-	// watchers without it would leave both loops calling a nil contract on their first tick.
+	// watcher without it would leave the loop calling a nil contract on its first tick.
 	if app.rskRegistry.Contracts.PegInAddressRegistry == nil {
 		log.Error("PegIn address registry watchers are disabled because PEGIN_ADDRESS_REGISTRY_ADDRESS is missing")
 		return false
