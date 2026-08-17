@@ -1,17 +1,10 @@
 package rootstock
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
-	"errors"
-	"fmt"
-	"strings"
 
-	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_address_registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
@@ -145,102 +138,6 @@ func (registry *peginAddressRegistryContractImpl) GetRegistrationRoot() ([32]byt
 			}
 			return bind.Call(registry.contract, opts, callData, registry.binding.UnpackGetRegistrationRoot)
 		})
-}
-
-func (registry *peginAddressRegistryContractImpl) GetRegisteredBtcTransactionHash(
-	ctx context.Context,
-	registrationTxHash string,
-	rskAddr string,
-) (string, error) {
-	hashBytes, err := hex.DecodeString(strings.TrimPrefix(registrationTxHash, "0x"))
-	if err != nil || len(hashBytes) != common.HashLength {
-		return "", errors.New("invalid registration transaction hash")
-	}
-	var expectedRskAddress common.Address
-	if err = ParseAddress(&expectedRskAddress, rskAddr); err != nil {
-		return "", err
-	}
-	var registryAddress common.Address
-	if err = ParseAddress(&registryAddress, registry.address); err != nil {
-		return "", fmt.Errorf("invalid PegIn address registry contract address: %w", err)
-	}
-
-	transaction, err := registry.getRegistrationTransaction(ctx, common.BytesToHash(hashBytes), registryAddress)
-	if err != nil {
-		return "", err
-	}
-	serializedBtcTransaction, err := registry.registeredBtcTransactionBytes(transaction, expectedRskAddress)
-	if err != nil {
-		return "", err
-	}
-	return registeredBtcTransactionHash(serializedBtcTransaction)
-}
-
-func (registry *peginAddressRegistryContractImpl) getRegistrationTransaction(
-	ctx context.Context,
-	transactionHash common.Hash,
-	registryAddress common.Address,
-) (*types.Transaction, error) {
-	transaction, err := rskRetry(registry.retryParams.Retries, registry.retryParams.Sleep,
-		func() (*types.Transaction, error) {
-			tx, pending, rpcErr := registry.client.TransactionByHash(ctx, transactionHash)
-			if rpcErr != nil {
-				return nil, rpcErr
-			}
-			if pending {
-				return nil, errors.New("registration transaction is still pending")
-			}
-			return tx, nil
-		})
-	if err != nil {
-		return nil, err
-	}
-	if transaction == nil || transaction.To() == nil || *transaction.To() != registryAddress {
-		return nil, errors.New("registration transaction does not target the PegIn address registry")
-	}
-	return transaction, nil
-}
-
-func (registry *peginAddressRegistryContractImpl) registeredBtcTransactionBytes(
-	transaction *types.Transaction,
-	expectedRskAddress common.Address,
-) ([]byte, error) {
-	method, ok := registry.abis.PegInAddressRegistry.Methods["registerAddress"]
-	if !ok {
-		return nil, errors.New("registerAddress method missing from PegIn address registry ABI")
-	}
-	data := transaction.Data()
-	if len(data) < len(method.ID) || !bytes.Equal(data[:len(method.ID)], method.ID) {
-		return nil, errors.New("registration transaction does not call registerAddress")
-	}
-	arguments, err := method.Inputs.Unpack(data[len(method.ID):])
-	if err != nil {
-		return nil, fmt.Errorf("decode registerAddress input: %w", err)
-	}
-	if len(arguments) < 2 {
-		return nil, errors.New("registerAddress input has insufficient arguments")
-	}
-	registeredRskAddress, ok := arguments[0].(common.Address)
-	if !ok || registeredRskAddress != expectedRskAddress {
-		return nil, errors.New("registerAddress input RSK address does not match event")
-	}
-	serializedBtcTransaction, ok := arguments[1].([]byte)
-	if !ok {
-		return nil, errors.New("registerAddress input has invalid BTC transaction")
-	}
-	return serializedBtcTransaction, nil
-}
-
-func registeredBtcTransactionHash(serializedBtcTransaction []byte) (string, error) {
-	var btcTransaction wire.MsgTx
-	reader := bytes.NewReader(serializedBtcTransaction)
-	if err := btcTransaction.Deserialize(reader); err != nil {
-		return "", fmt.Errorf("deserialize registered BTC transaction: %w", err)
-	}
-	if reader.Len() != 0 {
-		return "", errors.New("registered BTC transaction has trailing bytes")
-	}
-	return btcTransaction.TxHash().String(), nil
 }
 
 func (registry *peginAddressRegistryContractImpl) GetAddressRegisteredEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]blockchain.AddressRegistered, error) {

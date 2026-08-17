@@ -1,12 +1,10 @@
 package rootstock_test
 
 import (
-	"bytes"
 	"context"
 	"math/big"
 	"testing"
 
-	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
@@ -241,133 +239,6 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 		assert.Equal(t, [32]byte{}, result)
 		contractMock.caller.AssertExpectations(t)
 	})
-}
-
-// registeredBtcTransactionFixture builds what every identity-binding case starts from: a finalized
-// call to registerAddress on the registry, carrying one serialized Bitcoin transaction.
-type registeredBtcTransactionFixture struct {
-	binding          *bindings.PegInAddressRegistryContract
-	registryAddress  common.Address
-	otherContract    common.Address
-	rskAddress       common.Address
-	registrationHash common.Hash
-	btcTransaction   *wire.MsgTx
-	serialized       []byte
-	callData         []byte
-}
-
-func newRegisteredBtcTransactionFixture(t *testing.T) registeredBtcTransactionFixture {
-	t.Helper()
-	btcTransaction := wire.NewMsgTx(2)
-	btcTransaction.AddTxIn(wire.NewTxIn(&wire.OutPoint{}, nil, nil))
-	btcTransaction.AddTxOut(wire.NewTxOut(10, []byte{0x51}))
-	var serialized bytes.Buffer
-	require.NoError(t, btcTransaction.Serialize(&serialized))
-	fixture := registeredBtcTransactionFixture{
-		binding:          bindings.NewPegInAddressRegistryContract(),
-		registryAddress:  common.HexToAddress(test.AnyAddress),
-		otherContract:    common.HexToAddress("0x0200000000000000000000000000000000000000"),
-		rskAddress:       common.HexToAddress("0x0100000000000000000000000000000000000000"),
-		registrationHash: common.HexToHash("0x1234"),
-		btcTransaction:   btcTransaction,
-		serialized:       serialized.Bytes(),
-	}
-	fixture.callData = fixture.packRegistration(fixture.serialized)
-	return fixture
-}
-
-func (fixture registeredBtcTransactionFixture) packRegistration(btcTxSerialized []byte) []byte {
-	return fixture.binding.PackRegisterAddress(fixture.rskAddress, btcTxSerialized, [32]byte{1}, big.NewInt(0), [][32]byte{{2}})
-}
-
-func (fixture registeredBtcTransactionFixture) transactionTo(target common.Address, data []byte) *geth.Transaction {
-	return geth.NewTx(&geth.LegacyTx{To: &target, Data: data})
-}
-
-func (fixture registeredBtcTransactionFixture) registry(t *testing.T, transaction *geth.Transaction) blockchain.PegInAddressRegistryContract {
-	t.Helper()
-	client := mocks.NewRpcClientBindingMock(t)
-	client.EXPECT().TransactionByHash(mock.Anything, fixture.registrationHash).
-		Return(transaction, false, nil).
-		Once()
-	return rootstock.NewPegInAddressRegistryContractImpl(
-		rootstock.NewRskClient(client),
-		fixture.registryAddress.String(),
-		nil,
-		rootstock.RetryParams{},
-		fixture.binding,
-		Abis,
-	)
-}
-
-type registeredBtcTransactionRejection struct {
-	name          string
-	transaction   *geth.Transaction
-	rskAddr       string
-	expectedError string
-}
-
-// Each case forges one part of the registration: a lookalike contract, a different method on the
-// real contract, a valid registration for someone else's RSK address, and a padded payload whose
-// trailing bytes could deserialize into a different transaction elsewhere.
-func registeredBtcTransactionRejections(fixture registeredBtcTransactionFixture) []registeredBtcTransactionRejection {
-	return []registeredBtcTransactionRejection{
-		{
-			name:          "transaction targets another contract",
-			transaction:   fixture.transactionTo(fixture.otherContract, fixture.callData),
-			rskAddr:       fixture.rskAddress.String(),
-			expectedError: "does not target the PegIn address registry",
-		},
-		{
-			name:          "transaction calls another registry method",
-			transaction:   fixture.transactionTo(fixture.registryAddress, fixture.binding.PackIsRegistered(fixture.rskAddress)),
-			rskAddr:       fixture.rskAddress.String(),
-			expectedError: "does not call registerAddress",
-		},
-		{
-			name:          "input is bound to another RSK address",
-			transaction:   fixture.transactionTo(fixture.registryAddress, fixture.callData),
-			rskAddr:       common.Address{9}.String(),
-			expectedError: "RSK address",
-		},
-		{
-			name:          "serialized BTC transaction carries trailing bytes",
-			transaction:   fixture.transactionTo(fixture.registryAddress, fixture.packRegistration(append(bytes.Clone(fixture.serialized), 0x00))),
-			rskAddr:       fixture.rskAddress.String(),
-			expectedError: "trailing",
-		},
-	}
-}
-
-func TestPegInAddressRegistryContractImpl_GetRegisteredBtcTransactionHash(t *testing.T) {
-	fixture := newRegisteredBtcTransactionFixture(t)
-
-	t.Run("derives the transaction hash from the proven registerAddress input", func(t *testing.T) {
-		registry := fixture.registry(t, fixture.transactionTo(fixture.registryAddress, fixture.callData))
-
-		txID, err := registry.GetRegisteredBtcTransactionHash(
-			context.Background(),
-			fixture.registrationHash.String(),
-			fixture.rskAddress.String(),
-		)
-
-		require.NoError(t, err)
-		assert.Equal(t, fixture.btcTransaction.TxHash().String(), txID)
-	})
-
-	for _, testCase := range registeredBtcTransactionRejections(fixture) {
-		t.Run(testCase.name, func(t *testing.T) {
-			registry := fixture.registry(t, testCase.transaction)
-
-			_, err := registry.GetRegisteredBtcTransactionHash(
-				context.Background(),
-				fixture.registrationHash.String(),
-				testCase.rskAddr,
-			)
-
-			require.ErrorContains(t, err, testCase.expectedError)
-		})
-	}
 }
 
 // nolint:funlen

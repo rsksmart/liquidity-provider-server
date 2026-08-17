@@ -47,7 +47,6 @@ type PegInAddressRegistryContract interface {
 	IsRegistered(rskAddr string) (bool, error)
 	GetRegistration(rskAddr string) (PegInRegistration, error)
 	GetRegistrationRoot() ([32]byte, error)
-	GetRegisteredBtcTransactionHash(ctx context.Context, registrationTxHash string, rskAddr string) (string, error)
 	// GetAddressRegisteredEvents returns the AddressRegistered events in [fromBlock, toBlock].
 	// A nil toBlock reads up to the latest block.
 	GetAddressRegisteredEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]AddressRegistered, error)

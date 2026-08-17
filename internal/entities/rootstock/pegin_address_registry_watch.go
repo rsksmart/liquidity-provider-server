@@ -23,9 +23,6 @@ type PegInAddressRegistryWatchEntry struct {
 	Encoding         uint8                          `json:"encoding" bson:"encoding"`
 	BtcAddress       string                         `json:"btcAddress" bson:"btc_address"`
 	State            PegInAddressRegistryWatchState `json:"state" bson:"state"`
-	DepositTxID      string                         `json:"depositTxId" bson:"deposit_txid"`
-	Confirmations    uint64                         `json:"confirmations" bson:"confirmations"`
-	LastSeenAt       *time.Time                     `json:"lastSeenAt" bson:"last_seen_at"`
 	LastError        string                         `json:"lastError" bson:"last_error"`
 	CreatedAt        time.Time                      `json:"createdAt" bson:"created_at"`
 	UpdatedAt        time.Time                      `json:"updatedAt" bson:"updated_at"`
@@ -33,7 +30,7 @@ type PegInAddressRegistryWatchEntry struct {
 
 type PegInAddressRegistryWatchRepository interface {
 	Upsert(context.Context, PegInAddressRegistryWatchEntry) error
-	Get(context.Context, string, uint) (*PegInAddressRegistryWatchEntry, error)
+	Get(context.Context, string) (*PegInAddressRegistryWatchEntry, error)
 	List(context.Context) ([]PegInAddressRegistryWatchEntry, error)
 	Update(context.Context, PegInAddressRegistryWatchEntry) error
 	GetCursor(context.Context) (lastScannedBlock uint64, found bool, err error)

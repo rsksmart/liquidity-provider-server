@@ -35,14 +35,13 @@ func resolveIndexOptions(t *testing.T, model mongoDb.IndexModel) *options.IndexO
 	return resolved
 }
 
-func TestPegInAddressRegistryWatchEventIdentityIndex(t *testing.T) {
-	model := pegInAddressRegistryWatchEventIdentityIndex()
+func TestPegInAddressRegistryWatchRskAddressIndex(t *testing.T) {
+	model := pegInAddressRegistryWatchRskAddressIndex()
 
 	keys, ok := model.Keys.(bson.D)
 	require.True(t, ok, "Keys should be bson.D")
 	assert.Equal(t, bson.D{
-		{Key: "tx_hash", Value: 1},
-		{Key: "log_index", Value: 1},
+		{Key: "rsk_address", Value: 1},
 	}, keys)
 
 	resolved := resolveIndexOptions(t, model)
@@ -50,17 +49,16 @@ func TestPegInAddressRegistryWatchEventIdentityIndex(t *testing.T) {
 	assert.True(t, *resolved.Unique)
 }
 
-func TestEnsurePegInAddressRegistryWatchEventIdentityIndex(t *testing.T) {
-	t.Run("applies the unique event identity index to the watch collection", func(t *testing.T) {
+func TestEnsurePegInAddressRegistryWatchRskAddressIndex(t *testing.T) {
+	t.Run("applies the unique rsk_address index to the watch collection", func(t *testing.T) {
 		creator := &capturingIndexCreator{}
 
-		require.NoError(t, ensurePegInAddressRegistryWatchEventIdentityIndex(context.Background(), creator))
+		require.NoError(t, ensurePegInAddressRegistryWatchRskAddressIndex(context.Background(), creator))
 
 		require.Equal(t, []string{PegInAddressRegistryWatchCollection}, creator.collections)
 		require.Len(t, creator.models, 1)
 		assert.Equal(t, bson.D{
-			{Key: "tx_hash", Value: 1},
-			{Key: "log_index", Value: 1},
+			{Key: "rsk_address", Value: 1},
 		}, creator.models[0].Keys)
 		resolved := resolveIndexOptions(t, creator.models[0])
 		require.NotNil(t, resolved.Unique)
@@ -69,10 +67,10 @@ func TestEnsurePegInAddressRegistryWatchEventIdentityIndex(t *testing.T) {
 	t.Run("preserves the underlying error with startup context", func(t *testing.T) {
 		creator := &capturingIndexCreator{err: assert.AnError}
 
-		err := ensurePegInAddressRegistryWatchEventIdentityIndex(context.Background(), creator)
+		err := ensurePegInAddressRegistryWatchRskAddressIndex(context.Background(), creator)
 
 		require.Error(t, err)
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Contains(t, err.Error(), "error creating unique index on "+PegInAddressRegistryWatchCollection+" event identity")
+		assert.Contains(t, err.Error(), "error creating unique index on "+PegInAddressRegistryWatchCollection+" rsk_address")
 	})
 }
