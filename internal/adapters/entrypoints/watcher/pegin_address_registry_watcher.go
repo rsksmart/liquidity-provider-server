@@ -255,14 +255,6 @@ func (watcher *PegInAddressRegistryWatcher) processDiscoveredEntry(
 			fmt.Errorf("encode PegIn address for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
 		)
 	}
-	entry.DepositTxID, err = watcher.registry.GetRegisteredBtcTransactionHash(ctx, entry.TxHash, entry.RskAddress)
-	if err != nil {
-		return nil, watcher.recordEntryError(
-			ctx,
-			entry,
-			fmt.Errorf("resolve registered BTC transaction for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
-		)
-	}
 	if err = watcher.wallet.ImportAddress(entry.BtcAddress); err != nil && !isAlreadyImportedError(err) {
 		return nil, watcher.recordEntryError(
 			ctx,
