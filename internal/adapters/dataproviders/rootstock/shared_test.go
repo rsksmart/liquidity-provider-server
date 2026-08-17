@@ -284,3 +284,12 @@ func createBoundContractMock() boundContractMock {
 		filterer:   filtererMock,
 	}
 }
+
+func mustPackAddress(t *testing.T, addr common.Address) []byte {
+	t.Helper()
+	addressType, err := abi.NewType("address", "", nil)
+	require.NoError(t, err)
+	out, err := abi.Arguments{{Type: addressType}}.Pack(addr)
+	require.NoError(t, err)
+	return out
+}
