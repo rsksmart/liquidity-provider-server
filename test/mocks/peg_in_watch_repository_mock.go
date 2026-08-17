@@ -22,9 +22,9 @@ func (_m *PegInWatchRepositoryMock) EXPECT() *PegInWatchRepositoryMock_Expecter 
 	return &PegInWatchRepositoryMock_Expecter{mock: &_m.Mock}
 }
 
-// Get provides a mock function with given fields: ctx, txHash, logIndex
-func (_m *PegInWatchRepositoryMock) Get(ctx context.Context, txHash string, logIndex uint) (*rootstock.PegInWatch, error) {
-	ret := _m.Called(ctx, txHash, logIndex)
+// Get provides a mock function with given fields: ctx, rskAddress
+func (_m *PegInWatchRepositoryMock) Get(ctx context.Context, rskAddress string) (*rootstock.PegInWatch, error) {
+	ret := _m.Called(ctx, rskAddress)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
@@ -32,19 +32,19 @@ func (_m *PegInWatchRepositoryMock) Get(ctx context.Context, txHash string, logI
 
 	var r0 *rootstock.PegInWatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, uint) (*rootstock.PegInWatch, error)); ok {
-		return rf(ctx, txHash, logIndex)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*rootstock.PegInWatch, error)); ok {
+		return rf(ctx, rskAddress)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, uint) *rootstock.PegInWatch); ok {
-		r0 = rf(ctx, txHash, logIndex)
+	if rf, ok := ret.Get(0).(func(context.Context, string) *rootstock.PegInWatch); ok {
+		r0 = rf(ctx, rskAddress)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*rootstock.PegInWatch)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, uint) error); ok {
-		r1 = rf(ctx, txHash, logIndex)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, rskAddress)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -59,15 +59,14 @@ type PegInWatchRepositoryMock_Get_Call struct {
 
 // Get is a helper method to define mock.On call
 //   - ctx context.Context
-//   - txHash string
-//   - logIndex uint
-func (_e *PegInWatchRepositoryMock_Expecter) Get(ctx interface{}, txHash interface{}, logIndex interface{}) *PegInWatchRepositoryMock_Get_Call {
-	return &PegInWatchRepositoryMock_Get_Call{Call: _e.mock.On("Get", ctx, txHash, logIndex)}
+//   - rskAddress string
+func (_e *PegInWatchRepositoryMock_Expecter) Get(ctx interface{}, rskAddress interface{}) *PegInWatchRepositoryMock_Get_Call {
+	return &PegInWatchRepositoryMock_Get_Call{Call: _e.mock.On("Get", ctx, rskAddress)}
 }
 
-func (_c *PegInWatchRepositoryMock_Get_Call) Run(run func(ctx context.Context, txHash string, logIndex uint)) *PegInWatchRepositoryMock_Get_Call {
+func (_c *PegInWatchRepositoryMock_Get_Call) Run(run func(ctx context.Context, rskAddress string)) *PegInWatchRepositoryMock_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(uint))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -77,7 +76,7 @@ func (_c *PegInWatchRepositoryMock_Get_Call) Return(_a0 *rootstock.PegInWatch, _
 	return _c
 }
 
-func (_c *PegInWatchRepositoryMock_Get_Call) RunAndReturn(run func(context.Context, string, uint) (*rootstock.PegInWatch, error)) *PegInWatchRepositoryMock_Get_Call {
+func (_c *PegInWatchRepositoryMock_Get_Call) RunAndReturn(run func(context.Context, string) (*rootstock.PegInWatch, error)) *PegInWatchRepositoryMock_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
