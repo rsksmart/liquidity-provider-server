@@ -177,3 +177,23 @@ func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
 	}
 	return parsedError, nil
 }
+
+func revertDataBytes(err error) ([]byte, error) {
+	const errorTemplate = "no data to recover in error: %w"
+	if err == nil {
+		return nil, nil
+	}
+	var dataError rpc.DataError
+	if !errors.As(err, &dataError) {
+		return nil, fmt.Errorf(errorTemplate, err)
+	}
+	revertData, ok := dataError.ErrorData().(string)
+	if !ok {
+		return nil, fmt.Errorf(errorTemplate, dataError)
+	}
+	decoded, decodeErr := hexutil.Decode(revertData)
+	if decodeErr != nil {
+		return nil, fmt.Errorf("error decoding data: %w", decodeErr)
+	}
+	return decoded, nil
+}
