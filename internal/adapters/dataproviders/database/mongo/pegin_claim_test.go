@@ -188,6 +188,44 @@ func TestPegInClaimMongoRepository_ListByStates(t *testing.T) {
 	})
 }
 
+func TestPegInClaimMongoRepository_InsertWriteError(t *testing.T) {
+	claim := rootstock.PegInClaim{RskAddress: "0xabcd", DepositTxID: "aabb"}
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().InsertOne(mock.Anything, claim).Return(nil, assert.AnError).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	err := repo.Insert(context.Background(), claim)
+	require.Error(t, err)
+	require.NotErrorIs(t, err, rootstock.ErrPegInClaimAlreadyExists)
+	collection.AssertExpectations(t)
+}
+
+func TestPegInClaimMongoRepository_GetMissing(t *testing.T) {
+	identity := bson.M{"rsk_address": "0xabcd", "deposit_txid": "aabb"}
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().FindOne(mock.Anything, identity).
+		Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInClaim{}, mongoDb.ErrNoDocuments, nil)).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.Get(context.Background(), "0xabcd", "aabb")
+	require.NoError(t, err)
+	assert.Nil(t, result)
+	collection.AssertExpectations(t)
+}
+
+func TestPegInClaimMongoRepository_GetError(t *testing.T) {
+	identity := bson.M{"rsk_address": "0xabcd", "deposit_txid": "aabb"}
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().FindOne(mock.Anything, identity).
+		Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInClaim{}, assert.AnError, nil)).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.Get(context.Background(), "0xabcd", "aabb")
+	require.Error(t, err)
+	assert.Nil(t, result)
+	collection.AssertExpectations(t)
+}
+
 func TestPegInClaimMongoRepository_Update(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	claim := rootstock.PegInClaim{
@@ -210,6 +248,31 @@ func TestPegInClaimMongoRepository_Update(t *testing.T) {
 
 	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
 	require.NoError(t, repo.Update(context.Background(), claim))
+	collection.AssertExpectations(t)
+}
+
+func TestPegInClaimMongoRepository_UpdateError(t *testing.T) {
+	claim := rootstock.PegInClaim{RskAddress: "0xabcd", DepositTxID: "aabb"}
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().ReplaceOne(mock.Anything, mock.Anything, claim).
+		Return(nil, assert.AnError).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	err := repo.Update(context.Background(), claim)
+	require.Error(t, err)
+	require.NotErrorIs(t, err, rootstock.ErrPegInClaimNotFound)
+	collection.AssertExpectations(t)
+}
+
+func TestPegInClaimMongoRepository_UpdateNotFound(t *testing.T) {
+	claim := rootstock.PegInClaim{RskAddress: "0xabcd", DepositTxID: "aabb"}
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().ReplaceOne(mock.Anything, mock.Anything, claim).
+		Return(&mongoDb.UpdateResult{MatchedCount: 0}, nil).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	err := repo.Update(context.Background(), claim)
+	require.ErrorIs(t, err, rootstock.ErrPegInClaimNotFound)
 	collection.AssertExpectations(t)
 }
 
@@ -241,5 +304,28 @@ func TestPegInClaimMongoRepository_ListByStates(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Equal(t, []rootstock.PegInClaim{claim}, result)
+	collection.AssertExpectations(t)
+}
+
+func TestPegInClaimMongoRepository_ListByStatesFindError(t *testing.T) {
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().Find(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.ListByStates(context.Background(), rootstock.PegInClaimSubmitting)
+	require.Error(t, err)
+	assert.Nil(t, result)
+	collection.AssertExpectations(t)
+}
+
+func TestPegInClaimMongoRepository_ListByStatesEmptyFilter(t *testing.T) {
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().Find(mock.Anything, bson.M{}).
+		Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.ListByStates(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, result)
 	collection.AssertExpectations(t)
 }
