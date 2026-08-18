@@ -384,6 +384,13 @@ func TestRskjRpcServer_GetTransactionReceipt_ErrorHandling(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, receipt)
 	})
+	t.Run("Maps ethereum not found to receipt not found", func(t *testing.T) {
+		client.On("TransactionReceipt", test.AnyCtx, common.HexToHash(txHash)).
+			Return(nil, ethereum.NotFound).Once()
+		receipt, err := rpc.GetTransactionReceipt(context.Background(), txHash)
+		require.ErrorIs(t, err, blockchain.ErrTransactionReceiptNotFound)
+		assert.Empty(t, receipt)
+	})
 }
 
 func TestRskjRpcServer_GetBlockByHash(t *testing.T) {
