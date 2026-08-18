@@ -81,3 +81,23 @@ func TestRegisterPeginParams_String(t *testing.T) {
 			"ContractAddress:any address Data:any data GasLimit:5 Nonce:6 Value:2 AgreementTimestamp:7 TimeForDeposit:8 "+
 			"LpCallTime:9 Confirmations:10 CallOnRegister:true GasFee:1 ChainId:31} }", params.String())
 }
+
+func TestRequestPegInParams_String(t *testing.T) {
+	params := blockchain.RequestPegInParams{
+		RskAddress:       test.AnyAddress,
+		BitcoinRawTx:     []byte{0x01, 0x02, 0x03},
+		BtcBlockHash:     [32]byte{32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
+		MerkleBranchPath: big.NewInt(1),
+		MerkleBranchHashes: [][32]byte{
+			{32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1},
+		},
+		Amount: entities.NewWei(1000),
+		Fee:    entities.NewWei(100),
+	}
+	assert.Equal(t,
+		"RequestPegInParams { RskAddress: any address, BitcoinRawTx: 010203, "+
+			"BtcBlockHash: 201f1e1d1c1b1a191817161514131211100f0e0d0c0b0a090807060504030201, "+
+			"MerkleBranchPath: 1, MerkleBranchHashes: [[32 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1]], "+
+			"Amount: 1000, Fee: 100 }",
+		params.String())
+}
