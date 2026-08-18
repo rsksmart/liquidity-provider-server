@@ -202,6 +202,7 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 		client.On("TransactionReceipt", test.AnyCtx, common.HexToHash(txHash)).Return(&types.Receipt{
 			GasUsed:           456,
 			CumulativeGasUsed: 123,
+			Status:            1,
 			TxHash:            common.HexToHash(txHash),
 			BlockHash:         common.HexToHash(blockHash),
 			BlockNumber:       big.NewInt(500),
@@ -231,6 +232,7 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 			TransactionHash:   txHash,
 			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000010203",
 			BlockNumber:       500,
+			Status:            1,
 			From:              "0xC67D9EE30d2119A384E02de568BE80fe785074Ba",
 			To:                parsedToAddress.String(),
 			CumulativeGasUsed: big.NewInt(123),
@@ -311,6 +313,7 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 			TransactionHash:   transaction,
 			BlockHash:         block,
 			BlockNumber:       blockNumber,
+			Status:            1,
 			From:              "0x82a06eBDB97776a2da4041dF8f2b2ea8D3257852",
 			To:                contract,
 			CumulativeGasUsed: big.NewInt(143691),
