@@ -31,7 +31,10 @@ var (
 	ErrIncorrectFronting              = errors.New("incorrect fronting")
 	ErrWitnessSerializedTxNotAccepted = errors.New("witness-serialized tx not accepted")
 	ErrHardPaused                     = errors.New("pegin contract is hard paused")
+	ErrTransactionReceiptNotFound     = errors.New("transaction receipt not found")
 )
+
+const SuccessfulTxStatus uint64 = 1
 
 type RskContracts struct {
 	Bridge                rootstock.Bridge
@@ -69,6 +72,7 @@ type TransactionReceipt struct {
 	TransactionHash   string
 	BlockHash         string
 	BlockNumber       uint64
+	Status            uint64
 	From              string
 	To                string
 	CumulativeGasUsed *big.Int

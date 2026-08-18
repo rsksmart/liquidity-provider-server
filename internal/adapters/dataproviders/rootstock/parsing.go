@@ -50,6 +50,7 @@ func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.Trans
 		TransactionHash:   receipt.TxHash.String(),
 		BlockHash:         receipt.BlockHash.String(),
 		BlockNumber:       receipt.BlockNumber.Uint64(),
+		Status:            receipt.Status,
 		From:              from.String(),
 		To:                to,
 		CumulativeGasUsed: cumulativeGasUsed,

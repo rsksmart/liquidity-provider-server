@@ -12,6 +12,7 @@ import (
 
 type PegInClaimRunner interface {
 	Run(ctx context.Context, entry rootstock.PegInAddressRegistryWatchEntry, depositTxID string) error
+	ReconcileSubmitting(ctx context.Context) error
 }
 
 type PegInClaimWatcher struct {
@@ -37,8 +38,8 @@ func NewPegInClaimWatcher(
 	}
 }
 
-func (watcher *PegInClaimWatcher) Prepare(context.Context) error {
-	return nil
+func (watcher *PegInClaimWatcher) Prepare(ctx context.Context) error {
+	return watcher.runner.ReconcileSubmitting(ctx)
 }
 
 func (watcher *PegInClaimWatcher) Start() {

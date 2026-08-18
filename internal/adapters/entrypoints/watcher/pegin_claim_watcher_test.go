@@ -31,6 +31,20 @@ func (runner *countingClaimRunner) Run(
 	return nil
 }
 
+func (runner *countingClaimRunner) ReconcileSubmitting(context.Context) error {
+	return nil
+}
+
+type recordingClaimRunner struct {
+	countingClaimRunner
+	reconciles atomic.Int32
+}
+
+func (runner *recordingClaimRunner) ReconcileSubmitting(context.Context) error {
+	runner.reconciles.Add(1)
+	return nil
+}
+
 func importedWatchEntry() rootstock.PegInAddressRegistryWatchEntry {
 	return rootstock.PegInAddressRegistryWatchEntry{
 		RskAddress: test.AnyRskAddress,
@@ -126,11 +140,14 @@ func TestPegInClaimWatcher_Shutdown(t *testing.T) {
 }
 
 func TestPegInClaimWatcher_Prepare(t *testing.T) {
+	runner := &recordingClaimRunner{}
 	claimWatcher := watcher.NewPegInClaimWatcher(
-		&countingClaimRunner{},
+		runner,
 		mocks.NewPegInAddressRegistryWatchRepositoryMock(t),
 		mocks.NewBitcoinWalletMock(t),
 		&mocks.TickerMock{},
 	)
 	require.NoError(t, claimWatcher.Prepare(context.Background()))
+	assert.Equal(t, int32(1), runner.reconciles.Load())
+	assert.Equal(t, int32(0), runner.runs.Load())
 }

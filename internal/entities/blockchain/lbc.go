@@ -157,6 +157,8 @@ type PeginContract interface {
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
 	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
 	RequestPegIn(params RequestPegInParams) (RequestPegInResult, error)
+	IdentifyRequestPegIn(params RequestPegInParams) error
+	UnpackPegInRequested(receipt TransactionReceipt) (*PegInRequestedEvent, error)
 	IsHardPaused() (bool, error)
 	Withdraw(amount *entities.Wei) error
 }

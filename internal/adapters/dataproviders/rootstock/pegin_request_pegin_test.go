@@ -395,3 +395,50 @@ func TestPeginContractImpl_RequestPegIn_AmountBelowFee(t *testing.T) {
 	assert.Empty(t, result.Receipt.TransactionHash)
 	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
 }
+
+func TestPeginContractImpl_IdentifyRequestPegIn_DoesNotSend(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
+
+	contractMock.caller.EXPECT().CodeAt(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1}, nil).Maybe()
+	contractMock.caller.EXPECT().CallContract(
+		mock.Anything,
+		matchCallData(expectedData),
+		mock.Anything,
+	).Return(nil, nil).Once()
+
+	err := peginContract.IdentifyRequestPegIn(sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0)))
+	require.NoError(t, err)
+	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	mockClient.AssertNotCalled(t, "TransactionReceipt")
+}
+
+func TestPeginContractImpl_UnpackPegInRequested(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	pegInID := [32]byte{0x11, 0x22}
+	amount := entities.SatoshiToWei(1000)
+	eventLog := mustPegInRequestedLog(t, pegInID, parsedAddress, parsedAddress, amount.AsBigInt(), amount.AsBigInt())
+	topics := make([][32]byte, len(eventLog.Topics))
+	for i, topic := range eventLog.Topics {
+		topics[i] = topic
+	}
+
+	event, err := peginContract.UnpackPegInRequested(blockchain.TransactionReceipt{
+		Status: blockchain.SuccessfulTxStatus,
+		Logs: []blockchain.TransactionLog{{
+			Address: eventLog.Address.Hex(),
+			Topics:  topics,
+			Data:    eventLog.Data,
+		}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, event)
+	assert.Equal(t, pegInID, event.PegInId)
+	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+}
