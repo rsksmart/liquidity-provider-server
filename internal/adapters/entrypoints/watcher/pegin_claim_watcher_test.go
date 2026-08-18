@@ -151,3 +151,115 @@ func TestPegInClaimWatcher_Prepare(t *testing.T) {
 	assert.Equal(t, int32(1), runner.reconciles.Load())
 	assert.Equal(t, int32(0), runner.runs.Load())
 }
+
+func TestPegInClaimWatcher_ListErrorCreatesZeroClaims(t *testing.T) {
+	watchRepo := mocks.NewPegInAddressRegistryWatchRepositoryMock(t)
+	wallet := mocks.NewBitcoinWalletMock(t)
+	runner := &countingClaimRunner{}
+	watchRepo.EXPECT().List(mock.Anything).Return(nil, assert.AnError).Once()
+
+	ticker := &mocks.TickerMock{}
+	ticks := make(chan time.Time)
+	ticker.EXPECT().C().Return(ticks)
+	ticker.EXPECT().Stop()
+
+	claimWatcher := watcher.NewPegInClaimWatcher(runner, watchRepo, wallet, ticker)
+	go claimWatcher.Start()
+	ticks <- time.Now()
+	go claimWatcher.Shutdown(make(chan bool, 1))
+
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.Equal(collect, int32(0), runner.runs.Load())
+		wallet.AssertNotCalled(newMockCollectT(collect), "GetTransactions", mock.Anything)
+	}, time.Second, 10*time.Millisecond)
+}
+
+func TestPegInClaimWatcher_WalletErrorCreatesZeroClaims(t *testing.T) {
+	watchRepo := mocks.NewPegInAddressRegistryWatchRepositoryMock(t)
+	wallet := mocks.NewBitcoinWalletMock(t)
+	runner := &countingClaimRunner{}
+	watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInAddressRegistryWatchEntry{importedWatchEntry()}, nil).Once()
+	wallet.EXPECT().GetTransactions("bcrt1qimported").Return(nil, assert.AnError).Once()
+
+	ticker := &mocks.TickerMock{}
+	ticks := make(chan time.Time)
+	ticker.EXPECT().C().Return(ticks)
+	ticker.EXPECT().Stop()
+
+	claimWatcher := watcher.NewPegInClaimWatcher(runner, watchRepo, wallet, ticker)
+	go claimWatcher.Start()
+	ticks <- time.Now()
+	go claimWatcher.Shutdown(make(chan bool, 1))
+
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.Equal(collect, int32(0), runner.runs.Load())
+		wallet.AssertExpectations(newMockCollectT(collect))
+	}, time.Second, 10*time.Millisecond)
+}
+
+func TestPegInClaimWatcher_ZeroFirstOutputIsSkipped(t *testing.T) {
+	watchRepo := mocks.NewPegInAddressRegistryWatchRepositoryMock(t)
+	wallet := mocks.NewBitcoinWalletMock(t)
+	runner := &countingClaimRunner{}
+	watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInAddressRegistryWatchEntry{importedWatchEntry()}, nil).Once()
+	wallet.EXPECT().GetTransactions("bcrt1qimported").Return([]blockchain.BitcoinTransactionInformation{{
+		Hash: "aabbcc",
+		Outputs: map[string][]*entities.Wei{
+			"other": {entities.NewWei(1)},
+		},
+	}}, nil).Once()
+
+	ticker := &mocks.TickerMock{}
+	ticks := make(chan time.Time)
+	ticker.EXPECT().C().Return(ticks)
+	ticker.EXPECT().Stop()
+
+	claimWatcher := watcher.NewPegInClaimWatcher(runner, watchRepo, wallet, ticker)
+	go claimWatcher.Start()
+	ticks <- time.Now()
+	go claimWatcher.Shutdown(make(chan bool, 1))
+
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.Equal(collect, int32(0), runner.runs.Load())
+	}, time.Second, 10*time.Millisecond)
+}
+
+type errorClaimRunner struct {
+	countingClaimRunner
+}
+
+func (runner *errorClaimRunner) Run(
+	_ context.Context,
+	_ rootstock.PegInAddressRegistryWatchEntry,
+	_ string,
+) error {
+	runner.runs.Add(1)
+	return assert.AnError
+}
+
+func TestPegInClaimWatcher_RunErrorDoesNotStopTick(t *testing.T) {
+	watchRepo := mocks.NewPegInAddressRegistryWatchRepositoryMock(t)
+	wallet := mocks.NewBitcoinWalletMock(t)
+	runner := &errorClaimRunner{}
+	watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInAddressRegistryWatchEntry{importedWatchEntry()}, nil).Once()
+	wallet.EXPECT().GetTransactions("bcrt1qimported").Return([]blockchain.BitcoinTransactionInformation{{
+		Hash: "aabbcc",
+		Outputs: map[string][]*entities.Wei{
+			"bcrt1qimported": {entities.NewWei(1)},
+		},
+	}}, nil).Once()
+
+	ticker := &mocks.TickerMock{}
+	ticks := make(chan time.Time)
+	ticker.EXPECT().C().Return(ticks)
+	ticker.EXPECT().Stop()
+
+	claimWatcher := watcher.NewPegInClaimWatcher(runner, watchRepo, wallet, ticker)
+	go claimWatcher.Start()
+	ticks <- time.Now()
+	go claimWatcher.Shutdown(make(chan bool, 1))
+
+	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.Equal(collect, int32(1), runner.runs.Load())
+	}, time.Second, 10*time.Millisecond)
+}
