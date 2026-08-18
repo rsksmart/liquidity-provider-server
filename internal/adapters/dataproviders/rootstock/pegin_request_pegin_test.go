@@ -129,6 +129,11 @@ func sampleRequestPegInParams(amount, fee *entities.Wei) blockchain.RequestPegIn
 	}
 }
 
+func revertHexFromErrorID(t *testing.T, id common.Hash, tail []byte) string {
+	t.Helper()
+	return "0x" + hex.EncodeToString(append(id.Bytes()[:4], tail...))
+}
+
 func mustPegInRequestedLog(t *testing.T, pegInId [32]byte, claimer, rskAddr common.Address, amount, net *big.Int) *geth.Log {
 	t.Helper()
 	parsed, err := commitfirst.PeginCommitFirstContractMetaData.ParseABI()
@@ -394,4 +399,249 @@ func TestPeginContractImpl_RequestPegIn_AmountBelowFee(t *testing.T) {
 	require.ErrorIs(t, err, blockchain.ErrIncorrectFronting)
 	assert.Empty(t, result.Receipt.TransactionHash)
 	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+}
+
+func TestPeginContractImpl_RequestPegIn_PreflightTypedErrors(t *testing.T) {
+	pegInId := [32]byte{0x44}
+	btcTxHash := [32]byte{0x55}
+	cases := []struct {
+		name    string
+		errorID common.Hash
+		tail    []byte
+		want    error
+	}{
+		{"AlreadyProcessed", commitfirst.PeginCommitFirstContractPegInAlreadyProcessedErrorID(), mustPackBytes32(t, pegInId), blockchain.ErrPegInAlreadyProcessed},
+		{"AddressNotRegistered", commitfirst.PeginCommitFirstContractAddressNotRegisteredErrorID(), mustPackAddress(t, parsedAddress), blockchain.ErrAddressNotRegistered},
+		{"DepositOutputNotFound", commitfirst.PeginCommitFirstContractDepositOutputNotFoundErrorID(), append(mustPackAddress(t, parsedAddress), mustPackBytes32(t, btcTxHash)...), blockchain.ErrDepositOutputNotFound},
+		{"InsufficientConfirmations", commitfirst.PeginCommitFirstContractInsufficientConfirmationsErrorID(), append(mustPackUint256(t, big.NewInt(1)), mustPackUint256(t, big.NewInt(6))...), blockchain.ErrInsufficientConfirmations},
+		{"IncorrectFronting", commitfirst.PeginCommitFirstContractIncorrectFrontingErrorID(), append(mustPackUint256(t, big.NewInt(1000)), mustPackUint256(t, big.NewInt(500))...), blockchain.ErrIncorrectFronting},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assertPreflightTypedError(t, tc.errorID, tc.tail, tc.want)
+		})
+	}
+}
+
+func assertPreflightTypedError(t *testing.T, errorID common.Hash, tail []byte, want error) {
+	t.Helper()
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
+
+	stubPauseLevel(t, &contractMock, mockClient, blockchain.PauseLevelNone)
+	contractMock.caller.EXPECT().CallContract(
+		mock.Anything,
+		matchCallData(expectedData),
+		mock.Anything,
+	).Return(nil, NewRskRpcError("execution reverted", revertHexFromErrorID(t, errorID, tail))).Once()
+
+	result, err := peginContract.RequestPegIn(sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0)))
+	require.ErrorIs(t, err, want)
+	assert.Empty(t, result.Receipt.TransactionHash)
+	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+}
+
+func TestPeginContractImpl_RequestPegIn_PreflightDoesNotInventRaceLoss(t *testing.T) {
+	errorTestHex := "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000047465737400000000000000000000000000000000000000000000000000000000"
+
+	t.Run("generic Error(string) revert", func(t *testing.T) {
+		assertPreflightJunkRevert(t, NewRskRpcError("execution reverted", errorTestHex))
+	})
+	t.Run("non-DataError", func(t *testing.T) {
+		assertPreflightJunkRevert(t, assert.AnError)
+	})
+	t.Run("short revert data", func(t *testing.T) {
+		for _, revertHex := range []string{"0x", "0xaabbcc"} {
+			t.Run(revertHex, func(t *testing.T) {
+				assertPreflightJunkRevert(t, NewRskRpcError("execution reverted", revertHex))
+			})
+		}
+	})
+}
+
+func assertPreflightJunkRevert(t *testing.T, revert error) {
+	t.Helper()
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
+
+	stubPauseLevel(t, &contractMock, mockClient, blockchain.PauseLevelNone)
+	contractMock.caller.EXPECT().CallContract(
+		mock.Anything,
+		matchCallData(expectedData),
+		mock.Anything,
+	).Return(nil, revert).Once()
+
+	result, err := peginContract.RequestPegIn(sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0)))
+	require.ErrorContains(t, err, "error parsing requestPegIn result")
+	require.NotErrorIs(t, err, blockchain.ErrPegInAlreadyProcessed)
+	assert.Empty(t, result.Receipt.TransactionHash)
+	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+}
+
+func TestPeginContractImpl_RequestPegIn_StatusOneWithoutPegInRequested(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	amount := entities.SatoshiToWei(1000)
+	fee := entities.NewWei(0)
+	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
+
+	stubPauseRegistry(t, &contractMock)
+	contractMock.caller.EXPECT().CallContract(
+		mock.Anything,
+		matchCallData(expectedData),
+		mock.Anything,
+	).Return(nil, nil).Once()
+	contractMock.transactor.EXPECT().SendTransaction(
+		mock.Anything,
+		matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 2500000, amount.AsBigInt(), expectedData),
+	).Return(nil).Once()
+	prepareTxMocks(&contractMock, mockClient, signerMock, true)
+	stubPauseLevelOnClient(t, mockClient, blockchain.PauseLevelNone)
+
+	result, err := peginContract.RequestPegIn(sampleRequestPegInParams(amount, fee))
+	require.ErrorContains(t, err, "PegInRequested event not found")
+	assert.NotEmpty(t, result.Receipt.TransactionHash)
+	assert.Nil(t, result.Event)
+}
+
+func TestPeginContractImpl_RequestPegIn_PauseOracleFailClosed(t *testing.T) {
+	t.Run("pauseRegistry revert", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		signerMock := &mocks.TransactionSignerMock{}
+		mockClient := &mocks.RpcClientBindingMock{}
+		peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(packPauseRegistry(t)),
+			mock.Anything,
+		).Return(nil, NewRskRpcError("execution reverted", "0x")).Once()
+
+		result, err := peginContract.RequestPegIn(sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0)))
+		require.ErrorContains(t, err, "pauseRegistry call")
+		assert.Empty(t, result.Receipt.TransactionHash)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	})
+	t.Run("pauseRegistry zero address", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		signerMock := &mocks.TransactionSignerMock{}
+		mockClient := &mocks.RpcClientBindingMock{}
+		peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(packPauseRegistry(t)),
+			mock.Anything,
+		).Return(mustPackAddress(t, common.Address{}), nil).Once()
+
+		result, err := peginContract.RequestPegIn(sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0)))
+		require.ErrorContains(t, err, "pause registry address is zero")
+		assert.Empty(t, result.Receipt.TransactionHash)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	})
+	t.Run("pauseLevel CallContract error", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		signerMock := &mocks.TransactionSignerMock{}
+		mockClient := &mocks.RpcClientBindingMock{}
+		peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+		stubPauseRegistry(t, &contractMock)
+		mockClient.On("CallContract", mock.Anything, matchCallData(packPauseLevel(t)), mock.Anything).
+			Return(nil, assert.AnError).Once()
+
+		result, err := peginContract.RequestPegIn(sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0)))
+		require.ErrorContains(t, err, "pauseLevel call")
+		assert.Empty(t, result.Receipt.TransactionHash)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	})
+}
+
+func TestPeginContractImpl_RequestPegIn_RejectsShortRawTx(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	params := sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0))
+	params.BitcoinRawTx = []byte{1, 0, 0, 0, 1}
+
+	result, err := peginContract.RequestPegIn(params)
+	require.ErrorIs(t, err, blockchain.ErrWitnessSerializedTxNotAccepted)
+	assert.Empty(t, result.Receipt.TransactionHash)
+	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	mockClient.AssertNotCalled(t, "CallContract")
+}
+
+func TestPeginContractImpl_RequestPegIn_NilAmountOrFee(t *testing.T) {
+	t.Run("nil amount", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		signerMock := &mocks.TransactionSignerMock{}
+		mockClient := &mocks.RpcClientBindingMock{}
+		peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+		stubPauseLevel(t, &contractMock, mockClient, blockchain.PauseLevelNone)
+
+		result, err := peginContract.RequestPegIn(sampleRequestPegInParams(nil, entities.NewWei(0)))
+		require.ErrorIs(t, err, blockchain.ErrIncorrectFronting)
+		assert.Empty(t, result.Receipt.TransactionHash)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	})
+	t.Run("nil fee", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		signerMock := &mocks.TransactionSignerMock{}
+		mockClient := &mocks.RpcClientBindingMock{}
+		peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+		stubPauseLevel(t, &contractMock, mockClient, blockchain.PauseLevelNone)
+
+		result, err := peginContract.RequestPegIn(sampleRequestPegInParams(entities.SatoshiToWei(1000), nil))
+		require.ErrorIs(t, err, blockchain.ErrIncorrectFronting)
+		assert.Empty(t, result.Receipt.TransactionHash)
+		contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	})
+}
+
+func TestPeginContractImpl_RequestPegIn_InvalidAddress(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	params := sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0))
+	params.RskAddress = "not-an-address"
+
+	result, err := peginContract.RequestPegIn(params)
+	require.ErrorIs(t, err, blockchain.InvalidAddressError)
+	assert.Empty(t, result.Receipt.TransactionHash)
+	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	mockClient.AssertNotCalled(t, "CallContract")
+}
+
+func TestPeginContractImpl_RequestPegIn_SendError(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	amount := entities.SatoshiToWei(1000)
+	fee := entities.NewWei(0)
+	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
+
+	stubPauseRegistry(t, &contractMock)
+	contractMock.caller.EXPECT().CallContract(
+		mock.Anything,
+		matchCallData(expectedData),
+		mock.Anything,
+	).Return(nil, nil).Once()
+	contractMock.transactor.EXPECT().SendTransaction(
+		mock.Anything,
+		matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 2500000, amount.AsBigInt(), expectedData),
+	).Return(assert.AnError).Once()
+	prepareTxMocks(&contractMock, mockClient, signerMock, true)
+	stubPauseLevelOnClient(t, mockClient, blockchain.PauseLevelNone)
+
+	result, err := peginContract.RequestPegIn(sampleRequestPegInParams(amount, fee))
+	require.ErrorContains(t, err, "request pegin error")
+	assert.Empty(t, result.Receipt.TransactionHash)
+	assert.Nil(t, result.Event)
 }
