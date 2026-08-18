@@ -70,8 +70,29 @@ func ensurePegInAddressRegistryWatchRskAddressIndex(ctx context.Context, creator
 	return nil
 }
 
+func pegInClaimIdentityIndex() mongo.IndexModel {
+	return mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "rsk_address", Value: 1},
+			{Key: "deposit_txid", Value: 1},
+		},
+		Options: options.Index().SetUnique(true),
+	}
+}
+
+func ensurePegInClaimIdentityIndex(ctx context.Context, creator indexCreator) error {
+	if err := creator.CreateIndex(ctx, PegInClaimCollection, pegInClaimIdentityIndex()); err != nil {
+		return fmt.Errorf("error creating unique index on %s (rsk_address, deposit_txid): %w", PegInClaimCollection, err)
+	}
+	return nil
+}
+
 func createIndexes(ctx context.Context, db *mongo.Database) error {
-	if err := ensurePegInAddressRegistryWatchRskAddressIndex(ctx, databaseIndexCreator{db: db}); err != nil {
+	creator := databaseIndexCreator{db: db}
+	if err := ensurePegInAddressRegistryWatchRskAddressIndex(ctx, creator); err != nil {
+		return err
+	}
+	if err := ensurePegInClaimIdentityIndex(ctx, creator); err != nil {
 		return err
 	}
 
@@ -97,6 +118,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: RetainedPeginQuoteCollection, field: "state"},
 		{collection: RetainedPegoutQuoteCollection, field: "state"},
 		{collection: PegInAddressRegistryWatchCollection, field: "state"},
+		{collection: PegInClaimCollection, field: "state"},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.
 		{collection: PeginQuoteCollection, field: "agreement_timestamp"},

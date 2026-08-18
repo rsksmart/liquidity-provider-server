@@ -505,6 +505,168 @@ func TestLocalLiquidityProvider_AvailablePeginLiquidity_ErrorHandling(t *testing
 	})
 }
 
+const requestPegInGasLimitForTest int64 = 2500000
+
+func claimLiquidityProvider(
+	t *testing.T,
+	wallet, gasPrice int64,
+) (*dataproviders.LocalLiquidityProvider, *mocks.PeginContractMock) {
+	t.Helper()
+	signer := new(mocks.TransactionSignerMock)
+	signer.On("Address").Return(common.HexToAddress(rskTestAddress))
+	rpcMock := new(mocks.RootstockRpcServerMock)
+	rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(wallet), nil)
+	rpcMock.On("GasPrice", test.AnyCtx).Return(entities.NewWei(gasPrice), nil)
+	peginContractMock := new(mocks.PeginContractMock)
+	lp := dataproviders.NewLocalLiquidityProvider(
+		nil,
+		nil,
+		nil,
+		blockchain.Rpc{Rsk: rpcMock},
+		signer,
+		nil,
+		blockchain.RskContracts{PegIn: peginContractMock},
+	)
+	return lp, peginContractMock
+}
+
+//nolint:funlen
+func TestLocalLiquidityProvider_HasClaimLiquidity(t *testing.T) {
+	gasPrice := int64(1)
+	gasBuffer := requestPegInGasLimitForTest * gasPrice
+
+	t.Run("refuses when only LBC contract balance would make the amount look fundable", func(t *testing.T) {
+		wallet := int64(3_000_000)
+		lbcBalance := int64(10_000_000)
+		required := entities.NewWei(1_000_000)
+		lp, peginContract := claimLiquidityProvider(t, wallet, gasPrice)
+
+		require.GreaterOrEqual(t, wallet+lbcBalance, required.AsBigInt().Int64())
+		require.Less(t, wallet-gasBuffer, required.AsBigInt().Int64())
+
+		err := lp.HasClaimLiquidity(context.Background(), required, entities.NewWei(0))
+		require.Error(t, err)
+		require.ErrorIs(t, err, usecases.NoLiquidityError)
+		peginContract.AssertNotCalled(t, "GetBalance", mock.Anything)
+	})
+
+	t.Run("refuses when raw wallet balance alone would pass", func(t *testing.T) {
+		wallet := int64(10_000_000)
+		required := entities.NewWei(5_000_000)
+		inFlight := entities.NewWei(6_000_000)
+		lp, peginContract := claimLiquidityProvider(t, wallet, gasPrice)
+
+		require.GreaterOrEqual(t, entities.NewWei(wallet).Cmp(required), 0)
+
+		err := lp.HasClaimLiquidity(context.Background(), required, inFlight)
+		require.Error(t, err)
+		require.ErrorIs(t, err, usecases.NoLiquidityError)
+		peginContract.AssertNotCalled(t, "GetBalance", mock.Anything)
+	})
+
+	t.Run("refuses when in-flight reservation consumes the remainder", func(t *testing.T) {
+		wallet := int64(10_000_000)
+		required := entities.NewWei(1_000_000)
+		inFlight := entities.NewWei(7_000_000)
+		lp, peginContract := claimLiquidityProvider(t, wallet, gasPrice)
+
+		withoutReservation := wallet - gasBuffer
+		require.GreaterOrEqual(t, withoutReservation, required.AsBigInt().Int64())
+
+		err := lp.HasClaimLiquidity(context.Background(), required, inFlight)
+		require.Error(t, err)
+		require.ErrorIs(t, err, usecases.NoLiquidityError)
+		peginContract.AssertNotCalled(t, "GetBalance", mock.Anything)
+	})
+
+	t.Run("refuses when the gas buffer is the missing amount", func(t *testing.T) {
+		wallet := int64(3_000_000)
+		required := entities.NewWei(1_000_000)
+		lp, peginContract := claimLiquidityProvider(t, wallet, gasPrice)
+
+		require.GreaterOrEqual(t, entities.NewWei(wallet).Cmp(required), 0)
+		require.Less(t, wallet-gasBuffer, required.AsBigInt().Int64())
+
+		err := lp.HasClaimLiquidity(context.Background(), required, entities.NewWei(0))
+		require.Error(t, err)
+		require.ErrorIs(t, err, usecases.NoLiquidityError)
+		var insuf *usecases.InsufficientLiquidityError
+		require.ErrorAs(t, err, &insuf)
+		assert.Equal(t, entities.NewWei(wallet-gasBuffer), insuf.Available)
+		assert.Equal(t, required, insuf.Required)
+		peginContract.AssertNotCalled(t, "GetBalance", mock.Anything)
+	})
+
+	t.Run("accepts when wallet minus reservation and gas covers required", func(t *testing.T) {
+		wallet := int64(20_000_000)
+		required := entities.NewWei(10_000_000)
+		inFlight := entities.NewWei(1_000_000)
+		lp, peginContract := claimLiquidityProvider(t, wallet, gasPrice)
+
+		err := lp.HasClaimLiquidity(context.Background(), required, inFlight)
+		require.NoError(t, err)
+		peginContract.AssertNotCalled(t, "GetBalance", mock.Anything)
+	})
+}
+
+func TestLocalLiquidityProvider_AvailableClaimLiquidity(t *testing.T) {
+	gasPrice := int64(2)
+	gasBuffer := requestPegInGasLimitForTest * gasPrice
+
+	t.Run("subtracts in-flight reserved and gas buffer from wallet only", func(t *testing.T) {
+		wallet := int64(20_000_000)
+		inFlight := int64(1_000_000)
+		lp, peginContract := claimLiquidityProvider(t, wallet, gasPrice)
+
+		available, err := lp.AvailableClaimLiquidity(context.Background(), entities.NewWei(inFlight))
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(wallet-inFlight-gasBuffer), available)
+		peginContract.AssertNotCalled(t, "GetBalance", mock.Anything)
+	})
+
+	t.Run("returns zero when deductions exceed wallet", func(t *testing.T) {
+		wallet := int64(1_000_000)
+		lp, peginContract := claimLiquidityProvider(t, wallet, gasPrice)
+
+		available, err := lp.AvailableClaimLiquidity(context.Background(), entities.NewWei(0))
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(0), available)
+		peginContract.AssertNotCalled(t, "GetBalance", mock.Anything)
+	})
+
+	t.Run("treats nil in-flight reserved as zero", func(t *testing.T) {
+		wallet := int64(10_000_000)
+		lp, _ := claimLiquidityProvider(t, wallet, gasPrice)
+
+		available, err := lp.AvailableClaimLiquidity(context.Background(), nil)
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(wallet-gasBuffer), available)
+	})
+}
+
+func TestLocalLiquidityProvider_AvailableClaimLiquidity_ErrorHandling(t *testing.T) {
+	signer := new(mocks.TransactionSignerMock)
+	signer.On("Address").Return(common.HexToAddress(rskTestAddress))
+
+	t.Run("wallet balance error", func(t *testing.T) {
+		rpcMock := new(mocks.RootstockRpcServerMock)
+		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{})
+		available, err := lp.AvailableClaimLiquidity(context.Background(), nil)
+		require.Error(t, err)
+		assert.Nil(t, available)
+	})
+	t.Run("gas price error", func(t *testing.T) {
+		rpcMock := new(mocks.RootstockRpcServerMock)
+		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(10_000_000), nil).Once()
+		rpcMock.On("GasPrice", test.AnyCtx).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{})
+		available, err := lp.AvailableClaimLiquidity(context.Background(), nil)
+		require.Error(t, err)
+		assert.Nil(t, available)
+	})
+}
+
 //nolint:funlen
 func TestLocalLiquidityProvider_GeneralConfiguration(t *testing.T) {
 	account := test.OpenWalletForTest(t, "general-configuration")

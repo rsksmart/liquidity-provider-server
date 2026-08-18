@@ -193,6 +193,51 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 	return new(entities.Wei).Sub(liquidity, lockedLiquidity), nil
 }
 
+// requestPegInGasLimit matches the registerPegin payable-call convention.
+const requestPegInGasLimit = 2500000
+
+func (lp *LocalLiquidityProvider) HasClaimLiquidity(
+	ctx context.Context,
+	requiredLiquidity *entities.Wei,
+	inFlightReserved *entities.Wei,
+) error {
+	availableLiquidity, err := lp.AvailableClaimLiquidity(ctx, inFlightReserved)
+	if err != nil {
+		return err
+	}
+	if availableLiquidity.Cmp(requiredLiquidity) >= 0 {
+		return nil
+	}
+	return &usecases.InsufficientLiquidityError{
+		Available: availableLiquidity.Copy(),
+		Required:  requiredLiquidity.Copy(),
+	}
+}
+
+func (lp *LocalLiquidityProvider) AvailableClaimLiquidity(
+	ctx context.Context,
+	inFlightReserved *entities.Wei,
+) (*entities.Wei, error) {
+	wallet, err := lp.rpc.Rsk.GetBalance(ctx, lp.RskAddress())
+	if err != nil {
+		return nil, err
+	}
+	reserved := entities.NewWei(0)
+	if inFlightReserved != nil {
+		reserved = inFlightReserved
+	}
+	gasPrice, err := lp.rpc.Rsk.GasPrice(ctx)
+	if err != nil {
+		return nil, err
+	}
+	gasBuffer := new(entities.Wei).Mul(entities.NewWei(requestPegInGasLimit), gasPrice)
+	deductions := new(entities.Wei).Add(reserved, gasBuffer)
+	if wallet.Cmp(deductions) < 0 {
+		return entities.NewWei(0), nil
+	}
+	return new(entities.Wei).Sub(wallet, deductions), nil
+}
+
 func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liquidity_provider.GeneralConfiguration {
 	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
 		return lp.lpRepository.GetGeneralConfiguration(ctx)
