@@ -54,8 +54,9 @@ func TestNewJSONEmitsBaseFieldsAndRedacts(t *testing.T) {
 	assert.Equal(t, "v1", m["version"])
 	assert.Equal(t, "0x1", m["txHash"])
 	assert.Equal(t, redact.DefaultPlaceholder, m["privateKey"])
-	assert.Contains(t, m, "traceId")
-	assert.Empty(t, m["traceId"])
+	require.Contains(t, m, "traceId")
+	assert.Len(t, m["traceId"], 32)
+	assert.Len(t, m["spanId"], 16)
 }
 
 func TestNewInjectsTraceFromContext(t *testing.T) {
@@ -111,7 +112,8 @@ func TestWithAttrsPreservesTraceInjection(t *testing.T) {
 
 	m := decodeJSON(t, &buf)
 	assert.Equal(t, "op-1", m["operationId"])
-	assert.Contains(t, m, "traceId")
+	require.Contains(t, m, "traceId")
+	assert.Len(t, m["traceId"], 32)
 }
 
 func TestWithGroupPreservesHandlerWrapper(t *testing.T) {
@@ -126,8 +128,29 @@ func TestWithGroupPreservesHandlerWrapper(t *testing.T) {
 	req, ok := m["req"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "POST", req["method"])
-	// Trace injection still runs; with an open group, slog nests those attrs.
-	assert.Contains(t, req, "traceId")
+	// Base correlation fields stay at the root even with an open group.
+	require.Contains(t, m, "traceId")
+	assert.Len(t, m["traceId"], 32)
+	assert.NotContains(t, req, "traceId")
+}
+
+func TestWithGroupThenAttrsNestsBoundFieldsOnly(t *testing.T) {
+	var buf bytes.Buffer
+	h := newHandler(t, &buf, core.FormatJSON).
+		WithGroup("req").
+		WithAttrs([]slog.Attr{slog.String("method", "POST")})
+
+	record := slog.NewRecord(time.Now().UTC(), slog.LevelInfo, "grouped-attrs", 0)
+	require.NoError(t, h.Handle(context.Background(), record))
+
+	m := decodeJSON(t, &buf)
+	req, ok := m["req"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "POST", req["method"])
+	require.Contains(t, m, "traceId")
+	assert.Len(t, m["traceId"], 32)
+	assert.NotContains(t, req, "traceId")
+	assert.Equal(t, "svc", m["service"])
 }
 
 func TestNestedGroupRedaction(t *testing.T) {

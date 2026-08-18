@@ -40,7 +40,7 @@ log.Info(ctx, "Bridge transaction initiated",
 ```
 
 ```json
-{"timestamp":"2026-04-14T15:30:00.123Z","level":"info","service":"rsk-bridge-api","environment":"production","version":"v1.4.2","message":"Bridge transaction initiated","txHash":"0x1234abcd","blockNumber":12345,"traceId":""}
+{"timestamp":"2026-04-14T15:30:00.123Z","level":"info","service":"rsk-bridge-api","environment":"production","version":"v1.4.2","message":"Bridge transaction initiated","txHash":"0x1234abcd","blockNumber":12345,"traceId":"4bf92f3577b34da6a3ce929d0e0e4736","spanId":"00f067aa0ba902b7"}
 ```
 
 `New` returns an error when any of the mandatory identity fields (`Service`, `Environment`, `Version`) is empty, so misconfiguration surfaces at startup. `ConfigFromEnv` reads `LOG_LEVEL` and `LOG_FORMAT`; you can also build a `logger.Config` directly for full control (output writer, timezone, redaction, stack traces via `DisableStackTrace`, source, OTel provider).

@@ -139,7 +139,8 @@ func TestTraceIDIsAlwaysPresentEvenWithoutContext(t *testing.T) {
 
 	m := decodeLine(t, &buf)
 	require.Contains(t, m, "traceId")
-	assert.Empty(t, m["traceId"])
+	assert.Len(t, m["traceId"], 32)
+	assert.Len(t, m["spanId"], 16)
 }
 
 func TestErrorLevelAttachesStack(t *testing.T) {
@@ -365,7 +366,7 @@ func TestNilContextIsAccepted(t *testing.T) {
 	m := decodeLine(t, &buf)
 	assert.Equal(t, "nil ctx", m["message"])
 	require.Contains(t, m, "traceId")
-	assert.Empty(t, m["traceId"])
+	assert.Len(t, m["traceId"], 32)
 }
 
 func TestNewDefaultsNilOutputForOTel(t *testing.T) {
