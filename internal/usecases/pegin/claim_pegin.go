@@ -56,6 +56,9 @@ func (useCase *ClaimPegInUseCase) Run(
 	if isClaimNoOp(existing) {
 		return nil
 	}
+	if existing != nil && existing.TxHash != "" {
+		return useCase.reconcile(ctx, *existing)
+	}
 
 	tx, err := useCase.rpc.Btc.GetTransactionInfo(depositTxID)
 	if err != nil {
@@ -74,6 +77,19 @@ func (useCase *ClaimPegInUseCase) Run(
 		return useCase.wrap(err)
 	}
 	return useCase.submit(ctx, claim, depositTxID, amount, fee)
+}
+
+func (useCase *ClaimPegInUseCase) ReconcileSubmitting(ctx context.Context) error {
+	claims, err := useCase.claims.ListByStates(ctx, rootstock.PegInClaimSubmitting)
+	if err != nil {
+		return useCase.wrap(err)
+	}
+	for _, claim := range claims {
+		if err = useCase.reconcile(ctx, claim); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (useCase *ClaimPegInUseCase) evaluateGates(
@@ -305,7 +321,7 @@ func isClaimNoOp(existing *rootstock.PegInClaim) bool {
 		return false
 	}
 	switch existing.State {
-	case rootstock.PegInClaimClaimed, rootstock.PegInClaimRaceLost, rootstock.PegInClaimSubmitting:
+	case rootstock.PegInClaimClaimed, rootstock.PegInClaimRaceLost:
 		return true
 	default:
 		return false

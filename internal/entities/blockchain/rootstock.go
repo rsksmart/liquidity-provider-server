@@ -31,6 +31,7 @@ var (
 	ErrInsufficientConfirmations      = errors.New("insufficient confirmations")
 	ErrIncorrectFronting              = errors.New("incorrect fronting")
 	ErrWitnessSerializedTxNotAccepted = errors.New("witness-serialized tx not accepted")
+	ErrTransactionReceiptNotFound     = errors.New("transaction receipt not found")
 )
 
 type RskContracts struct {
