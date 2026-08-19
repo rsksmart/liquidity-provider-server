@@ -2,7 +2,6 @@ package watcher_test
 
 import (
 	"context"
-	"errors"
 	"math/big"
 	"testing"
 	"time"
@@ -10,9 +9,9 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -21,6 +20,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+func btcWatcherTestLp() *mocks.ProviderMock {
+	lp := new(mocks.ProviderMock)
+	lp.On("GeneralConfiguration", mock.Anything).Return(liquidity_provider.GeneralConfiguration{
+		BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
+			"1000": 5,
+		},
+	})
+	return lp
+}
 
 // nolint:funlen
 func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
@@ -33,7 +42,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	ticker.EXPECT().C().Return(make(chan time.Time))
 	ticker.EXPECT().Stop().Return()
-	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, nil, rpc, eventBus, ticker)
+	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, nil, btcWatcherTestLp(), rpc, eventBus, ticker)
 
 	go pegoutWatcher.Start()
 	t.Run("handle quote without tx hash", func(t *testing.T) {
@@ -51,7 +60,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle sent pegout", func(t *testing.T) {
-		defer test.AssertNoLog(t)
+		defer test.AssertNoLog(t)()
 		watchedQuote, ok := pegoutWatcher.GetWatchedQuote(test.AnyString)
 		assert.False(t, ok)
 		assert.Empty(t, watchedQuote)
@@ -92,7 +101,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 
 // nolint:funlen,cyclop
 func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
-	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "070809", DepositAddress: test.AnyAddress, LpBtcTxHash: "030201", State: quote.PegoutStateSendPegoutSucceeded}
+	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "070809", DepositAddress: test.AnyAddress, LpBtcTxHash: "030201", State: quote.PegoutStateSendPegoutSucceeded, RequiredLiquidity: entities.NewWei(1000)}
 	testPegoutQuote := quote.PegoutQuote{Nonce: 5, TransferConfirmations: 5}
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	btcRpc := &mocks.BtcRpcMock{}
@@ -120,10 +129,9 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		Value:             entities.NewWei(0),
 		GasPrice:          entities.NewWei(1000000000),
 	}
-	pegoutContract.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutReceipt, nil).Once()
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
-	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{PegOut: pegoutContract}, eventBus, rpc, mutex)
-	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, refundUseCase, rpc, eventBus, ticker)
+	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{PegOut: pegoutContract}, eventBus, rpc, btcWatcherTestLp(), mutex)
+	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, refundUseCase, btcWatcherTestLp(), rpc, eventBus, ticker)
 	resetMocks := func() {
 		btcRpc.Calls = []mock.Call{}
 		btcRpc.ExpectedCalls = []*mock.Call{}
@@ -202,8 +210,8 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		resetMocks()
 		checkFunction := test.AssertLogContains(t, errorMsg)
 		btcRpc.On("GetHeight").Return(big.NewInt(10), nil).Once()
-		btcRpc.On("GetTransactionInfo", testRetainedQuote.LpBtcTxHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 10}, nil).Once()
-		pegoutRepository.EXPECT().GetQuote(mock.Anything, testRetainedQuote.QuoteHash).Return(nil, assert.AnError).Once()
+		btcRpc.On("GetTransactionInfo", testRetainedQuote.LpBtcTxHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 10}, nil).Twice()
+		btcRpc.On("BuildMerkleBranch", mock.Anything).Return(blockchain.MerkleBranch{}, assert.AnError).Once()
 		watchedQuote, ok := pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
 		assert.True(t, ok)
 		assert.Equal(t, quote.WatchedPegoutQuote{PegoutQuote: testPegoutQuote, RetainedQuote: testRetainedQuote}, watchedQuote)
@@ -222,8 +230,12 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		resetMocks()
 		checkFunction := test.AssertLogContains(t, errorMsg)
 		btcRpc.On("GetHeight").Return(big.NewInt(11), nil).Once()
-		btcRpc.On("GetTransactionInfo", testRetainedQuote.LpBtcTxHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 10}, nil).Once()
-		pegoutRepository.EXPECT().GetQuote(mock.Anything, testRetainedQuote.QuoteHash).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
+		btcRpc.On("GetTransactionInfo", testRetainedQuote.LpBtcTxHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 10}, nil).Twice()
+		btcRpc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{}, nil).Once()
+		btcRpc.On("BuildMerkleBranch", mock.Anything).Return(blockchain.MerkleBranch{}, nil).Once()
+		btcRpc.On("GetRawTransaction", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
+		pegoutContract.On("RefundPegout", mock.Anything, mock.Anything).Return(blockchain.TransactionReceipt{}, assert.AnError).Once()
+		pegoutRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 		watchedQuote, ok := pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
 		assert.True(t, ok)
 		assert.Equal(t, quote.WatchedPegoutQuote{PegoutQuote: testPegoutQuote, RetainedQuote: testRetainedQuote}, watchedQuote)
@@ -249,7 +261,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 		btcRpc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{}, nil).Once()
 		btcRpc.On("BuildMerkleBranch", mock.Anything).Return(blockchain.MerkleBranch{}, nil).Once()
 		btcRpc.On("GetRawTransaction", mock.Anything).Return([]byte{1, 2, 3}, nil).Once()
-		pegoutRepository.EXPECT().GetQuote(mock.Anything, testRetainedQuote.QuoteHash).Return(&testPegoutQuote, nil).Once()
+		pegoutContract.On("RefundPegout", mock.Anything, mock.Anything).Return(refundPegoutReceipt, nil).Once()
 		pegoutRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			watchedQuote, ok := pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
@@ -294,7 +306,7 @@ func TestPegoutBtcTransferWatcher_Prepare(t *testing.T) {
 			quoteRepository.EXPECT().GetPegoutCreationData(mock.Anything, mock.Anything).Return(quote.PegoutCreationData{GasPrice: entities.NewWei(int64(i))}).Once()
 		}
 		useCase := w.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
-		pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(useCase, nil, blockchain.Rpc{}, nil, nil)
+		pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(useCase, nil, btcWatcherTestLp(), blockchain.Rpc{}, nil, nil)
 		err := pegoutWatcher.Prepare(context.Background())
 		require.NoError(t, err)
 		for i, q := range quotes {
@@ -312,7 +324,7 @@ func TestPegoutBtcTransferWatcher_Prepare(t *testing.T) {
 		pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 		pegoutRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 		useCase := w.NewGetWatchedPegoutQuoteUseCase(pegoutRepository)
-		addressWatcher := watcher.NewPegoutBtcTransferWatcher(useCase, nil, blockchain.Rpc{}, nil, nil)
+		addressWatcher := watcher.NewPegoutBtcTransferWatcher(useCase, nil, btcWatcherTestLp(), blockchain.Rpc{}, nil, nil)
 		err := addressWatcher.Prepare(context.Background())
 		require.Error(t, err)
 		pegoutRepository.AssertExpectations(t)
@@ -323,7 +335,7 @@ func TestPegoutBtcTransferWatcher_Shutdown(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
 	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
-		return watcher.NewPegoutBtcTransferWatcher(nil, nil, blockchain.Rpc{}, eventBus, ticker)
+		return watcher.NewPegoutBtcTransferWatcher(nil, nil, btcWatcherTestLp(), blockchain.Rpc{}, eventBus, ticker)
 	})
 }
 
@@ -345,7 +357,7 @@ func TestPegoutBtcTransferWatcher(t *testing.T) {
 			After(time.Second*2).
 			Return([]quote.RetainedPegoutQuote{}, nil)
 		useCase := w.NewGetWatchedPegoutQuoteUseCase(quoteRepository)
-		pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(useCase, nil, rpc, eventBus, ticker)
+		pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(useCase, nil, btcWatcherTestLp(), rpc, eventBus, ticker)
 
 		prepareDoneChannel := make(chan bool, 1)
 		startDoneChannel := make(chan bool, 1)
