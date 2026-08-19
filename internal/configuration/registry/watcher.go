@@ -91,6 +91,7 @@ func NewWatcherRegistry(
 		PegoutBtcTransferWatcher: watcher.NewPegoutBtcTransferWatcher(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
 			useCaseRegistry.refundPegoutUseCase,
+			lpRegistry.LiquidityProvider,
 			messaging.Rpc,
 			messaging.EventBus,
 			tickers.PegoutBtcTransferWatcherTicker,
