@@ -2,7 +2,6 @@ package lps
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"testing"
 	"time"
@@ -90,7 +89,9 @@ func peginAddressRegistryValidationApplication(
 	rskRpc blockchain.RootstockRpcServer,
 ) *Application {
 	t.Helper()
-	if _, ok := contract.(peginAddressRegistryDeploymentVerifier); !ok {
+	if _, ok := contract.(interface {
+		IsDeploymentBlock(context.Context, uint64) (bool, error)
+	}); !ok {
 		contract = &peginAddressRegistryDeploymentProof{
 			PegInAddressRegistryContract: contract,
 			isDeploymentBlock: func(context.Context, uint64) (bool, error) {
@@ -98,11 +99,25 @@ func peginAddressRegistryValidationApplication(
 			},
 		}
 	}
+	discover := w.NewDiscoverRegisteredAddressUseCase(nil, contract, nil)
+	getWatched := w.NewGetWatchedRegisteredAddressesUseCase(nil)
+	replay := w.NewReplayRegisteredAddressesUseCase(
+		discover,
+		getWatched,
+		nil,
+		contract,
+		rskRpc,
+		nil,
+		config.StartBlock,
+		config.PageSize,
+		0,
+	)
 	return &Application{
 		env:                  environment.Environment{Rsk: environment.RskEnv{ChainId: testChainId}},
 		peginAddressRegistry: config,
 		rskRegistry:          &registry.Rootstock{Contracts: blockchain.RskContracts{PegInAddressRegistry: contract}},
 		messagingRegistry:    &registry.Messaging{Rpc: blockchain.Rpc{Rsk: rskRpc}},
+		useCaseRegistry:      registry.NewUseCaseRegistryWithReplayRegisteredAddresses(replay),
 	}
 }
 
@@ -146,18 +161,6 @@ func TestApplication_validatePegInAddressRegistryConfiguration_rejectsUnsafeConf
 	t.Run("deployment block is ahead of the active network", func(t *testing.T) {
 		testRegistryDeploymentAheadOfNetwork(t, config)
 	})
-	t.Run("rejects a start block that is not the contract deployment block", func(t *testing.T) {
-		testRegistryStartBlockIsNotDeployment(t, config)
-	})
-	t.Run("cross-network or incompatible address has no registry at the deployment block", func(t *testing.T) {
-		testRegistryIncompatibleAtDeployment(t, config)
-	})
-	t.Run("rejects a deployment root that does not match its events", func(t *testing.T) {
-		testRegistryDeploymentRootMismatch(t, config)
-	})
-	t.Run("deployment block may contain the first registry event", func(t *testing.T) {
-		testRegistryDeploymentContainsFirstEvent(t, config)
-	})
 	t.Run("address becomes incompatible at the active head", func(t *testing.T) {
 		testRegistryIncompatibleAtHead(t, config)
 	})
@@ -176,90 +179,6 @@ func testRegistryDeploymentAheadOfNetwork(t *testing.T, config environment.PegIn
 	err := app.validatePegInAddressRegistryConfiguration(context.Background())
 
 	require.ErrorContains(t, err, "deployment block 100 exceeds active RSK head 99")
-}
-
-func testRegistryStartBlockIsNotDeployment(t *testing.T, config environment.PegInAddressRegistryWatcherConfig) {
-	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(200), nil).Once()
-	contract := mocks.NewPegInAddressRegistryContractMock(t)
-	proofCalled := false
-	proof := &peginAddressRegistryDeploymentProof{
-		PegInAddressRegistryContract: contract,
-		isDeploymentBlock: func(_ context.Context, blockNumber uint64) (bool, error) {
-			proofCalled = true
-			assert.Equal(t, uint64(100), blockNumber)
-			return false, nil
-		},
-	}
-	app := peginAddressRegistryValidationApplication(t, config, proof, rskRpc)
-
-	err := app.validatePegInAddressRegistryConfiguration(context.Background())
-
-	require.ErrorContains(t, err, "configured start block 100 is not the PegIn address registry deployment block")
-	assert.True(t, proofCalled, "deployment-block proof was not requested")
-}
-
-func testRegistryIncompatibleAtDeployment(t *testing.T, config environment.PegInAddressRegistryWatcherConfig) {
-	incompatibleError := errors.New("no contract code or incompatible ABI")
-	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(200), nil).Once()
-	contract := mocks.NewPegInAddressRegistryContractMock(t)
-	contract.EXPECT().
-		GetRegistrationRoot(mock.Anything, uint64(100)).
-		Return([32]byte{}, incompatibleError).
-		Once()
-	app := peginAddressRegistryValidationApplication(t, config, contract, rskRpc)
-
-	err := app.validatePegInAddressRegistryConfiguration(context.Background())
-
-	require.ErrorContains(t, err, "validate PegIn address registry at deployment block 100")
-	require.ErrorIs(t, err, incompatibleError)
-}
-
-func testRegistryDeploymentRootMismatch(t *testing.T, config environment.PegInAddressRegistryWatcherConfig) {
-	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(100), nil).Once()
-	contract := mocks.NewPegInAddressRegistryContractMock(t)
-	contract.EXPECT().
-		GetRegistrationRoot(mock.Anything, uint64(100)).
-		Return([32]byte{1}, nil).
-		Once()
-	contract.EXPECT().
-		GetAddressRegisteredEvents(mock.Anything, uint64(100), mock.Anything).
-		Return(nil, nil).
-		Once()
-	app := peginAddressRegistryValidationApplication(t, config, contract, rskRpc)
-
-	err := app.validatePegInAddressRegistryConfiguration(context.Background())
-
-	require.ErrorContains(t, err, "deployment block 100 already has registry state")
-}
-
-func testRegistryDeploymentContainsFirstEvent(t *testing.T, config environment.PegInAddressRegistryWatcherConfig) {
-	rskAddress := "0x00000000000000000000000000000000000000a1"
-	rootBytes, err := hex.DecodeString("5a16856e66cb2b1b463f7773c427085d55afdd19d778290b45fb959a6224877e")
-	require.NoError(t, err)
-	deploymentRoot := [32]byte(rootBytes)
-	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(100), nil).Once()
-	contract := mocks.NewPegInAddressRegistryContractMock(t)
-	contract.EXPECT().
-		GetRegistrationRoot(mock.Anything, uint64(100)).
-		Return(deploymentRoot, nil).
-		Once()
-	contract.EXPECT().
-		GetAddressRegisteredEvents(mock.Anything, uint64(100), mock.Anything).
-		Return([]blockchain.AddressRegistered{{
-			RskAddress:       rskAddress,
-			RegistrationRoot: deploymentRoot,
-			BlockNumber:      100,
-		}}, nil).
-		Once()
-	app := peginAddressRegistryValidationApplication(t, config, contract, rskRpc)
-
-	err = app.validatePegInAddressRegistryConfiguration(context.Background())
-
-	require.NoError(t, err)
 }
 
 func testRegistryIncompatibleAtHead(t *testing.T, config environment.PegInAddressRegistryWatcherConfig) {

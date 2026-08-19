@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"syscall"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
@@ -36,10 +35,6 @@ type Application struct {
 	messagingRegistry    *registry.Messaging
 	runningServices      []entities.Closeable
 	doneChannel          chan os.Signal
-}
-
-type peginAddressRegistryDeploymentVerifier interface {
-	IsDeploymentBlock(ctx context.Context, blockNumber uint64) (bool, error)
 }
 
 func NewApplication(initCtx context.Context, env environment.Environment, timeouts environment.ApplicationTimeouts) *Application {
@@ -94,7 +89,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	}
 
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts, peginAddressRegistry)
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
 		env: env, timeouts: timeouts, peginAddressRegistry: peginAddressRegistry,
 		lpRegistry: lpRegistry, useCaseRegistry: useCaseRegistry,
@@ -221,7 +216,7 @@ func (app *Application) validatePegInAddressRegistryConfiguration(ctx context.Co
 		return err
 	}
 	startBlock := app.peginAddressRegistry.StartBlock
-	if err = validatePegInAddressRegistryDeployment(ctx, contract, startBlock); err != nil {
+	if err = app.useCaseRegistry.ReplayRegisteredAddressesUseCase().ValidateDeployment(ctx, startBlock); err != nil {
 		return err
 	}
 	if head == startBlock {
@@ -258,76 +253,6 @@ func (app *Application) peginAddressRegistryValidationContext(
 		)
 	}
 	return app.rskRegistry.Contracts.PegInAddressRegistry, head, nil
-}
-
-func validatePegInAddressRegistryDeployment(
-	ctx context.Context,
-	contract blockchain.PegInAddressRegistryContract,
-	startBlock uint64,
-) error {
-	deploymentVerifier, ok := contract.(peginAddressRegistryDeploymentVerifier)
-	if !ok {
-		return errors.New("PegIn address registry adapter does not support exact deployment-block validation")
-	}
-	isDeploymentBlock, err := deploymentVerifier.IsDeploymentBlock(ctx, startBlock)
-	if err != nil {
-		return fmt.Errorf("prove PegIn address registry deployment block %d: %w", startBlock, err)
-	}
-	if !isDeploymentBlock {
-		return fmt.Errorf("configured start block %d is not the PegIn address registry deployment block", startBlock)
-	}
-	deploymentRoot, err := contract.GetRegistrationRoot(ctx, startBlock)
-	if err != nil {
-		return fmt.Errorf("validate PegIn address registry at deployment block %d: %w", startBlock, err)
-	}
-	toBlock := startBlock
-	deploymentEvents, err := contract.GetAddressRegisteredEvents(ctx, startBlock, &toBlock)
-	if err != nil {
-		return fmt.Errorf("read PegIn address registry events at deployment block %d: %w", startBlock, err)
-	}
-	replayedDeploymentRoot, err := replayPegInAddressRegistryDeployment(deploymentEvents, startBlock)
-	if err != nil {
-		return err
-	}
-	if deploymentRoot != replayedDeploymentRoot {
-		return fmt.Errorf("PegIn address registry deployment block %d already has registry state", startBlock)
-	}
-	return nil
-}
-
-func replayPegInAddressRegistryDeployment(
-	deploymentEvents []blockchain.AddressRegistered,
-	startBlock uint64,
-) ([32]byte, error) {
-	sort.Slice(deploymentEvents, func(first, second int) bool {
-		return deploymentEvents[first].LogIndex < deploymentEvents[second].LogIndex
-	})
-	replayedDeploymentRoot := [32]byte{}
-	for _, event := range deploymentEvents {
-		if event.BlockNumber != startBlock {
-			return [32]byte{}, fmt.Errorf(
-				"PegIn address registry returned block %d while validating deployment block %d",
-				event.BlockNumber,
-				startBlock,
-			)
-		}
-		var err error
-		replayedDeploymentRoot, err = blockchain.FoldPegInAddressRegistryRoot(replayedDeploymentRoot, event.RskAddress)
-		if err != nil {
-			return [32]byte{}, fmt.Errorf(
-				"validate PegIn address registry event at deployment block %d: %w",
-				startBlock,
-				err,
-			)
-		}
-		if event.RegistrationRoot != replayedDeploymentRoot {
-			return [32]byte{}, fmt.Errorf(
-				"PegIn address registry event root differs at deployment block %d",
-				startBlock,
-			)
-		}
-	}
-	return replayedDeploymentRoot, nil
 }
 
 func (app *Application) enabledWatchers() []watcher.Watcher {

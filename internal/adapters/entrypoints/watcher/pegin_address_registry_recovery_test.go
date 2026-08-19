@@ -11,11 +11,9 @@ import (
 	"testing"
 	"time"
 
-	watcherAdapter "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	watcherUseCase "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -308,20 +306,20 @@ func (chain *rskChain) requestedRanges() [][2]uint64 {
 // registryRestartFixture owns everything that outlives a restart: the watch set, the RSK chain, and
 // the Bitcoin node's wallet.
 type registryRestartFixture struct {
-	t        *testing.T
-	store    *registryWatchStore
-	chain    *rskChain
+	t          *testing.T
+	store      *registryWatchStore
+	chain      *rskChain
 	registry   *mocks.PegInAddressRegistryContractMock
 	rskRpc     *mocks.RootstockRpcServerMock
 	btcNetwork *mocks.BtcRpcMock
 	wallet     *mocks.BitcoinWalletMock
 	eventBus   *registryReorgEventBus
 
-	mutex         sync.Mutex
-	deposits      map[string]depositAddress
-	imports       []string
-	heightCalls   int
-	rootReads     []uint64
+	mutex       sync.Mutex
+	deposits    map[string]depositAddress
+	imports     []string
+	heightCalls int
+	rootReads   []uint64
 
 	startBlock    uint64
 	pageSize      uint64
@@ -536,14 +534,7 @@ func (fixture *registryRestartFixture) rootReadBlocks() []uint64 {
 func (fixture *registryRestartFixture) startScanner() *watcherSession {
 	fixture.t.Helper()
 	ticker := newSessionTicker()
-	discover := watcherUseCase.NewDiscoverRegisteredAddressUseCase(
-		fixture.store,
-		fixture.registry,
-		fixture.wallet,
-	)
-	getWatched := watcherUseCase.NewGetWatchedRegisteredAddressesUseCase(fixture.store)
-	return startWatcherSession(fixture.t, watcherAdapter.NewPegInAddressRegistryWatcher(
-		watcherAdapter.NewPegInAddressRegistryWatcherUseCases(discover, getWatched),
+	return startWatcherSession(fixture.t, newRegistryWatcher(
 		fixture.store,
 		fixture.registry,
 		fixture.rskRpc,
@@ -566,6 +557,7 @@ func (fixture *registryRestartFixture) scanOnce() {
 }
 
 // Wherever the process stops, one registration must converge on one imported watch entry.
+//
 //nolint:funlen // The three scanner boundaries share one world and one convergence assertion.
 func TestPegInAddressRegistryWatcher_ConvergesAfterRestartAtEveryBoundary(t *testing.T) {
 	const registrationBlock = 101

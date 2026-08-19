@@ -47,6 +47,7 @@ const (
 	GetWatchedPegoutQuoteId         UseCaseId = "GetWatchedPegoutQuote"
 	DiscoverRegisteredAddressId     UseCaseId = "DiscoverRegisteredAddress"
 	GetWatchedRegisteredAddressesId UseCaseId = "GetWatchedRegisteredAddresses"
+	ReplayRegisteredAddressesId     UseCaseId = "ReplayRegisteredAddresses"
 	ExpiredPeginQuoteId             UseCaseId = "ExpiredPeginQuote"
 	ExpiredPegoutQuoteId            UseCaseId = "ExpiredPegoutQuote"
 	UpdatePegoutDepositId           UseCaseId = "UpdatePegoutDeposit"

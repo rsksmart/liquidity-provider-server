@@ -7,10 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	watcherAdapter "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	watcherUseCase "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -223,14 +221,7 @@ func newCheckpointRestartScenario(t *testing.T) *checkpointRestartScenario {
 func (scenario *checkpointRestartScenario) scanOnce(t *testing.T) {
 	t.Helper()
 	ticker := newSessionTicker()
-	discover := watcherUseCase.NewDiscoverRegisteredAddressUseCase(
-		scenario.store,
-		scenario.registry,
-		scenario.wallet,
-	)
-	getWatched := watcherUseCase.NewGetWatchedRegisteredAddressesUseCase(scenario.store)
-	watcher := watcherAdapter.NewPegInAddressRegistryWatcher(
-		watcherAdapter.NewPegInAddressRegistryWatcherUseCases(discover, getWatched),
+	watcher := newRegistryWatcher(
 		scenario.store,
 		scenario.registry,
 		scenario.rskRpc,

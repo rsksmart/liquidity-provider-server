@@ -42,11 +42,9 @@ func NewWatcherRegistry(
 	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
 	lpRegistry *LiquidityProvider,
-	dbRegistry *Database,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,
-	peginAddressRegistry environment.PegInAddressRegistryWatcherConfig,
 ) *WatcherRegistry {
 	appMetrics := monitoring.NewMetrics(prometheus.DefaultRegisterer)
 
@@ -56,18 +54,12 @@ func NewWatcherRegistry(
 		PegInAddressRegistryWatcher: watcher.NewPegInAddressRegistryWatcher(
 			watcher.NewPegInAddressRegistryWatcherUseCases(
 				useCaseRegistry.discoverRegisteredAddressUseCase,
-				useCaseRegistry.getWatchedRegisteredAddressesUseCase,
+				useCaseRegistry.replayRegisteredAddressesUseCase,
 			),
-			dbRegistry.PegInAddressRegistryWatchRepository,
-			rskRegistry.Contracts.PegInAddressRegistry,
-			messaging.Rpc.Rsk,
 			messaging.Rpc.Btc,
 			btcRegistry.MonitoringWallet,
 			messaging.EventBus,
 			tickers.PegInAddressRegistryWatcherTicker,
-			peginAddressRegistry.StartBlock,
-			peginAddressRegistry.PageSize,
-			env.Rsk.FillWithDefaults().MaxReorgDepth,
 		),
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
 			watcher.NewPeginDepositAddressWatcherUseCases(

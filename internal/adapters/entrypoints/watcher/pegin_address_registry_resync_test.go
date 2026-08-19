@@ -93,7 +93,13 @@ func (repository *overlappingReplayRepository) checkpointState() (
 	return repository.checkpoint, repository.found, repository.setCalls, repository.deleteCalls
 }
 
-func TestPegInAddressRegistryWatcher_TrustedCheckpointWaitsForConfiguredStart(t *testing.T) {
+func newShortHeadCheckpointWatcher(t *testing.T) (
+	*overlappingReplayRepository,
+	*mocks.PegInAddressRegistryContractMock,
+	*PegInAddressRegistryWatcher,
+	rootstock.PegInAddressRegistryWatchCheckpoint,
+) {
+	t.Helper()
 	original := rootstock.PegInAddressRegistryWatchCheckpoint{
 		LocalRoot:          [32]byte{1},
 		LastProcessedBlock: 105,
@@ -111,7 +117,11 @@ func TestPegInAddressRegistryWatcher_TrustedCheckpointWaitsForConfiguredStart(t 
 		10,
 		2,
 	)
-	require.NoError(t, watcher.Prepare(context.Background()))
+	return repository, registry, watcher, original
+}
+
+func TestPegInAddressRegistryWatcher_ScanKeepsCheckpointWhenHeadIsBelowStart(t *testing.T) {
+	repository, registry, watcher, original := newShortHeadCheckpointWatcher(t)
 
 	require.NoError(t, watcher.scan(context.Background()))
 
@@ -124,27 +134,8 @@ func TestPegInAddressRegistryWatcher_TrustedCheckpointWaitsForConfiguredStart(t 
 	registry.AssertNotCalled(t, "GetRegistrationRoot", mock.Anything, mock.Anything)
 }
 
-func TestPegInAddressRegistryWatcher_ReorgBelowConfiguredStartRemainsCold(t *testing.T) {
-	repository := &overlappingReplayRepository{
-		checkpoint: rootstock.PegInAddressRegistryWatchCheckpoint{
-			LocalRoot:          [32]byte{1},
-			LastProcessedBlock: 105,
-		},
-		found: true,
-	}
-	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(101), nil).Once()
-	watcher := newTestPegInAddressRegistryWatcher(
-		repository,
-		registry,
-		rskRpc,
-		mocks.NewBitcoinWalletMock(t),
-		100,
-		10,
-		2,
-	)
-	require.NoError(t, watcher.Prepare(context.Background()))
+func TestPegInAddressRegistryWatcher_ResyncDeletesCheckpointWhenHeadIsBelowStart(t *testing.T) {
+	repository, registry, watcher, _ := newShortHeadCheckpointWatcher(t)
 
 	require.NoError(t, watcher.resync(context.Background()))
 
@@ -238,22 +229,25 @@ func newTestPegInAddressRegistryWatcher(
 	pageSize uint64,
 	finalityDepth uint64,
 ) *PegInAddressRegistryWatcher {
-	useCases := NewPegInAddressRegistryWatcherUseCases(
-		w.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet),
-		w.NewGetWatchedRegisteredAddressesUseCase(repository),
-	)
-	return NewPegInAddressRegistryWatcher(
-		useCases,
+	discover := w.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet)
+	getWatched := w.NewGetWatchedRegisteredAddressesUseCase(repository)
+	replay := w.NewReplayRegisteredAddressesUseCase(
+		discover,
+		getWatched,
 		repository,
 		registry,
 		rskRpc,
 		nil,
-		wallet,
-		nil,
-		nil,
 		startBlock,
 		pageSize,
 		finalityDepth,
+	)
+	return NewPegInAddressRegistryWatcher(
+		NewPegInAddressRegistryWatcherUseCases(discover, replay),
+		nil,
+		wallet,
+		nil,
+		nil,
 	)
 }
 
@@ -332,7 +326,7 @@ func TestPegInAddressRegistryWatcher_LogsRootReadFailureWithoutPublishingCheckpo
 	assert.Equal(t, "error", logEntries[0].Level())
 	assert.Equal(
 		t,
-		"PegIn address registry watcher scan failed: get PegIn address registry root: RSK registry root read failed",
+		"PegIn address registry watcher scan failed: ReplayRegisteredAddresses: get PegIn address registry root: RSK registry root read failed",
 		logEntries[0].Message(),
 	)
 	checkpoint, found, setCalls, deleteCalls := repository.checkpointState()

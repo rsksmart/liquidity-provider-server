@@ -11,8 +11,10 @@ import (
 	"testing"
 
 	watcherAdapter "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	watcherUseCase "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -88,14 +90,7 @@ func newPegInAddressRegistryWatcherFixture(
 		ticker:     newSessionTicker(),
 	}
 	t.Cleanup(func() { fixture.btcNetwork.AssertExpectations(t) })
-	discover := watcherUseCase.NewDiscoverRegisteredAddressUseCase(
-		fixture.repository,
-		fixture.registry,
-		fixture.wallet,
-	)
-	getWatched := watcherUseCase.NewGetWatchedRegisteredAddressesUseCase(fixture.repository)
-	fixture.watcher = watcherAdapter.NewPegInAddressRegistryWatcher(
-		watcherAdapter.NewPegInAddressRegistryWatcherUseCases(discover, getWatched),
+	fixture.watcher = newRegistryWatcher(
 		fixture.repository,
 		fixture.registry,
 		fixture.rskRpc,
@@ -108,6 +103,40 @@ func newPegInAddressRegistryWatcherFixture(
 		finalityDepth,
 	)
 	return fixture
+}
+
+func newRegistryWatcher(
+	repository rootstock.PegInAddressRegistryWatchRepositorySet,
+	registry blockchain.PegInAddressRegistryContract,
+	rskRpc blockchain.RootstockRpcServer,
+	btcNetwork blockchain.BitcoinNetwork,
+	wallet blockchain.BitcoinWallet,
+	eventBus entities.EventBus,
+	ticker utils.Ticker,
+	startBlock uint64,
+	pageSize uint64,
+	finalityDepth uint64,
+) *watcherAdapter.PegInAddressRegistryWatcher {
+	discover := watcherUseCase.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet)
+	getWatched := watcherUseCase.NewGetWatchedRegisteredAddressesUseCase(repository)
+	replay := watcherUseCase.NewReplayRegisteredAddressesUseCase(
+		discover,
+		getWatched,
+		repository,
+		registry,
+		rskRpc,
+		eventBus,
+		startBlock,
+		pageSize,
+		finalityDepth,
+	)
+	return watcherAdapter.NewPegInAddressRegistryWatcher(
+		watcherAdapter.NewPegInAddressRegistryWatcherUseCases(discover, replay),
+		btcNetwork,
+		wallet,
+		eventBus,
+		ticker,
+	)
 }
 
 func (fixture *pegInAddressRegistryWatcherFixture) expectBoundedRescan() {
@@ -168,13 +197,6 @@ func (fixture *pegInAddressRegistryWatcherFixture) runScan() {
 
 func TestPegInAddressRegistryWatcher_DoesNotQueryOrCheckpointBeforeConfiguredStart(t *testing.T) {
 	fixture := newPegInAddressRegistryWatcherFixture(t, 100, 10, 2)
-	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInAddressRegistryWatchEntry{{
-		TxHash:     "pending",
-		LogIndex:   1,
-		RskAddress: "0x00000000000000000000000000000000000000a1",
-		State:      rootstock.PegInAddressRegistryWatchDiscovered,
-	}}, nil).Once()
-	fixture.expectCheckpoint(rootstock.PegInAddressRegistryWatchCheckpoint{}, false)
 	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(101), nil).Once()
 
 	fixture.runScan()

@@ -93,6 +93,7 @@ type UseCaseRegistry struct {
 	nodePeerCheckUseCase                 *watcher.NodePeerCheckUseCase
 	discoverRegisteredAddressUseCase     *watcher.DiscoverRegisteredAddressUseCase
 	getWatchedRegisteredAddressesUseCase *watcher.GetWatchedRegisteredAddressesUseCase
+	replayRegisteredAddressesUseCase     *watcher.ReplayRegisteredAddressesUseCase
 }
 
 // NewUseCaseRegistry
@@ -107,6 +108,30 @@ func NewUseCaseRegistry(
 	mutexes entities.ApplicationMutexes,
 ) *UseCaseRegistry {
 	env.ColdWallet.FillWithDefaults()
+
+	discoverRegisteredAddressUseCase := watcher.NewDiscoverRegisteredAddressUseCase(
+		databaseRegistry.PegInAddressRegistryWatchRepository,
+		rskRegistry.Contracts.PegInAddressRegistry,
+		btcRegistry.MonitoringWallet,
+	)
+	getWatchedRegisteredAddressesUseCase := watcher.NewGetWatchedRegisteredAddressesUseCase(
+		databaseRegistry.PegInAddressRegistryWatchRepository,
+	)
+	registryWatcherConfig, configErr := env.Pegin.AddressRegistryWatcherConfig()
+	if configErr != nil {
+		registryWatcherConfig = environment.PegInAddressRegistryWatcherConfig{}
+	}
+	replayRegisteredAddressesUseCase := watcher.NewReplayRegisteredAddressesUseCase(
+		discoverRegisteredAddressUseCase,
+		getWatchedRegisteredAddressesUseCase,
+		databaseRegistry.PegInAddressRegistryWatchRepository,
+		rskRegistry.Contracts.PegInAddressRegistry,
+		messaging.Rpc.Rsk,
+		messaging.EventBus,
+		registryWatcherConfig.StartBlock,
+		registryWatcherConfig.PageSize,
+		env.Rsk.FillWithDefaults().MaxReorgDepth,
+	)
 
 	getLiquidityRatio := liquidity_provider.NewGetLiquidityRatioUseCase(
 		lpRegistry.LiquidityProvider,
@@ -157,16 +182,11 @@ func NewUseCaseRegistry(
 			databaseRegistry.TrustedAccountRepository,
 			signingHashFunction,
 		),
-		getWatchedPeginQuoteUseCase: watcher.NewGetWatchedPeginQuoteUseCase(databaseRegistry.PeginRepository),
-		discoverRegisteredAddressUseCase: watcher.NewDiscoverRegisteredAddressUseCase(
-			databaseRegistry.PegInAddressRegistryWatchRepository,
-			rskRegistry.Contracts.PegInAddressRegistry,
-			btcRegistry.MonitoringWallet,
-		),
-		getWatchedRegisteredAddressesUseCase: watcher.NewGetWatchedRegisteredAddressesUseCase(
-			databaseRegistry.PegInAddressRegistryWatchRepository,
-		),
-		expiredPeginQuoteUseCase: pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
+		getWatchedPeginQuoteUseCase:          watcher.NewGetWatchedPeginQuoteUseCase(databaseRegistry.PeginRepository),
+		discoverRegisteredAddressUseCase:     discoverRegisteredAddressUseCase,
+		getWatchedRegisteredAddressesUseCase: getWatchedRegisteredAddressesUseCase,
+		replayRegisteredAddressesUseCase:     replayRegisteredAddressesUseCase,
+		expiredPeginQuoteUseCase:             pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
@@ -658,4 +678,14 @@ func (registry *UseCaseRegistry) GetLiquidityRatioUseCase() *liquidity_provider.
 
 func (registry *UseCaseRegistry) SetLiquidityRatioUseCase() *liquidity_provider.SetLiquidityRatioUseCase {
 	return registry.setLiquidityRatioUseCase
+}
+
+func (registry *UseCaseRegistry) ReplayRegisteredAddressesUseCase() *watcher.ReplayRegisteredAddressesUseCase {
+	return registry.replayRegisteredAddressesUseCase
+}
+
+func NewUseCaseRegistryWithReplayRegisteredAddresses(
+	replay *watcher.ReplayRegisteredAddressesUseCase,
+) *UseCaseRegistry {
+	return &UseCaseRegistry{replayRegisteredAddressesUseCase: replay}
 }
