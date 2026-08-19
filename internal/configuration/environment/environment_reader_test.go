@@ -32,6 +32,7 @@ func setUpEnv(t *testing.T) {
 		"ECLIPSE_ALERT_COOLDOWN_SECONDS":       "60",
 		"ECLIPSE_CHECK_ENABLED":                "true",
 		"BTC_RELEASE_WATCHER_START_BLOCK":      "1",
+		"PEGOUT_ESCROW_ADDRESS":                "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA1",
 		"USE_SEGWIT_FEDERATION":                "true",
 		"ALLOWED_ORIGINS":                      "http://example.com,http://example2.com",
 		"REBALANCE_STRATEGY":                   "ALL_AT_ONCE",
