@@ -13,6 +13,7 @@ import (
 
 const (
 	AcceptedPegoutQuoteEventId  entities.EventId = "AcceptedPegoutQuote"
+	ClaimedPegoutQuoteEventId   entities.EventId = "ClaimedPegoutQuote"
 	PegoutBtcSentEventId        entities.EventId = "PegoutBtcSent"
 	PegoutQuoteCompletedEventId entities.EventId = "PegoutQuoteCompleted"
 )
@@ -30,6 +31,7 @@ const (
 	PegoutStateBridgeTxSucceeded              PegoutState = "BridgeTxSucceeded"
 	PegoutStateBridgeTxFailed                 PegoutState = "BridgeTxFailed"
 	PegoutStateBtcReleased                    PegoutState = "BtcReleased"
+	PegoutStateClaimed                        PegoutState = "Claimed"
 )
 
 type PegoutQuoteRepository interface {
@@ -198,6 +200,12 @@ type AcceptedPegoutQuoteEvent struct {
 	Quote         PegoutQuote
 	RetainedQuote RetainedPegoutQuote
 	CreationData  PegoutCreationData
+}
+
+type ClaimedPegoutQuoteEvent struct {
+	entities.Event
+	Quote         PegoutQuote
+	RetainedQuote RetainedPegoutQuote
 }
 
 type PegoutDeposit struct {
