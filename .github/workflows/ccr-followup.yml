@@ -1,0 +1,224 @@
+name: Copilot Code Review follow-up
+
+# Posts Copilot reconciliation + authored Rootstock lessons after a Copilot
+# code review. pull_request_review workflows must live on the default branch to
+# run automatically; workflow_dispatch supports dry-runs before that merge.
+
+on:
+  pull_request_review:
+    types: [submitted]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number
+        required: true
+        type: string
+      review_id:
+        description: Copilot review id to treat as current (leave empty for latest)
+        required: false
+        type: string
+      dry_run:
+        description: If true, compute artifacts but do not post comments
+        required: false
+        type: boolean
+        default: false
+      skip_lessons:
+        description: If true, skip the Copilot CLI lessons step
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  copilot-requests: write
+
+env:
+  COPILOT_MODEL: gpt-5.3-codex
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  REPO: ${{ github.repository }}
+  PYTHONPATH: .github/scripts/copilot-review-followup
+
+jobs:
+  followup:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.review.user.login == 'copilot-pull-request-reviewer[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      has_lessons: ${{ steps.reconciliation.outputs.has_lessons }}
+      review_id: ${{ steps.reconciliation.outputs.review_id }}
+      pr_number: ${{ steps.reconciliation.outputs.pr_number }}
+    steps:
+      - name: Resolve PR and review
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_REVIEW_ID: ${{ inputs.review_id }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_SKIP_LESSONS: ${{ inputs.skip_lessons }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_REVIEW_ID: ${{ github.event.review.id }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "secrets.GITHUB_TOKEN is required" >&2
+            exit 1
+          fi
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            PR="$INPUT_PR_NUMBER"
+            REVIEW_ID="$INPUT_REVIEW_ID"
+            if [ -z "$REVIEW_ID" ]; then
+              REVIEW_ID="$(gh api "repos/${REPO}/pulls/${PR}/reviews" \
+                --jq '[.[] | select(.user.login=="copilot-pull-request-reviewer[bot]")] | last | .id')"
+            fi
+            HEAD_SHA="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
+            DRY_RUN="$INPUT_DRY_RUN"
+            SKIP_LESSONS="$INPUT_SKIP_LESSONS"
+          else
+            PR="$EVENT_PR_NUMBER"
+            REVIEW_ID="$EVENT_REVIEW_ID"
+            HEAD_SHA="$EVENT_HEAD_SHA"
+            DRY_RUN="false"
+            SKIP_LESSONS="false"
+          fi
+          if [ -z "$REVIEW_ID" ] || [ "$REVIEW_ID" = "null" ]; then
+            echo "No Copilot review id resolved" >&2
+            exit 1
+          fi
+          {
+            echo "pr_number=$PR"
+            echo "review_id=$REVIEW_ID"
+            echo "head_sha=$HEAD_SHA"
+            echo "dry_run=$DRY_RUN"
+            echo "skip_lessons=$SKIP_LESSONS"
+          } >> "$GITHUB_OUTPUT"
+          echo "Resolved PR=$PR review=$REVIEW_ID head=$HEAD_SHA dry_run=$DRY_RUN"
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ steps.meta.outputs.head_sha }}
+
+      - name: Run reconciliation
+        id: reconciliation
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          REVIEW_ID: ${{ steps.meta.outputs.review_id }}
+          OUT_DIR: ${{ runner.temp }}/ccr
+          DRY_RUN: ${{ steps.meta.outputs.dry_run == 'true' && '1' || '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT_DIR"
+          python3 -m reconciliation.main
+          if [ -f "$OUT_DIR/reconciliation.md" ]; then
+            {
+              echo "## Reconciliation draft"
+              echo '```markdown'
+              cat "$OUT_DIR/reconciliation.md"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          {
+            echo "## Lessons input"
+            echo '```json'
+            cat "$OUT_DIR/lessons-input.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload follow-up artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ccr-followup-${{ steps.meta.outputs.pr_number }}-${{ steps.meta.outputs.review_id }}
+          path: ${{ runner.temp }}/ccr/
+          if-no-files-found: ignore
+
+      - name: Build lessons prompt
+        id: prompt
+        if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
+        env:
+          REVIEW_ID: ${{ steps.meta.outputs.review_id }}
+          SCHEMA_PATH: .github/scripts/copilot-review-followup/resources/lesson-schema.md
+          PROMPT_TEMPLATE_PATH: .github/scripts/copilot-review-followup/resources/lessons-prompt.md
+          FINDINGS_PATH: ${{ runner.temp }}/ccr/lessons-input.json
+          PROMPT_OUT: ${{ runner.temp }}/ccr/lessons-prompt.filled.md
+        run: python3 -m lessons.main build-prompt
+
+      - name: Set up Node.js
+        if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+
+      - name: Install Copilot CLI
+        if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
+        run: npm install -g @github/copilot
+
+      - name: Author lessons with Copilot CLI
+        id: lessons_ai
+        if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
+        continue-on-error: true
+        env:
+          PROMPT_FILE: ${{ runner.temp }}/ccr/lessons-prompt.filled.md
+          OUT_FILE: ${{ runner.temp }}/ccr/lessons-comment.md
+          ERROR_FILE: ${{ runner.temp }}/ccr/copilot.err
+        run: |
+          set -uo pipefail
+          rc=0
+          # The prompt only generates text, so expose no tools at all
+          copilot -p "$(cat "$PROMPT_FILE")" \
+            --model "$COPILOT_MODEL" \
+            --available-tools='' \
+            --disable-builtin-mcps \
+            --no-ask-user -s \
+            > "$OUT_FILE" 2> "$ERROR_FILE" || rc=$?
+
+          if [ "$rc" -ne 0 ] || [ ! -s "$OUT_FILE" ]; then
+            echo "Copilot CLI failed (exit $rc) or produced no output" >&2
+            echo "----- copilot stderr -----" >&2
+            cat "$ERROR_FILE" >&2 || true
+            echo "----- copilot stdout -----" >&2
+            cat "$OUT_FILE" >&2 || true
+            {
+              echo "## Lessons authoring failed (exit $rc)"
+              echo '```'
+              cat "$ERROR_FILE" || true
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          {
+            echo "## Lessons draft"
+            echo '```markdown'
+            cat "$OUT_FILE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post lessons comment
+        if: >-
+          steps.reconciliation.outputs.has_lessons == 'true' &&
+          steps.meta.outputs.skip_lessons != 'true' &&
+          steps.lessons_ai.outcome == 'success'
+        env:
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          REVIEW_ID: ${{ steps.meta.outputs.review_id }}
+          LESSONS_BODY_PATH: ${{ runner.temp }}/ccr/lessons-comment.md
+          DRY_RUN: ${{ steps.meta.outputs.dry_run == 'true' && '1' || '' }}
+        run: python3 -m lessons.main post
+
+      - name: Note lessons failure
+        if: >-
+          steps.reconciliation.outputs.has_lessons == 'true' &&
+          steps.meta.outputs.skip_lessons != 'true' &&
+          steps.lessons_ai.outcome != 'success' &&
+          steps.meta.outputs.dry_run != 'true'
+        env:
+          PR: ${{ steps.meta.outputs.pr_number }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          BODY="ccr-followup: lessons skipped — Copilot CLI authoring failed (see workflow run ${GITHUB_RUN_ID})"
+          gh api "repos/${REPO}/issues/${PR}/comments" -X POST -f body="$BODY"
