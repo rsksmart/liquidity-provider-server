@@ -380,3 +380,98 @@ func TestPegoutBtcTransferWatcher(t *testing.T) {
 		}, time.Second*5, time.Millisecond*100)
 	})
 }
+
+// nolint:funlen
+func TestPegoutBtcTransferWatcher_Step8_ConfirmationTierReadsConfig(t *testing.T) {
+	const requiredConfirmations = 7
+	lp := new(mocks.ProviderMock)
+	lp.On("GeneralConfiguration", mock.Anything).Return(liquidity_provider.GeneralConfiguration{
+		BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
+			"5000": requiredConfirmations,
+		},
+	})
+
+	testRetainedQuote := quote.RetainedPegoutQuote{
+		QuoteHash:         "a1b2c3",
+		DepositAddress:    test.AnyAddress,
+		LpBtcTxHash:       "d4e5f6",
+		State:             quote.PegoutStateSendPegoutSucceeded,
+		RequiredLiquidity: entities.NewWei(5000),
+	}
+	testPegoutQuote := quote.PegoutQuote{Nonce: 9, TransferConfirmations: 1}
+
+	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
+	btcRpc := &mocks.BtcRpcMock{}
+	rpc := blockchain.Rpc{Btc: btcRpc}
+	eventBus := &mocks.EventBusMock{}
+	pegoutSentChannel := make(chan entities.Event)
+	eventBus.On("Subscribe", quote.PegoutBtcSentEventId).Return((<-chan entities.Event)(pegoutSentChannel))
+	eventBus.On("Publish", mock.Anything).Return(nil)
+	tickerChannel := make(chan time.Time)
+	ticker := &mocks.TickerMock{}
+	ticker.EXPECT().C().Return(tickerChannel)
+	ticker.EXPECT().Stop().Return()
+	mutex := new(mocks.MutexMock)
+	mutex.On("Lock").Return(nil)
+	mutex.On("Unlock").Return()
+	pegoutContract := &mocks.PegoutContractMock{}
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	refundUseCase := pegout.NewRefundPegoutUseCase(pegoutRepository, blockchain.RskContracts{PegOut: pegoutContract}, eventBus, rpc, lp, mutex)
+	pegoutWatcher := watcher.NewPegoutBtcTransferWatcher(nil, refundUseCase, lp, rpc, eventBus, ticker)
+
+	go pegoutWatcher.Start()
+	t.Cleanup(func() {
+		closeChannel := make(chan bool)
+		go pegoutWatcher.Shutdown(closeChannel)
+		<-closeChannel
+	})
+
+	pegoutSentChannel <- quote.PegoutBtcSentToUserEvent{
+		Event:         entities.NewBaseEvent(quote.PegoutBtcSentEventId),
+		PegoutQuote:   testPegoutQuote,
+		RetainedQuote: testRetainedQuote,
+	}
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		_, ok := pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
+		assert.True(collect, ok)
+	}, time.Second, 10*time.Millisecond)
+
+	t.Run("below configured tier does not refund", func(t *testing.T) {
+		btcRpc.ExpectedCalls = nil
+		btcRpc.Calls = nil
+		btcRpc.On("GetHeight").Return(big.NewInt(20), nil).Once()
+		btcRpc.On("GetTransactionInfo", testRetainedQuote.LpBtcTxHash).Return(
+			blockchain.BitcoinTransactionInformation{Confirmations: uint64(requiredConfirmations - 1)}, nil,
+		).Once()
+		tickerChannel <- time.Now()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			btcRpc.AssertExpectations(mt)
+			watched, ok := pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
+			assert.True(collect, ok)
+			assert.Equal(collect, quote.PegoutStateSendPegoutSucceeded, watched.RetainedQuote.State)
+		}, time.Second, 10*time.Millisecond)
+		pegoutRepository.AssertNotCalled(t, "UpdateRetainedQuote")
+	})
+
+	t.Run("at configured tier attempts refund", func(t *testing.T) {
+		btcRpc.ExpectedCalls = nil
+		btcRpc.Calls = nil
+		pegoutRepository.ExpectedCalls = nil
+		pegoutRepository.Calls = nil
+		checkFunction := test.AssertLogContains(t, "Error executing refund pegout on quote")
+		btcRpc.On("GetHeight").Return(big.NewInt(21), nil).Once()
+		btcRpc.On("GetTransactionInfo", testRetainedQuote.LpBtcTxHash).Return(
+			blockchain.BitcoinTransactionInformation{Confirmations: uint64(requiredConfirmations)}, nil,
+		).Twice()
+		btcRpc.On("BuildMerkleBranch", mock.Anything).Return(blockchain.MerkleBranch{}, assert.AnError).Once()
+		tickerChannel <- time.Now()
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			mt := newMockCollectT(collect)
+			btcRpc.AssertExpectations(mt)
+			_, ok := pegoutWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
+			assert.True(collect, ok)
+		}, time.Second, 10*time.Millisecond)
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
+	})
+}
