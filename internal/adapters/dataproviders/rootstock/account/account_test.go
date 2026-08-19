@@ -149,6 +149,7 @@ func TestGetRskAccountWithDerivation(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 func TestGetAccount_ErrorHandling(t *testing.T) {
 	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-%d", time.Now().UnixNano()))
 	keyFile, setupErr := os.Open(keyPath)
