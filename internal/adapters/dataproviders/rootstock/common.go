@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -78,6 +79,20 @@ func ParseAddress(address *common.Address, textAddress string) error {
 	}
 	*address = common.HexToAddress(textAddress)
 	return nil
+}
+
+func bigIntToWei(value *big.Int) *entities.Wei {
+	if value == nil {
+		return entities.NewWei(0)
+	}
+	return entities.NewBigWei(value)
+}
+
+func bigIntToUint64(value *big.Int) uint64 {
+	if value == nil {
+		return 0
+	}
+	return value.Uint64()
 }
 
 func rskRetry[R any](retries uint, retrySleep time.Duration, call func() (R, error)) (R, error) {
