@@ -34,7 +34,7 @@ type RskContracts struct {
 	Discovery             DiscoveryContract
 	PegInAddressRegistry  PegInAddressRegistryContract
 	FlyoverConfigurations FlyoverConfigurationsContract
-	PegOutEscrow PegOutEscrowContract
+	PegOutEscrow          PegOutEscrowContract
 }
 
 func DecodeStringTrimPrefix(hexString string) ([]byte, error) {

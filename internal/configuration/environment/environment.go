@@ -52,6 +52,8 @@ type RskEnv struct {
 	DiscoveryAddress             string `env:"DISCOVERY_ADDRESS" validate:"required"`
 	PegInAddressRegistryAddress  string `env:"PEGIN_ADDRESS_REGISTRY_ADDRESS" validate:"required"`
 	FlyoverConfigurationsAddress string `env:"FLYOVER_CONFIGURATIONS_ADDRESS" validate:"required"`
+	// PegOutEscrowAddress is optional. When empty the escrow adapter is not wired and
+	// the LPS behaves as it does today.
 	PegOutEscrowAddress         string   `env:"PEGOUT_ESCROW_ADDRESS"`
 	BridgeAddress               string   `env:"RSK_BRIDGE_ADDR" validate:"required"`
 	BridgeRequiredConfirmations uint64   `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
