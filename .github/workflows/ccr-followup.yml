@@ -37,6 +37,7 @@ env:
   COPILOT_MODEL: gpt-5.3-codex
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   REPO: ${{ github.repository }}
+  PYTHONPATH: .github/scripts/copilot-review-followup
 
 jobs:
   followup:
@@ -45,9 +46,9 @@ jobs:
       github.event.review.user.login == 'copilot-pull-request-reviewer[bot]'
     runs-on: ubuntu-latest
     outputs:
-      has_lessons: ${{ steps.recon.outputs.has_lessons }}
-      review_id: ${{ steps.recon.outputs.review_id }}
-      pr_number: ${{ steps.recon.outputs.pr_number }}
+      has_lessons: ${{ steps.reconciliation.outputs.has_lessons }}
+      review_id: ${{ steps.reconciliation.outputs.review_id }}
+      pr_number: ${{ steps.reconciliation.outputs.pr_number }}
     steps:
       - name: Resolve PR and review
         id: meta
@@ -102,7 +103,7 @@ jobs:
           ref: ${{ steps.meta.outputs.head_sha }}
 
       - name: Run reconciliation
-        id: recon
+        id: reconciliation
         env:
           PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
           REVIEW_ID: ${{ steps.meta.outputs.review_id }}
@@ -111,12 +112,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$OUT_DIR"
-          python3 .github/scripts/ccr-followup/reconciliation.py
-          if [ -f "$OUT_DIR/recon.md" ]; then
+          python3 -m reconciliation.main
+          if [ -f "$OUT_DIR/reconciliation.md" ]; then
             {
               echo "## Reconciliation draft"
               echo '```markdown'
-              cat "$OUT_DIR/recon.md"
+              cat "$OUT_DIR/reconciliation.md"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -136,28 +137,28 @@ jobs:
 
       - name: Build lessons prompt
         id: prompt
-        if: steps.recon.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
+        if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
         env:
           REVIEW_ID: ${{ steps.meta.outputs.review_id }}
-          SCHEMA_PATH: .github/scripts/ccr-followup/lesson-schema.md
-          PROMPT_TEMPLATE_PATH: .github/scripts/ccr-followup/lessons-prompt.md
+          SCHEMA_PATH: .github/scripts/copilot-review-followup/resources/lesson-schema.md
+          PROMPT_TEMPLATE_PATH: .github/scripts/copilot-review-followup/resources/lessons-prompt.md
           FINDINGS_PATH: ${{ runner.temp }}/ccr/lessons-input.json
           PROMPT_OUT: ${{ runner.temp }}/ccr/lessons-prompt.filled.md
-        run: python3 .github/scripts/ccr-followup/lessons.py build-prompt
+        run: python3 -m lessons.main build-prompt
 
       - name: Set up Node.js
-        if: steps.recon.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
+        if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
 
       - name: Install Copilot CLI
-        if: steps.recon.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
+        if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
         run: npm install -g @github/copilot
 
       - name: Author lessons with Copilot CLI
         id: lessons_ai
-        if: steps.recon.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
+        if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
         continue-on-error: true
         env:
           PROMPT_FILE: ${{ runner.temp }}/ccr/lessons-prompt.filled.md
@@ -198,7 +199,7 @@ jobs:
 
       - name: Post lessons comment
         if: >-
-          steps.recon.outputs.has_lessons == 'true' &&
+          steps.reconciliation.outputs.has_lessons == 'true' &&
           steps.meta.outputs.skip_lessons != 'true' &&
           steps.lessons_ai.outcome == 'success'
         env:
@@ -206,11 +207,11 @@ jobs:
           REVIEW_ID: ${{ steps.meta.outputs.review_id }}
           LESSONS_BODY_PATH: ${{ runner.temp }}/ccr/lessons-comment.md
           DRY_RUN: ${{ steps.meta.outputs.dry_run == 'true' && '1' || '' }}
-        run: python3 .github/scripts/ccr-followup/lessons.py post
+        run: python3 -m lessons.main post
 
       - name: Note lessons failure
         if: >-
-          steps.recon.outputs.has_lessons == 'true' &&
+          steps.reconciliation.outputs.has_lessons == 'true' &&
           steps.meta.outputs.skip_lessons != 'true' &&
           steps.lessons_ai.outcome != 'success' &&
           steps.meta.outputs.dry_run != 'true'
