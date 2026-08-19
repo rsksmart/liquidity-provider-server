@@ -6,6 +6,10 @@ RUN apt-get update -y && \
 
 WORKDIR /code/powpeg
 
+# This release embeds rskj-core 9.0.2-VETIVER. It must stay consensus-compatible
+# with the rskj service (pinned in ../../../rskj/Dockerfile), or the federators
+# reject the block that commits a federation change and stop relaying BTC
+# headers. Move both pins together.
 ARG POWPEG_RELEASE="VETIVER"
 ARG POWPEG_VERSION="9.0.2.0"
 

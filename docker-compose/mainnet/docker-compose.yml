@@ -186,6 +186,12 @@ services:
       args:
         UID: "${LPS_UID}"
     image: rskj:latest
+    # The rskj Debian package ships a systemd unit with LimitNOFILE=500000.
+    # No systemd runs here, so the limit is set on the service instead.
+    ulimits:
+      nofile:
+        soft: 500000
+        hard: 500000
     container_name: rskj01
     ports:
       - "4444:4444"
