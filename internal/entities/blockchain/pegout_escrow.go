@@ -22,12 +22,12 @@ const (
 
 // PegOutRequested is the decoded PegOutRequested event of PegOutEscrow.
 type PegOutRequested struct {
-	RequestHash        string
-	RefundAddress      string
-	Amount             *entities.Wei
-	DestinationAddress []byte
-	TxHash             string
-	BlockNumber        uint64
+	RequestHash        string        `bson:"request_hash"`
+	RefundAddress      string        `bson:"refund_address"`
+	Amount             *entities.Wei `bson:"amount"`
+	DestinationAddress []byte        `bson:"destination_address"`
+	TxHash             string        `bson:"tx_hash"`
+	BlockNumber        uint64        `bson:"block_number"`
 }
 
 // PegOutClaimed is the decoded PegOutClaimed event of PegOutEscrow.
@@ -58,4 +58,12 @@ type PegOutEscrowContract interface {
 	GetPegOutRequestedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]PegOutRequested, error)
 	GetPegOutClaimedEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]PegOutClaimed, error)
 	GetPegOutCancelledEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]PegOutCancelled, error)
+}
+
+type PegOutEscrowWatchRepository interface {
+	GetCheckpoint(ctx context.Context) (lastScannedBlock uint64, found bool, err error)
+	SetCheckpoint(ctx context.Context, lastScannedBlock uint64) error
+	UpsertCandidate(ctx context.Context, candidate PegOutRequested) error
+	DeleteCandidate(ctx context.Context, requestHash string) error
+	ListCandidates(ctx context.Context) ([]PegOutRequested, error)
 }
