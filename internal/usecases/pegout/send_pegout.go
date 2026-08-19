@@ -156,6 +156,9 @@ func (useCase *SendPegoutUseCase) encodeHexAddress(hexAddress string) (string, e
 	if err != nil {
 		return "", err
 	}
+	if len(addressBytes) == 0 {
+		return "", nil
+	}
 	return useCase.rpc.Btc.EncodeAddress(addressBytes)
 }
 

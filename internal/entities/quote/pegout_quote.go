@@ -81,9 +81,9 @@ func PegoutCreationDataZeroValue() PegoutCreationData {
 type PegoutQuote struct {
 	LbcAddress            string        `json:"lbcAddress" bson:"lbc_address" validate:"required"`
 	LpRskAddress          string        `json:"lpRskAddress" bson:"lp_rsk_address" validate:"required"`
-	BtcRefundAddress      string        `json:"btcRefundAddress" bson:"btc_refund_address" validate:"required"`
+	BtcRefundAddress      string        `json:"btcRefundAddress" bson:"btc_refund_address" validate:"omitempty"`
 	RskRefundAddress      string        `json:"rskRefundAddress" bson:"rsk_refund_address" validate:"required"`
-	LpBtcAddress          string        `json:"lpBtcAddress" bson:"lp_btc_address" validate:"required"`
+	LpBtcAddress          string        `json:"lpBtcAddress" bson:"lp_btc_address" validate:"omitempty"`
 	CallFee               *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
 	PenaltyFee            *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
 	Nonce                 int64         `json:"nonce" bson:"nonce" validate:"required"`
