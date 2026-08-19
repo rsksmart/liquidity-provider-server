@@ -191,7 +191,6 @@ func (useCase *ClaimPegOutUseCase) availableLiveLiquidity(ctx context.Context) (
 	inFlight, err := useCase.quoteRepository.GetRetainedQuoteByState(
 		ctx,
 		quote.PegoutStateClaimed,
-		quote.PegoutStateWaitingForDeposit,
 		quote.PegoutStateWaitingForDepositConfirmations,
 	)
 	if err != nil {
