@@ -1104,3 +1104,73 @@ func TestSendPegoutUseCase_Run_MultipleDepositsInOneTx(t *testing.T) {
 	pegoutContract.AssertExpectations(t)
 	mutex.AssertExpectations(t)
 }
+
+// nolint:funlen
+func TestSendPegoutUseCase_Step8_OpReturnCarriesEscrowId(t *testing.T) {
+	escrowId := sendPegoutRetainedQuote.QuoteHash
+	requestHashBytes, err := hex.DecodeString(escrowId)
+	require.NoError(t, err)
+
+	retained := sendPegoutRetainedQuote
+	retained.State = quote.PegoutStateClaimed
+
+	escrowQuote := sendPegoutTestQuote
+	escrowQuote.DepositAddress = "ddeeff00112233445566778899aabbccddeeff00"
+	escrowQuote.BtcRefundAddress = "00112233445566778899aabbccddeeff00112233"
+	escrowQuote.LpBtcAddress = "aabbccddeeff00112233445566778899aabbccdd"
+	encodedDest := "bcrt1qescrowdest"
+
+	btcTxHash := "0xescrowbtctx"
+	btcFee := entities.NewWei(100)
+	unfundedTx := []byte{0x0a, 0x0b}
+	btcWallet := new(mocks.BitcoinWalletMock)
+	btcWallet.On("GetBalance").Return(entities.NewWei(100_000), nil).Once()
+	btcWallet.On("CreateUnfundedTransactionWithOpReturn", encodedDest, escrowQuote.Value, requestHashBytes).Return(unfundedTx, nil).Once()
+	btcWallet.On("SendWithOpReturn", encodedDest, escrowQuote.Value, requestHashBytes).Return(
+		blockchain.BitcoinTransactionResult{Hash: btcTxHash, Fee: btcFee}, nil,
+	).Once()
+
+	escrow := new(mocks.PegOutEscrowContractMock)
+	escrow.EXPECT().GetPegOutQuote(escrowId).Return(escrowQuote, nil).Once()
+	escrow.EXPECT().GetPegOutState(escrowId).Return(blockchain.EscrowedPegOutStateClaimed, nil).Once()
+
+	btcRpc := new(mocks.BtcRpcMock)
+	btcRpc.On("EncodeAddress", mock.Anything).Return(encodedDest, nil)
+
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
+	quoteRepository.EXPECT().GetRetainedQuote(mock.Anything, escrowId).Return(&retained, nil).Once()
+	quoteRepository.EXPECT().GetPegoutCreationData(test.AnyCtx, escrowId).Return(quote.PegoutCreationDataZeroValue()).Once()
+	updated := retained
+	updated.LpBtcTxHash = btcTxHash
+	updated.SendPegoutBtcFee = btcFee
+	updated.State = quote.PegoutStateSendPegoutSucceeded
+	quoteRepository.On("UpdateRetainedQuote", test.AnyCtx, updated).Return(nil).Once()
+
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Return().Once()
+	mutex := new(mocks.MutexMock)
+	mutex.On("Lock").Return().Once()
+	mutex.On("Unlock").Return().Once()
+
+	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	pegoutContract.On("ValidatePegout", escrowId, unfundedTx).Return(nil).Once()
+
+	useCase := pegout.NewSendPegoutUseCase(
+		btcWallet,
+		quoteRepository,
+		blockchain.Rpc{Btc: btcRpc},
+		eventBus,
+		blockchain.RskContracts{PegOut: pegoutContract, PegOutEscrow: escrow},
+		mutex,
+		rootstock.ParseDepositEventByQuoteHash,
+	)
+	err = useCase.Run(context.Background(), retained)
+	require.NoError(t, err)
+
+	btcWallet.AssertCalled(t, "SendWithOpReturn", encodedDest, escrowQuote.Value, requestHashBytes)
+	btcWallet.AssertCalled(t, "CreateUnfundedTransactionWithOpReturn", encodedDest, escrowQuote.Value, requestHashBytes)
+	btcWallet.AssertExpectations(t)
+	escrow.AssertExpectations(t)
+	quoteRepository.AssertExpectations(t)
+}
