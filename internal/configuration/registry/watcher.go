@@ -75,16 +75,10 @@ func NewWatcherRegistry(
 		PegoutRskDepositWatcher: watcher.NewPegoutRskDepositWatcher(
 			watcher.NewPegoutRskDepositWatcherUseCases(
 				useCaseRegistry.getWatchedPegoutQuoteUseCase,
-				useCaseRegistry.expiredPegoutUseCase,
 				useCaseRegistry.sendPegoutUseCase,
-				useCaseRegistry.updatePegoutDepositUseCase,
-				useCaseRegistry.initPegoutDepositCacheUseCase,
 			),
-			lpRegistry.LiquidityProvider,
 			messaging.Rpc,
-			rskRegistry.Contracts,
 			messaging.EventBus,
-			env.Pegout.DepositCacheStartBlock,
 			tickers.PegoutDepositWatcherTicker,
 			timeouts.PegoutDepositCheck.Seconds(),
 		),
