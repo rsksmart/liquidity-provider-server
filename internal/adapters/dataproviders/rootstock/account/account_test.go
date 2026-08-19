@@ -164,8 +164,10 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
 	t.Run("Invalid dir", func(t *testing.T) {
+		blocker := filepath.Join(t.TempDir(), "not-a-dir")
+		require.NoError(t, os.WriteFile(blocker, []byte("x"), 0600))
 		testAccount, err := account.GetRskAccount(account.CreationArgs{
-			KeyDir:        "/test",
+			KeyDir:        filepath.Join(blocker, "keystore"),
 			AccountNum:    0,
 			EncryptedJson: string(walletInfo.HotWallet),
 			Password:      test.KeyPassword,
