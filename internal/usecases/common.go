@@ -41,6 +41,7 @@ const (
 	CallForUserId                  UseCaseId = "CallForUser"
 	RegisterPeginId                UseCaseId = "RegisterPegin"
 	SendPegoutId                   UseCaseId = "SendPegout"
+	ClaimPegoutId                  UseCaseId = "ClaimPegout"
 	RefundPegoutId                 UseCaseId = "RefundPegout"
 	ProviderRegistrationId         UseCaseId = "ProviderRegistration"
 	GetWatchedPeginQuoteId         UseCaseId = "GetWatchedPeginQuote"
