@@ -166,6 +166,28 @@ func TestReplayRegisteredAddressesUseCase_Run_DeletesCheckpointWhenFinalizedHead
 	harness.registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
 }
 
+func exclusiveQueryGate(
+	started, release chan struct{},
+	calls, active, maximum *atomic.Int64,
+) func(context.Context, uint64, *uint64) ([]blockchain.AddressRegistered, error) {
+	return func(context.Context, uint64, *uint64) ([]blockchain.AddressRegistered, error) {
+		call := calls.Add(1)
+		n := active.Add(1)
+		for {
+			current := maximum.Load()
+			if n <= current || maximum.CompareAndSwap(current, n) {
+				break
+			}
+		}
+		defer active.Add(-1)
+		if call == 1 {
+			close(started)
+			<-release
+		}
+		return nil, nil
+	}
+}
+
 func TestReplayRegisteredAddressesUseCase_Run_SecondRunWaitsUntilFirstRunFinishes(t *testing.T) {
 	harness := newReplayHarness(t)
 	harness.repository.EXPECT().List(mock.Anything).Return(nil, nil).Twice()
@@ -175,27 +197,10 @@ func TestReplayRegisteredAddressesUseCase_Run_SecondRunWaitsUntilFirstRunFinishe
 	harness.repository.checkpoints.On("SetCheckpoint", mock.Anything, mock.Anything).Return(nil).Twice()
 	firstQueryStarted := make(chan struct{})
 	releaseFirstQuery := make(chan struct{})
-	var queryCalls atomic.Int64
-	var activeQueries atomic.Int64
-	var maximumActiveQueries atomic.Int64
+	var queryCalls, activeQueries, maximumActiveQueries atomic.Int64
 	harness.registry.EXPECT().
 		GetAddressRegisteredEvents(mock.Anything, uint64(0), mock.Anything).
-		RunAndReturn(func(context.Context, uint64, *uint64) ([]blockchain.AddressRegistered, error) {
-			call := queryCalls.Add(1)
-			active := activeQueries.Add(1)
-			for {
-				maximum := maximumActiveQueries.Load()
-				if active <= maximum || maximumActiveQueries.CompareAndSwap(maximum, active) {
-					break
-				}
-			}
-			defer activeQueries.Add(-1)
-			if call == 1 {
-				close(firstQueryStarted)
-				<-releaseFirstQuery
-			}
-			return nil, nil
-		}).
+		RunAndReturn(exclusiveQueryGate(firstQueryStarted, releaseFirstQuery, &queryCalls, &activeQueries, &maximumActiveQueries)).
 		Twice()
 	harness.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(0)).Return([32]byte{}, nil).Twice()
 	harness.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(0), nil).Twice()
