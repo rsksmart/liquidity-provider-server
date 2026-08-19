@@ -40,6 +40,45 @@ func DecodeAddress(address string) ([]byte, error) {
 	return nil, blockchain.BtcAddressNotSupportedError
 }
 
+func EncodeAddress(addressBytes []byte, params *chaincfg.Params) (string, error) {
+	if len(addressBytes) == 0 {
+		return "", blockchain.BtcAddressNotSupportedError
+	}
+	if isBase58AddressBytes(addressBytes, params) {
+		return base58.CheckEncode(addressBytes[1:], addressBytes[0]), nil
+	}
+	return encodeAddressBech32(addressBytes, params)
+}
+
+func isBase58AddressBytes(addressBytes []byte, params *chaincfg.Params) bool {
+	if len(addressBytes) != 21 {
+		return false
+	}
+	version := addressBytes[0]
+	return version == params.PubKeyHashAddrID || version == params.ScriptHashAddrID
+}
+
+func encodeAddressBech32(addressBytes []byte, params *chaincfg.Params) (string, error) {
+	witnessVersion := addressBytes[0]
+	program := addressBytes[1:]
+	var address btcutil.Address
+	var err error
+	switch {
+	case witnessVersion == 0 && len(program) == 20:
+		address, err = btcutil.NewAddressWitnessPubKeyHash(program, params)
+	case witnessVersion == 0 && len(program) == 32:
+		address, err = btcutil.NewAddressWitnessScriptHash(program, params)
+	case witnessVersion == 1 && len(program) == 32:
+		address, err = btcutil.NewAddressTaproot(program, params)
+	default:
+		return "", blockchain.BtcAddressNotSupportedError
+	}
+	if err != nil {
+		return "", err
+	}
+	return address.EncodeAddress(), nil
+}
+
 // decodeAddressBech32 this function decodes both bech32 and bech32m
 func decodeAddressBech32(address string) ([]byte, error) {
 	const (
