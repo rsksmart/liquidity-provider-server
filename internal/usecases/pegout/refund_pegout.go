@@ -8,6 +8,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 )
@@ -22,6 +23,7 @@ type RefundPegoutUseCase struct {
 	contracts       blockchain.RskContracts
 	eventBus        entities.EventBus
 	rpc             blockchain.Rpc
+	lp              liquidity_provider.LiquidityProvider
 	rskWalletMutex  sync.Locker
 }
 
@@ -30,6 +32,7 @@ func NewRefundPegoutUseCase(
 	contracts blockchain.RskContracts,
 	eventBus entities.EventBus,
 	rpc blockchain.Rpc,
+	lp liquidity_provider.LiquidityProvider,
 	rskWalletMutex sync.Locker,
 ) *RefundPegoutUseCase {
 	return &RefundPegoutUseCase{
@@ -37,13 +40,13 @@ func NewRefundPegoutUseCase(
 		contracts:       contracts,
 		eventBus:        eventBus,
 		rpc:             rpc,
+		lp:              lp,
 		rskWalletMutex:  rskWalletMutex,
 	}
 }
 
 func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
 	var params blockchain.RefundPegoutParams
-	var pegoutQuote *quote.PegoutQuote
 	var err error
 
 	if err = usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
@@ -54,13 +57,7 @@ func (useCase *RefundPegoutUseCase) Run(ctx context.Context, retainedQuote quote
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.WrongStateError, true)
 	}
 
-	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
-	} else if pegoutQuote == nil {
-		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.QuoteNotFoundError, false)
-	}
-
-	if err = useCase.validateBtcTransaction(ctx, *pegoutQuote, retainedQuote); err != nil {
+	if err = useCase.validateBtcTransaction(ctx, retainedQuote); err != nil {
 		return err
 	}
 
@@ -170,14 +167,14 @@ func (useCase *RefundPegoutUseCase) performRefundPegout(
 
 func (useCase *RefundPegoutUseCase) validateBtcTransaction(
 	ctx context.Context,
-	pegoutQuote quote.PegoutQuote,
 	retainedQuote quote.RetainedPegoutQuote,
 ) error {
-	var txInfo blockchain.BitcoinTransactionInformation
-	var err error
-	if txInfo, err = useCase.rpc.Btc.GetTransactionInfo(retainedQuote.LpBtcTxHash); err != nil {
+	txInfo, err := useCase.rpc.Btc.GetTransactionInfo(retainedQuote.LpBtcTxHash)
+	if err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, err, true)
-	} else if txInfo.Confirmations < uint64(pegoutQuote.TransferConfirmations) {
+	}
+	requiredConfirmations := useCase.lp.GeneralConfiguration(ctx).BtcConfirmations.ForValue(retainedQuote.RequiredLiquidity)
+	if txInfo.Confirmations < uint64(requiredConfirmations) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, usecases.NoEnoughConfirmationsError, true)
 	}
 	return nil
