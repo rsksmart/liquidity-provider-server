@@ -274,3 +274,21 @@ func LogPeginBtcCallForUserError(quoteHash string, err error) string {
 func LogPeginBtcUpdateExpiredError(quoteHash string, err error) string {
 	return fmt.Sprintf(LogPeginBtcPrefix+"Error updating expired quote (%s): %v", quoteHash, err)
 }
+
+const (
+	LogPegoutEscrowPrefix   = "PegoutEscrowWatcher: "
+	LogPegoutEscrowError    = LogPegoutEscrowPrefix + "error checking escrowed peg-outs: %v"
+	LogPegoutEscrowShutdown = LogPegoutEscrowPrefix + "shut down"
+)
+
+func LogPegoutEscrowStart(fromBlock uint64) string {
+	return fmt.Sprintf(LogPegoutEscrowPrefix+"watching escrowed peg-outs from block %d", fromBlock)
+}
+
+func LogPegoutEscrowChecking(fromBlock, toBlock uint64, requestedCount int) string {
+	return fmt.Sprintf(LogPegoutEscrowPrefix+"checking escrowed peg-outs from block %d to %d, found %d requests", fromBlock, toBlock, requestedCount)
+}
+
+func LogPegoutEscrowStateError(requestHash string, err error) string {
+	return fmt.Sprintf(LogPegoutEscrowPrefix+"error reading peg-out state for %s: %v", requestHash, err)
+}
