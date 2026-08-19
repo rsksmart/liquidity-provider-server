@@ -55,10 +55,16 @@ services:
       context: ../rskj
       args:
         UID: "${LPS_UID}"
-        # The rskj version is pinned by image digest in ../rskj/Dockerfile, so
-        # there is no version build-arg to override here.
+        # The rskj version is pinned by package checksum in ../rskj/Dockerfile,
+        # so there is no version build-arg to override here.
     pull_policy: build
     image: rskj:latest
+    # The rskj Debian package ships a systemd unit with LimitNOFILE=500000.
+    # No systemd runs here, so the limit is set on the service instead.
+    ulimits:
+      nofile:
+        soft: 500000
+        hard: 500000
     container_name: rskj01
     ports:
       - "4444:4444"
