@@ -172,7 +172,6 @@ func createBoundContracts(
 		discoveryAddress             common.Address
 		peginAddressRegistryAddress  common.Address
 		flyoverConfigurationsAddress common.Address
-		pegOutEscrowAddress          common.Address
 	)
 	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
 		return rskBoundContracts{}, err
@@ -195,11 +194,6 @@ func createBoundContracts(
 	if err = rootstock.ParseAddress(&flyoverConfigurationsAddress, env.Rsk.FlyoverConfigurationsAddress); err != nil {
 		return rskBoundContracts{}, err
 	}
-	if env.Rsk.PegOutEscrowAddress != "" {
-		if err = rootstock.ParseAddress(&pegOutEscrowAddress, env.Rsk.PegOutEscrowAddress); err != nil {
-			return rskBoundContracts{}, err
-		}
-	}
 
 	peginContract := bindings.peginContract.Instance(client.Rpc(), peginContractAddress)
 	pegoutContract := bindings.pegoutContract.Instance(client.Rpc(), pegoutContractAddress)
@@ -208,9 +202,9 @@ func createBoundContracts(
 	bridge := bindings.bridge.Instance(client.Rpc(), bridgeAddress)
 	peginAddressRegistry := bindings.peginAddressRegistry.Instance(client.Rpc(), peginAddressRegistryAddress)
 	flyoverConfigurations := bindings.flyoverConfigurations.Instance(client.Rpc(), flyoverConfigurationsAddress)
-	var pegoutEscrow *bind.BoundContract
-	if env.Rsk.PegOutEscrowAddress != "" {
-		pegoutEscrow = bindings.pegoutEscrow.Instance(client.Rpc(), pegOutEscrowAddress)
+	pegoutEscrow, err := bindOptionalPegOutEscrow(env.Rsk.PegOutEscrowAddress, bindings.pegoutEscrow, client)
+	if err != nil {
+		return rskBoundContracts{}, err
 	}
 
 	return rskBoundContracts{
@@ -236,6 +230,21 @@ func createContractBindings() rskContractBindings {
 		flyoverConfigurations: flyoverConfigurationsBinding.NewFlyoverConfigurationsContract(),
 		pegoutEscrow:          pegoutEscrowBinding.NewPegOutEscrowContract(),
 	}
+}
+
+func bindOptionalPegOutEscrow(
+	address string,
+	binding *pegoutEscrowBinding.PegOutEscrowContract,
+	client *rootstock.RskClient,
+) (*bind.BoundContract, error) {
+	if address == "" {
+		return nil, nil
+	}
+	var parsed common.Address
+	if err := rootstock.ParseAddress(&parsed, address); err != nil {
+		return nil, err
+	}
+	return binding.Instance(client.Rpc(), parsed), nil
 }
 
 func optionalPegOutEscrow(
