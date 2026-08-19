@@ -856,7 +856,7 @@ func TestPegoutRskDepositWatcher_Start_CheckDeposit_UpdateError(t *testing.T) {
 		BlockNumber: 6,
 	}
 	wrappedErr := usecases.WrapUseCaseError(usecases.UpdatePegoutDepositId, assert.AnError)
-	checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskUpdateDepositError(testRetainedQuote.QuoteHash, wrappedErr))
+	checkFunction := test.LogContains(t, watcher.LogPegoutRskUpdateDepositError(testRetainedQuote.QuoteHash, wrappedErr))
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(9), nil).Once()
 	pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(0), mock.MatchedBy(matchUinPtr(9))).Return([]quote.PegoutDeposit{validDeposit}, nil).Once()
 	pegoutRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(assert.AnError).Once()
@@ -895,7 +895,7 @@ func TestPegoutRskDepositWatcher_Start_CheckQuote_ExpiredError(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 
 	wrappedErr := usecases.WrapUseCaseError(usecases.ExpiredPegoutQuoteId, assert.AnError)
-	checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskUpdateExpiredError(expiredRetained.QuoteHash, wrappedErr))
+	checkFunction := test.LogContains(t, watcher.LogPegoutRskUpdateExpiredError(expiredRetained.QuoteHash, wrappedErr))
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(10), nil).Once()
 	pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(0), mock.MatchedBy(matchUinPtr(10))).Return([]quote.PegoutDeposit{}, nil).Once()
 	quoteRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(assert.AnError).Once()
@@ -935,7 +935,7 @@ func TestPegoutRskDepositWatcher_Start_CheckQuote_ReceiptError(t *testing.T) {
 		assert.True(collect, ok)
 	}, time.Second, 10*time.Millisecond)
 
-	checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskReceiptError(testRetained.QuoteHash, assert.AnError))
+	checkFunction := test.LogContains(t, watcher.LogPegoutRskReceiptError(testRetained.QuoteHash, assert.AnError))
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(10), nil).Once()
 	rskRpc.EXPECT().GetTransactionReceipt(mock.Anything, testRetained.UserRskTxHash).Return(blockchain.TransactionReceipt{}, assert.AnError).Once()
 	pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(0), mock.MatchedBy(matchUinPtr(10))).Return([]quote.PegoutDeposit{}, nil).Once()
