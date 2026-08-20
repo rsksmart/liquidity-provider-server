@@ -10,6 +10,7 @@ import (
 	collateralBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
 	discoveryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
 	flyoverConfigurationsBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/flyover_configurations"
+	pauseRegistryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pause_registry"
 	peginBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	peginAddressRegistryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_address_registry"
 	pegoutBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
@@ -32,6 +33,7 @@ type rskContractBindings struct {
 	collateralManagement  *collateralBinding.CollateralManagementContract
 	discovery             *discoveryBinding.FlyoverDiscovery
 	peginAddressRegistry  *peginAddressRegistryBinding.PegInAddressRegistryContract
+	pauseRegistry         *pauseRegistryBinding.PauseRegistryContract
 	flyoverConfigurations *flyoverConfigurationsBinding.FlyoverConfigurationsContract
 	pegoutEscrow          *pegoutEscrowBinding.PegOutEscrowContract
 }
@@ -43,6 +45,7 @@ type rskBoundContracts struct {
 	collateralManagement  *bind.BoundContract
 	discovery             *bind.BoundContract
 	peginAddressRegistry  *bind.BoundContract
+	pauseRegistry         *bind.BoundContract
 	flyoverConfigurations *bind.BoundContract
 	pegoutEscrow          *bind.BoundContract
 }
@@ -140,6 +143,14 @@ func NewRootstockRegistry(
 				contractBindings.peginAddressRegistry,
 				abis,
 			),
+			PauseRegistry: rootstock.NewPauseRegistryContractImpl(
+				client,
+				env.Rsk.PauseRegistryAddress,
+				boundContracts.pauseRegistry,
+				rootstock.DefaultRetryParams,
+				contractBindings.pauseRegistry,
+				abis,
+			),
 			FlyoverConfigurations: rootstock.NewFlyoverConfigurationsContractImpl(
 				client,
 				env.Rsk.FlyoverConfigurationsAddress,
@@ -176,6 +187,7 @@ func createBoundContracts(
 		collateralManagementAddress  common.Address
 		discoveryAddress             common.Address
 		peginAddressRegistryAddress  common.Address
+		pauseRegistryAddress         common.Address
 		flyoverConfigurationsAddress common.Address
 	)
 	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
@@ -196,6 +208,9 @@ func createBoundContracts(
 	if err = rootstock.ParseAddress(&peginAddressRegistryAddress, env.Rsk.PegInAddressRegistryAddress); err != nil {
 		return rskBoundContracts{}, err
 	}
+	if err = rootstock.ParseAddress(&pauseRegistryAddress, env.Rsk.PauseRegistryAddress); err != nil {
+		return rskBoundContracts{}, err
+	}
 	if err = rootstock.ParseAddress(&flyoverConfigurationsAddress, env.Rsk.FlyoverConfigurationsAddress); err != nil {
 		return rskBoundContracts{}, err
 	}
@@ -206,6 +221,7 @@ func createBoundContracts(
 	discovery := bindings.discovery.Instance(client.Rpc(), discoveryAddress)
 	bridge := bindings.bridge.Instance(client.Rpc(), bridgeAddress)
 	peginAddressRegistry := bindings.peginAddressRegistry.Instance(client.Rpc(), peginAddressRegistryAddress)
+	pauseRegistry := bindings.pauseRegistry.Instance(client.Rpc(), pauseRegistryAddress)
 	flyoverConfigurations := bindings.flyoverConfigurations.Instance(client.Rpc(), flyoverConfigurationsAddress)
 	pegoutEscrow, err := bindOptionalPegOutEscrow(env.Rsk.PegOutEscrowAddress, bindings.pegoutEscrow, client)
 	if err != nil {
@@ -219,6 +235,7 @@ func createBoundContracts(
 		collateralManagement:  collateralManagement,
 		discovery:             discovery,
 		peginAddressRegistry:  peginAddressRegistry,
+		pauseRegistry:         pauseRegistry,
 		flyoverConfigurations: flyoverConfigurations,
 		pegoutEscrow:          pegoutEscrow,
 	}, nil
@@ -232,6 +249,7 @@ func createContractBindings() rskContractBindings {
 		collateralManagement:  collateralBinding.NewCollateralManagementContract(),
 		discovery:             discoveryBinding.NewFlyoverDiscovery(),
 		peginAddressRegistry:  peginAddressRegistryBinding.NewPegInAddressRegistryContract(),
+		pauseRegistry:         pauseRegistryBinding.NewPauseRegistryContract(),
 		flyoverConfigurations: flyoverConfigurationsBinding.NewFlyoverConfigurationsContract(),
 		pegoutEscrow:          pegoutEscrowBinding.NewPegOutEscrowContract(),
 	}

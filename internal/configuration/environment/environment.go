@@ -52,6 +52,7 @@ type RskEnv struct {
 	CollateralManagementAddress  string `env:"COLLATERAL_MANAGEMENT_ADDRESS" validate:"required"`
 	DiscoveryAddress             string `env:"DISCOVERY_ADDRESS" validate:"required"`
 	PegInAddressRegistryAddress  string `env:"PEGIN_ADDRESS_REGISTRY_ADDRESS" validate:"required"`
+	PauseRegistryAddress         string `env:"PAUSE_REGISTRY_ADDRESS" validate:"required"`
 	FlyoverConfigurationsAddress string `env:"FLYOVER_CONFIGURATIONS_ADDRESS" validate:"required"`
 	// PegOutEscrowAddress is optional. When empty the escrow adapter is not wired and
 	// the LPS behaves as it does today.
