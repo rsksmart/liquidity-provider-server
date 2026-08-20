@@ -313,7 +313,6 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 			TransactionHash:   transaction,
 			BlockHash:         block,
 			BlockNumber:       blockNumber,
-			Status:            1,
 			From:              "0x82a06eBDB97776a2da4041dF8f2b2ea8D3257852",
 			To:                contract,
 			CumulativeGasUsed: big.NewInt(143691),
