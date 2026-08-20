@@ -590,7 +590,7 @@ func TestClaimPegInUseCase_InFlightReservedExcludesSelf(t *testing.T) {
 	harness.pegin.AssertExpectations(t)
 }
 
-func TestClaimPegInUseCase_OracleAndLiquidityErrorsDoNotSubmit(t *testing.T) {
+func TestClaimPegInUseCase_OracleErrorsDoNotSubmit(t *testing.T) {
 	t.Run("confirmations oracle", func(t *testing.T) {
 		harness := newClaimHarness(t, newMemoryClaimRepo())
 		harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
@@ -616,6 +616,9 @@ func TestClaimPegInUseCase_OracleAndLiquidityErrorsDoNotSubmit(t *testing.T) {
 		require.Error(t, err)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 	})
+}
+
+func TestClaimPegInUseCase_SpendableErrorsDoNotSubmit(t *testing.T) {
 	t.Run("wallet balance error", func(t *testing.T) {
 		harness := newClaimHarness(t, newMemoryClaimRepo())
 		harness.expectRefetch(10)
