@@ -18,7 +18,7 @@ import (
 //nolint:funlen // One fixture shared across the round-trip scenarios keeps the event identity identical in each.
 func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
-	entry := rootstock.PegInAddressRegistryWatchEntry{
+	entry := rootstock.PegInAddressRegistryWatch{
 		TxHash:      "0x1234",
 		LogIndex:    7,
 		BlockNumber: 100,
@@ -78,7 +78,7 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
 		result, err := repo.List(context.Background())
 		require.NoError(t, err)
-		assert.Equal(t, []rootstock.PegInAddressRegistryWatchEntry{entry, second}, result)
+		assert.Equal(t, []rootstock.PegInAddressRegistryWatch{entry, second}, result)
 		collection.AssertExpectations(t)
 	})
 

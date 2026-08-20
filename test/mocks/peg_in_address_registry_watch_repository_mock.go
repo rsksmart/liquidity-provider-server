@@ -22,29 +22,29 @@ func (_m *PegInAddressRegistryWatchRepositoryMock) EXPECT() *PegInAddressRegistr
 	return &PegInAddressRegistryWatchRepositoryMock_Expecter{mock: &_m.Mock}
 }
 
-// Get provides a mock function with given fields: _a0, _a1, _a2
-func (_m *PegInAddressRegistryWatchRepositoryMock) Get(_a0 context.Context, _a1 string, _a2 uint) (*rootstock.PegInAddressRegistryWatchEntry, error) {
-	ret := _m.Called(_a0, _a1, _a2)
+// Get provides a mock function with given fields: ctx, txHash, logIndex
+func (_m *PegInAddressRegistryWatchRepositoryMock) Get(ctx context.Context, txHash string, logIndex uint) (*rootstock.PegInAddressRegistryWatch, error) {
+	ret := _m.Called(ctx, txHash, logIndex)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *rootstock.PegInAddressRegistryWatchEntry
+	var r0 *rootstock.PegInAddressRegistryWatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, uint) (*rootstock.PegInAddressRegistryWatchEntry, error)); ok {
-		return rf(_a0, _a1, _a2)
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint) (*rootstock.PegInAddressRegistryWatch, error)); ok {
+		return rf(ctx, txHash, logIndex)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, uint) *rootstock.PegInAddressRegistryWatchEntry); ok {
-		r0 = rf(_a0, _a1, _a2)
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint) *rootstock.PegInAddressRegistryWatch); ok {
+		r0 = rf(ctx, txHash, logIndex)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*rootstock.PegInAddressRegistryWatchEntry)
+			r0 = ret.Get(0).(*rootstock.PegInAddressRegistryWatch)
 		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string, uint) error); ok {
-		r1 = rf(_a0, _a1, _a2)
+		r1 = rf(ctx, txHash, logIndex)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -58,33 +58,33 @@ type PegInAddressRegistryWatchRepositoryMock_Get_Call struct {
 }
 
 // Get is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 string
-//   - _a2 uint
-func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) Get(_a0 interface{}, _a1 interface{}, _a2 interface{}) *PegInAddressRegistryWatchRepositoryMock_Get_Call {
-	return &PegInAddressRegistryWatchRepositoryMock_Get_Call{Call: _e.mock.On("Get", _a0, _a1, _a2)}
+//   - ctx context.Context
+//   - txHash string
+//   - logIndex uint
+func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) Get(ctx interface{}, txHash interface{}, logIndex interface{}) *PegInAddressRegistryWatchRepositoryMock_Get_Call {
+	return &PegInAddressRegistryWatchRepositoryMock_Get_Call{Call: _e.mock.On("Get", ctx, txHash, logIndex)}
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_Get_Call) Run(run func(_a0 context.Context, _a1 string, _a2 uint)) *PegInAddressRegistryWatchRepositoryMock_Get_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_Get_Call) Run(run func(ctx context.Context, txHash string, logIndex uint)) *PegInAddressRegistryWatchRepositoryMock_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].(uint))
 	})
 	return _c
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_Get_Call) Return(_a0 *rootstock.PegInAddressRegistryWatchEntry, _a1 error) *PegInAddressRegistryWatchRepositoryMock_Get_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_Get_Call) Return(_a0 *rootstock.PegInAddressRegistryWatch, _a1 error) *PegInAddressRegistryWatchRepositoryMock_Get_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_Get_Call) RunAndReturn(run func(context.Context, string, uint) (*rootstock.PegInAddressRegistryWatchEntry, error)) *PegInAddressRegistryWatchRepositoryMock_Get_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_Get_Call) RunAndReturn(run func(context.Context, string, uint) (*rootstock.PegInAddressRegistryWatch, error)) *PegInAddressRegistryWatchRepositoryMock_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetCursor provides a mock function with given fields: _a0
-func (_m *PegInAddressRegistryWatchRepositoryMock) GetCursor(_a0 context.Context) (uint64, bool, error) {
-	ret := _m.Called(_a0)
+// GetCursor provides a mock function with given fields: ctx
+func (_m *PegInAddressRegistryWatchRepositoryMock) GetCursor(ctx context.Context) (uint64, bool, error) {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetCursor")
@@ -94,22 +94,22 @@ func (_m *PegInAddressRegistryWatchRepositoryMock) GetCursor(_a0 context.Context
 	var r1 bool
 	var r2 error
 	if rf, ok := ret.Get(0).(func(context.Context) (uint64, bool, error)); ok {
-		return rf(_a0)
+		return rf(ctx)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context) uint64); ok {
-		r0 = rf(_a0)
+		r0 = rf(ctx)
 	} else {
 		r0 = ret.Get(0).(uint64)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context) bool); ok {
-		r1 = rf(_a0)
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Get(1).(bool)
 	}
 
 	if rf, ok := ret.Get(2).(func(context.Context) error); ok {
-		r2 = rf(_a0)
+		r2 = rf(ctx)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -123,12 +123,12 @@ type PegInAddressRegistryWatchRepositoryMock_GetCursor_Call struct {
 }
 
 // GetCursor is a helper method to define mock.On call
-//   - _a0 context.Context
-func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) GetCursor(_a0 interface{}) *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call {
-	return &PegInAddressRegistryWatchRepositoryMock_GetCursor_Call{Call: _e.mock.On("GetCursor", _a0)}
+//   - ctx context.Context
+func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) GetCursor(ctx interface{}) *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call {
+	return &PegInAddressRegistryWatchRepositoryMock_GetCursor_Call{Call: _e.mock.On("GetCursor", ctx)}
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call) Run(run func(_a0 context.Context)) *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call) Run(run func(ctx context.Context)) *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context))
 	})
@@ -145,29 +145,29 @@ func (_c *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call) RunAndReturn(r
 	return _c
 }
 
-// List provides a mock function with given fields: _a0
-func (_m *PegInAddressRegistryWatchRepositoryMock) List(_a0 context.Context) ([]rootstock.PegInAddressRegistryWatchEntry, error) {
-	ret := _m.Called(_a0)
+// List provides a mock function with given fields: ctx
+func (_m *PegInAddressRegistryWatchRepositoryMock) List(ctx context.Context) ([]rootstock.PegInAddressRegistryWatch, error) {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 []rootstock.PegInAddressRegistryWatchEntry
+	var r0 []rootstock.PegInAddressRegistryWatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]rootstock.PegInAddressRegistryWatchEntry, error)); ok {
-		return rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context) ([]rootstock.PegInAddressRegistryWatch, error)); ok {
+		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []rootstock.PegInAddressRegistryWatchEntry); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context) []rootstock.PegInAddressRegistryWatch); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]rootstock.PegInAddressRegistryWatchEntry)
+			r0 = ret.Get(0).([]rootstock.PegInAddressRegistryWatch)
 		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(_a0)
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -181,31 +181,31 @@ type PegInAddressRegistryWatchRepositoryMock_List_Call struct {
 }
 
 // List is a helper method to define mock.On call
-//   - _a0 context.Context
-func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) List(_a0 interface{}) *PegInAddressRegistryWatchRepositoryMock_List_Call {
-	return &PegInAddressRegistryWatchRepositoryMock_List_Call{Call: _e.mock.On("List", _a0)}
+//   - ctx context.Context
+func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) List(ctx interface{}) *PegInAddressRegistryWatchRepositoryMock_List_Call {
+	return &PegInAddressRegistryWatchRepositoryMock_List_Call{Call: _e.mock.On("List", ctx)}
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_List_Call) Run(run func(_a0 context.Context)) *PegInAddressRegistryWatchRepositoryMock_List_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_List_Call) Run(run func(ctx context.Context)) *PegInAddressRegistryWatchRepositoryMock_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context))
 	})
 	return _c
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_List_Call) Return(_a0 []rootstock.PegInAddressRegistryWatchEntry, _a1 error) *PegInAddressRegistryWatchRepositoryMock_List_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_List_Call) Return(_a0 []rootstock.PegInAddressRegistryWatch, _a1 error) *PegInAddressRegistryWatchRepositoryMock_List_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_List_Call) RunAndReturn(run func(context.Context) ([]rootstock.PegInAddressRegistryWatchEntry, error)) *PegInAddressRegistryWatchRepositoryMock_List_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_List_Call) RunAndReturn(run func(context.Context) ([]rootstock.PegInAddressRegistryWatch, error)) *PegInAddressRegistryWatchRepositoryMock_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetCursor provides a mock function with given fields: _a0, _a1
-func (_m *PegInAddressRegistryWatchRepositoryMock) SetCursor(_a0 context.Context, _a1 uint64) error {
-	ret := _m.Called(_a0, _a1)
+// SetCursor provides a mock function with given fields: ctx, lastScannedBlock
+func (_m *PegInAddressRegistryWatchRepositoryMock) SetCursor(ctx context.Context, lastScannedBlock uint64) error {
+	ret := _m.Called(ctx, lastScannedBlock)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetCursor")
@@ -213,7 +213,7 @@ func (_m *PegInAddressRegistryWatchRepositoryMock) SetCursor(_a0 context.Context
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, uint64) error); ok {
-		r0 = rf(_a0, _a1)
+		r0 = rf(ctx, lastScannedBlock)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -227,13 +227,13 @@ type PegInAddressRegistryWatchRepositoryMock_SetCursor_Call struct {
 }
 
 // SetCursor is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 uint64
-func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) SetCursor(_a0 interface{}, _a1 interface{}) *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call {
-	return &PegInAddressRegistryWatchRepositoryMock_SetCursor_Call{Call: _e.mock.On("SetCursor", _a0, _a1)}
+//   - ctx context.Context
+//   - lastScannedBlock uint64
+func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) SetCursor(ctx interface{}, lastScannedBlock interface{}) *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call {
+	return &PegInAddressRegistryWatchRepositoryMock_SetCursor_Call{Call: _e.mock.On("SetCursor", ctx, lastScannedBlock)}
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call) Run(run func(_a0 context.Context, _a1 uint64)) *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call) Run(run func(ctx context.Context, lastScannedBlock uint64)) *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(uint64))
 	})
@@ -250,17 +250,17 @@ func (_c *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call) RunAndReturn(r
 	return _c
 }
 
-// Update provides a mock function with given fields: _a0, _a1
-func (_m *PegInAddressRegistryWatchRepositoryMock) Update(_a0 context.Context, _a1 rootstock.PegInAddressRegistryWatchEntry) error {
-	ret := _m.Called(_a0, _a1)
+// Update provides a mock function with given fields: ctx, watch
+func (_m *PegInAddressRegistryWatchRepositoryMock) Update(ctx context.Context, watch rootstock.PegInAddressRegistryWatch) error {
+	ret := _m.Called(ctx, watch)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, rootstock.PegInAddressRegistryWatchEntry) error); ok {
-		r0 = rf(_a0, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, rootstock.PegInAddressRegistryWatch) error); ok {
+		r0 = rf(ctx, watch)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -274,15 +274,15 @@ type PegInAddressRegistryWatchRepositoryMock_Update_Call struct {
 }
 
 // Update is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 rootstock.PegInAddressRegistryWatchEntry
-func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) Update(_a0 interface{}, _a1 interface{}) *PegInAddressRegistryWatchRepositoryMock_Update_Call {
-	return &PegInAddressRegistryWatchRepositoryMock_Update_Call{Call: _e.mock.On("Update", _a0, _a1)}
+//   - ctx context.Context
+//   - watch rootstock.PegInAddressRegistryWatch
+func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) Update(ctx interface{}, watch interface{}) *PegInAddressRegistryWatchRepositoryMock_Update_Call {
+	return &PegInAddressRegistryWatchRepositoryMock_Update_Call{Call: _e.mock.On("Update", ctx, watch)}
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_Update_Call) Run(run func(_a0 context.Context, _a1 rootstock.PegInAddressRegistryWatchEntry)) *PegInAddressRegistryWatchRepositoryMock_Update_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_Update_Call) Run(run func(ctx context.Context, watch rootstock.PegInAddressRegistryWatch)) *PegInAddressRegistryWatchRepositoryMock_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(rootstock.PegInAddressRegistryWatchEntry))
+		run(args[0].(context.Context), args[1].(rootstock.PegInAddressRegistryWatch))
 	})
 	return _c
 }
@@ -292,22 +292,22 @@ func (_c *PegInAddressRegistryWatchRepositoryMock_Update_Call) Return(_a0 error)
 	return _c
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_Update_Call) RunAndReturn(run func(context.Context, rootstock.PegInAddressRegistryWatchEntry) error) *PegInAddressRegistryWatchRepositoryMock_Update_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_Update_Call) RunAndReturn(run func(context.Context, rootstock.PegInAddressRegistryWatch) error) *PegInAddressRegistryWatchRepositoryMock_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Upsert provides a mock function with given fields: _a0, _a1
-func (_m *PegInAddressRegistryWatchRepositoryMock) Upsert(_a0 context.Context, _a1 rootstock.PegInAddressRegistryWatchEntry) error {
-	ret := _m.Called(_a0, _a1)
+// Upsert provides a mock function with given fields: ctx, watch
+func (_m *PegInAddressRegistryWatchRepositoryMock) Upsert(ctx context.Context, watch rootstock.PegInAddressRegistryWatch) error {
+	ret := _m.Called(ctx, watch)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Upsert")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, rootstock.PegInAddressRegistryWatchEntry) error); ok {
-		r0 = rf(_a0, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, rootstock.PegInAddressRegistryWatch) error); ok {
+		r0 = rf(ctx, watch)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -321,15 +321,15 @@ type PegInAddressRegistryWatchRepositoryMock_Upsert_Call struct {
 }
 
 // Upsert is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 rootstock.PegInAddressRegistryWatchEntry
-func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) Upsert(_a0 interface{}, _a1 interface{}) *PegInAddressRegistryWatchRepositoryMock_Upsert_Call {
-	return &PegInAddressRegistryWatchRepositoryMock_Upsert_Call{Call: _e.mock.On("Upsert", _a0, _a1)}
+//   - ctx context.Context
+//   - watch rootstock.PegInAddressRegistryWatch
+func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) Upsert(ctx interface{}, watch interface{}) *PegInAddressRegistryWatchRepositoryMock_Upsert_Call {
+	return &PegInAddressRegistryWatchRepositoryMock_Upsert_Call{Call: _e.mock.On("Upsert", ctx, watch)}
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_Upsert_Call) Run(run func(_a0 context.Context, _a1 rootstock.PegInAddressRegistryWatchEntry)) *PegInAddressRegistryWatchRepositoryMock_Upsert_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_Upsert_Call) Run(run func(ctx context.Context, watch rootstock.PegInAddressRegistryWatch)) *PegInAddressRegistryWatchRepositoryMock_Upsert_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(rootstock.PegInAddressRegistryWatchEntry))
+		run(args[0].(context.Context), args[1].(rootstock.PegInAddressRegistryWatch))
 	})
 	return _c
 }
@@ -339,7 +339,7 @@ func (_c *PegInAddressRegistryWatchRepositoryMock_Upsert_Call) Return(_a0 error)
 	return _c
 }
 
-func (_c *PegInAddressRegistryWatchRepositoryMock_Upsert_Call) RunAndReturn(run func(context.Context, rootstock.PegInAddressRegistryWatchEntry) error) *PegInAddressRegistryWatchRepositoryMock_Upsert_Call {
+func (_c *PegInAddressRegistryWatchRepositoryMock_Upsert_Call) RunAndReturn(run func(context.Context, rootstock.PegInAddressRegistryWatch) error) *PegInAddressRegistryWatchRepositoryMock_Upsert_Call {
 	_c.Call.Return(run)
 	return _c
 }

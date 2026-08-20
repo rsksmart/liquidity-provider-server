@@ -41,39 +41,11 @@ func Connect(ctx context.Context, connectTimeout time.Duration, username, passwo
 	return client, nil
 }
 
-// indexCreator applies an index model to a collection, so index definitions
-// can be asserted without a live MongoDB.
-type indexCreator interface {
-	CreateIndex(ctx context.Context, collection string, model mongo.IndexModel) error
-}
-
-type databaseIndexCreator struct {
-	db *mongo.Database
-}
-
-func (creator databaseIndexCreator) CreateIndex(ctx context.Context, collection string, model mongo.IndexModel) error {
-	_, err := creator.db.Collection(collection).Indexes().CreateOne(ctx, model)
-	return err
-}
-
-func pegInAddressRegistryWatchEventIdentityIndex() mongo.IndexModel {
-	return mongo.IndexModel{
-		Keys:    bson.D{{Key: "tx_hash", Value: 1}, {Key: "log_index", Value: 1}},
-		Options: options.Index().SetUnique(true),
-	}
-}
-
-func ensurePegInAddressRegistryWatchEventIdentityIndex(ctx context.Context, creator indexCreator) error {
-	if err := creator.CreateIndex(ctx, PegInAddressRegistryWatchCollection, pegInAddressRegistryWatchEventIdentityIndex()); err != nil {
-		return fmt.Errorf("error creating unique index on %s event identity: %w", PegInAddressRegistryWatchCollection, err)
-	}
-	return nil
-}
-
 func createIndexes(ctx context.Context, db *mongo.Database) error {
-	if err := ensurePegInAddressRegistryWatchEventIdentityIndex(ctx, databaseIndexCreator{db: db}); err != nil {
-		return err
+	if err := createUniqueCompoundIndex(ctx, db, PegInAddressRegistryWatchCollection, "tx_hash", "log_index"); err != nil {
+		return fmt.Errorf("error creating unique index on %s.(tx_hash, log_index): %w", PegInAddressRegistryWatchCollection, err)
 	}
+	log.Infof("Created unique index on %s.(tx_hash, log_index)", PegInAddressRegistryWatchCollection)
 
 	uniqueIndexes := []struct {
 		collection string
@@ -127,6 +99,21 @@ func createUniqueIndex(ctx context.Context, db *mongo.Database, collectionName, 
 		ctx,
 		mongo.IndexModel{
 			Keys:    bson.D{{Key: field, Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	)
+	return err
+}
+
+func createUniqueCompoundIndex(ctx context.Context, db *mongo.Database, collectionName string, fields ...string) error {
+	keys := make(bson.D, 0, len(fields))
+	for _, field := range fields {
+		keys = append(keys, bson.E{Key: field, Value: 1})
+	}
+	_, err := db.Collection(collectionName).Indexes().CreateOne(
+		ctx,
+		mongo.IndexModel{
+			Keys:    keys,
 			Options: options.Index().SetUnique(true),
 		},
 	)
