@@ -12,7 +12,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -118,18 +117,9 @@ func (repo *memoryClaimRepo) stored() rootstock.PegInClaim {
 	return repo.byKey[claimKey(test.AnyRskAddress, claimDepositTxID)]
 }
 
-type claimLiquidityMock struct {
-	mock.Mock
-}
+type rskAccountStub struct{ addr string }
 
-func (m *claimLiquidityMock) HasClaimLiquidity(
-	ctx context.Context,
-	requiredLiquidity *entities.Wei,
-	inFlightReserved *entities.Wei,
-) error {
-	args := m.Called(ctx, requiredLiquidity, inFlightReserved)
-	return args.Error(0)
-}
+func (s rskAccountStub) RskAddress() string { return s.addr }
 
 func matchWei(want *entities.Wei) interface{} {
 	return mock.MatchedBy(func(got *entities.Wei) bool {
@@ -137,20 +127,24 @@ func matchWei(want *entities.Wei) interface{} {
 	})
 }
 
+const claimEstimatedGas uint64 = 100000
+
 type claimHarness struct {
-	repo      *memoryClaimRepo
-	pegin     *mocks.PeginContractMock
-	configs   *mocks.FlyoverConfigurationsContractMock
-	btc       *mocks.BtcRpcMock
-	rsk       *mocks.RootstockRpcServerMock
-	liquidity *claimLiquidityMock
-	useCase   *pegin.ClaimPegInUseCase
-	amount    *entities.Wei
-	fee       *entities.Wei
-	rawTx     []byte
-	block     blockchain.BitcoinBlockInformation
-	merkle    blockchain.MerkleBranch
-	entry     rootstock.PegInWatch
+	repo         *memoryClaimRepo
+	pegin        *mocks.PeginContractMock
+	pause        *mocks.PauseRegistryContractMock
+	configs      *mocks.FlyoverConfigurationsContractMock
+	btc          *mocks.BtcRpcMock
+	rsk          *mocks.RootstockRpcServerMock
+	useCase      *pegin.ClaimPegInUseCase
+	amount       *entities.Wei
+	fee          *entities.Wei
+	gasPrice     *entities.Wei
+	estimatedGas uint64
+	rawTx        []byte
+	block        blockchain.BitcoinBlockInformation
+	merkle       blockchain.MerkleBranch
+	entry        rootstock.PegInWatch
 }
 
 func newClaimHarness(t *testing.T, repo *memoryClaimRepo) *claimHarness {
@@ -158,15 +152,17 @@ func newClaimHarness(t *testing.T, repo *memoryClaimRepo) *claimHarness {
 	amount := entities.NewWei(1_000_000_000_000_000_000)
 	fee := entities.NewWei(1_000_000_000_000_000)
 	harness := &claimHarness{
-		repo:      repo,
-		pegin:     new(mocks.PeginContractMock),
-		configs:   new(mocks.FlyoverConfigurationsContractMock),
-		btc:       new(mocks.BtcRpcMock),
-		rsk:       new(mocks.RootstockRpcServerMock),
-		liquidity: new(claimLiquidityMock),
-		amount:    amount,
-		fee:       fee,
-		rawTx:     []byte{1, 2, 3, 4, 5},
+		repo:         repo,
+		pegin:        new(mocks.PeginContractMock),
+		pause:        new(mocks.PauseRegistryContractMock),
+		configs:      new(mocks.FlyoverConfigurationsContractMock),
+		btc:          new(mocks.BtcRpcMock),
+		rsk:          new(mocks.RootstockRpcServerMock),
+		amount:       amount,
+		fee:          fee,
+		gasPrice:     entities.NewWei(1),
+		estimatedGas: claimEstimatedGas,
+		rawTx:        []byte{1, 2, 3, 4, 5},
 		block: blockchain.BitcoinBlockInformation{
 			Hash:   [32]byte{9, 8, 7, 6, 5, 4, 3, 2, 1},
 			Height: big.NewInt(500),
@@ -183,9 +179,13 @@ func newClaimHarness(t *testing.T, repo *memoryClaimRepo) *claimHarness {
 	}
 	harness.useCase = pegin.NewClaimPegInUseCase(
 		harness.repo,
-		blockchain.RskContracts{PegIn: harness.pegin, FlyoverConfigurations: harness.configs},
+		blockchain.RskContracts{
+			PegIn:                 harness.pegin,
+			FlyoverConfigurations: harness.configs,
+			PauseRegistry:         harness.pause,
+		},
 		blockchain.Rpc{Btc: harness.btc, Rsk: harness.rsk},
-		harness.liquidity,
+		rskAccountStub{addr: test.AnyRskAddress},
 		&sync.Mutex{},
 		2,
 	)
@@ -207,18 +207,41 @@ func (h *claimHarness) expectRefetch(confirmations uint64) {
 	h.configs.On("GetRequiredPegInBtcConfirmations", matchWei(h.amount)).Return(uint64(6), nil).Once()
 }
 
+func (h *claimHarness) gasCost() *entities.Wei {
+	return new(entities.Wei).Mul(h.gasPrice.Copy(), entities.NewUWei(h.estimatedGas))
+}
+
+func (h *claimHarness) payable(fee *entities.Wei) *entities.Wei {
+	required := new(entities.Wei).Sub(h.amount.Copy(), fee.Copy())
+	if required.Cmp(entities.NewWei(0)) < 0 {
+		return entities.NewWei(0)
+	}
+	return required
+}
+
+func (h *claimHarness) spendableRequired(inFlight, fee *entities.Wei) *entities.Wei {
+	return new(entities.Wei).Add(new(entities.Wei).Add(h.payable(fee), h.gasCost()), inFlight)
+}
+
 func (h *claimHarness) expectPassingGates(inFlight *entities.Wei) {
 	h.expectRefetch(10)
-	h.pegin.On("IsHardPaused").Return(false, nil).Once()
-	required := new(entities.Wei).Sub(h.amount.Copy(), h.fee.Copy())
-	h.liquidity.On("HasClaimLiquidity", mock.Anything, matchWei(required), matchWei(inFlight)).Return(nil).Once()
+	h.pause.On("PauseLevel").Return(blockchain.PauseLevelNone, nil).Once()
 	h.configs.On("CalculatePegInFee", matchWei(h.amount)).Return(h.fee.Copy(), nil).Once()
+	h.expectBuildParams()
+	h.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).
+		Return(h.spendableRequired(inFlight, h.fee), nil).Once()
+	h.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(h.estimatedGas, nil).Once()
+	h.rsk.On("GasPrice", mock.Anything).Return(h.gasPrice.Copy(), nil).Once()
 }
 
 func (h *claimHarness) expectBuildParams() {
 	h.btc.On("GetRawTransaction", claimDepositTxID).Return(h.rawTx, nil).Once()
 	h.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(h.block, nil).Once()
 	h.btc.On("BuildMerkleBranch", claimDepositTxID).Return(h.merkle, nil).Once()
+}
+
+func (h *claimHarness) expectPauseNone() {
+	h.pause.On("PauseLevel").Return(blockchain.PauseLevelNone, nil).Once()
 }
 
 func TestClaimPegInUseCase_BelowConfirmationsMakesZeroContractCalls(t *testing.T) {
@@ -231,8 +254,8 @@ func TestClaimPegInUseCase_BelowConfirmationsMakesZeroContractCalls(t *testing.T
 		assert.Equal(t, 0, harness.repo.insert)
 		assert.Empty(t, harness.repo.byKey)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
-		harness.pegin.AssertNotCalled(t, "IsHardPaused")
-		harness.liquidity.AssertNotCalled(t, "HasClaimLiquidity", mock.Anything, mock.Anything, mock.Anything)
+		harness.pause.AssertNotCalled(t, "PauseLevel")
+		harness.rsk.AssertNotCalled(t, "GetBalance", mock.Anything, mock.Anything)
 		harness.btc.AssertNotCalled(t, "GetRawTransaction", mock.Anything)
 	})
 	t.Run("releases existing reserve", func(t *testing.T) {
@@ -251,19 +274,7 @@ func TestClaimPegInUseCase_BelowConfirmationsMakesZeroContractCalls(t *testing.T
 
 func TestClaimPegInUseCase_WinPersistsClaimedAndAdapterArgs(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo())
-	harness.expectRefetch(10)
-	harness.pegin.On("IsHardPaused").Return(false, nil).Once()
-	required := new(entities.Wei).Sub(harness.amount.Copy(), harness.fee.Copy())
-	harness.liquidity.On(
-		"HasClaimLiquidity",
-		mock.Anything,
-		matchWei(required),
-		matchWei(entities.NewWei(0)),
-	).Return(nil).Once()
-	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
-	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
-	harness.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(harness.block, nil).Once()
-	harness.btc.On("BuildMerkleBranch", claimDepositTxID).Return(harness.merkle, nil).Once()
+	harness.expectPassingGates(entities.NewWei(0))
 
 	pegInID := [32]byte{0xaa, 0xbb, 0xcc}
 	harness.pegin.On("RequestPegIn", mock.MatchedBy(func(params blockchain.RequestPegInParams) bool {
@@ -275,8 +286,12 @@ func TestClaimPegInUseCase_WinPersistsClaimedAndAdapterArgs(t *testing.T) {
 			params.Amount.Cmp(harness.amount) == 0 &&
 			params.Fee.Cmp(harness.fee) == 0
 	})).Return(blockchain.RequestPegInResult{
-		Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
-		Event:   &blockchain.PegInRequestedEvent{PegInId: pegInID, RskAddress: test.AnyRskAddress},
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: pegInID, RskAddress: test.AnyRskAddress},
 	}, nil).Once()
 	harness.rsk.On("GetHeight", mock.Anything).Return(uint64(102), nil).Once()
 
@@ -293,15 +308,7 @@ func TestClaimPegInUseCase_WinPersistsClaimedAndAdapterArgs(t *testing.T) {
 
 func TestClaimPegInUseCase_PegInAlreadyProcessedIsQuietRaceLost(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo())
-	harness.expectRefetch(10)
-	harness.pegin.On("IsHardPaused").Return(false, nil).Once()
-	required := new(entities.Wei).Sub(harness.amount.Copy(), harness.fee.Copy())
-	harness.liquidity.On("HasClaimLiquidity", mock.Anything, matchWei(required), matchWei(entities.NewWei(0))).
-		Return(nil).Once()
-	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
-	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
-	harness.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(harness.block, nil).Once()
-	harness.btc.On("BuildMerkleBranch", claimDepositTxID).Return(harness.merkle, nil).Once()
+	harness.expectPassingGates(entities.NewWei(0))
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(
 		blockchain.RequestPegInResult{},
 		blockchain.ErrPegInAlreadyProcessed,
@@ -328,15 +335,7 @@ func TestClaimPegInUseCase_TypedFailuresAreRetryableNotClaimed(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			harness := newClaimHarness(t, newMemoryClaimRepo())
-			harness.expectRefetch(10)
-			harness.pegin.On("IsHardPaused").Return(false, nil).Once()
-			required := new(entities.Wei).Sub(harness.amount.Copy(), harness.fee.Copy())
-			harness.liquidity.On("HasClaimLiquidity", mock.Anything, matchWei(required), matchWei(entities.NewWei(0))).
-				Return(nil).Once()
-			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
-			harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
-			harness.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(harness.block, nil).Once()
-			harness.btc.On("BuildMerkleBranch", claimDepositTxID).Return(harness.merkle, nil).Once()
+			harness.expectPassingGates(entities.NewWei(0))
 			harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{}, tc.err).Once()
 
 			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
@@ -353,33 +352,30 @@ func TestClaimPegInUseCase_TypedFailuresAreRetryableNotClaimed(t *testing.T) {
 func TestClaimPegInUseCase_InsufficientLiquidityDoesNotSubmit(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo())
 	harness.expectRefetch(10)
-	harness.pegin.On("IsHardPaused").Return(false, nil).Once()
+	harness.expectPauseNone()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
-	required := new(entities.Wei).Sub(harness.amount.Copy(), harness.fee.Copy())
-	harness.liquidity.On("HasClaimLiquidity", mock.Anything, matchWei(required), matchWei(entities.NewWei(0))).
-		Return(&usecases.InsufficientLiquidityError{
-			Available: entities.NewWei(1),
-			Required:  required,
-		}).Once()
+	harness.expectBuildParams()
+	harness.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).Return(entities.NewWei(1), nil).Once()
+	harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
+	harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Once()
 
 	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 	require.NoError(t, err)
 	assert.Equal(t, 0, harness.repo.insert)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
-	harness.btc.AssertNotCalled(t, "GetRawTransaction", mock.Anything)
 }
 
 func TestClaimPegInUseCase_HardPauseDoesNotSubmit(t *testing.T) {
 	t.Run("no existing claim", func(t *testing.T) {
 		harness := newClaimHarness(t, newMemoryClaimRepo())
 		harness.expectRefetch(10)
-		harness.pegin.On("IsHardPaused").Return(true, nil).Once()
+		harness.pause.On("PauseLevel").Return(blockchain.PauseLevelHard, nil).Once()
 
 		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 		require.NoError(t, err)
 		assert.Equal(t, 0, harness.repo.insert)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
-		harness.liquidity.AssertNotCalled(t, "HasClaimLiquidity", mock.Anything, mock.Anything, mock.Anything)
+		harness.rsk.AssertNotCalled(t, "GetBalance", mock.Anything, mock.Anything)
 	})
 	t.Run("releases existing reserve", func(t *testing.T) {
 		created := submittingClaim()
@@ -387,7 +383,7 @@ func TestClaimPegInUseCase_HardPauseDoesNotSubmit(t *testing.T) {
 		created.TxHash = ""
 		harness := newClaimHarness(t, newMemoryClaimRepo(created))
 		harness.expectRefetch(10)
-		harness.pegin.On("IsHardPaused").Return(true, nil).Once()
+		harness.pause.On("PauseLevel").Return(blockchain.PauseLevelHard, nil).Once()
 
 		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 		require.NoError(t, err)
@@ -443,7 +439,7 @@ func successReceipt() blockchain.TransactionReceipt {
 	}
 }
 
-func (h *claimHarness) expectCanonicalSuccess(event *blockchain.PegInRequestedEvent, height uint64) {
+func (h *claimHarness) expectCanonicalSuccess(event blockchain.PegInRequestedEvent, height uint64) {
 	receipt := successReceipt()
 	h.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(receipt, nil).Once()
 	h.rsk.On("GetBlockByHash", mock.Anything, claimRskBlockHash).Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
@@ -454,7 +450,7 @@ func (h *claimHarness) expectCanonicalSuccess(event *blockchain.PegInRequestedEv
 func TestClaimPegInUseCase_CrashAfterMinePersistsClaimedWithoutSecondBroadcast(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo(submittingClaim()))
 	pegInID := [32]byte{0xca, 0xfe}
-	harness.expectCanonicalSuccess(&blockchain.PegInRequestedEvent{
+	harness.expectCanonicalSuccess(blockchain.PegInRequestedEvent{
 		PegInId:    pegInID,
 		RskAddress: test.AnyRskAddress,
 	}, 102)
@@ -541,13 +537,13 @@ func TestClaimPegInUseCase_ZeroFirstOutputDoesNotSubmit(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, harness.repo.insert)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
-	harness.pegin.AssertNotCalled(t, "IsHardPaused")
+	harness.pause.AssertNotCalled(t, "PauseLevel")
 }
 
 func TestClaimPegInUseCase_RunWithTxHashReconcilesWithoutSecondBroadcast(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo(submittingClaim()))
 	pegInID := [32]byte{0x11}
-	harness.expectCanonicalSuccess(&blockchain.PegInRequestedEvent{
+	harness.expectCanonicalSuccess(blockchain.PegInRequestedEvent{
 		PegInId:    pegInID,
 		RskAddress: test.AnyRskAddress,
 	}, 102)
@@ -578,17 +574,20 @@ func TestClaimPegInUseCase_InFlightReservedExcludesSelf(t *testing.T) {
 	self.CreatedAt = time.Now().UTC().Add(-time.Hour)
 	harness := newClaimHarness(t, newMemoryClaimRepo(other, nilReserved, self))
 	harness.expectPassingGates(entities.NewWei(7))
-	harness.expectBuildParams()
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{
-		Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
-		Event:   &blockchain.PegInRequestedEvent{PegInId: [32]byte{1}, RskAddress: test.AnyRskAddress},
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: [32]byte{1}, RskAddress: test.AnyRskAddress},
 	}, nil).Once()
 	harness.rsk.On("GetHeight", mock.Anything).Return(uint64(102), nil).Once()
 
 	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 	require.NoError(t, err)
 	assert.Equal(t, self.CreatedAt, harness.repo.stored().CreatedAt)
-	harness.liquidity.AssertExpectations(t)
+	harness.pegin.AssertExpectations(t)
 }
 
 func TestClaimPegInUseCase_OracleAndLiquidityErrorsDoNotSubmit(t *testing.T) {
@@ -603,7 +602,7 @@ func TestClaimPegInUseCase_OracleAndLiquidityErrorsDoNotSubmit(t *testing.T) {
 	t.Run("hard-pause oracle", func(t *testing.T) {
 		harness := newClaimHarness(t, newMemoryClaimRepo())
 		harness.expectRefetch(10)
-		harness.pegin.On("IsHardPaused").Return(false, assert.AnError).Once()
+		harness.pause.On("PauseLevel").Return(uint8(0), assert.AnError).Once()
 		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 		require.Error(t, err)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
@@ -611,20 +610,48 @@ func TestClaimPegInUseCase_OracleAndLiquidityErrorsDoNotSubmit(t *testing.T) {
 	t.Run("fee oracle", func(t *testing.T) {
 		harness := newClaimHarness(t, newMemoryClaimRepo())
 		harness.expectRefetch(10)
-		harness.pegin.On("IsHardPaused").Return(false, nil).Once()
+		harness.expectPauseNone()
 		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return((*entities.Wei)(nil), assert.AnError).Once()
 		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 		require.Error(t, err)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 	})
-	t.Run("unexpected liquidity error", func(t *testing.T) {
+	t.Run("wallet balance error", func(t *testing.T) {
 		harness := newClaimHarness(t, newMemoryClaimRepo())
 		harness.expectRefetch(10)
-		harness.pegin.On("IsHardPaused").Return(false, nil).Once()
+		harness.expectPauseNone()
 		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
-		required := new(entities.Wei).Sub(harness.amount.Copy(), harness.fee.Copy())
-		harness.liquidity.On("HasClaimLiquidity", mock.Anything, matchWei(required), matchWei(entities.NewWei(0))).
-			Return(assert.AnError).Once()
+		harness.expectBuildParams()
+		harness.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).Return((*entities.Wei)(nil), assert.AnError).Once()
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.Error(t, err)
+		assert.Equal(t, 0, harness.repo.insert)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
+	t.Run("gas estimate error", func(t *testing.T) {
+		harness := newClaimHarness(t, newMemoryClaimRepo())
+		harness.expectRefetch(10)
+		harness.expectPauseNone()
+		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+		harness.expectBuildParams()
+		harness.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).
+			Return(harness.spendableRequired(entities.NewWei(0), harness.fee), nil).Once()
+		harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(uint64(0), assert.AnError).Once()
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.Error(t, err)
+		assert.Equal(t, 0, harness.repo.insert)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
+	t.Run("gas price error", func(t *testing.T) {
+		harness := newClaimHarness(t, newMemoryClaimRepo())
+		harness.expectRefetch(10)
+		harness.expectPauseNone()
+		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+		harness.expectBuildParams()
+		harness.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).
+			Return(harness.spendableRequired(entities.NewWei(0), harness.fee), nil).Once()
+		harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
+		harness.rsk.On("GasPrice", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
 		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 		require.Error(t, err)
 		assert.Equal(t, 0, harness.repo.insert)
@@ -635,7 +662,7 @@ func TestClaimPegInUseCase_OracleAndLiquidityErrorsDoNotSubmit(t *testing.T) {
 		repo.listErr = assert.AnError
 		harness := newClaimHarness(t, repo)
 		harness.expectRefetch(10)
-		harness.pegin.On("IsHardPaused").Return(false, nil).Once()
+		harness.expectPauseNone()
 		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 		require.Error(t, err)
@@ -646,29 +673,32 @@ func TestClaimPegInUseCase_OracleAndLiquidityErrorsDoNotSubmit(t *testing.T) {
 func TestClaimPegInUseCase_FeeAboveAmountStillEvaluatesZeroPayable(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo())
 	harness.expectRefetch(10)
-	harness.pegin.On("IsHardPaused").Return(false, nil).Once()
+	harness.expectPauseNone()
 	highFee := new(entities.Wei).Add(harness.amount.Copy(), entities.NewWei(1))
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(highFee, nil).Once()
-	harness.liquidity.On("HasClaimLiquidity", mock.Anything, matchWei(entities.NewWei(0)), matchWei(entities.NewWei(0))).
-		Return(nil).Once()
-	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
-	harness.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(harness.block, nil).Once()
-	harness.btc.On("BuildMerkleBranch", claimDepositTxID).Return(harness.merkle, nil).Once()
+	harness.expectBuildParams()
+	harness.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).
+		Return(harness.spendableRequired(entities.NewWei(0), highFee), nil).Once()
+	harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
+	harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Once()
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{
-		Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
-		Event:   &blockchain.PegInRequestedEvent{PegInId: [32]byte{2}, RskAddress: test.AnyRskAddress},
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: [32]byte{2}, RskAddress: test.AnyRskAddress},
 	}, nil).Once()
 	harness.rsk.On("GetHeight", mock.Anything).Return(uint64(102), nil).Once()
 
 	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 	require.NoError(t, err)
-	harness.liquidity.AssertExpectations(t)
+	harness.pegin.AssertExpectations(t)
 }
 
 func TestClaimPegInUseCase_MissingEventIsRetryableNotClaimed(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo())
 	harness.expectPassingGates(entities.NewWei(0))
-	harness.expectBuildParams()
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{
 		Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
 	}, nil).Once()
@@ -683,10 +713,13 @@ func TestClaimPegInUseCase_MissingEventIsRetryableNotClaimed(t *testing.T) {
 func TestClaimPegInUseCase_WithinReorgWindowStaysSubmitting(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo())
 	harness.expectPassingGates(entities.NewWei(0))
-	harness.expectBuildParams()
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{
-		Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
-		Event:   &blockchain.PegInRequestedEvent{PegInId: [32]byte{3}, RskAddress: test.AnyRskAddress},
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: [32]byte{3}, RskAddress: test.AnyRskAddress},
 	}, nil).Once()
 	harness.rsk.On("GetHeight", mock.Anything).Return(uint64(101), nil).Once()
 
@@ -729,12 +762,14 @@ func TestClaimPegInUseCase_BuildParamsErrorIsRetryable(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			harness := newClaimHarness(t, newMemoryClaimRepo())
-			harness.expectPassingGates(entities.NewWei(0))
+			harness.expectRefetch(10)
+			harness.expectPauseNone()
+			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 			tc.stub(harness)
 
 			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 			require.Error(t, err)
-			assert.Equal(t, rootstock.PegInClaimRetryableFailure, harness.repo.stored().State)
+			assert.Equal(t, 0, harness.repo.insert)
 			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 		})
 	}
@@ -796,7 +831,7 @@ func TestClaimPegInUseCase_StatusOneWithoutEventDoesNotResubmit(t *testing.T) {
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(receipt, nil).Once()
 	harness.rsk.On("GetBlockByHash", mock.Anything, claimRskBlockHash).
 		Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
-	harness.pegin.On("UnpackPegInRequested", receipt).Return((*blockchain.PegInRequestedEvent)(nil), errors.New("missing")).Once()
+	harness.pegin.On("UnpackPegInRequested", receipt).Return(blockchain.PegInRequestedEvent{}, errors.New("missing")).Once()
 
 	err := harness.useCase.ReconcileSubmitting(context.Background())
 	require.NoError(t, err)
@@ -896,10 +931,13 @@ func TestClaimPegInUseCase_StatusZeroIdentifyLookupErrors(t *testing.T) {
 func TestClaimPegInUseCase_GetHeightErrorDoesNotClaim(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo())
 	harness.expectPassingGates(entities.NewWei(0))
-	harness.expectBuildParams()
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{
-		Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
-		Event:   &blockchain.PegInRequestedEvent{PegInId: [32]byte{5}, RskAddress: test.AnyRskAddress},
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: [32]byte{5}, RskAddress: test.AnyRskAddress},
 	}, nil).Once()
 	harness.rsk.On("GetHeight", mock.Anything).Return(uint64(0), assert.AnError).Once()
 
@@ -925,7 +963,6 @@ func TestClaimPegInUseCase_BlockHashMismatchStaysSubmitting(t *testing.T) {
 func TestClaimPegInUseCase_SubmitErrorAfterHashPersistsThenClassifies(t *testing.T) {
 	harness := newClaimHarness(t, newMemoryClaimRepo())
 	harness.expectPassingGates(entities.NewWei(0))
-	harness.expectBuildParams()
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(
 		blockchain.RequestPegInResult{
 			Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
@@ -946,10 +983,13 @@ func TestClaimPegInUseCase_UpdateAfterHashDoesNotClaim(t *testing.T) {
 	repo.updateErr = assert.AnError
 	harness := newClaimHarness(t, repo)
 	harness.expectPassingGates(entities.NewWei(0))
-	harness.expectBuildParams()
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{
-		Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
-		Event:   &blockchain.PegInRequestedEvent{PegInId: [32]byte{7}, RskAddress: test.AnyRskAddress},
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: [32]byte{7}, RskAddress: test.AnyRskAddress},
 	}, nil).Once()
 
 	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
@@ -962,7 +1002,6 @@ func TestClaimPegInUseCase_RaceLostUpdateErrorDoesNotClaim(t *testing.T) {
 	repo := newMemoryClaimRepo()
 	harness := newClaimHarness(t, repo)
 	harness.expectPassingGates(entities.NewWei(0))
-	harness.expectBuildParams()
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(
 		blockchain.RequestPegInResult{},
 		blockchain.ErrPegInAlreadyProcessed,

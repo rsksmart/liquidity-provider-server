@@ -89,7 +89,6 @@ func TestParseReceipt(t *testing.T) {
 			TransactionHash:   txHash,
 			BlockHash:         blockHash,
 			BlockNumber:       blockNumber,
-			Status:            1,
 			From:              "0x82a06eBDB97776a2da4041dF8f2b2ea8D3257852",
 			To:                lbcAddress,
 			CumulativeGasUsed: big.NewInt(143691),

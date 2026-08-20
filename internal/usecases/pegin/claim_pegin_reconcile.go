@@ -95,6 +95,6 @@ func logUnrecoverableClaimReceipt(claim rootstock.PegInClaim) {
 	)
 }
 
-func hasPegInRequested(event *blockchain.PegInRequestedEvent, err error) bool {
-	return err == nil && event != nil
+func hasPegInRequested(event blockchain.PegInRequestedEvent, err error) bool {
+	return err == nil
 }
