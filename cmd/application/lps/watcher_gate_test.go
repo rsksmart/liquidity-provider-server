@@ -9,63 +9,37 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
-	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-const testChainId = 31
-
-// The gate is exercised through enabledWatchers because the watcher set is decided before any
-// watcher is prepared, so the decision can be observed without live RSK, BTC or Mongo services.
-func peginAddressRegistryGateApplication(
-	contract blockchain.PegInAddressRegistryContract,
-) (*Application, *watcher.PegInAddressRegistryWatcher) {
+func peginAddressRegistryApplication() (*Application, *watcher.PegInAddressRegistryWatcher) {
 	scanner := &watcher.PegInAddressRegistryWatcher{}
 	app := &Application{
-		env:         environment.Environment{Rsk: environment.RskEnv{ChainId: testChainId}},
-		rskRegistry: &registry.Rootstock{Contracts: blockchain.RskContracts{PegInAddressRegistry: contract}},
+		env: environment.Environment{},
 		watcherRegistry: &registry.WatcherRegistry{
 			PegInAddressRegistryWatcher: scanner,
+			PeginDepositAddressWatcher:  &watcher.PeginDepositAddressWatcher{},
 		},
 	}
 	return app, scanner
 }
 
-func TestApplication_enabledWatchers_peginAddressRegistryGate(t *testing.T) {
-	enabledConfig := environment.PegInAddressRegistryWatcherConfig{StartBlock: 4500000, PageSize: 100, Enabled: true}
+func TestApplication_enabledWatchers_registersPegInAddressRegistryWatcher(t *testing.T) {
+	app, scanner := peginAddressRegistryApplication()
 
-	t.Run("gate set registers the scanner and nothing else", func(t *testing.T) {
-		app, scanner := peginAddressRegistryGateApplication(mocks.NewPegInAddressRegistryContractMock(t))
-		baseline := app.enabledWatchers()
-		require.NotContains(t, baseline, scanner)
-		assertLog := test.AssertLogContains(t, "chain id 31 from block 4500000 with page size 100")
+	watchers := app.enabledWatchers()
 
-		app.peginAddressRegistry = enabledConfig
-		gated := app.enabledWatchers()
+	require.Contains(t, watchers, scanner)
+	assert.Equal(t, app.watcherRegistry.PeginDepositAddressWatcher, watchers[0])
+	assert.Equal(t, scanner, watchers[1])
+}
 
-		assert.Equal(t, append(baseline, scanner), gated)
-		assert.True(t, assertLog(), "registration is not reported with the active chain id and start block")
-	})
-	t.Run("gate unset leaves the watcher set at the baseline", func(t *testing.T) {
-		app, scanner := peginAddressRegistryGateApplication(mocks.NewPegInAddressRegistryContractMock(t))
-
-		watchers := app.enabledWatchers()
-
-		assert.NotContains(t, watchers, scanner)
-	})
-	t.Run("gate set without a registry address registers neither loop", func(t *testing.T) {
-		app, scanner := peginAddressRegistryGateApplication(nil)
-		app.peginAddressRegistry = enabledConfig
-		assertLog := test.AssertLogContains(t, "PEGIN_ADDRESS_REGISTRY_ADDRESS is missing")
-
-		watchers := app.enabledWatchers()
-
-		assert.NotContains(t, watchers, scanner)
-		assert.True(t, assertLog(), "the missing registry address is not reported")
-	})
+func TestRequirePegInAddressRegistry(t *testing.T) {
+	require.NoError(t, requirePegInAddressRegistry(mocks.NewPegInAddressRegistryContractMock(t)))
+	require.ErrorContains(t, requirePegInAddressRegistry(nil), "PEGIN_ADDRESS_REGISTRY_ADDRESS")
 }
 
 func TestApplication_prepareWatchers_propagatesFirstWatcherPrepareError(t *testing.T) {
