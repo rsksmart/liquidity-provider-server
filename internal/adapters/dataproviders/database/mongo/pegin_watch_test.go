@@ -151,7 +151,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(&mongoDb.UpdateResult{MatchedCount: 0}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		require.ErrorContains(t, repo.Update(context.Background(), imported), "pegin watch not found")
+		require.ErrorContains(t, repo.Update(context.Background(), imported), "pegin address registry watch not found")
 		collection.AssertExpectations(t)
 	})
 
