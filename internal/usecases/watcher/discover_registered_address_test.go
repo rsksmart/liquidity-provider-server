@@ -2,7 +2,7 @@ package watcher_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 
@@ -189,7 +189,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_WalletAlreadyImportedStillNeedsRes
 		Payload:  payload,
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 	}, nil).Once()
-	fixture.wallet.EXPECT().ImportAddress(address).Return(fmt.Errorf("address already imported")).Once()
+	fixture.wallet.EXPECT().ImportAddress(address).Return(errors.New("address already imported")).Once()
 
 	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
 	require.NoError(t, err)
