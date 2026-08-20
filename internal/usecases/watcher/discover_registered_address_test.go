@@ -19,6 +19,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type discoverRegisteredAddressFixture struct {
+	repository *mocks.PegInWatchRepositoryMock
+	registry   *mocks.PegInAddressRegistryContractMock
+	wallet     *mocks.BitcoinWalletMock
+	useCase    *watcher.DiscoverRegisteredAddressUseCase
+}
+
+func newDiscoverRegisteredAddressFixture(t *testing.T) *discoverRegisteredAddressFixture {
+	t.Helper()
+	repository := mocks.NewPegInWatchRepositoryMock(t)
+	registry := mocks.NewPegInAddressRegistryContractMock(t)
+	wallet := mocks.NewBitcoinWalletMock(t)
+	return &discoverRegisteredAddressFixture{
+		repository: repository,
+		registry:   registry,
+		wallet:     wallet,
+		useCase:    watcher.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet),
+	}
+}
+
 func registryDepositPayload(index int) ([]byte, string) {
 	const checksumSize = 4
 	decoded := datasets.Base58Addresses[index]
@@ -29,9 +49,7 @@ func registryDepositPayload(index int) ([]byte, string) {
 }
 
 func TestDiscoverRegisteredAddressUseCase_Run_ImportsAddressAndRequestsRescan(t *testing.T) {
-	repository := mocks.NewPegInWatchRepositoryMock(t)
-	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	wallet := mocks.NewBitcoinWalletMock(t)
+	fixture := newDiscoverRegisteredAddressFixture(t)
 	payload, address := registryDepositPayload(0)
 	event := blockchain.AddressRegistered{
 		TxHash:      "0xreg",
@@ -49,22 +67,21 @@ func TestDiscoverRegisteredAddressUseCase_Run_ImportsAddressAndRequestsRescan(t 
 		State:       rootstock.PegInWatchDiscovered,
 	}
 
-	repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(nil, nil).Once()
-	repository.EXPECT().Upsert(test.AnyCtx, mock.MatchedBy(func(watch rootstock.PegInWatch) bool {
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(nil, nil).Once()
+	fixture.repository.EXPECT().Upsert(test.AnyCtx, mock.MatchedBy(func(watch rootstock.PegInWatch) bool {
 		return watch.RskAddress == event.RskAddress &&
 			watch.TxHash == event.TxHash &&
 			watch.LogIndex == event.LogIndex &&
 			watch.State == rootstock.PegInWatchDiscovered
 	})).Return(nil).Once()
-	repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
-	registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
+	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Payload:  payload,
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 	}, nil).Once()
-	wallet.EXPECT().ImportAddress(address).Return(nil).Once()
+	fixture.wallet.EXPECT().ImportAddress(address).Return(nil).Once()
 
-	useCase := watcher.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet)
-	watch, needsRescan, err := useCase.Run(context.Background(), event)
+	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
 
 	require.NoError(t, err)
 	require.NotNil(t, watch)
@@ -76,9 +93,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_ImportsAddressAndRequestsRescan(t 
 }
 
 func TestDiscoverRegisteredAddressUseCase_Run_AlreadyImportedIsNoOp(t *testing.T) {
-	repository := mocks.NewPegInWatchRepositoryMock(t)
-	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	wallet := mocks.NewBitcoinWalletMock(t)
+	fixture := newDiscoverRegisteredAddressFixture(t)
 	event := blockchain.AddressRegistered{TxHash: "0xoriginal", LogIndex: 1, RskAddress: "0xrsk"}
 	imported := rootstock.PegInWatch{
 		TxHash:     event.TxHash,
@@ -87,109 +102,96 @@ func TestDiscoverRegisteredAddressUseCase_Run_AlreadyImportedIsNoOp(t *testing.T
 		State:      rootstock.PegInWatchImported,
 		BtcAddress: "n1BE7ioVukYS2GC88hT2K6cUvRiKwMwio7",
 	}
-	repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&imported, nil).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&imported, nil).Once()
 
-	useCase := watcher.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet)
-	watch, needsRescan, err := useCase.Run(context.Background(), event)
+	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
 
 	require.NoError(t, err)
 	assert.False(t, needsRescan)
 	assert.Equal(t, imported.TxHash, watch.TxHash)
 	assert.Equal(t, rootstock.PegInWatchImported, watch.State)
-	registry.AssertNotCalled(t, "GetPegInAddress", mock.Anything)
-	wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
+	fixture.registry.AssertNotCalled(t, "GetPegInAddress", mock.Anything)
+	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 }
 
 func TestDiscoverRegisteredAddressUseCase_Run_PersistsUnsupportedEncoding(t *testing.T) {
-	repository := mocks.NewPegInWatchRepositoryMock(t)
-	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	wallet := mocks.NewBitcoinWalletMock(t)
+	fixture := newDiscoverRegisteredAddressFixture(t)
 	event := blockchain.AddressRegistered{TxHash: "0xbech32", LogIndex: 1, RskAddress: "0xbech32"}
 	discovered := rootstock.PegInWatch{
 		TxHash: event.TxHash, LogIndex: event.LogIndex, RskAddress: event.RskAddress,
 		State: rootstock.PegInWatchDiscovered,
 	}
-	repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
-	registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
+	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Encoding: blockchain.PegInAddressRegistryEncodingBech32,
 	}, nil).Once()
-	repository.On("Update", test.AnyCtx, mock.MatchedBy(func(watch rootstock.PegInWatch) bool {
+	fixture.repository.On("Update", test.AnyCtx, mock.MatchedBy(func(watch rootstock.PegInWatch) bool {
 		return watch.TxHash == event.TxHash &&
 			watch.State == rootstock.PegInWatchUnsupportedEncoding &&
 			watch.BtcAddress == ""
 	})).Return(nil).Once()
 
-	useCase := watcher.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet)
-	watch, needsRescan, err := useCase.Run(context.Background(), event)
+	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
 
 	require.NoError(t, err)
 	assert.False(t, needsRescan)
 	assert.Equal(t, rootstock.PegInWatchUnsupportedEncoding, watch.State)
-	wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
+	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 }
 
 func TestDiscoverRegisteredAddressUseCase_Run_RecordsUnencodablePayload(t *testing.T) {
-	repository := mocks.NewPegInWatchRepositoryMock(t)
-	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	wallet := mocks.NewBitcoinWalletMock(t)
+	fixture := newDiscoverRegisteredAddressFixture(t)
 	event := blockchain.AddressRegistered{TxHash: "truncated-payload", LogIndex: 1, RskAddress: "truncated-rsk"}
 	discovered := rootstock.PegInWatch{
 		TxHash: event.TxHash, LogIndex: event.LogIndex, RskAddress: event.RskAddress,
 		State: rootstock.PegInWatchDiscovered,
 	}
 	payload, _ := registryDepositPayload(0)
-	repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
-	registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
+	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Payload:  payload[:20],
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 	}, nil).Once()
-	repository.On("Update", test.AnyCtx, mock.MatchedBy(func(watch rootstock.PegInWatch) bool {
+	fixture.repository.On("Update", test.AnyCtx, mock.MatchedBy(func(watch rootstock.PegInWatch) bool {
 		return watch.TxHash == event.TxHash &&
 			watch.State == rootstock.PegInWatchDiscovered &&
 			strings.Contains(watch.LastError, "encode PegIn address for event truncated-payload/1")
 	})).Return(nil).Once()
 
-	useCase := watcher.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet)
-	watch, needsRescan, err := useCase.Run(context.Background(), event)
+	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
 
 	require.NoError(t, err)
 	assert.False(t, needsRescan)
 	assert.NotEmpty(t, watch.LastError)
-	wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
+	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 }
 
 func TestDiscoverRegisteredAddressUseCase_Run_WrapsPersistErrors(t *testing.T) {
-	repository := mocks.NewPegInWatchRepositoryMock(t)
-	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	wallet := mocks.NewBitcoinWalletMock(t)
+	fixture := newDiscoverRegisteredAddressFixture(t)
 	event := blockchain.AddressRegistered{TxHash: "0xreg", LogIndex: 1, RskAddress: "0xrsk"}
-	repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(nil, assert.AnError).Once()
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(nil, assert.AnError).Once()
 
-	useCase := watcher.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet)
-	_, _, err := useCase.Run(context.Background(), event)
+	_, _, err := fixture.useCase.Run(context.Background(), event)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, string(usecases.DiscoverRegisteredAddressId))
 }
 
-func TestDiscoverRegisteredAddressUseCase_Run_TreatsAlreadyImportedAsSuccess(t *testing.T) {
-	repository := mocks.NewPegInWatchRepositoryMock(t)
-	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	wallet := mocks.NewBitcoinWalletMock(t)
+func TestDiscoverRegisteredAddressUseCase_Run_WalletAlreadyImportedStillNeedsRescan(t *testing.T) {
+	fixture := newDiscoverRegisteredAddressFixture(t)
 	payload, address := registryDepositPayload(0)
 	event := blockchain.AddressRegistered{TxHash: "0xreg", LogIndex: 1, RskAddress: "0xrsk"}
 	discovered := rootstock.PegInWatch{
 		TxHash: event.TxHash, LogIndex: event.LogIndex, RskAddress: event.RskAddress,
 		State: rootstock.PegInWatchDiscovered,
 	}
-	repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
-	registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
+	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&discovered, nil).Once()
+	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Payload:  payload,
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 	}, nil).Once()
-	wallet.EXPECT().ImportAddress(address).Return(fmt.Errorf("address already imported")).Once()
+	fixture.wallet.EXPECT().ImportAddress(address).Return(fmt.Errorf("address already imported")).Once()
 
-	useCase := watcher.NewDiscoverRegisteredAddressUseCase(repository, registry, wallet)
-	watch, needsRescan, err := useCase.Run(context.Background(), event)
+	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
 	require.NoError(t, err)
 	assert.True(t, needsRescan)
 	assert.Equal(t, address, watch.BtcAddress)
