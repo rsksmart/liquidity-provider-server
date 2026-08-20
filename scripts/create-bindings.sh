@@ -23,6 +23,7 @@ CONTRACTS=(
   "IFlyoverDiscovery       FlyoverDiscovery               discovery"
   "Flyover                 Flyover                        flyover"
   "IPegInAddressRegistry   PegInAddressRegistryContract   pegin_address_registry"
+  "IPauseRegistry          PauseRegistryContract          pause_registry"
   "IFlyoverConfigurations  FlyoverConfigurationsContract  flyover_configurations"
 )
 
