@@ -64,7 +64,6 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 	return registry.NewWatcherRegistry(
 		env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry,
 		tickers, environment.DefaultTimeouts(),
-		environment.PegInAddressRegistryWatcherConfig{StartBlock: 500, PageSize: 100, Enabled: true},
 	)
 }
 

@@ -45,26 +45,27 @@ func NewWatcherRegistry(
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,
-	peginAddressRegistry environment.PegInAddressRegistryWatcherConfig,
 ) *WatcherRegistry {
 	appMetrics := monitoring.NewMetrics(prometheus.DefaultRegisterer)
+	pegin := env.Pegin.FillWithDefaults()
 
 	return &WatcherRegistry{
-		// The registry watcher is constructed unconditionally and registered only when the
-		// env gate is set, the same way the eclipse watchers are handled.
 		PegInAddressRegistryWatcher: watcher.NewPegInAddressRegistryWatcher(
 			watcher.NewPegInAddressRegistryWatcherUseCases(
-				useCaseRegistry.discoverRegisteredAddressUseCase,
 				useCaseRegistry.getWatchedRegisteredAddressesUseCase,
+				useCaseRegistry.getRegistryWatchCursorUseCase,
+				useCaseRegistry.setRegistryWatchCursorUseCase,
+				useCaseRegistry.discoverRegisteredAddressUseCase,
+				useCaseRegistry.markRegisteredAddressImportedUseCase,
+				useCaseRegistry.recordRegisteredAddressWatchErrorUseCase,
 			),
-			dbRegistry.PegInAddressRegistryWatchRepository,
 			rskRegistry.Contracts.PegInAddressRegistry,
 			messaging.Rpc.Rsk,
 			messaging.Rpc.Btc,
 			btcRegistry.MonitoringWallet,
 			tickers.PegInAddressRegistryWatcherTicker,
-			peginAddressRegistry.StartBlock,
-			peginAddressRegistry.PageSize,
+			pegin.AddressRegistryWatcherStartBlock,
+			pegin.AddressRegistryWatcherPageSize,
 			env.Rsk.FillWithDefaults().MaxReorgDepth,
 		),
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
