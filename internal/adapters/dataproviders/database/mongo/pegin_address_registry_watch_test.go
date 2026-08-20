@@ -53,6 +53,16 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 		collection.AssertExpectations(t)
 	})
 
+	t.Run("surfaces a non-duplicate upsert error", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		collection.EXPECT().UpdateOne(mock.Anything, identity, mock.Anything, mock.Anything).
+			Return(nil, assert.AnError).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		require.ErrorIs(t, repo.Upsert(context.Background(), entry), assert.AnError)
+		collection.AssertExpectations(t)
+	})
+
 	t.Run("reads an event by stable identity", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
 		collection.EXPECT().FindOne(mock.Anything, identity).
@@ -62,6 +72,30 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 		result, err := repo.Get(context.Background(), entry.TxHash, entry.LogIndex)
 		require.NoError(t, err)
 		assert.Equal(t, &entry, result)
+		collection.AssertExpectations(t)
+	})
+
+	t.Run("treats a missing event as not yet persisted", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		collection.EXPECT().FindOne(mock.Anything, identity).
+			Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInAddressRegistryWatch{}, mongoDb.ErrNoDocuments, nil)).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		result, err := repo.Get(context.Background(), entry.TxHash, entry.LogIndex)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+		collection.AssertExpectations(t)
+	})
+
+	t.Run("does not treat a read error as a miss", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		collection.EXPECT().FindOne(mock.Anything, identity).
+			Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInAddressRegistryWatch{}, assert.AnError, nil)).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		result, err := repo.Get(context.Background(), entry.TxHash, entry.LogIndex)
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Nil(t, result)
 		collection.AssertExpectations(t)
 	})
 
@@ -82,6 +116,21 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 		collection.AssertExpectations(t)
 	})
 
+	t.Run("surfaces a list error instead of an empty watch set", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		collection.EXPECT().Find(
+			mock.Anything,
+			bson.M{"tx_hash": bson.M{"$exists": true}},
+			sortedBy(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
+		).Return(nil, assert.AnError).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		result, err := repo.List(context.Background())
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Nil(t, result)
+		collection.AssertExpectations(t)
+	})
+
 	t.Run("persists a state transition", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
 		imported := entry
@@ -91,6 +140,48 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 
 		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
 		require.NoError(t, repo.Update(context.Background(), imported))
+		collection.AssertExpectations(t)
+	})
+
+	t.Run("fails closed when the watch to update is missing", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		imported := entry
+		imported.State = rootstock.PegInAddressRegistryWatchImported
+		collection.EXPECT().ReplaceOne(mock.Anything, identity, imported).
+			Return(&mongoDb.UpdateResult{MatchedCount: 0}, nil).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		require.ErrorContains(t, repo.Update(context.Background(), imported), "pegin address registry watch not found")
+		collection.AssertExpectations(t)
+	})
+
+	t.Run("surfaces an update driver error", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		imported := entry
+		imported.State = rootstock.PegInAddressRegistryWatchImported
+		collection.EXPECT().ReplaceOne(mock.Anything, identity, imported).
+			Return(nil, assert.AnError).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		require.ErrorIs(t, repo.Update(context.Background(), imported), assert.AnError)
+		collection.AssertExpectations(t)
+	})
+
+	t.Run("round-trips unsupported encoding state", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		unsupported := entry
+		unsupported.State = rootstock.PegInAddressRegistryWatchUnsupportedEncoding
+		unsupported.Encoding = 1
+		collection.EXPECT().ReplaceOne(mock.Anything, identity, unsupported).
+			Return(&mongoDb.UpdateResult{MatchedCount: 1, ModifiedCount: 1}, nil).Once()
+		collection.EXPECT().FindOne(mock.Anything, identity).
+			Return(mongoDb.NewSingleResultFromDocument(unsupported, nil, nil)).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		require.NoError(t, repo.Update(context.Background(), unsupported))
+		result, err := repo.Get(context.Background(), unsupported.TxHash, unsupported.LogIndex)
+		require.NoError(t, err)
+		assert.Equal(t, &unsupported, result)
 		collection.AssertExpectations(t)
 	})
 }
@@ -129,6 +220,35 @@ func TestPegInAddressRegistryWatchMongoRepository_Cursor(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, uint64(123), block)
 		assert.True(t, found)
+		collection.AssertExpectations(t)
+	})
+}
+
+func TestPegInAddressRegistryWatchMongoRepository_CursorErrors(t *testing.T) {
+	t.Run("does not treat a cursor read error as an absent cursor", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		collection.EXPECT().FindOne(mock.Anything, bson.M{"_id": "scanCursor"}).
+			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, assert.AnError, nil)).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		block, found, err := repo.GetCursor(context.Background())
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Zero(t, block)
+		assert.False(t, found)
+		collection.AssertExpectations(t)
+	})
+
+	t.Run("surfaces a cursor write error", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
+		collection.EXPECT().UpdateOne(
+			mock.Anything,
+			bson.M{"_id": "scanCursor"},
+			bson.M{"$set": bson.M{"last_scanned_block": uint64(123)}},
+			withUpdateUpsert(),
+		).Return(nil, assert.AnError).Once()
+
+		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		require.ErrorIs(t, repo.SetCursor(context.Background(), 123), assert.AnError)
 		collection.AssertExpectations(t)
 	})
 }
