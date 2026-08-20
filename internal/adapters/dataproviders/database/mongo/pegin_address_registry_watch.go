@@ -30,13 +30,13 @@ func NewPegInAddressRegistryWatchMongoRepository(conn *Connection) rootstock.Peg
 
 func (repo *peginAddressRegistryWatchMongoRepository) Upsert(
 	ctx context.Context,
-	entry rootstock.PegInAddressRegistryWatchEntry,
+	watch rootstock.PegInAddressRegistryWatch,
 ) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	filter := eventIdentity(entry.TxHash, entry.LogIndex)
-	update := bson.M{"$setOnInsert": entry}
+	filter := eventIdentity(watch.TxHash, watch.LogIndex)
+	update := bson.M{"$setOnInsert": watch}
 	_, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).UpdateOne(
 		dbCtx,
 		filter,
@@ -53,26 +53,26 @@ func (repo *peginAddressRegistryWatchMongoRepository) Get(
 	ctx context.Context,
 	txHash string,
 	logIndex uint,
-) (*rootstock.PegInAddressRegistryWatchEntry, error) {
+) (*rootstock.PegInAddressRegistryWatch, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	var entry rootstock.PegInAddressRegistryWatchEntry
+	var watch rootstock.PegInAddressRegistryWatch
 	err := repo.conn.Collection(PegInAddressRegistryWatchCollection).
 		FindOne(dbCtx, eventIdentity(txHash, logIndex)).
-		Decode(&entry)
+		Decode(&watch)
 	if errors.Is(err, mongoDb.ErrNoDocuments) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &entry, nil
+	return &watch, nil
 }
 
 func (repo *peginAddressRegistryWatchMongoRepository) List(
 	ctx context.Context,
-) ([]rootstock.PegInAddressRegistryWatchEntry, error) {
+) ([]rootstock.PegInAddressRegistryWatch, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
@@ -86,30 +86,30 @@ func (repo *peginAddressRegistryWatchMongoRepository) List(
 	}
 	defer cursor.Close(dbCtx)
 
-	entries := make([]rootstock.PegInAddressRegistryWatchEntry, 0)
-	if err = cursor.All(dbCtx, &entries); err != nil {
+	watches := make([]rootstock.PegInAddressRegistryWatch, 0)
+	if err = cursor.All(dbCtx, &watches); err != nil {
 		return nil, err
 	}
-	return entries, nil
+	return watches, nil
 }
 
 func (repo *peginAddressRegistryWatchMongoRepository) Update(
 	ctx context.Context,
-	entry rootstock.PegInAddressRegistryWatchEntry,
+	watch rootstock.PegInAddressRegistryWatch,
 ) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	result, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).ReplaceOne(
 		dbCtx,
-		eventIdentity(entry.TxHash, entry.LogIndex),
-		entry,
+		eventIdentity(watch.TxHash, watch.LogIndex),
+		watch,
 	)
 	if err != nil {
 		return err
 	}
 	if result.MatchedCount != 1 {
-		return errors.New("pegin address registry watch entry not found")
+		return errors.New("pegin address registry watch not found")
 	}
 	return nil
 }
