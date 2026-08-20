@@ -30,7 +30,7 @@ func TestWatchSetKeepsOneDocumentPerEventAgainstMongo(t *testing.T) {
 
 	assertEventIdentityIndexIsUnique(t, ctx, collection)
 
-	event := rootstock.PegInAddressRegistryWatchEntry{
+	event := rootstock.PegInAddressRegistryWatch{
 		TxHash:      fmt.Sprintf("0xfly2514-%d", time.Now().UnixNano()),
 		LogIndex:    7,
 		BlockNumber: 4321,
