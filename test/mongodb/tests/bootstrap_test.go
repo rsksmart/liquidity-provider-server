@@ -76,6 +76,7 @@ func TestBootstrap_RegistryConstruction(t *testing.T) {
 	assert.NotNil(t, db.TrustedAccountRepository)
 	assert.NotNil(t, db.PenalizedEventRepository)
 	assert.NotNil(t, db.BatchPegOutRepository)
+	assert.NotNil(t, db.PegInAddressRegistryWatchRepository)
 	assert.NotNil(t, db.Connection)
 }
 
