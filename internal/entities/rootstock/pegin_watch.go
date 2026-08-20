@@ -94,11 +94,40 @@ func (watch *PegInWatch) RecordError(err error) bool {
 	return true
 }
 
+type PegInWatchCheckpoint struct {
+	LocalRoot          [32]byte `json:"localRoot" bson:"local_root"`
+	LastProcessedBlock uint64   `json:"lastProcessedBlock" bson:"last_processed_block"`
+}
+
 type PegInWatchRepository interface {
 	Upsert(ctx context.Context, watch PegInWatch) error
 	Get(ctx context.Context, rskAddress string) (*PegInWatch, error)
 	List(ctx context.Context) ([]PegInWatch, error)
 	Update(ctx context.Context, watch PegInWatch) error
-	GetCursor(ctx context.Context) (lastScannedBlock uint64, found bool, err error)
-	SetCursor(ctx context.Context, lastScannedBlock uint64) error
+}
+
+type PegInWatchCheckpointRepository interface {
+	GetCheckpoint(ctx context.Context) (checkpoint PegInWatchCheckpoint, found bool, err error)
+	SetCheckpoint(ctx context.Context, checkpoint PegInWatchCheckpoint) error
+	DeleteCheckpoint(ctx context.Context) error
+}
+
+// PegInWatchRepositorySet is the Replay port.
+// Discover takes only PegInWatchRepository because it never
+// reads or writes the checkpoint. Replay needs both the entry methods and the
+// checkpoint methods. Keep the split so Discover cannot call DeleteCheckpoint.
+type PegInWatchRepositorySet interface {
+	PegInWatchRepository
+	PegInWatchCheckpointRepository
+}
+
+type PegInWatches []*PegInWatch
+
+func (entries PegInWatches) Contains(rskAddress string) bool {
+	for _, entry := range entries {
+		if entry != nil && entry.RskAddress == rskAddress {
+			return true
+		}
+	}
+	return false
 }
