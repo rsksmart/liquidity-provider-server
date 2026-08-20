@@ -104,7 +104,6 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 				TransactionHash:   txHash,
 				BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000000456",
 				BlockNumber:       123,
-				Status:            1,
 				From:              walletAddress.String(),
 				To:                common.HexToAddress(toAddress).String(), // Use normalized address format
 				CumulativeGasUsed: big.NewInt(50000),
