@@ -39,7 +39,7 @@ func TestBootstrap_IndexesCreated(t *testing.T) {
 		{collection: mongo.RetainedPegoutQuoteCollection, field: "quote_hash", unique: false},
 		{collection: mongo.PeginQuoteCollection, field: "hash", unique: false},
 		{collection: mongo.PegoutQuoteCollection, field: "hash", unique: false},
-		{collection: mongo.PegInAddressRegistryWatchCollection, field: "rsk_address", unique: false},
+		{collection: mongo.PegInAddressRegistryWatchCollection, field: "rsk_address", unique: true},
 		{collection: mongo.PegInAddressRegistryWatchCollection, field: "state", unique: false},
 	}
 

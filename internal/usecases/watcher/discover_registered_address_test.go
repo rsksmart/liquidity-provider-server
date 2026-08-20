@@ -39,9 +39,9 @@ func newDiscoverRegisteredAddressFixture(t *testing.T) *discoverRegisteredAddres
 	}
 }
 
-func registryDepositPayload(index int) ([]byte, string) {
+func registryDepositPayload() ([]byte, string) {
 	const checksumSize = 4
-	decoded := datasets.Base58Addresses[index]
+	decoded := datasets.Base58Addresses[0]
 	payload := make([]byte, 0, len(decoded.Expected)+checksumSize)
 	payload = append(payload, decoded.Expected...)
 	payload = append(payload, chainhash.DoubleHashB(decoded.Expected)[:checksumSize]...)
@@ -50,7 +50,7 @@ func registryDepositPayload(index int) ([]byte, string) {
 
 func TestDiscoverRegisteredAddressUseCase_Run_ImportsAddressAndRequestsRescan(t *testing.T) {
 	fixture := newDiscoverRegisteredAddressFixture(t)
-	payload, address := registryDepositPayload(0)
+	payload, address := registryDepositPayload()
 	event := blockchain.AddressRegistered{
 		TxHash:      "0xreg",
 		LogIndex:    3,
@@ -116,7 +116,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_AlreadyImportedIsNoOp(t *testing.T
 
 func TestDiscoverRegisteredAddressUseCase_Run_DuplicateRskAddressKeepsFirstRow(t *testing.T) {
 	fixture := newDiscoverRegisteredAddressFixture(t)
-	payload, address := registryDepositPayload(0)
+	payload, address := registryDepositPayload()
 	first := blockchain.AddressRegistered{TxHash: "0xfirst", LogIndex: 1, RskAddress: "0xshared"}
 	replay := blockchain.AddressRegistered{TxHash: "0xreplay", LogIndex: 2, RskAddress: "0xshared"}
 	discovered := rootstock.PegInAddressRegistryWatch{
@@ -173,7 +173,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_RecordsUnencodablePayload(t *testi
 		TxHash: event.TxHash, LogIndex: event.LogIndex, RskAddress: event.RskAddress,
 		State: rootstock.PegInAddressRegistryWatchDiscovered,
 	}
-	payload, _ := registryDepositPayload(0)
+	payload, _ := registryDepositPayload()
 	fixture.repository.EXPECT().Get(test.AnyCtx, event.RskAddress).Return(&discovered, nil).Once()
 	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).Return(blockchain.PegInAddress{
 		Payload:  payload[:20],
@@ -205,7 +205,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_WrapsPersistErrors(t *testing.T) {
 
 func TestDiscoverRegisteredAddressUseCase_Run_WalletAlreadyImportedStillNeedsRescan(t *testing.T) {
 	fixture := newDiscoverRegisteredAddressFixture(t)
-	payload, address := registryDepositPayload(0)
+	payload, address := registryDepositPayload()
 	event := blockchain.AddressRegistered{TxHash: "0xreg", LogIndex: 1, RskAddress: "0xrsk"}
 	discovered := rootstock.PegInAddressRegistryWatch{
 		TxHash: event.TxHash, LogIndex: event.LogIndex, RskAddress: event.RskAddress,

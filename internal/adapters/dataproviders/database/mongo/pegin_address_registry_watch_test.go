@@ -81,7 +81,7 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInAddressRegistryWatch{}, mongoDb.ErrNoDocuments, nil)).Once()
 
 		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		result, err := repo.Get(context.Background(), entry.TxHash, entry.LogIndex)
+		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.NoError(t, err)
 		assert.Nil(t, result)
 		collection.AssertExpectations(t)
@@ -93,7 +93,7 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInAddressRegistryWatch{}, assert.AnError, nil)).Once()
 
 		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		result, err := repo.Get(context.Background(), entry.TxHash, entry.LogIndex)
+		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Nil(t, result)
 		collection.AssertExpectations(t)
@@ -120,7 +120,7 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInAddressRegistryWatchCollection)
 		collection.EXPECT().Find(
 			mock.Anything,
-			bson.M{"tx_hash": bson.M{"$exists": true}},
+			bson.M{"rsk_address": bson.M{"$exists": true}},
 			sortedBy(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
 		).Return(nil, assert.AnError).Once()
 
@@ -179,7 +179,7 @@ func TestPegInAddressRegistryWatchMongoRepository(t *testing.T) {
 
 		repo := mongo.NewPegInAddressRegistryWatchMongoRepository(mongo.NewConnection(client, time.Second))
 		require.NoError(t, repo.Update(context.Background(), unsupported))
-		result, err := repo.Get(context.Background(), unsupported.TxHash, unsupported.LogIndex)
+		result, err := repo.Get(context.Background(), unsupported.RskAddress)
 		require.NoError(t, err)
 		assert.Equal(t, &unsupported, result)
 		collection.AssertExpectations(t)
