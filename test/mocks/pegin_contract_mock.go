@@ -79,6 +79,62 @@ func (_c *PeginContractMock_CallForUser_Call) RunAndReturn(run func(blockchain.T
 	return _c
 }
 
+// EstimateRequestPegInGas provides a mock function with given fields: params
+func (_m *PeginContractMock) EstimateRequestPegInGas(params blockchain.RequestPegInParams) (uint64, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EstimateRequestPegInGas")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(blockchain.RequestPegInParams) (uint64, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(blockchain.RequestPegInParams) uint64); ok {
+		r0 = rf(params)
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func(blockchain.RequestPegInParams) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginContractMock_EstimateRequestPegInGas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EstimateRequestPegInGas'
+type PeginContractMock_EstimateRequestPegInGas_Call struct {
+	*mock.Call
+}
+
+// EstimateRequestPegInGas is a helper method to define mock.On call
+//   - params blockchain.RequestPegInParams
+func (_e *PeginContractMock_Expecter) EstimateRequestPegInGas(params interface{}) *PeginContractMock_EstimateRequestPegInGas_Call {
+	return &PeginContractMock_EstimateRequestPegInGas_Call{Call: _e.mock.On("EstimateRequestPegInGas", params)}
+}
+
+func (_c *PeginContractMock_EstimateRequestPegInGas_Call) Run(run func(params blockchain.RequestPegInParams)) *PeginContractMock_EstimateRequestPegInGas_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.RequestPegInParams))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_EstimateRequestPegInGas_Call) Return(_a0 uint64, _a1 error) *PeginContractMock_EstimateRequestPegInGas_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginContractMock_EstimateRequestPegInGas_Call) RunAndReturn(run func(blockchain.RequestPegInParams) (uint64, error)) *PeginContractMock_EstimateRequestPegInGas_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAddress provides a mock function with no fields
 func (_m *PeginContractMock) GetAddress() string {
 	ret := _m.Called()
@@ -292,61 +348,6 @@ func (_c *PeginContractMock_HashPeginQuoteEIP712_Call) Return(_a0 [32]byte, _a1 
 }
 
 func (_c *PeginContractMock_HashPeginQuoteEIP712_Call) RunAndReturn(run func(quote.PeginQuote) ([32]byte, error)) *PeginContractMock_HashPeginQuoteEIP712_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// IsHardPaused provides a mock function with no fields
-func (_m *PeginContractMock) IsHardPaused() (bool, error) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for IsHardPaused")
-	}
-
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (bool, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// PeginContractMock_IsHardPaused_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsHardPaused'
-type PeginContractMock_IsHardPaused_Call struct {
-	*mock.Call
-}
-
-// IsHardPaused is a helper method to define mock.On call
-func (_e *PeginContractMock_Expecter) IsHardPaused() *PeginContractMock_IsHardPaused_Call {
-	return &PeginContractMock_IsHardPaused_Call{Call: _e.mock.On("IsHardPaused")}
-}
-
-func (_c *PeginContractMock_IsHardPaused_Call) Run(run func()) *PeginContractMock_IsHardPaused_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *PeginContractMock_IsHardPaused_Call) Return(_a0 bool, _a1 error) *PeginContractMock_IsHardPaused_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *PeginContractMock_IsHardPaused_Call) RunAndReturn(run func() (bool, error)) *PeginContractMock_IsHardPaused_Call {
 	_c.Call.Return(run)
 	return _c
 }
