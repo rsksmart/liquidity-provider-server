@@ -4,36 +4,66 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
-	"time"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 )
 
+type PegInAddressRegistryWatcherUseCases struct {
+	getWatchedUseCase   *w.GetWatchedRegisteredAddressesUseCase
+	getCursorUseCase    *w.GetRegistryWatchCursorUseCase
+	setCursorUseCase    *w.SetRegistryWatchCursorUseCase
+	discoverUseCase     *w.DiscoverRegisteredAddressUseCase
+	markImportedUseCase *w.MarkRegisteredAddressImportedUseCase
+	recordErrorUseCase  *w.RecordRegisteredAddressWatchErrorUseCase
+}
+
+func NewPegInAddressRegistryWatcherUseCases(
+	getWatchedUseCase *w.GetWatchedRegisteredAddressesUseCase,
+	getCursorUseCase *w.GetRegistryWatchCursorUseCase,
+	setCursorUseCase *w.SetRegistryWatchCursorUseCase,
+	discoverUseCase *w.DiscoverRegisteredAddressUseCase,
+	markImportedUseCase *w.MarkRegisteredAddressImportedUseCase,
+	recordErrorUseCase *w.RecordRegisteredAddressWatchErrorUseCase,
+) *PegInAddressRegistryWatcherUseCases {
+	return &PegInAddressRegistryWatcherUseCases{
+		getWatchedUseCase:   getWatchedUseCase,
+		getCursorUseCase:    getCursorUseCase,
+		setCursorUseCase:    setCursorUseCase,
+		discoverUseCase:     discoverUseCase,
+		markImportedUseCase: markImportedUseCase,
+		recordErrorUseCase:  recordErrorUseCase,
+	}
+}
+
 type PegInAddressRegistryWatcher struct {
-	repository         rootstock.PegInAddressRegistryWatchRepository
-	registry           blockchain.PegInAddressRegistryContract
-	rskRpc             blockchain.RootstockRpcServer
-	btcNetwork         blockchain.BitcoinNetwork
-	wallet             blockchain.BitcoinWallet
-	ticker             utils.Ticker
-	watcherStopChannel chan struct{}
-	startBlock         uint64
-	pageSize           uint64
-	finalityDepth      uint64
-	lastScannedBlock   uint64
-	hasCursor          bool
-	entries            []rootstock.PegInAddressRegistryWatchEntry
-	stateMutex         sync.RWMutex
+	getWatchedUseCase   *w.GetWatchedRegisteredAddressesUseCase
+	getCursorUseCase    *w.GetRegistryWatchCursorUseCase
+	setCursorUseCase    *w.SetRegistryWatchCursorUseCase
+	discoverUseCase     *w.DiscoverRegisteredAddressUseCase
+	markImportedUseCase *w.MarkRegisteredAddressImportedUseCase
+	recordErrorUseCase  *w.RecordRegisteredAddressWatchErrorUseCase
+	registry            blockchain.PegInAddressRegistryContract
+	rskRpc              blockchain.RootstockRpcServer
+	btcNetwork          blockchain.BitcoinNetwork
+	wallet              blockchain.BitcoinWallet
+	ticker              utils.Ticker
+	watcherStopChannel  chan struct{}
+	startBlock          uint64
+	pageSize            uint64
+	finalityDepth       uint64
+	lastScannedBlock    uint64
+	hasCursor           bool
+	watches             []rootstock.PegInAddressRegistryWatch
+	stateMutex          sync.RWMutex
 }
 
 func NewPegInAddressRegistryWatcher(
-	repository rootstock.PegInAddressRegistryWatchRepository,
+	useCases *PegInAddressRegistryWatcherUseCases,
 	registry blockchain.PegInAddressRegistryContract,
 	rskRpc blockchain.RootstockRpcServer,
 	btcNetwork blockchain.BitcoinNetwork,
@@ -44,32 +74,37 @@ func NewPegInAddressRegistryWatcher(
 	finalityDepth uint64,
 ) *PegInAddressRegistryWatcher {
 	return &PegInAddressRegistryWatcher{
-		repository:         repository,
-		registry:           registry,
-		rskRpc:             rskRpc,
-		btcNetwork:         btcNetwork,
-		wallet:             wallet,
-		ticker:             ticker,
-		watcherStopChannel: make(chan struct{}, 1),
-		startBlock:         startBlock,
-		pageSize:           pageSize,
-		finalityDepth:      finalityDepth,
+		getWatchedUseCase:   useCases.getWatchedUseCase,
+		getCursorUseCase:    useCases.getCursorUseCase,
+		setCursorUseCase:    useCases.setCursorUseCase,
+		discoverUseCase:     useCases.discoverUseCase,
+		markImportedUseCase: useCases.markImportedUseCase,
+		recordErrorUseCase:  useCases.recordErrorUseCase,
+		registry:            registry,
+		rskRpc:              rskRpc,
+		btcNetwork:          btcNetwork,
+		wallet:              wallet,
+		ticker:              ticker,
+		watcherStopChannel:  make(chan struct{}, 1),
+		startBlock:          startBlock,
+		pageSize:            pageSize,
+		finalityDepth:       finalityDepth,
 	}
 }
 
 func (watcher *PegInAddressRegistryWatcher) Prepare(ctx context.Context) error {
-	entries, err := watcher.repository.List(ctx)
+	watches, err := watcher.getWatchedUseCase.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("load PegIn address registry watch set: %w", err)
 	}
-	lastScannedBlock, found, err := watcher.repository.GetCursor(ctx)
+	lastScannedBlock, found, err := watcher.getCursorUseCase.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("load PegIn address registry scan cursor: %w", err)
 	}
 
 	watcher.stateMutex.Lock()
 	defer watcher.stateMutex.Unlock()
-	watcher.entries = entries
+	watcher.watches = watches
 	watcher.lastScannedBlock = lastScannedBlock
 	watcher.hasCursor = found
 	return nil
@@ -98,8 +133,8 @@ func (watcher *PegInAddressRegistryWatcher) Shutdown(closeChannel chan<- bool) {
 }
 
 func (watcher *PegInAddressRegistryWatcher) scan(ctx context.Context) error {
-	pending := make([]*rootstock.PegInAddressRegistryWatchEntry, 0)
-	if err := watcher.retryDiscoveredEntries(ctx, &pending); err != nil {
+	pending := make([]*rootstock.PegInAddressRegistryWatch, 0)
+	if err := watcher.retryDiscoveredWatches(ctx, &pending); err != nil {
 		return err
 	}
 	head, err := watcher.rskRpc.GetHeight(ctx)
@@ -127,7 +162,7 @@ func (watcher *PegInAddressRegistryWatcher) scan(ctx context.Context) error {
 	if err = watcher.rescanPendingImports(ctx, pending); err != nil {
 		return err
 	}
-	if err = watcher.repository.SetCursor(ctx, toBlock); err != nil {
+	if err = watcher.setCursorUseCase.Run(ctx, toBlock); err != nil {
 		return fmt.Errorf("persist PegIn address registry scan cursor: %w", err)
 	}
 
@@ -141,9 +176,8 @@ func (watcher *PegInAddressRegistryWatcher) scan(ctx context.Context) error {
 func (watcher *PegInAddressRegistryWatcher) processEvents(
 	ctx context.Context,
 	events []blockchain.AddressRegistered,
-	pending *[]*rootstock.PegInAddressRegistryWatchEntry,
+	pending *[]*rootstock.PegInAddressRegistryWatch,
 ) error {
-	var err error
 	sort.Slice(events, func(firstIndex, secondIndex int) bool {
 		if events[firstIndex].BlockNumber == events[secondIndex].BlockNumber {
 			return events[firstIndex].LogIndex < events[secondIndex].LogIndex
@@ -152,122 +186,54 @@ func (watcher *PegInAddressRegistryWatcher) processEvents(
 	})
 
 	for _, event := range events {
-		now := time.Now().UTC()
-		entry := rootstock.PegInAddressRegistryWatchEntry{
-			TxHash:           event.TxHash,
-			LogIndex:         event.LogIndex,
-			BlockNumber:      event.BlockNumber,
-			RskAddress:       event.RskAddress,
-			Registrant:       event.Registrant,
-			RegistrationRoot: event.RegistrationRoot,
-			State:            rootstock.PegInAddressRegistryWatchDiscovered,
-			CreatedAt:        now,
-			UpdatedAt:        now,
-		}
-		if err = watcher.repository.Upsert(ctx, entry); err != nil {
-			return fmt.Errorf("persist AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
-		}
-		persistedEntry, getErr := watcher.repository.Get(ctx, event.TxHash, event.LogIndex)
-		if getErr != nil {
-			return fmt.Errorf("load AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, getErr)
-		}
-		if persistedEntry == nil {
-			return fmt.Errorf("load AddressRegistered event %s/%d: entry not found after upsert", event.TxHash, event.LogIndex)
-		}
-		if persistedEntry.State != rootstock.PegInAddressRegistryWatchDiscovered {
-			watcher.rememberEntry(*persistedEntry)
-			continue
-		}
-		if pendingContains(*pending, persistedEntry.TxHash, persistedEntry.LogIndex) {
-			continue
-		}
-		imported, processErr := watcher.processDiscoveredEntry(ctx, persistedEntry)
-		if processErr != nil {
-			return processErr
-		}
-		if imported != nil {
-			*pending = append(*pending, imported)
-		}
-	}
-	return nil
-}
-
-func (watcher *PegInAddressRegistryWatcher) retryDiscoveredEntries(
-	ctx context.Context,
-	pending *[]*rootstock.PegInAddressRegistryWatchEntry,
-) error {
-	watcher.stateMutex.RLock()
-	entries := append([]rootstock.PegInAddressRegistryWatchEntry(nil), watcher.entries...)
-	watcher.stateMutex.RUnlock()
-	for index := range entries {
-		if entries[index].State != rootstock.PegInAddressRegistryWatchDiscovered {
-			continue
-		}
-		imported, err := watcher.processDiscoveredEntry(ctx, &entries[index])
-		if err != nil {
+		if err := watcher.discoverEvent(ctx, event, pending); err != nil {
 			return err
 		}
-		if imported != nil {
-			*pending = append(*pending, imported)
+	}
+	return nil
+}
+
+func (watcher *PegInAddressRegistryWatcher) retryDiscoveredWatches(
+	ctx context.Context,
+	pending *[]*rootstock.PegInAddressRegistryWatch,
+) error {
+	watcher.stateMutex.RLock()
+	watches := append([]rootstock.PegInAddressRegistryWatch(nil), watcher.watches...)
+	watcher.stateMutex.RUnlock()
+	for index := range watches {
+		if watches[index].State != rootstock.PegInAddressRegistryWatchDiscovered {
+			continue
+		}
+		if err := watcher.discoverEvent(ctx, watchToEvent(watches[index]), pending); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func (watcher *PegInAddressRegistryWatcher) processDiscoveredEntry(
+func (watcher *PegInAddressRegistryWatcher) discoverEvent(
 	ctx context.Context,
-	entry *rootstock.PegInAddressRegistryWatchEntry,
-) (*rootstock.PegInAddressRegistryWatchEntry, error) {
-	pegInAddress, err := watcher.registry.GetPegInAddress(entry.RskAddress)
+	event blockchain.AddressRegistered,
+	pending *[]*rootstock.PegInAddressRegistryWatch,
+) error {
+	watch, needsRescan, err := watcher.discoverUseCase.Run(ctx, event)
 	if err != nil {
-		return nil, watcher.recordEntryError(
-			ctx,
-			entry,
-			fmt.Errorf("resolve PegIn address for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
-		)
+		return err
 	}
-	encoding := pegInAddress.Encoding
-	entry.Encoding = uint8(encoding)
-	entry.UpdatedAt = time.Now().UTC()
-	// LastError is cleared only on the paths that reach a persisted state, so recordEntryError can
-	// still compare against the previously persisted error and suppress repeated identical writes.
-	if encoding != blockchain.PegInAddressRegistryEncodingBase58 {
-		entry.State = rootstock.PegInAddressRegistryWatchUnsupportedEncoding
-		entry.LastError = ""
-		if err = watcher.repository.Update(ctx, *entry); err != nil {
-			return nil, fmt.Errorf("persist unsupported encoding for event %s/%d: %w", entry.TxHash, entry.LogIndex, err)
-		}
-		log.Errorf(
-			"PegIn address registry event %s/%d uses unsupported encoding %d",
-			entry.TxHash,
-			entry.LogIndex,
-			encoding,
-		)
-		watcher.rememberEntry(*entry)
-		return nil, nil
+	if watch == nil {
+		return nil
 	}
-	// The registry returns the base58check payload, not the address, and leaves the encoding to the
-	// caller, so this step is what makes the value importable by a Bitcoin node.
-	if entry.BtcAddress, err = bitcoin.EncodeAddressBase58(pegInAddress.Payload); err != nil {
-		return nil, watcher.recordEntryError(
-			ctx,
-			entry,
-			fmt.Errorf("encode PegIn address for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
-		)
+	watcher.rememberWatch(*watch)
+	if !needsRescan || pendingContains(*pending, watch.TxHash, watch.LogIndex) {
+		return nil
 	}
-	if err = watcher.wallet.ImportAddress(entry.BtcAddress); err != nil && !isAlreadyImportedError(err) {
-		return nil, watcher.recordEntryError(
-			ctx,
-			entry,
-			fmt.Errorf("import PegIn address for event %s/%d: %w", entry.TxHash, entry.LogIndex, err),
-		)
-	}
-	return entry, nil
+	*pending = append(*pending, watch)
+	return nil
 }
 
 func (watcher *PegInAddressRegistryWatcher) rescanPendingImports(
 	ctx context.Context,
-	pending []*rootstock.PegInAddressRegistryWatchEntry,
+	pending []*rootstock.PegInAddressRegistryWatch,
 ) error {
 	if len(pending) == 0 {
 		return nil
@@ -280,72 +246,59 @@ func (watcher *PegInAddressRegistryWatcher) rescanPendingImports(
 	if _, err = watcher.wallet.RescanBlockchain(fromHeight); err != nil {
 		return watcher.recordPendingRescanError(ctx, pending, fmt.Errorf("rescan PegIn addresses: %w", err))
 	}
-	for _, entry := range pending {
-		entry.State = rootstock.PegInAddressRegistryWatchImported
-		entry.LastError = ""
-		entry.UpdatedAt = time.Now().UTC()
-		if err = watcher.repository.Update(ctx, *entry); err != nil {
-			return fmt.Errorf("persist imported state for event %s/%d: %w", entry.TxHash, entry.LogIndex, err)
+	for _, watch := range pending {
+		if err = watcher.markImportedUseCase.Run(ctx, watch); err != nil {
+			return err
 		}
-		watcher.rememberEntry(*entry)
+		watcher.rememberWatch(*watch)
 	}
 	return nil
 }
 
 func (watcher *PegInAddressRegistryWatcher) recordPendingRescanError(
 	ctx context.Context,
-	pending []*rootstock.PegInAddressRegistryWatchEntry,
+	pending []*rootstock.PegInAddressRegistryWatch,
 	rescanErr error,
 ) error {
-	for _, entry := range pending {
-		if err := watcher.recordEntryError(ctx, entry, rescanErr); err != nil {
+	for _, watch := range pending {
+		if err := watcher.recordErrorUseCase.Run(ctx, watch, rescanErr); err != nil {
 			return err
 		}
+		watcher.rememberWatch(*watch)
 	}
 	return nil
 }
 
-func (watcher *PegInAddressRegistryWatcher) recordEntryError(
-	ctx context.Context,
-	entry *rootstock.PegInAddressRegistryWatchEntry,
-	entryErr error,
-) error {
-	log.Error(entryErr)
-	if entry.LastError == entryErr.Error() {
-		return nil
-	}
-	entry.LastError = entryErr.Error()
-	entry.UpdatedAt = time.Now().UTC()
-	if err := watcher.repository.Update(ctx, *entry); err != nil {
-		return fmt.Errorf("persist PegIn address registry entry error for %s/%d: %w", entry.TxHash, entry.LogIndex, err)
-	}
-	watcher.rememberEntry(*entry)
-	return nil
-}
-
-func (watcher *PegInAddressRegistryWatcher) rememberEntry(entry rootstock.PegInAddressRegistryWatchEntry) {
+func (watcher *PegInAddressRegistryWatcher) rememberWatch(watch rootstock.PegInAddressRegistryWatch) {
 	watcher.stateMutex.Lock()
 	defer watcher.stateMutex.Unlock()
-	for index := range watcher.entries {
-		if watcher.entries[index].TxHash == entry.TxHash && watcher.entries[index].LogIndex == entry.LogIndex {
-			watcher.entries[index] = entry
+	for index := range watcher.watches {
+		if watcher.watches[index].TxHash == watch.TxHash && watcher.watches[index].LogIndex == watch.LogIndex {
+			watcher.watches[index] = watch
 			return
 		}
 	}
-	watcher.entries = append(watcher.entries, entry)
+	watcher.watches = append(watcher.watches, watch)
 }
 
-func isAlreadyImportedError(err error) bool {
-	return err != nil && strings.Contains(strings.ToLower(err.Error()), "already imported")
-}
-
-func pendingContains(pending []*rootstock.PegInAddressRegistryWatchEntry, txHash string, logIndex uint) bool {
-	for _, entry := range pending {
-		if entry.TxHash == txHash && entry.LogIndex == logIndex {
+func pendingContains(pending []*rootstock.PegInAddressRegistryWatch, txHash string, logIndex uint) bool {
+	for _, watch := range pending {
+		if watch.TxHash == txHash && watch.LogIndex == logIndex {
 			return true
 		}
 	}
 	return false
+}
+
+func watchToEvent(watch rootstock.PegInAddressRegistryWatch) blockchain.AddressRegistered {
+	return blockchain.AddressRegistered{
+		RskAddress:       watch.RskAddress,
+		Registrant:       watch.Registrant,
+		RegistrationRoot: watch.RegistrationRoot,
+		TxHash:           watch.TxHash,
+		BlockNumber:      watch.BlockNumber,
+		LogIndex:         watch.LogIndex,
+	}
 }
 
 func (watcher *PegInAddressRegistryWatcher) nextRange(finalizedHead uint64) (uint64, uint64) {

@@ -31,6 +31,50 @@ type PegInAddressRegistryWatch struct {
 	UpdatedAt        time.Time                      `json:"updatedAt" bson:"updated_at"`
 }
 
+func NewPegInAddressRegistryWatch(
+	txHash string,
+	logIndex uint,
+	blockNumber uint64,
+	rskAddress string,
+	registrant string,
+	registrationRoot [32]byte,
+) PegInAddressRegistryWatch {
+	now := time.Now().UTC()
+	return PegInAddressRegistryWatch{
+		TxHash:           txHash,
+		LogIndex:         logIndex,
+		BlockNumber:      blockNumber,
+		RskAddress:       rskAddress,
+		Registrant:       registrant,
+		RegistrationRoot: registrationRoot,
+		State:            PegInAddressRegistryWatchDiscovered,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+}
+
+func (watch *PegInAddressRegistryWatch) MarkUnsupportedEncoding(encoding uint8) {
+	watch.Encoding = encoding
+	watch.State = PegInAddressRegistryWatchUnsupportedEncoding
+	watch.LastError = ""
+	watch.UpdatedAt = time.Now().UTC()
+}
+
+func (watch *PegInAddressRegistryWatch) MarkImported() {
+	watch.State = PegInAddressRegistryWatchImported
+	watch.LastError = ""
+	watch.UpdatedAt = time.Now().UTC()
+}
+
+func (watch *PegInAddressRegistryWatch) RecordError(err error) bool {
+	if watch.LastError == err.Error() {
+		return false
+	}
+	watch.LastError = err.Error()
+	watch.UpdatedAt = time.Now().UTC()
+	return true
+}
+
 type PegInAddressRegistryWatchRepository interface {
 	Upsert(ctx context.Context, watch PegInAddressRegistryWatch) error
 	Get(ctx context.Context, txHash string, logIndex uint) (*PegInAddressRegistryWatch, error)
