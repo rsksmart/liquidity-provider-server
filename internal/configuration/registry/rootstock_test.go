@@ -49,6 +49,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 			PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
 			PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
 			PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
+			PauseRegistryAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA2",
 			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
 			BridgeAddress:                "0x0000000000000000000000000000000001000006",
 		},
@@ -68,8 +69,10 @@ func TestNewRootstockRegistry(t *testing.T) {
 		require.NotNil(t, rskRegistry.Contracts.PegOut)
 		require.NotNil(t, rskRegistry.Contracts.Bridge)
 		require.NotNil(t, rskRegistry.Contracts.PegInAddressRegistry)
+		require.NotNil(t, rskRegistry.Contracts.PauseRegistry)
 		require.NotNil(t, rskRegistry.Contracts.FlyoverConfigurations)
 		require.Equal(t, env.Rsk.PegInAddressRegistryAddress, rskRegistry.Contracts.PegInAddressRegistry.GetAddress())
+		require.Equal(t, env.Rsk.PauseRegistryAddress, rskRegistry.Contracts.PauseRegistry.GetAddress())
 		require.Equal(t, env.Rsk.FlyoverConfigurationsAddress, rskRegistry.Contracts.FlyoverConfigurations.GetAddress())
 		require.Equal(t, rskWalletMock, rskRegistry.Wallet)
 		require.Equal(t, rskClient, rskRegistry.Client)
@@ -79,6 +82,14 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env.Rsk.PegInAddressRegistryAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
 		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		require.Error(t, err)
+		require.Nil(t, rskRegistry)
+	})
+	t.Run("should return an error when the pause registry address is invalid", func(t *testing.T) {
+		env := testEnv
+		env.Rsk.PauseRegistryAddress = test.AnyString
+		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
