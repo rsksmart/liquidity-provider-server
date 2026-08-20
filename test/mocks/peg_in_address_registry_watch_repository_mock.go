@@ -81,69 +81,6 @@ func (_c *PegInAddressRegistryWatchRepositoryMock_Get_Call) RunAndReturn(run fun
 	return _c
 }
 
-// GetCursor provides a mock function with given fields: ctx
-func (_m *PegInAddressRegistryWatchRepositoryMock) GetCursor(ctx context.Context) (uint64, bool, error) {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetCursor")
-	}
-
-	var r0 uint64
-	var r1 bool
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context) (uint64, bool, error)); ok {
-		return rf(ctx)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) uint64); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Get(0).(uint64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) bool); ok {
-		r1 = rf(ctx)
-	} else {
-		r1 = ret.Get(1).(bool)
-	}
-
-	if rf, ok := ret.Get(2).(func(context.Context) error); ok {
-		r2 = rf(ctx)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
-// PegInAddressRegistryWatchRepositoryMock_GetCursor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCursor'
-type PegInAddressRegistryWatchRepositoryMock_GetCursor_Call struct {
-	*mock.Call
-}
-
-// GetCursor is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) GetCursor(ctx interface{}) *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call {
-	return &PegInAddressRegistryWatchRepositoryMock_GetCursor_Call{Call: _e.mock.On("GetCursor", ctx)}
-}
-
-func (_c *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call) Run(run func(ctx context.Context)) *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call) Return(lastScannedBlock uint64, found bool, err error) *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call {
-	_c.Call.Return(lastScannedBlock, found, err)
-	return _c
-}
-
-func (_c *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call) RunAndReturn(run func(context.Context) (uint64, bool, error)) *PegInAddressRegistryWatchRepositoryMock_GetCursor_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // List provides a mock function with given fields: ctx
 func (_m *PegInAddressRegistryWatchRepositoryMock) List(ctx context.Context) ([]rootstock.PegInAddressRegistryWatch, error) {
 	ret := _m.Called(ctx)
@@ -198,53 +135,6 @@ func (_c *PegInAddressRegistryWatchRepositoryMock_List_Call) Return(_a0 []rootst
 }
 
 func (_c *PegInAddressRegistryWatchRepositoryMock_List_Call) RunAndReturn(run func(context.Context) ([]rootstock.PegInAddressRegistryWatch, error)) *PegInAddressRegistryWatchRepositoryMock_List_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetCursor provides a mock function with given fields: ctx, lastScannedBlock
-func (_m *PegInAddressRegistryWatchRepositoryMock) SetCursor(ctx context.Context, lastScannedBlock uint64) error {
-	ret := _m.Called(ctx, lastScannedBlock)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetCursor")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uint64) error); ok {
-		r0 = rf(ctx, lastScannedBlock)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// PegInAddressRegistryWatchRepositoryMock_SetCursor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCursor'
-type PegInAddressRegistryWatchRepositoryMock_SetCursor_Call struct {
-	*mock.Call
-}
-
-// SetCursor is a helper method to define mock.On call
-//   - ctx context.Context
-//   - lastScannedBlock uint64
-func (_e *PegInAddressRegistryWatchRepositoryMock_Expecter) SetCursor(ctx interface{}, lastScannedBlock interface{}) *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call {
-	return &PegInAddressRegistryWatchRepositoryMock_SetCursor_Call{Call: _e.mock.On("SetCursor", ctx, lastScannedBlock)}
-}
-
-func (_c *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call) Run(run func(ctx context.Context, lastScannedBlock uint64)) *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint64))
-	})
-	return _c
-}
-
-func (_c *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call) Return(_a0 error) *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call) RunAndReturn(run func(context.Context, uint64) error) *PegInAddressRegistryWatchRepositoryMock_SetCursor_Call {
 	_c.Call.Return(run)
 	return _c
 }

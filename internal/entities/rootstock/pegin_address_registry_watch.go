@@ -29,6 +29,10 @@ type PegInAddressRegistryWatch struct {
 	UpdatedAt        time.Time                      `json:"updatedAt" bson:"updated_at"`
 }
 
+// PegInAddressRegistryWatchEntry is the FLY-2515 name for the watch document.
+// Replay/Finalize/helpers use this alias; mongo and 2514 tests keep Watch.
+type PegInAddressRegistryWatchEntry = PegInAddressRegistryWatch
+
 func NewPegInAddressRegistryWatch(
 	txHash string,
 	logIndex uint,
@@ -73,11 +77,40 @@ func (watch *PegInAddressRegistryWatch) RecordError(err error) bool {
 	return true
 }
 
+type PegInAddressRegistryWatchCheckpoint struct {
+	LocalRoot          [32]byte `json:"localRoot" bson:"local_root"`
+	LastProcessedBlock uint64   `json:"lastProcessedBlock" bson:"last_processed_block"`
+}
+
 type PegInAddressRegistryWatchRepository interface {
 	Upsert(ctx context.Context, watch PegInAddressRegistryWatch) error
 	Get(ctx context.Context, rskAddress string) (*PegInAddressRegistryWatch, error)
 	List(ctx context.Context) ([]PegInAddressRegistryWatch, error)
 	Update(ctx context.Context, watch PegInAddressRegistryWatch) error
-	GetCursor(ctx context.Context) (lastScannedBlock uint64, found bool, err error)
-	SetCursor(ctx context.Context, lastScannedBlock uint64) error
+}
+
+type PegInAddressRegistryWatchCheckpointRepository interface {
+	GetCheckpoint(ctx context.Context) (checkpoint PegInAddressRegistryWatchCheckpoint, found bool, err error)
+	SetCheckpoint(ctx context.Context, checkpoint PegInAddressRegistryWatchCheckpoint) error
+	DeleteCheckpoint(ctx context.Context) error
+}
+
+// PegInAddressRegistryWatchRepositorySet is the Replay port.
+// Discover takes only PegInAddressRegistryWatchRepository because it never
+// reads or writes the checkpoint. Replay needs both the entry methods and the
+// checkpoint methods. Keep the split so Discover cannot call DeleteCheckpoint.
+type PegInAddressRegistryWatchRepositorySet interface {
+	PegInAddressRegistryWatchRepository
+	PegInAddressRegistryWatchCheckpointRepository
+}
+
+type PegInAddressRegistryWatchEntries []*PegInAddressRegistryWatchEntry
+
+func (entries PegInAddressRegistryWatchEntries) Contains(rskAddress string) bool {
+	for _, entry := range entries {
+		if entry != nil && entry.RskAddress == rskAddress {
+			return true
+		}
+	}
+	return false
 }

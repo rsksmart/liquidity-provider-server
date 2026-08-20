@@ -11,20 +11,21 @@ import (
 )
 
 const (
-	PegInAddressRegistryWatchCollection = "peginAddressRegistryWatch"
-	peginAddressRegistryCursorId        = "scanCursor"
+	PegInAddressRegistryWatchCollection      = "peginAddressRegistryWatch"
+	peginAddressRegistryCheckpointDocumentID = "checkpoint"
 )
 
 type peginAddressRegistryWatchMongoRepository struct {
 	conn *Connection
 }
 
-type peginAddressRegistryCursor struct {
-	Id               string `bson:"_id"`
-	LastScannedBlock uint64 `bson:"last_scanned_block"`
+type peginAddressRegistryCheckpointDocument struct {
+	Id                 string    `bson:"_id"`
+	LocalRoot          *[32]byte `bson:"local_root,omitempty"`
+	LastProcessedBlock *uint64   `bson:"last_processed_block,omitempty"`
 }
 
-func NewPegInAddressRegistryWatchMongoRepository(conn *Connection) rootstock.PegInAddressRegistryWatchRepository {
+func NewPegInAddressRegistryWatchMongoRepository(conn *Connection) rootstock.PegInAddressRegistryWatchRepositorySet {
 	return &peginAddressRegistryWatchMongoRepository{conn: conn}
 }
 
@@ -113,37 +114,64 @@ func (repo *peginAddressRegistryWatchMongoRepository) Update(
 	return nil
 }
 
-func (repo *peginAddressRegistryWatchMongoRepository) GetCursor(
+func (repo *peginAddressRegistryWatchMongoRepository) GetCheckpoint(
 	ctx context.Context,
-) (uint64, bool, error) {
+) (rootstock.PegInAddressRegistryWatchCheckpoint, bool, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	var cursor peginAddressRegistryCursor
+	var checkpointDocument peginAddressRegistryCheckpointDocument
 	err := repo.conn.Collection(PegInAddressRegistryWatchCollection).
-		FindOne(dbCtx, bson.M{"_id": peginAddressRegistryCursorId}).
-		Decode(&cursor)
+		FindOne(dbCtx, bson.M{"_id": peginAddressRegistryCheckpointDocumentID}).
+		Decode(&checkpointDocument)
 	if errors.Is(err, mongoDb.ErrNoDocuments) {
-		return 0, false, nil
+		return rootstock.PegInAddressRegistryWatchCheckpoint{}, false, nil
 	}
 	if err != nil {
-		return 0, false, err
+		return rootstock.PegInAddressRegistryWatchCheckpoint{}, false, err
 	}
-	return cursor.LastScannedBlock, true, nil
+	if checkpointDocument.LocalRoot == nil ||
+		checkpointDocument.LastProcessedBlock == nil {
+		return rootstock.PegInAddressRegistryWatchCheckpoint{}, false, nil
+	}
+	return rootstock.PegInAddressRegistryWatchCheckpoint{
+		LocalRoot:          *checkpointDocument.LocalRoot,
+		LastProcessedBlock: *checkpointDocument.LastProcessedBlock,
+	}, true, nil
 }
 
-func (repo *peginAddressRegistryWatchMongoRepository) SetCursor(
+func (repo *peginAddressRegistryWatchMongoRepository) SetCheckpoint(
 	ctx context.Context,
-	lastScannedBlock uint64,
+	checkpoint rootstock.PegInAddressRegistryWatchCheckpoint,
 ) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	_, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).UpdateOne(
+	result, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).UpdateOne(
 		dbCtx,
-		bson.M{"_id": peginAddressRegistryCursorId},
-		bson.M{"$set": bson.M{"last_scanned_block": lastScannedBlock}},
+		bson.M{"_id": peginAddressRegistryCheckpointDocumentID},
+		bson.M{"$set": bson.M{
+			"local_root":           checkpoint.LocalRoot,
+			"last_processed_block": checkpoint.LastProcessedBlock,
+		}},
 		options.UpdateOne().SetUpsert(true),
+	)
+	if err != nil {
+		return err
+	}
+	if result == nil || result.MatchedCount+result.UpsertedCount != 1 {
+		return errors.New("pegin address registry checkpoint was not persisted")
+	}
+	return nil
+}
+
+func (repo *peginAddressRegistryWatchMongoRepository) DeleteCheckpoint(ctx context.Context) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	_, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).DeleteOne(
+		dbCtx,
+		bson.M{"_id": peginAddressRegistryCheckpointDocumentID},
 	)
 	return err
 }

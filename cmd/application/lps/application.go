@@ -70,7 +70,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 
 	btcRegistry := NewBitcoinRegistry(walletFactory, btcConnection, os.Exit)
 	dbRegistry := registry.NewDatabaseRegistry(dbConnection)
-	rootstockRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactory, timeouts)
+	rootstockRegistry, err := registry.NewRootstockRegistry(initCtx, env, rskClient, walletFactory, timeouts)
 	if err != nil {
 		log.Fatal("Error creating Rootstock registry:", err)
 	}
@@ -85,7 +85,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	}
 
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
 		env: env, timeouts: timeouts,
 		lpRegistry: lpRegistry, useCaseRegistry: useCaseRegistry,
@@ -185,10 +185,11 @@ func (app *Application) addRunningService(service entities.Closeable) {
 
 func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher, error) {
 	var err error
-	watchers := app.enabledWatchers()
-
 	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
 	defer cancel()
+
+	watchers := app.enabledWatchers()
+
 	for _, w := range watchers {
 		if err = w.Prepare(prepareCtx); err != nil {
 			return nil, err
@@ -219,6 +220,7 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 		app.watcherRegistry.BitcoinReorgWatcher,
 		app.watcherRegistry.RootstockReorgWatcher,
 		app.watcherRegistry.ReorgMetricsWatcher,
+		app.watcherRegistry.PegInAddressRegistryMetricsWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {
