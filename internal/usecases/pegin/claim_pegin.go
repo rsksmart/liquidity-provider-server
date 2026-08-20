@@ -122,29 +122,43 @@ func (useCase *ClaimPegInUseCase) evaluateGates(
 	if err != nil {
 		return nil, blockchain.RequestPegInParams{}, useCase.wrap(err)
 	}
+	params, enough, err := useCase.checkClaimSpendable(ctx, existing, entry, depositTxID, amount, fee, inFlight)
+	if err != nil || !enough {
+		return nil, blockchain.RequestPegInParams{}, err
+	}
+	return fee, params, nil
+}
+
+func (useCase *ClaimPegInUseCase) checkClaimSpendable(
+	ctx context.Context,
+	existing *rootstock.PegInClaim,
+	entry rootstock.PegInAddressRegistryWatchEntry,
+	depositTxID string,
+	amount, fee, inFlight *entities.Wei,
+) (blockchain.RequestPegInParams, bool, error) {
 	params, err := useCase.buildRequestParams(entry.RskAddress, depositTxID, amount, fee)
 	if err != nil {
-		return nil, blockchain.RequestPegInParams{}, useCase.wrap(err)
+		return blockchain.RequestPegInParams{}, false, useCase.wrap(err)
 	}
 	wallet, err := useCase.rpc.Rsk.GetBalance(ctx, useCase.account.RskAddress())
 	if err != nil {
-		return nil, blockchain.RequestPegInParams{}, useCase.wrap(err)
+		return blockchain.RequestPegInParams{}, false, useCase.wrap(err)
 	}
 	estimatedGas, err := useCase.contracts.PegIn.EstimateRequestPegInGas(params)
 	if err != nil {
-		return nil, blockchain.RequestPegInParams{}, useCase.wrap(err)
+		return blockchain.RequestPegInParams{}, false, useCase.wrap(err)
 	}
 	gasPrice, err := useCase.rpc.Rsk.GasPrice(ctx)
 	if err != nil {
-		return nil, blockchain.RequestPegInParams{}, useCase.wrap(err)
+		return blockchain.RequestPegInParams{}, false, useCase.wrap(err)
 	}
 	gasCost := new(entities.Wei).Mul(gasPrice, entities.NewUWei(estimatedGas))
 	required := new(entities.Wei).Add(payableValue(amount, fee), gasCost)
 	required.Add(required, inFlight)
 	if wallet.Cmp(required) < 0 {
-		return nil, blockchain.RequestPegInParams{}, useCase.releaseReserve(ctx, existing)
+		return blockchain.RequestPegInParams{}, false, useCase.releaseReserve(ctx, existing)
 	}
-	return fee, params, nil
+	return params, true, nil
 }
 
 func payableValue(amount, fee *entities.Wei) *entities.Wei {

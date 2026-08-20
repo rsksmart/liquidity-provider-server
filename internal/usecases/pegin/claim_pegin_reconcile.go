@@ -33,7 +33,7 @@ func (useCase *ClaimPegInUseCase) reconcile(ctx context.Context, claim rootstock
 		return nil
 	}
 	event, unpackErr := useCase.contracts.PegIn.UnpackPegInRequested(receipt)
-	if !hasPegInRequested(event, unpackErr) {
+	if unpackErr != nil {
 		log.Errorf(
 			"ClaimPegIn: status-1 receipt %s for %s/%s is missing PegInRequested; follow incident-recovery; not resubmitting: %v",
 			claim.TxHash,
@@ -95,6 +95,3 @@ func logUnrecoverableClaimReceipt(claim rootstock.PegInClaim) {
 	)
 }
 
-func hasPegInRequested(event blockchain.PegInRequestedEvent, err error) bool {
-	return err == nil
-}
