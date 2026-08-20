@@ -3,11 +3,15 @@ package rootstock_test
 import (
 	"bytes"
 	"encoding/hex"
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	discoveryBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
 	pegoutBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
@@ -15,8 +19,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
 )
 
 var Abis = rootstock.MustLoadFlyoverABIs()
@@ -61,9 +63,6 @@ func prepareTxMocks(
 	mockClient.ExpectedCalls = []*mock.Call{}
 	signerMock.Calls = []mock.Call{}
 	signerMock.ExpectedCalls = []*mock.Call{}
-	signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, transaction *geth.Transaction) (*geth.Transaction, error) {
-		return transaction, nil
-	}).Once()
 	receipt := &geth.Receipt{
 		TxHash:            common.HexToHash(test.AnyHash),
 		BlockNumber:       big.NewInt(123),
@@ -78,6 +77,18 @@ func prepareTxMocks(
 	}
 	mockClient.On("TransactionReceipt", mock.Anything, mock.Anything).Return(receipt, nil).Once()
 	signerMock.On("Address").Return(parsedAddress)
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(_ common.Address, transaction *geth.Transaction) (*geth.Transaction, error) {
+		chainID := transaction.ChainId()
+		var signer geth.Signer = geth.HomesteadSigner{}
+		if chainID != nil && chainID.Sign() > 0 {
+			signer = geth.LatestSignerForChainID(chainID)
+		}
+		return geth.SignTx(transaction, signer, key)
+	}).Once()
 	contractMock.transactor.EXPECT().PendingCodeAt(mock.Anything, mock.Anything).Return([]byte{1}, nil).Maybe()
 	contractMock.caller.EXPECT().CodeAt(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1}, nil).Maybe()
 	contractMock.transactor.EXPECT().EstimateGas(mock.Anything, mock.Anything).Return(uint64(1), nil).Maybe()

@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	RskZeroAddress = "0x0000000000000000000000000000000000000000"
+	RskZeroAddress     = "0x0000000000000000000000000000000000000000"
+	SuccessfulTxStatus = 1
 )
 
 var (
@@ -30,7 +31,6 @@ var (
 	ErrInsufficientConfirmations      = errors.New("insufficient confirmations")
 	ErrIncorrectFronting              = errors.New("incorrect fronting")
 	ErrWitnessSerializedTxNotAccepted = errors.New("witness-serialized tx not accepted")
-	ErrHardPaused                     = errors.New("pegin contract is hard paused")
 )
 
 type RskContracts struct {
@@ -40,6 +40,7 @@ type RskContracts struct {
 	CollateralManagement  CollateralManagementContract
 	Discovery             DiscoveryContract
 	PegInAddressRegistry  PegInAddressRegistryContract
+	PauseRegistry         PauseRegistryContract
 	FlyoverConfigurations FlyoverConfigurationsContract
 }
 
@@ -75,6 +76,7 @@ type TransactionReceipt struct {
 	GasUsed           *big.Int
 	Value             *entities.Wei
 	GasPrice          *entities.Wei
+	Status            uint64
 	Logs              []TransactionLog
 }
 
