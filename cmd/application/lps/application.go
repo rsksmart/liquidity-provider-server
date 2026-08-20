@@ -23,18 +23,17 @@ import (
 )
 
 type Application struct {
-	env                  environment.Environment
-	timeouts             environment.ApplicationTimeouts
-	peginAddressRegistry environment.PegInAddressRegistryWatcherConfig
-	lpRegistry           *registry.LiquidityProvider
-	useCaseRegistry      *registry.UseCaseRegistry
-	watcherRegistry      *registry.WatcherRegistry
-	rskRegistry          *registry.Rootstock
-	btcRegistry          *registry.Bitcoin
-	dbRegistry           *registry.Database
-	messagingRegistry    *registry.Messaging
-	runningServices      []entities.Closeable
-	doneChannel          chan os.Signal
+	env               environment.Environment
+	timeouts          environment.ApplicationTimeouts
+	lpRegistry        *registry.LiquidityProvider
+	useCaseRegistry   *registry.UseCaseRegistry
+	watcherRegistry   *registry.WatcherRegistry
+	rskRegistry       *registry.Rootstock
+	btcRegistry       *registry.Bitcoin
+	dbRegistry        *registry.Database
+	messagingRegistry *registry.Messaging
+	runningServices   []entities.Closeable
+	doneChannel       chan os.Signal
 }
 
 func NewApplication(initCtx context.Context, env environment.Environment, timeouts environment.ApplicationTimeouts) *Application {
@@ -81,17 +80,14 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 		log.Fatal("Error creating Liquidity Provider registry:", err)
 	}
 	mutexes := environment.NewApplicationMutexes()
-
-	// Resolved once, because reporting an incomplete configuration is a side effect of reading it.
-	peginAddressRegistry, err := env.Pegin.AddressRegistryWatcherConfig()
-	if err != nil {
-		log.Fatal("Error reading PegIn address registry watcher configuration: ", err)
+	if err := requirePegInAddressRegistry(rootstockRegistry.Contracts.PegInAddressRegistry); err != nil {
+		log.Fatal(err)
 	}
 
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts, peginAddressRegistry)
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
-		env: env, timeouts: timeouts, peginAddressRegistry: peginAddressRegistry,
+		env: env, timeouts: timeouts,
 		lpRegistry: lpRegistry, useCaseRegistry: useCaseRegistry,
 		rskRegistry: rootstockRegistry, btcRegistry: btcRegistry,
 		dbRegistry: dbRegistry, messagingRegistry: messagingRegistry,
@@ -205,6 +201,7 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 func (app *Application) enabledWatchers() []watcher.Watcher {
 	watchers := []watcher.Watcher{
 		app.watcherRegistry.PeginDepositAddressWatcher,
+		app.watcherRegistry.PegInAddressRegistryWatcher,
 		app.watcherRegistry.PeginBridgeWatcher,
 		app.watcherRegistry.PegoutRskDepositWatcher,
 		app.watcherRegistry.PegoutBtcTransferWatcher,
@@ -229,30 +226,14 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 		watchers = append(watchers, app.watcherRegistry.BitcoinEclipseWatcher)
 	}
 
-	if app.peginAddressRegistryWatchersEnabled() {
-		log.Infof(
-			"PegIn address registry watcher enabled on RSK chain id %d from block %d with page size %d",
-			app.env.Rsk.ChainId,
-			app.peginAddressRegistry.StartBlock,
-			app.peginAddressRegistry.PageSize,
-		)
-		watchers = append(watchers, app.watcherRegistry.PegInAddressRegistryWatcher)
-	}
-
 	return watchers
 }
 
-func (app *Application) peginAddressRegistryWatchersEnabled() bool {
-	if !app.peginAddressRegistry.Enabled {
-		return false
+func requirePegInAddressRegistry(contract blockchain.PegInAddressRegistryContract) error {
+	if contract == nil {
+		return errors.New("PEGIN_ADDRESS_REGISTRY_ADDRESS is required to start the PegIn address registry watcher")
 	}
-	// The registry adapter is only built when its address is configured, so registering the
-	// watcher without it would leave the loop calling a nil contract on its first tick.
-	if app.rskRegistry.Contracts.PegInAddressRegistry == nil {
-		log.Error("PegIn address registry watchers are disabled because PEGIN_ADDRESS_REGISTRY_ADDRESS is missing")
-		return false
-	}
-	return true
+	return nil
 }
 
 func (app *Application) ShutdownServices() {
