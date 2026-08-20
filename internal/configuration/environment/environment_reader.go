@@ -10,24 +10,6 @@ import (
 	"strings"
 )
 
-type OptionalUint64 struct {
-	Value   uint64
-	Present bool
-}
-
-func (value *OptionalUint64) UnmarshalJSON(data []byte) error {
-	if len(data) == 0 {
-		return nil
-	}
-	parsed, err := strconv.ParseUint(string(data), 10, 64)
-	if err != nil {
-		return err
-	}
-	value.Value = parsed
-	value.Present = true
-	return nil
-}
-
 func Load(arg *Environment) error {
 	return parseEnv(reflect.ValueOf(arg))
 }
