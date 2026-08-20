@@ -86,7 +86,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.PauseRegistryAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
