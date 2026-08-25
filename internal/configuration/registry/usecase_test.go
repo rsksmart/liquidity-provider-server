@@ -44,7 +44,7 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		rskWalletMock := new(mocks.RskSignerWalletMock)
 		rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
 		walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
-		rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress)
+		rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, 0)
 		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 

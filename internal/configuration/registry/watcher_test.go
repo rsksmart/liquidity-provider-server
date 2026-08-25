@@ -43,7 +43,7 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 	rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock := new(mocks.AbstractFactoryMock)
 	walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
-	rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress)
+	rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, env.Pegin.AddressRegistryWatcherStartBlock)
 	rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 
