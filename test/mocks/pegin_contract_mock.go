@@ -135,6 +135,52 @@ func (_c *PeginContractMock_EstimateRequestPegInGas_Call) RunAndReturn(run func(
 	return _c
 }
 
+// IdentifyRequestPegIn provides a mock function with given fields: params
+func (_m *PeginContractMock) IdentifyRequestPegIn(params blockchain.RequestPegInParams) error {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IdentifyRequestPegIn")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(blockchain.RequestPegInParams) error); ok {
+		r0 = rf(params)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PeginContractMock_IdentifyRequestPegIn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IdentifyRequestPegIn'
+type PeginContractMock_IdentifyRequestPegIn_Call struct {
+	*mock.Call
+}
+
+// IdentifyRequestPegIn is a helper method to define mock.On call
+//   - params blockchain.RequestPegInParams
+func (_e *PeginContractMock_Expecter) IdentifyRequestPegIn(params interface{}) *PeginContractMock_IdentifyRequestPegIn_Call {
+	return &PeginContractMock_IdentifyRequestPegIn_Call{Call: _e.mock.On("IdentifyRequestPegIn", params)}
+}
+
+func (_c *PeginContractMock_IdentifyRequestPegIn_Call) Run(run func(params blockchain.RequestPegInParams)) *PeginContractMock_IdentifyRequestPegIn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.RequestPegInParams))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_IdentifyRequestPegIn_Call) Return(_a0 error) *PeginContractMock_IdentifyRequestPegIn_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PeginContractMock_IdentifyRequestPegIn_Call) RunAndReturn(run func(blockchain.RequestPegInParams) error) *PeginContractMock_IdentifyRequestPegIn_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAddress provides a mock function with no fields
 func (_m *PeginContractMock) GetAddress() string {
 	ret := _m.Called()
@@ -515,6 +561,64 @@ func (_c *PeginContractMock_RequestPegIn_Call) Return(_a0 blockchain.RequestPegI
 }
 
 func (_c *PeginContractMock_RequestPegIn_Call) RunAndReturn(run func(blockchain.RequestPegInParams) (blockchain.RequestPegInResult, error)) *PeginContractMock_RequestPegIn_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UnpackPegInRequested provides a mock function with given fields: receipt
+func (_m *PeginContractMock) UnpackPegInRequested(receipt blockchain.TransactionReceipt) (blockchain.PegInRequestedEvent, error) {
+	ret := _m.Called(receipt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnpackPegInRequested")
+	}
+
+	var r0 blockchain.PegInRequestedEvent
+	var r1 error
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionReceipt) (blockchain.PegInRequestedEvent, error)); ok {
+		return rf(receipt)
+	}
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionReceipt) blockchain.PegInRequestedEvent); ok {
+		r0 = rf(receipt)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(blockchain.PegInRequestedEvent)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(blockchain.TransactionReceipt) error); ok {
+		r1 = rf(receipt)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginContractMock_UnpackPegInRequested_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnpackPegInRequested'
+type PeginContractMock_UnpackPegInRequested_Call struct {
+	*mock.Call
+}
+
+// UnpackPegInRequested is a helper method to define mock.On call
+//   - receipt blockchain.TransactionReceipt
+func (_e *PeginContractMock_Expecter) UnpackPegInRequested(receipt interface{}) *PeginContractMock_UnpackPegInRequested_Call {
+	return &PeginContractMock_UnpackPegInRequested_Call{Call: _e.mock.On("UnpackPegInRequested", receipt)}
+}
+
+func (_c *PeginContractMock_UnpackPegInRequested_Call) Run(run func(receipt blockchain.TransactionReceipt)) *PeginContractMock_UnpackPegInRequested_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.TransactionReceipt))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_UnpackPegInRequested_Call) Return(_a0 blockchain.PegInRequestedEvent, _a1 error) *PeginContractMock_UnpackPegInRequested_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginContractMock_UnpackPegInRequested_Call) RunAndReturn(run func(blockchain.TransactionReceipt) (blockchain.PegInRequestedEvent, error)) *PeginContractMock_UnpackPegInRequested_Call {
 	_c.Call.Return(run)
 	return _c
 }
