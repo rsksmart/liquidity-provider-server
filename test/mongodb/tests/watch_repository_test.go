@@ -25,17 +25,17 @@ const eventIdentityIndex = "tx_hash_1_log_index_1"
 // one a real boot would build.
 func TestWatchSetKeepsOneDocumentPerEventAgainstMongo(t *testing.T) {
 	ctx := context.Background()
-	collection := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInAddressRegistryWatchCollection)
-	repository := mongoAdapter.NewPegInAddressRegistryWatchMongoRepository(conn)
+	collection := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInWatchCollection)
+	repository := mongoAdapter.NewPegInWatchMongoRepository(conn)
 
 	assertEventIdentityIndexIsUnique(t, ctx, collection)
 
-	event := rootstock.PegInAddressRegistryWatch{
+	event := rootstock.PegInWatch{
 		TxHash:      fmt.Sprintf("0xfly2514-%d", time.Now().UnixNano()),
 		LogIndex:    7,
 		BlockNumber: 4321,
 		RskAddress:  "0xfly2514rsk",
-		State:       rootstock.PegInAddressRegistryWatchDiscovered,
+		State:       rootstock.PegInWatchDiscovered,
 		CreatedAt:   time.Now().UTC().Truncate(time.Millisecond),
 		UpdatedAt:   time.Now().UTC().Truncate(time.Millisecond),
 	}
@@ -54,7 +54,7 @@ func TestWatchSetKeepsOneDocumentPerEventAgainstMongo(t *testing.T) {
 	imported, err := repository.Get(ctx, event.TxHash, event.LogIndex)
 	require.NoError(t, err)
 	require.NotNil(t, imported)
-	imported.State = rootstock.PegInAddressRegistryWatchImported
+	imported.State = rootstock.PegInWatchImported
 	imported.BtcAddress = "n1BE7ioVukYS2GC88hT2K6cUvRiKwMwio7"
 	imported.DepositTxID = "0xdeposit"
 	require.NoError(t, repository.Update(ctx, *imported))
@@ -65,7 +65,7 @@ func TestWatchSetKeepsOneDocumentPerEventAgainstMongo(t *testing.T) {
 	stored, err := repository.Get(ctx, event.TxHash, event.LogIndex)
 	require.NoError(t, err)
 	require.NotNil(t, stored)
-	assert.Equal(t, rootstock.PegInAddressRegistryWatchImported, stored.State)
+	assert.Equal(t, rootstock.PegInWatchImported, stored.State)
 	assert.Equal(t, imported.BtcAddress, stored.BtcAddress)
 	assert.Equal(t, imported.DepositTxID, stored.DepositTxID)
 }
