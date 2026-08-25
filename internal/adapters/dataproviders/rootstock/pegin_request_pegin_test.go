@@ -554,3 +554,86 @@ func TestPeginContractImpl_EstimateRequestPegInGas(t *testing.T) {
 	assert.Equal(t, paddedRequestPegInGas(), gas)
 	h.contractMock.transactor.AssertNotCalled(t, "SendTransaction")
 }
+
+func TestPeginContractImpl_IdentifyRequestPegIn_RejectsWithoutSending(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*blockchain.RequestPegInParams)
+		want   error
+	}{
+		{
+			name:   "invalid address",
+			mutate: func(params *blockchain.RequestPegInParams) { params.RskAddress = "not-an-address" },
+			want:   blockchain.InvalidAddressError,
+		},
+		{
+			name:   "short raw tx",
+			mutate: func(params *blockchain.RequestPegInParams) { params.BitcoinRawTx = []byte{1, 0, 0, 0, 1} },
+			want:   blockchain.ErrWitnessSerializedTxNotAccepted,
+		},
+		{
+			name:   "witness serialized tx",
+			mutate: func(params *blockchain.RequestPegInParams) { params.BitcoinRawTx = witnessRawTx },
+			want:   blockchain.ErrWitnessSerializedTxNotAccepted,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newRequestPegInHarness(t)
+			params := sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0))
+			tc.mutate(&params)
+
+			err := h.pegin.IdentifyRequestPegIn(params)
+			require.ErrorIs(t, err, tc.want)
+			h.contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+			h.mockClient.AssertNotCalled(t, "CallContract")
+		})
+	}
+}
+
+func TestPeginContractImpl_IdentifyRequestPegIn_DoesNotSend(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
+
+	contractMock.caller.EXPECT().CodeAt(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1}, nil).Maybe()
+	contractMock.caller.EXPECT().CallContract(
+		mock.Anything,
+		matchCallData(expectedData),
+		mock.Anything,
+	).Return(nil, nil).Once()
+
+	err := peginContract.IdentifyRequestPegIn(sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0)))
+	require.NoError(t, err)
+	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+	mockClient.AssertNotCalled(t, "TransactionReceipt")
+}
+
+func TestPeginContractImpl_UnpackPegInRequested(t *testing.T) {
+	contractMock := createBoundContractMock()
+	signerMock := &mocks.TransactionSignerMock{}
+	mockClient := &mocks.RpcClientBindingMock{}
+	peginContract := newRequestPegInContract(t, contractMock, mockClient, signerMock)
+	pegInID := [32]byte{0x11, 0x22}
+	amount := entities.SatoshiToWei(1000)
+	eventLog := mustPegInRequestedLog(t, pegInID, parsedAddress, parsedAddress, amount.AsBigInt(), amount.AsBigInt())
+	topics := make([][32]byte, len(eventLog.Topics))
+	for i, topic := range eventLog.Topics {
+		topics[i] = topic
+	}
+
+	event, err := peginContract.UnpackPegInRequested(blockchain.TransactionReceipt{
+		Status: blockchain.SuccessfulTxStatus,
+		Logs: []blockchain.TransactionLog{{
+			Address: eventLog.Address.Hex(),
+			Topics:  topics,
+			Data:    eventLog.Data,
+		}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, event)
+	assert.Equal(t, pegInID, event.PegInId)
+	contractMock.transactor.AssertNotCalled(t, "SendTransaction")
+}
