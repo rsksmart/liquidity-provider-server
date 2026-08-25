@@ -132,7 +132,7 @@ func (useCase *ClaimPegInUseCase) evaluateGates(
 func (useCase *ClaimPegInUseCase) checkClaimSpendable(
 	ctx context.Context,
 	existing *rootstock.PegInClaim,
-	entry rootstock.PegInAddressRegistryWatchEntry,
+	entry rootstock.PegInWatch,
 	depositTxID string,
 	amount, fee, inFlight *entities.Wei,
 ) (blockchain.RequestPegInParams, bool, error) {

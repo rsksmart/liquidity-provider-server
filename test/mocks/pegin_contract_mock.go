@@ -398,52 +398,6 @@ func (_c *PeginContractMock_HashPeginQuoteEIP712_Call) RunAndReturn(run func(quo
 	return _c
 }
 
-// IdentifyRequestPegIn provides a mock function with given fields: params
-func (_m *PeginContractMock) IdentifyRequestPegIn(params blockchain.RequestPegInParams) error {
-	ret := _m.Called(params)
-
-	if len(ret) == 0 {
-		panic("no return value specified for IdentifyRequestPegIn")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(blockchain.RequestPegInParams) error); ok {
-		r0 = rf(params)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// PeginContractMock_IdentifyRequestPegIn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IdentifyRequestPegIn'
-type PeginContractMock_IdentifyRequestPegIn_Call struct {
-	*mock.Call
-}
-
-// IdentifyRequestPegIn is a helper method to define mock.On call
-//   - params blockchain.RequestPegInParams
-func (_e *PeginContractMock_Expecter) IdentifyRequestPegIn(params interface{}) *PeginContractMock_IdentifyRequestPegIn_Call {
-	return &PeginContractMock_IdentifyRequestPegIn_Call{Call: _e.mock.On("IdentifyRequestPegIn", params)}
-}
-
-func (_c *PeginContractMock_IdentifyRequestPegIn_Call) Run(run func(params blockchain.RequestPegInParams)) *PeginContractMock_IdentifyRequestPegIn_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(blockchain.RequestPegInParams))
-	})
-	return _c
-}
-
-func (_c *PeginContractMock_IdentifyRequestPegIn_Call) Return(_a0 error) *PeginContractMock_IdentifyRequestPegIn_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *PeginContractMock_IdentifyRequestPegIn_Call) RunAndReturn(run func(blockchain.RequestPegInParams) error) *PeginContractMock_IdentifyRequestPegIn_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // PausedStatus provides a mock function with no fields
 func (_m *PeginContractMock) PausedStatus() (blockchain.PauseStatus, error) {
 	ret := _m.Called()
