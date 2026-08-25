@@ -163,24 +163,24 @@ func NewUseCaseRegistry(
 		),
 		getWatchedPeginQuoteUseCase: watcher.NewGetWatchedPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		getWatchedRegisteredAddressesUseCase: watcher.NewGetWatchedRegisteredAddressesUseCase(
-			databaseRegistry.PegInAddressRegistryWatchRepository,
+			databaseRegistry.PegInWatchRepository,
 		),
 		getRegistryWatchCursorUseCase: watcher.NewGetRegistryWatchCursorUseCase(
-			databaseRegistry.PegInAddressRegistryWatchRepository,
+			databaseRegistry.PegInWatchRepository,
 		),
 		setRegistryWatchCursorUseCase: watcher.NewSetRegistryWatchCursorUseCase(
-			databaseRegistry.PegInAddressRegistryWatchRepository,
+			databaseRegistry.PegInWatchRepository,
 		),
 		discoverRegisteredAddressUseCase: watcher.NewDiscoverRegisteredAddressUseCase(
-			databaseRegistry.PegInAddressRegistryWatchRepository,
+			databaseRegistry.PegInWatchRepository,
 			rskRegistry.Contracts.PegInAddressRegistry,
 			btcRegistry.MonitoringWallet,
 		),
 		markRegisteredAddressImportedUseCase: watcher.NewMarkRegisteredAddressImportedUseCase(
-			databaseRegistry.PegInAddressRegistryWatchRepository,
+			databaseRegistry.PegInWatchRepository,
 		),
 		recordRegisteredAddressWatchErrorUseCase: watcher.NewRecordRegisteredAddressWatchErrorUseCase(
-			databaseRegistry.PegInAddressRegistryWatchRepository,
+			databaseRegistry.PegInWatchRepository,
 		),
 		expiredPeginQuoteUseCase: pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
