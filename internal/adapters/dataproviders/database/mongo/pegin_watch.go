@@ -11,33 +11,33 @@ import (
 )
 
 const (
-	PegInAddressRegistryWatchCollection = "peginAddressRegistryWatch"
-	peginAddressRegistryCursorId        = "scanCursor"
+	PegInWatchCollection = "peginWatch"
+	peginWatchCursorId   = "scanCursor"
 )
 
-type peginAddressRegistryWatchMongoRepository struct {
+type peginWatchMongoRepository struct {
 	conn *Connection
 }
 
-type peginAddressRegistryCursor struct {
+type peginWatchCursor struct {
 	Id               string `bson:"_id"`
 	LastScannedBlock uint64 `bson:"last_scanned_block"`
 }
 
-func NewPegInAddressRegistryWatchMongoRepository(conn *Connection) rootstock.PegInAddressRegistryWatchRepository {
-	return &peginAddressRegistryWatchMongoRepository{conn: conn}
+func NewPegInWatchMongoRepository(conn *Connection) rootstock.PegInWatchRepository {
+	return &peginWatchMongoRepository{conn: conn}
 }
 
-func (repo *peginAddressRegistryWatchMongoRepository) Upsert(
+func (repo *peginWatchMongoRepository) Upsert(
 	ctx context.Context,
-	watch rootstock.PegInAddressRegistryWatch,
+	watch rootstock.PegInWatch,
 ) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	filter := eventIdentity(watch.TxHash, watch.LogIndex)
 	update := bson.M{"$setOnInsert": watch}
-	_, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).UpdateOne(
+	_, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
 		dbCtx,
 		filter,
 		update,
@@ -49,16 +49,16 @@ func (repo *peginAddressRegistryWatchMongoRepository) Upsert(
 	return err
 }
 
-func (repo *peginAddressRegistryWatchMongoRepository) Get(
+func (repo *peginWatchMongoRepository) Get(
 	ctx context.Context,
 	txHash string,
 	logIndex uint,
-) (*rootstock.PegInAddressRegistryWatch, error) {
+) (*rootstock.PegInWatch, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	var watch rootstock.PegInAddressRegistryWatch
-	err := repo.conn.Collection(PegInAddressRegistryWatchCollection).
+	var watch rootstock.PegInWatch
+	err := repo.conn.Collection(PegInWatchCollection).
 		FindOne(dbCtx, eventIdentity(txHash, logIndex)).
 		Decode(&watch)
 	if errors.Is(err, mongoDb.ErrNoDocuments) {
@@ -70,13 +70,13 @@ func (repo *peginAddressRegistryWatchMongoRepository) Get(
 	return &watch, nil
 }
 
-func (repo *peginAddressRegistryWatchMongoRepository) List(
+func (repo *peginWatchMongoRepository) List(
 	ctx context.Context,
-) ([]rootstock.PegInAddressRegistryWatch, error) {
+) ([]rootstock.PegInWatch, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	cursor, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).Find(
+	cursor, err := repo.conn.Collection(PegInWatchCollection).Find(
 		dbCtx,
 		bson.M{"tx_hash": bson.M{"$exists": true}},
 		options.Find().SetSort(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
@@ -86,21 +86,21 @@ func (repo *peginAddressRegistryWatchMongoRepository) List(
 	}
 	defer cursor.Close(dbCtx)
 
-	watches := make([]rootstock.PegInAddressRegistryWatch, 0)
+	watches := make([]rootstock.PegInWatch, 0)
 	if err = cursor.All(dbCtx, &watches); err != nil {
 		return nil, err
 	}
 	return watches, nil
 }
 
-func (repo *peginAddressRegistryWatchMongoRepository) Update(
+func (repo *peginWatchMongoRepository) Update(
 	ctx context.Context,
-	watch rootstock.PegInAddressRegistryWatch,
+	watch rootstock.PegInWatch,
 ) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	result, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).ReplaceOne(
+	result, err := repo.conn.Collection(PegInWatchCollection).ReplaceOne(
 		dbCtx,
 		eventIdentity(watch.TxHash, watch.LogIndex),
 		watch,
@@ -109,20 +109,20 @@ func (repo *peginAddressRegistryWatchMongoRepository) Update(
 		return err
 	}
 	if result.MatchedCount != 1 {
-		return errors.New("pegin address registry watch not found")
+		return errors.New("pegin watch not found")
 	}
 	return nil
 }
 
-func (repo *peginAddressRegistryWatchMongoRepository) GetCursor(
+func (repo *peginWatchMongoRepository) GetCursor(
 	ctx context.Context,
 ) (uint64, bool, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	var cursor peginAddressRegistryCursor
-	err := repo.conn.Collection(PegInAddressRegistryWatchCollection).
-		FindOne(dbCtx, bson.M{"_id": peginAddressRegistryCursorId}).
+	var cursor peginWatchCursor
+	err := repo.conn.Collection(PegInWatchCollection).
+		FindOne(dbCtx, bson.M{"_id": peginWatchCursorId}).
 		Decode(&cursor)
 	if errors.Is(err, mongoDb.ErrNoDocuments) {
 		return 0, false, nil
@@ -133,16 +133,16 @@ func (repo *peginAddressRegistryWatchMongoRepository) GetCursor(
 	return cursor.LastScannedBlock, true, nil
 }
 
-func (repo *peginAddressRegistryWatchMongoRepository) SetCursor(
+func (repo *peginWatchMongoRepository) SetCursor(
 	ctx context.Context,
 	lastScannedBlock uint64,
 ) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	_, err := repo.conn.Collection(PegInAddressRegistryWatchCollection).UpdateOne(
+	_, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
 		dbCtx,
-		bson.M{"_id": peginAddressRegistryCursorId},
+		bson.M{"_id": peginWatchCursorId},
 		bson.M{"$set": bson.M{"last_scanned_block": lastScannedBlock}},
 		options.UpdateOne().SetUpsert(true),
 	)
