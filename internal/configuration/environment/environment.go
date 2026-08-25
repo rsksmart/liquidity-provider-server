@@ -213,10 +213,31 @@ type PeginEnv struct {
 	AddressRegistryWatcherPageSize   uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"`
 }
 
-func (env *PeginEnv) FillWithDefaults() *PeginEnv {
-	const defaultPageSize uint64 = 1000
-	env.AddressRegistryWatcherPageSize = utils.FirstNonZero(env.AddressRegistryWatcherPageSize, defaultPageSize)
-	return env
+type PegInAddressRegistryWatcherConfig struct {
+	StartBlock uint64
+	PageSize   uint64
+	Enabled    bool
+}
+
+func (env *PeginEnv) AddressRegistryWatcherConfig() (PegInAddressRegistryWatcherConfig, error) {
+	startSet := env.AddressRegistryWatcherStartBlock != 0
+	pageSet := env.AddressRegistryWatcherPageSize != 0
+	if startSet != pageSet {
+		missing := "PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"
+		if startSet {
+			missing = "PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"
+		}
+		log.Errorf("PegIn address registry watcher is disabled because %s is missing", missing)
+		return PegInAddressRegistryWatcherConfig{}, nil
+	}
+	if !startSet {
+		return PegInAddressRegistryWatcherConfig{}, nil
+	}
+	return PegInAddressRegistryWatcherConfig{
+		StartBlock: env.AddressRegistryWatcherStartBlock,
+		PageSize:   env.AddressRegistryWatcherPageSize,
+		Enabled:    true,
+	}, nil
 }
 
 type PegoutEnv struct {
