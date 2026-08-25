@@ -10,27 +10,27 @@ import (
 )
 
 type Database struct {
-	PeginRepository                     quote.PeginQuoteRepository
-	PegoutRepository                    quote.PegoutQuoteRepository
-	LiquidityProviderRepository         liquidity_provider.LiquidityProviderRepository
-	PenalizedEventRepository            penalization.PenalizedEventRepository
-	TrustedAccountRepository            liquidity_provider.TrustedAccountRepository
-	BatchPegOutRepository               rootstock.BatchPegOutRepository
-	PegInAddressRegistryWatchRepository rootstock.PegInAddressRegistryWatchRepository
-	PegOutEscrowWatchRepository         blockchain.PegOutEscrowWatchRepository
-	Connection                          *mongo.Connection
+	PeginRepository             quote.PeginQuoteRepository
+	PegoutRepository            quote.PegoutQuoteRepository
+	LiquidityProviderRepository liquidity_provider.LiquidityProviderRepository
+	PenalizedEventRepository    penalization.PenalizedEventRepository
+	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
+	BatchPegOutRepository       rootstock.BatchPegOutRepository
+	PegInWatchRepository        rootstock.PegInWatchRepository
+	PegOutEscrowWatchRepository blockchain.PegOutEscrowWatchRepository
+	Connection                  *mongo.Connection
 }
 
 func NewDatabaseRegistry(connection *mongo.Connection) *Database {
 	return &Database{
-		PeginRepository:                     mongo.NewPeginMongoRepository(connection),
-		PegoutRepository:                    mongo.NewPegoutMongoRepository(connection),
-		LiquidityProviderRepository:         mongo.NewLiquidityProviderRepository(connection),
-		PenalizedEventRepository:            mongo.NewPenalizedEventRepository(connection),
-		TrustedAccountRepository:            mongo.NewTrustedAccountRepository(connection),
-		BatchPegOutRepository:               mongo.NewBatchPegOutMongoRepository(connection),
-		PegInAddressRegistryWatchRepository: mongo.NewPegInAddressRegistryWatchMongoRepository(connection),
-		PegOutEscrowWatchRepository:         mongo.NewPegOutEscrowWatchMongoRepository(connection),
-		Connection:                          connection,
+		PeginRepository:             mongo.NewPeginMongoRepository(connection),
+		PegoutRepository:            mongo.NewPegoutMongoRepository(connection),
+		LiquidityProviderRepository: mongo.NewLiquidityProviderRepository(connection),
+		PenalizedEventRepository:    mongo.NewPenalizedEventRepository(connection),
+		TrustedAccountRepository:    mongo.NewTrustedAccountRepository(connection),
+		BatchPegOutRepository:       mongo.NewBatchPegOutMongoRepository(connection),
+		PegInWatchRepository:        mongo.NewPegInWatchMongoRepository(connection),
+		PegOutEscrowWatchRepository: mongo.NewPegOutEscrowWatchMongoRepository(connection),
+		Connection:                  connection,
 	}
 }
