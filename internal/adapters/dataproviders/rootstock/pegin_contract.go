@@ -411,6 +411,50 @@ func (peginContract *peginContractImpl) EstimateRequestPegInGas(params blockchai
 	return paddedRequestPegInGas(estimated), nil
 }
 
+func (peginContract *peginContractImpl) IdentifyRequestPegIn(params blockchain.RequestPegInParams) error {
+	var parsedAddress common.Address
+	if err := ParseAddress(&parsedAddress, params.RskAddress); err != nil {
+		return err
+	}
+	if err := rejectWitnessSerialized(params.BitcoinRawTx); err != nil {
+		return err
+	}
+	callData, dataErr := peginContract.packRequestPegIn(parsedAddress, params)
+	if dataErr != nil {
+		return dataErr
+	}
+	return peginContract.preflightRequestPegIn(callData)
+}
+
+func (peginContract *peginContractImpl) UnpackPegInRequested(
+	receipt blockchain.TransactionReceipt,
+) (blockchain.PegInRequestedEvent, error) {
+	logs := make([]*geth.Log, 0, len(receipt.Logs))
+	for _, eventLog := range receipt.Logs {
+		copied := eventLog
+		logs = append(logs, transactionLogToGeth(copied))
+	}
+	return unpackPegInRequested(peginContract.commitFirst, &geth.Receipt{Logs: logs})
+}
+
+func transactionLogToGeth(eventLog blockchain.TransactionLog) *geth.Log {
+	topics := make([]common.Hash, len(eventLog.Topics))
+	for i, topic := range eventLog.Topics {
+		topics[i] = topic
+	}
+	return &geth.Log{
+		Address:     common.HexToAddress(eventLog.Address),
+		Topics:      topics,
+		Data:        eventLog.Data,
+		BlockNumber: eventLog.BlockNumber,
+		TxHash:      common.HexToHash(eventLog.TxHash),
+		TxIndex:     eventLog.TxIndex,
+		BlockHash:   common.HexToHash(eventLog.BlockHash),
+		Index:       eventLog.Index,
+		Removed:     eventLog.Removed,
+	}
+}
+
 type preparedRequestPegIn struct {
 	rskAddress common.Address
 	value      *entities.Wei

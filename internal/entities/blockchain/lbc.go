@@ -159,6 +159,8 @@ type PeginContract interface {
 	RequestPegIn(params RequestPegInParams) (RequestPegInResult, error)
 	// EstimateRequestPegInGas returns the padded gas limit RequestPegIn will use on send (estimate * 12 / 10).
 	EstimateRequestPegInGas(params RequestPegInParams) (uint64, error)
+	IdentifyRequestPegIn(params RequestPegInParams) error
+	UnpackPegInRequested(receipt TransactionReceipt) (PegInRequestedEvent, error)
 	Withdraw(amount *entities.Wei) error
 }
 
