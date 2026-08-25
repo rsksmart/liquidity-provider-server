@@ -27,11 +27,14 @@ func newRskWalletFactoryMock() (*mocks.AbstractFactoryMock, *mocks.RskSignerWall
 	return walletFactoryMock, rskWalletMock
 }
 
-func newRskClientWithGenesisRegistry(t *testing.T, registryAddress string) *rootstock.RskClient {
+func newRskClientWithGenesisRegistry(t *testing.T, registryAddress string, deploymentBlock uint64) *rootstock.RskClient {
 	t.Helper()
 	rpc := mocks.NewRpcClientBindingMock(t)
 	address := common.HexToAddress(registryAddress)
-	rpc.On("CodeAt", mock.Anything, address, big.NewInt(0)).Return([]byte{0x60}, nil)
+	rpc.On("CodeAt", mock.Anything, address, new(big.Int).SetUint64(deploymentBlock)).Return([]byte{0x60}, nil)
+	if deploymentBlock > 0 {
+		rpc.On("CodeAt", mock.Anything, address, new(big.Int).SetUint64(deploymentBlock-1)).Return([]byte{}, nil)
+	}
 	rpc.On("CallContract", mock.Anything, mock.Anything, mock.Anything).Return(make([]byte, 32), nil)
 	rpc.On("FilterLogs", mock.Anything, mock.Anything).Return([]geth.Log{}, nil)
 	return rootstock.NewRskClient(rpc)
@@ -54,7 +57,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 	t.Run("should create a new Rootstock registry", func(t *testing.T) {
 		env := testEnv
 		walletFactoryMock, rskWalletMock := newRskWalletFactoryMock()
-		rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress)
+		rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, 0)
 		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, rskRegistry)
