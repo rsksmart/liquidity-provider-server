@@ -6,7 +6,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
-	log "github.com/sirupsen/logrus"
 )
 
 type WatcherRegistry struct {
@@ -195,13 +194,7 @@ func newPegInWatcher(
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 ) *watcher.PegInWatcher {
-	cfg, err := env.Pegin.AddressRegistryWatcherConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if !cfg.Enabled {
-		return nil
-	}
+	pegin := env.Pegin.FillWithDefaults()
 	return watcher.NewPegInWatcher(
 		watcher.NewPegInWatcherUseCases(
 			useCaseRegistry.getWatchedRegisteredAddressesUseCase,
@@ -216,8 +209,8 @@ func newPegInWatcher(
 		messaging.Rpc.Btc,
 		btcRegistry.MonitoringWallet,
 		tickers.PegInAddressRegistryWatcherTicker,
-		cfg.StartBlock,
-		cfg.PageSize,
+		pegin.AddressRegistryWatcherStartBlock,
+		pegin.AddressRegistryWatcherPageSize,
 		env.Rsk.FillWithDefaults().MaxReorgDepth,
 	)
 }

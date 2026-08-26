@@ -201,6 +201,7 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 func (app *Application) enabledWatchers() []watcher.Watcher {
 	watchers := []watcher.Watcher{
 		app.watcherRegistry.PeginDepositAddressWatcher,
+		app.watcherRegistry.PegInAddressRegistryWatcher,
 		app.watcherRegistry.PeginBridgeWatcher,
 		app.watcherRegistry.PegoutRskDepositWatcher,
 		app.watcherRegistry.PegoutBtcTransferWatcher,
@@ -220,9 +221,6 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 		app.watcherRegistry.ReorgMetricsWatcher,
 	}
 
-	if app.watcherRegistry.PegInAddressRegistryWatcher != nil {
-		watchers = append(watchers, app.watcherRegistry.PegInAddressRegistryWatcher)
-	}
 	if app.env.Eclipse.Enabled {
 		watchers = append(watchers, app.watcherRegistry.RskEclipseWatcher)
 		watchers = append(watchers, app.watcherRegistry.BitcoinEclipseWatcher)
