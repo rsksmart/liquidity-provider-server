@@ -57,33 +57,21 @@ func TestBtcEnv_FillWithDefaults(t *testing.T) {
 	})
 }
 
-func TestPeginEnv_AddressRegistryWatcherConfig(t *testing.T) {
-	t.Run("both zero leaves the watcher disabled", func(t *testing.T) {
-		cfg, err := (&environment.PeginEnv{}).AddressRegistryWatcherConfig()
-		require.NoError(t, err)
-		require.False(t, cfg.Enabled)
-		require.Zero(t, cfg.StartBlock)
-		require.Zero(t, cfg.PageSize)
+func TestPeginEnv_FillWithDefaults(t *testing.T) {
+	t.Run("defaults zero page size to 1000 and keeps a zero start block", func(t *testing.T) {
+		env := &environment.PeginEnv{}
+		defaults := env.FillWithDefaults()
+		require.Zero(t, defaults.AddressRegistryWatcherStartBlock)
+		require.Equal(t, uint64(1000), defaults.AddressRegistryWatcherPageSize)
 	})
-	t.Run("only start set leaves the watcher disabled", func(t *testing.T) {
-		cfg, err := (&environment.PeginEnv{AddressRegistryWatcherStartBlock: 500}).AddressRegistryWatcherConfig()
-		require.NoError(t, err)
-		require.False(t, cfg.Enabled)
-	})
-	t.Run("only page size set leaves the watcher disabled", func(t *testing.T) {
-		cfg, err := (&environment.PeginEnv{AddressRegistryWatcherPageSize: 10}).AddressRegistryWatcherConfig()
-		require.NoError(t, err)
-		require.False(t, cfg.Enabled)
-	})
-	t.Run("a complete pair enables the watcher", func(t *testing.T) {
-		cfg, err := (&environment.PeginEnv{
+	t.Run("keeps custom page size and start block", func(t *testing.T) {
+		env := &environment.PeginEnv{
 			AddressRegistryWatcherStartBlock: 500,
 			AddressRegistryWatcherPageSize:   10,
-		}).AddressRegistryWatcherConfig()
-		require.NoError(t, err)
-		require.True(t, cfg.Enabled)
-		require.Equal(t, uint64(500), cfg.StartBlock)
-		require.Equal(t, uint64(10), cfg.PageSize)
+		}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(500), defaults.AddressRegistryWatcherStartBlock)
+		require.Equal(t, uint64(10), defaults.AddressRegistryWatcherPageSize)
 	})
 }
 
