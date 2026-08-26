@@ -15,33 +15,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func peginAddressRegistryApplication(scanner *watcher.PegInWatcher) *Application {
-	return &Application{
+func peginAddressRegistryApplication() (*Application, *watcher.PegInWatcher) {
+	scanner := &watcher.PegInWatcher{}
+	app := &Application{
 		env: environment.Environment{},
 		watcherRegistry: &registry.WatcherRegistry{
 			PegInAddressRegistryWatcher: scanner,
 			PeginDepositAddressWatcher:  &watcher.PeginDepositAddressWatcher{},
 		},
 	}
+	return app, scanner
 }
 
-func TestApplication_enabledWatchers_registersPegInWatcherWhenEnabled(t *testing.T) {
-	scanner := &watcher.PegInWatcher{}
-	app := peginAddressRegistryApplication(scanner)
+func TestApplication_enabledWatchers_registersPegInWatcher(t *testing.T) {
+	app, scanner := peginAddressRegistryApplication()
 
 	watchers := app.enabledWatchers()
 
 	require.Contains(t, watchers, scanner)
 	assert.Equal(t, app.watcherRegistry.PeginDepositAddressWatcher, watchers[0])
-}
-
-func TestApplication_enabledWatchers_skipsPegInWatcherWhenDisabled(t *testing.T) {
-	app := peginAddressRegistryApplication(nil)
-
-	for _, registered := range app.enabledWatchers() {
-		_, isPegInWatcher := registered.(*watcher.PegInWatcher)
-		require.False(t, isPegInWatcher)
-	}
+	assert.Equal(t, scanner, watchers[1])
 }
 
 func TestRequirePegInAddressRegistry(t *testing.T) {

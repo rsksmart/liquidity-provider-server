@@ -31,11 +31,7 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
 			BridgeAddress:                "0x0000000000000000000000000000000001000006",
 		},
-		Btc: environment.BtcEnv{Network: "testnet"},
-		Pegin: environment.PeginEnv{
-			AddressRegistryWatcherStartBlock: 1,
-			AddressRegistryWatcherPageSize:   10,
-		},
+		Btc:    environment.BtcEnv{Network: "testnet"},
 		Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
 	}
 
