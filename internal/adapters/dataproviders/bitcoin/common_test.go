@@ -46,6 +46,44 @@ func TestDecodeAddressBase58_ErrorHandling(t *testing.T) {
 	}
 }
 
+// base58CheckPayload builds what IPegInAddressRegistry.getPegInAddress returns for a given
+// version-and-hash body: the body followed by its four-byte double-SHA256 checksum.
+func base58CheckPayload(body []byte) []byte {
+	payload := make([]byte, 0, len(body)+4)
+	payload = append(payload, body...)
+	return append(payload, chainhash.DoubleHashB(body)[:4]...)
+}
+
+func TestEncodeAddressBase58(t *testing.T) {
+	for _, c := range datasets.Base58Addresses {
+		address, err := bitcoin.EncodeAddressBase58(base58CheckPayload(c.Expected))
+		require.NoError(t, err)
+		assert.Equal(t, c.Address, address)
+	}
+}
+
+func TestEncodeAddressBase58_ErrorHandling(t *testing.T) {
+	wellFormed := base58CheckPayload(datasets.Base58Addresses[0].Expected)
+	corruptedChecksum := base58CheckPayload(datasets.Base58Addresses[0].Expected)
+	corruptedChecksum[len(corruptedChecksum)-1] ^= 0xFF
+	corruptedBody := base58CheckPayload(datasets.Base58Addresses[0].Expected)
+	corruptedBody[0] ^= 0xFF
+	errorCases := map[string][]byte{
+		"nil payload":               nil,
+		"payload missing checksum":  wellFormed[:len(wellFormed)-4],
+		"payload with extra byte":   append(base58CheckPayload(datasets.Base58Addresses[0].Expected), 0x00),
+		"payload with bad checksum": corruptedChecksum,
+		"payload with edited body":  corruptedBody,
+	}
+	for name, payload := range errorCases {
+		t.Run(name, func(t *testing.T) {
+			address, err := bitcoin.EncodeAddressBase58(payload)
+			require.Error(t, err)
+			assert.Empty(t, address)
+		})
+	}
+}
+
 func TestDecodeAddress(t *testing.T) {
 	var decodedAddresses []datasets.DecodedAddress
 	decodedAddresses = append(decodedAddresses, datasets.Base58Addresses...)

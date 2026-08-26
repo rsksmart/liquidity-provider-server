@@ -205,10 +205,13 @@ func TestDerivativeWallet(t *testing.T) {
 	t.Run("Address", func(t *testing.T) { testAddress(t, rskAccount, existingAddressInfo) })
 	t.Run("Unlock", func(t *testing.T) { testUnlock(t, rskAccount, existingAddressInfo) })
 	t.Run("ImportAddress", func(t *testing.T) { testImportAddress(t, rskAccount, existingAddressInfo) })
+	t.Run("RescanBlockchain", func(t *testing.T) { testRescanBlockchain(t, rskAccount, existingAddressInfo) })
 
 	t.Run("GetTransactions", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) { testGetTransactions(t, rskAccount, existingAddressInfo) })
 	})
+
+	t.Run("GetTransaction", func(t *testing.T) { testGetTransaction(t, rskAccount, existingAddressInfo) })
 
 	t.Run("GetBalance", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) { testGetBalance(t, rskAccount, existingAddressInfo) })
@@ -313,6 +316,17 @@ func testImportAddress(t *testing.T, rskAccount *account.RskAccount, addressInfo
 	require.ErrorContains(t, err, "address importing is not supported in this type of wallet")
 }
 
+func testRescanBlockchain(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
+	client := &mocks.ClientAdapterMock{}
+	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
+	client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
+	wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+	require.NoError(t, err)
+
+	_, err = wallet.RescanBlockchain(0)
+	require.ErrorContains(t, err, "address importing is not supported in this type of wallet")
+}
+
 func testAddress(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
 	client := &mocks.ClientAdapterMock{}
 	client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
@@ -344,6 +358,43 @@ func testGetBalance(t *testing.T, rskAccount *account.RskAccount, addressInfo *b
 	expected.SetString("160000000000000000000000000", 10)
 	require.Equal(t, entities.NewBigWei(expected), balance)
 	client.AssertExpectations(t)
+}
+
+func testGetTransaction(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
+	const (
+		txID      = "2ba6da53badd14349c5d6379e88c345e88193598aad714815d4b57c691a9fbdf"
+		otherTxID = "8bb45c0e5b8b8a17d2fbfbc06f4a5b0b1f36e3d59c8a2b7a2a8a5e1f0c4d3b2a"
+	)
+	parsedTxID, parseErr := chainhash.NewHashFromStr(txID)
+	require.NoError(t, parseErr)
+
+	newWallet := func(t *testing.T, result *btcjson.GetTransactionResult) blockchain.BitcoinWallet {
+		t.Helper()
+		client := &mocks.ClientAdapterMock{}
+		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Twice()
+		client.On("GetAddressInfo", btcAddress).Return(addressInfo, nil).Once()
+		client.EXPECT().GetTransaction(parsedTxID).Return(result, nil).Once()
+		wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+		require.NoError(t, err)
+		return wallet
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		wallet := newWallet(t, &btcjson.GetTransactionResult{TxID: txID, Confirmations: 7})
+
+		transaction, err := wallet.GetTransaction(txID)
+
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.BitcoinTransactionInformation{Hash: txID, Confirmations: 7}, transaction)
+	})
+
+	t.Run("Rejects a response bound to another transaction", func(t *testing.T) {
+		wallet := newWallet(t, &btcjson.GetTransactionResult{TxID: otherTxID, Confirmations: 7})
+
+		_, err := wallet.GetTransaction(txID)
+
+		require.ErrorContains(t, err, "wallet returned transaction")
+	})
 }
 
 // nolint:funlen
