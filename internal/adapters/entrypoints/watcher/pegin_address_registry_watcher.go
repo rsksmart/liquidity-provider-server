@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"sync"
 
@@ -133,8 +134,9 @@ func (watcher *PegInWatcher) Shutdown(closeChannel chan<- bool) {
 }
 
 func (watcher *PegInWatcher) scan(ctx context.Context) error {
-	pending := make([]*rootstock.PegInWatch, 0)
-	if err := watcher.retryDiscoveredWatches(ctx, &pending); err != nil {
+	pending := []rootstock.PegInWatch{}
+	pending, err := watcher.retryDiscoveredWatches(ctx, pending)
+	if err != nil {
 		return err
 	}
 	head, err := watcher.rskRpc.GetHeight(ctx)
@@ -156,7 +158,8 @@ func (watcher *PegInWatcher) scan(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err)
 	}
-	if err = watcher.processEvents(ctx, events, &pending); err != nil {
+	pending, err = watcher.processEvents(ctx, events, pending)
+	if err != nil {
 		return err
 	}
 	if err = watcher.rescanPendingImports(ctx, pending); err != nil {
@@ -176,8 +179,8 @@ func (watcher *PegInWatcher) scan(ctx context.Context) error {
 func (watcher *PegInWatcher) processEvents(
 	ctx context.Context,
 	events []blockchain.AddressRegistered,
-	pending *[]*rootstock.PegInWatch,
-) error {
+	pending []rootstock.PegInWatch,
+) ([]rootstock.PegInWatch, error) {
 	sort.Slice(events, func(firstIndex, secondIndex int) bool {
 		if events[firstIndex].BlockNumber == events[secondIndex].BlockNumber {
 			return events[firstIndex].LogIndex < events[secondIndex].LogIndex
@@ -185,55 +188,60 @@ func (watcher *PegInWatcher) processEvents(
 		return events[firstIndex].BlockNumber < events[secondIndex].BlockNumber
 	})
 
+	var err error
 	for _, event := range events {
-		if err := watcher.discoverEvent(ctx, event, pending); err != nil {
-			return err
+		pending, err = watcher.discoverEvent(ctx, event, pending)
+		if err != nil {
+			return pending, err
 		}
 	}
-	return nil
+	return pending, nil
 }
 
 func (watcher *PegInWatcher) retryDiscoveredWatches(
 	ctx context.Context,
-	pending *[]*rootstock.PegInWatch,
-) error {
+	pending []rootstock.PegInWatch,
+) ([]rootstock.PegInWatch, error) {
 	watcher.stateMutex.RLock()
 	watches := append([]rootstock.PegInWatch(nil), watcher.watches...)
 	watcher.stateMutex.RUnlock()
+	var err error
 	for index := range watches {
 		if watches[index].State != rootstock.PegInWatchDiscovered {
 			continue
 		}
-		if err := watcher.discoverEvent(ctx, watchToEvent(watches[index]), pending); err != nil {
-			return err
+		pending, err = watcher.discoverEvent(ctx, blockchain.NewAddressRegisteredFromWatchEntry(watches[index]), pending)
+		if err != nil {
+			return pending, err
 		}
 	}
-	return nil
+	return pending, nil
 }
 
 func (watcher *PegInWatcher) discoverEvent(
 	ctx context.Context,
 	event blockchain.AddressRegistered,
-	pending *[]*rootstock.PegInWatch,
-) error {
-	watch, needsRescan, err := watcher.discoverUseCase.Run(ctx, event)
+	pending []rootstock.PegInWatch,
+) ([]rootstock.PegInWatch, error) {
+	result, err := watcher.discoverUseCase.Run(ctx, event)
 	if err != nil {
-		return err
+		return pending, err
 	}
-	if watch == nil {
-		return nil
+	if result.Watch == nil {
+		return pending, nil
 	}
-	watcher.rememberWatch(*watch)
-	if !needsRescan || pendingContains(*pending, watch.TxHash, watch.LogIndex) {
-		return nil
+	watcher.rememberWatch(*result.Watch)
+	if !result.NeedsRescan || slices.ContainsFunc(pending, func(watch rootstock.PegInWatch) bool {
+		return watch.SameLog(result.Watch.TxHash, result.Watch.LogIndex)
+	}) {
+		return pending, nil
 	}
-	*pending = append(*pending, watch)
-	return nil
+	return append(pending, *result.Watch), nil
 }
 
 func (watcher *PegInWatcher) rescanPendingImports(
 	ctx context.Context,
-	pending []*rootstock.PegInWatch,
+	pending []rootstock.PegInWatch,
 ) error {
 	if len(pending) == 0 {
 		return nil
@@ -246,25 +254,29 @@ func (watcher *PegInWatcher) rescanPendingImports(
 	if _, err = watcher.wallet.RescanBlockchain(fromHeight); err != nil {
 		return watcher.recordPendingRescanError(ctx, pending, fmt.Errorf("rescan PegIn addresses: %w", err))
 	}
-	for _, watch := range pending {
-		if err = watcher.markImportedUseCase.Run(ctx, watch); err != nil {
+	for index := range pending {
+		watch := pending[index]
+		if err = watcher.markImportedUseCase.Run(ctx, &watch); err != nil {
 			return err
 		}
-		watcher.rememberWatch(*watch)
+		pending[index] = watch
+		watcher.rememberWatch(watch)
 	}
 	return nil
 }
 
 func (watcher *PegInWatcher) recordPendingRescanError(
 	ctx context.Context,
-	pending []*rootstock.PegInWatch,
+	pending []rootstock.PegInWatch,
 	rescanErr error,
 ) error {
-	for _, watch := range pending {
-		if err := watcher.recordErrorUseCase.Run(ctx, watch, rescanErr); err != nil {
+	for index := range pending {
+		watch := pending[index]
+		if err := watcher.recordErrorUseCase.Run(ctx, &watch, rescanErr); err != nil {
 			return err
 		}
-		watcher.rememberWatch(*watch)
+		pending[index] = watch
+		watcher.rememberWatch(watch)
 	}
 	return nil
 }
@@ -273,32 +285,12 @@ func (watcher *PegInWatcher) rememberWatch(watch rootstock.PegInWatch) {
 	watcher.stateMutex.Lock()
 	defer watcher.stateMutex.Unlock()
 	for index := range watcher.watches {
-		if watcher.watches[index].TxHash == watch.TxHash && watcher.watches[index].LogIndex == watch.LogIndex {
+		if watcher.watches[index].SameLog(watch.TxHash, watch.LogIndex) {
 			watcher.watches[index] = watch
 			return
 		}
 	}
 	watcher.watches = append(watcher.watches, watch)
-}
-
-func pendingContains(pending []*rootstock.PegInWatch, txHash string, logIndex uint) bool {
-	for _, watch := range pending {
-		if watch.TxHash == txHash && watch.LogIndex == logIndex {
-			return true
-		}
-	}
-	return false
-}
-
-func watchToEvent(watch rootstock.PegInWatch) blockchain.AddressRegistered {
-	return blockchain.AddressRegistered{
-		RskAddress:       watch.RskAddress,
-		Registrant:       watch.Registrant,
-		RegistrationRoot: watch.RegistrationRoot,
-		TxHash:           watch.TxHash,
-		BlockNumber:      watch.BlockNumber,
-		LogIndex:         watch.LogIndex,
-	}
 }
 
 func (watcher *PegInWatcher) nextRange(finalizedHead uint64) (uint64, uint64) {

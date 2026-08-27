@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,15 +27,34 @@ func TestNewPegInWatch(t *testing.T) {
 	assert.Equal(t, watch.CreatedAt, watch.UpdatedAt)
 }
 
-func TestPegInWatch_MarkUnsupportedEncoding(t *testing.T) {
+func TestPegInWatch_SetEncoding_LeavesSupportedEncodingDiscovered(t *testing.T) {
 	watch := rootstock.NewPegInWatch("0xhash", 1, 1, "0xrsk", "0xregistrant", [32]byte{})
 	watch.LastError = "previous"
-	watch.MarkUnsupportedEncoding(2)
+	watch.SetEncoding(uint8(blockchain.PegInAddressRegistryEncodingBase58))
 
-	assert.Equal(t, uint8(2), watch.Encoding)
+	assert.Equal(t, uint8(blockchain.PegInAddressRegistryEncodingBase58), watch.Encoding)
+	assert.Equal(t, rootstock.PegInWatchDiscovered, watch.State)
+	assert.Equal(t, "previous", watch.LastError)
+}
+
+func TestPegInWatch_SetEncoding_MarksUnsupportedAndSetsLastError(t *testing.T) {
+	watch := rootstock.NewPegInWatch("0xhash", 1, 1, "0xrsk", "0xregistrant", [32]byte{})
+	watch.LastError = "previous"
+	watch.SetEncoding(uint8(blockchain.PegInAddressRegistryEncodingBech32))
+
+	assert.Equal(t, uint8(blockchain.PegInAddressRegistryEncodingBech32), watch.Encoding)
 	assert.Equal(t, rootstock.PegInWatchUnsupportedEncoding, watch.State)
-	assert.Empty(t, watch.LastError)
+	assert.NotEmpty(t, watch.LastError)
+	assert.NotEqual(t, "previous", watch.LastError)
 	assert.True(t, watch.UpdatedAt.After(watch.CreatedAt) || watch.UpdatedAt.Equal(watch.CreatedAt))
+}
+
+func TestPegInWatch_SameLog(t *testing.T) {
+	watch := rootstock.NewPegInWatch("0xhash", 3, 1, "0xrsk", "0xregistrant", [32]byte{})
+
+	assert.True(t, watch.SameLog("0xhash", 3))
+	assert.False(t, watch.SameLog("0xother", 3))
+	assert.False(t, watch.SameLog("0xhash", 2))
 }
 
 func TestPegInWatch_MarkImported(t *testing.T) {
