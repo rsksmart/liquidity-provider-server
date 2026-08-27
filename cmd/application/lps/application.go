@@ -80,9 +80,6 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 		log.Fatal("Error creating Liquidity Provider registry:", err)
 	}
 	mutexes := environment.NewApplicationMutexes()
-	if err := requirePegInAddressRegistry(rootstockRegistry.Contracts.PegInAddressRegistry); err != nil {
-		log.Fatal(err)
-	}
 
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
 	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
@@ -227,13 +224,6 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 	}
 
 	return watchers
-}
-
-func requirePegInAddressRegistry(contract blockchain.PegInAddressRegistryContract) error {
-	if contract == nil {
-		return errors.New("PEGIN_ADDRESS_REGISTRY_ADDRESS is required to start the PegIn address registry watcher")
-	}
-	return nil
 }
 
 func (app *Application) ShutdownServices() {
