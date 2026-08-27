@@ -1,6 +1,10 @@
 package blockchain
 
-import "context"
+import (
+	"context"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+)
 
 // PegInAddressRegistryEncoding mirrors the on-chain IPegInAddressRegistry.Encoding enum.
 type PegInAddressRegistryEncoding uint8
@@ -10,6 +14,10 @@ const (
 	PegInAddressRegistryEncodingBech32
 	PegInAddressRegistryEncodingBech32M
 )
+
+func IsSupportedPegInEncoding(encoding PegInAddressRegistryEncoding) bool {
+	return encoding == PegInAddressRegistryEncodingBase58
+}
 
 // PegInAddress is a registered BTC address payload together with the encoding needed to read it.
 type PegInAddress struct {
@@ -38,6 +46,17 @@ type AddressRegistered struct {
 	TxHash           string
 	BlockNumber      uint64
 	LogIndex         uint
+}
+
+func NewAddressRegisteredFromWatchEntry(watch rootstock.PegInWatch) AddressRegistered {
+	return AddressRegistered{
+		RskAddress:       watch.RskAddress,
+		Registrant:       watch.Registrant,
+		RegistrationRoot: watch.RegistrationRoot,
+		TxHash:           watch.TxHash,
+		BlockNumber:      watch.BlockNumber,
+		LogIndex:         watch.LogIndex,
+	}
 }
 
 type PegInAddressRegistryContract interface {

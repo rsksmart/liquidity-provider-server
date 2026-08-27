@@ -2,6 +2,7 @@ package rootstock
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -53,11 +54,22 @@ func NewPegInWatch(
 	}
 }
 
-func (watch *PegInWatch) MarkUnsupportedEncoding(encoding uint8) {
+// pegInWatchEncodingBase58 matches blockchain.PegInAddressRegistryEncodingBase58 (iota 0).
+// rootstock cannot import blockchain without an import cycle.
+const pegInWatchEncodingBase58 uint8 = 0
+
+func (watch *PegInWatch) SetEncoding(encoding uint8) {
 	watch.Encoding = encoding
-	watch.State = PegInWatchUnsupportedEncoding
-	watch.LastError = ""
 	watch.UpdatedAt = time.Now().UTC()
+	if encoding == pegInWatchEncodingBase58 {
+		return
+	}
+	watch.State = PegInWatchUnsupportedEncoding
+	watch.LastError = fmt.Sprintf("unsupported encoding %d", encoding)
+}
+
+func (watch PegInWatch) SameLog(txHash string, logIndex uint) bool {
+	return watch.TxHash == txHash && watch.LogIndex == logIndex
 }
 
 func (watch *PegInWatch) MarkImported() {

@@ -81,15 +81,15 @@ func TestDiscoverRegisteredAddressUseCase_Run_ImportsAddressAndRequestsRescan(t 
 	}, nil).Once()
 	fixture.wallet.EXPECT().ImportAddress(address).Return(nil).Once()
 
-	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
+	result, err := fixture.useCase.Run(context.Background(), event)
 
 	require.NoError(t, err)
-	require.NotNil(t, watch)
-	assert.True(t, needsRescan)
-	assert.Equal(t, address, watch.BtcAddress)
-	assert.Equal(t, rootstock.PegInWatchDiscovered, watch.State)
-	assert.Equal(t, event.TxHash, watch.TxHash)
-	assert.Equal(t, event.RegistrationRoot, watch.RegistrationRoot)
+	require.NotNil(t, result.Watch)
+	assert.True(t, result.NeedsRescan)
+	assert.Equal(t, address, result.Watch.BtcAddress)
+	assert.Equal(t, rootstock.PegInWatchDiscovered, result.Watch.State)
+	assert.Equal(t, event.TxHash, result.Watch.TxHash)
+	assert.Equal(t, event.RegistrationRoot, result.Watch.RegistrationRoot)
 }
 
 func TestDiscoverRegisteredAddressUseCase_Run_AlreadyImportedIsNoOp(t *testing.T) {
@@ -104,12 +104,12 @@ func TestDiscoverRegisteredAddressUseCase_Run_AlreadyImportedIsNoOp(t *testing.T
 	}
 	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(&imported, nil).Once()
 
-	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
+	result, err := fixture.useCase.Run(context.Background(), event)
 
 	require.NoError(t, err)
-	assert.False(t, needsRescan)
-	assert.Equal(t, imported.TxHash, watch.TxHash)
-	assert.Equal(t, rootstock.PegInWatchImported, watch.State)
+	assert.False(t, result.NeedsRescan)
+	assert.Equal(t, imported.TxHash, result.Watch.TxHash)
+	assert.Equal(t, rootstock.PegInWatchImported, result.Watch.State)
 	fixture.registry.AssertNotCalled(t, "GetPegInAddress", mock.Anything)
 	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 }
@@ -128,14 +128,16 @@ func TestDiscoverRegisteredAddressUseCase_Run_PersistsUnsupportedEncoding(t *tes
 	fixture.repository.On("Update", test.AnyCtx, mock.MatchedBy(func(watch rootstock.PegInWatch) bool {
 		return watch.TxHash == event.TxHash &&
 			watch.State == rootstock.PegInWatchUnsupportedEncoding &&
-			watch.BtcAddress == ""
+			watch.BtcAddress == "" &&
+			watch.LastError != ""
 	})).Return(nil).Once()
 
-	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
+	result, err := fixture.useCase.Run(context.Background(), event)
 
 	require.NoError(t, err)
-	assert.False(t, needsRescan)
-	assert.Equal(t, rootstock.PegInWatchUnsupportedEncoding, watch.State)
+	assert.False(t, result.NeedsRescan)
+	assert.Equal(t, rootstock.PegInWatchUnsupportedEncoding, result.Watch.State)
+	assert.NotEmpty(t, result.Watch.LastError)
 	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 }
 
@@ -158,11 +160,11 @@ func TestDiscoverRegisteredAddressUseCase_Run_RecordsUnencodablePayload(t *testi
 			strings.Contains(watch.LastError, "encode PegIn address for event truncated-payload/1")
 	})).Return(nil).Once()
 
-	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
+	result, err := fixture.useCase.Run(context.Background(), event)
 
 	require.NoError(t, err)
-	assert.False(t, needsRescan)
-	assert.NotEmpty(t, watch.LastError)
+	assert.False(t, result.NeedsRescan)
+	assert.NotEmpty(t, result.Watch.LastError)
 	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 }
 
@@ -171,7 +173,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_WrapsPersistErrors(t *testing.T) {
 	event := blockchain.AddressRegistered{TxHash: "0xreg", LogIndex: 1, RskAddress: "0xrsk"}
 	fixture.repository.EXPECT().Get(test.AnyCtx, event.TxHash, event.LogIndex).Return(nil, assert.AnError).Once()
 
-	_, _, err := fixture.useCase.Run(context.Background(), event)
+	_, err := fixture.useCase.Run(context.Background(), event)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, string(usecases.DiscoverRegisteredAddressId))
 }
@@ -191,9 +193,9 @@ func TestDiscoverRegisteredAddressUseCase_Run_WalletAlreadyImportedStillNeedsRes
 	}, nil).Once()
 	fixture.wallet.EXPECT().ImportAddress(address).Return(errors.New("address already imported")).Once()
 
-	watch, needsRescan, err := fixture.useCase.Run(context.Background(), event)
+	result, err := fixture.useCase.Run(context.Background(), event)
 	require.NoError(t, err)
-	assert.True(t, needsRescan)
-	assert.Equal(t, address, watch.BtcAddress)
-	assert.Equal(t, rootstock.PegInWatchDiscovered, watch.State)
+	assert.True(t, result.NeedsRescan)
+	assert.Equal(t, address, result.Watch.BtcAddress)
+	assert.Equal(t, rootstock.PegInWatchDiscovered, result.Watch.State)
 }
