@@ -98,14 +98,15 @@ func (useCase *ReplayRegisteredAddressesUseCase) runReplay(
 	if replay == nil {
 		return nil, nil
 	}
-	pending := make([]*rootstock.PegInWatch, 0)
-	if err = useCase.retryDiscoveredEntries(ctx, &pending); err != nil {
+	pending := []*rootstock.PegInWatch{}
+	pending, err = useCase.retryDiscoveredEntries(ctx, pending)
+	if err != nil {
 		return nil, err
 	}
 	if replay.recoveryReason != "" {
 		useCase.reportResyncStarted(replay.recoveryReason)
 	}
-	checkpoint, err := useCase.replayAndVerify(ctx, replay.trustedCheckpoint, replay.finalizedHead, replay.head, &pending)
+	checkpoint, pending, err := useCase.replayAndVerify(ctx, replay.trustedCheckpoint, replay.finalizedHead, replay.head, pending)
 	if err == nil {
 		if err = useCase.publishReplayCheckpoint(ctx, checkpoint, replay.trustedCheckpoint); err != nil {
 			return nil, err
@@ -174,14 +175,14 @@ func (useCase *ReplayRegisteredAddressesUseCase) replayAndVerify(
 	trustedCheckpoint *rootstock.PegInWatchCheckpoint,
 	finalizedHead uint64,
 	head uint64,
-	pending *[]*rootstock.PegInWatch,
-) (rootstock.PegInWatchCheckpoint, error) {
-	checkpoint, err := useCase.replay(ctx, trustedCheckpoint, finalizedHead, pending)
+	pending []*rootstock.PegInWatch,
+) (rootstock.PegInWatchCheckpoint, []*rootstock.PegInWatch, error) {
+	checkpoint, pending, err := useCase.replay(ctx, trustedCheckpoint, finalizedHead, pending)
 	if err != nil {
-		return checkpoint, err
+		return checkpoint, pending, err
 	}
 	err = useCase.verifyReplayRoot(ctx, checkpoint.LocalRoot, checkpoint.LastProcessedBlock, head)
-	return checkpoint, err
+	return checkpoint, pending, err
 }
 
 func (useCase *ReplayRegisteredAddressesUseCase) publishReplayCheckpoint(
@@ -209,8 +210,8 @@ func (useCase *ReplayRegisteredAddressesUseCase) recoverFromRootMismatch(
 		return nil, errors.Join(replayErr, discardErr)
 	}
 	useCase.reportResyncStarted("root_mismatch")
-	recovered := make([]*rootstock.PegInWatch, 0)
-	checkpoint, err := useCase.replayAndVerify(ctx, nil, finalizedHead, head, &recovered)
+	recovered := []*rootstock.PegInWatch{}
+	checkpoint, recovered, err := useCase.replayAndVerify(ctx, nil, finalizedHead, head, recovered)
 	if err == nil {
 		if err = useCase.publishCheckpoint(ctx, checkpoint); err != nil {
 			return nil, err
@@ -262,8 +263,8 @@ func (useCase *ReplayRegisteredAddressesUseCase) replay(
 	ctx context.Context,
 	trustedCheckpoint *rootstock.PegInWatchCheckpoint,
 	finalizedHead uint64,
-	pending *[]*rootstock.PegInWatch,
-) (rootstock.PegInWatchCheckpoint, error) {
+	pending []*rootstock.PegInWatch,
+) (rootstock.PegInWatchCheckpoint, []*rootstock.PegInWatch, error) {
 	fromBlock := useCase.startBlock
 	localRoot := [32]byte{}
 	checkpoint := rootstock.PegInWatchCheckpoint{
@@ -273,7 +274,7 @@ func (useCase *ReplayRegisteredAddressesUseCase) replay(
 	if trustedCheckpoint != nil {
 		checkpoint = *trustedCheckpoint
 		if trustedCheckpoint.LastProcessedBlock >= finalizedHead {
-			return *trustedCheckpoint, nil
+			return *trustedCheckpoint, pending, nil
 		}
 		fromBlock = trustedCheckpoint.LastProcessedBlock + 1
 		localRoot = trustedCheckpoint.LocalRoot
@@ -285,12 +286,12 @@ func (useCase *ReplayRegisteredAddressesUseCase) replay(
 		}
 		events, err := useCase.registry.GetAddressRegisteredEvents(ctx, fromBlock, &toBlock)
 		if err != nil {
-			return checkpoint, fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err)
+			return checkpoint, pending, fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err)
 		}
 		events = eventsWithinRange(events, fromBlock, toBlock)
-		localRoot, err = useCase.processEvents(ctx, events, localRoot, pending)
+		localRoot, pending, err = useCase.processEvents(ctx, events, localRoot, pending)
 		if err != nil {
-			return checkpoint, err
+			return checkpoint, pending, err
 		}
 		checkpoint = rootstock.PegInWatchCheckpoint{
 			LocalRoot:          localRoot,
@@ -301,7 +302,7 @@ func (useCase *ReplayRegisteredAddressesUseCase) replay(
 		}
 		fromBlock = toBlock + 1
 	}
-	return checkpoint, nil
+	return checkpoint, pending, nil
 }
 
 func (useCase *ReplayRegisteredAddressesUseCase) publishCheckpoint(
@@ -368,28 +369,29 @@ func (useCase *ReplayRegisteredAddressesUseCase) processEvents(
 	ctx context.Context,
 	events []blockchain.AddressRegistered,
 	localRoot [32]byte,
-	pending *[]*rootstock.PegInWatch,
-) ([32]byte, error) {
+	pending []*rootstock.PegInWatch,
+) ([32]byte, []*rootstock.PegInWatch, error) {
 	events = orderedUniqueEvents(events)
 	for _, event := range events {
 		var err error
 		localRoot, err = blockchain.FoldPegInAddressRegistryRoot(localRoot, event.RskAddress)
 		if err != nil {
-			return [32]byte{}, fmt.Errorf("fold AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
+			return [32]byte{}, pending, fmt.Errorf("fold AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
 		}
 		if event.RegistrationRoot != localRoot {
-			return [32]byte{}, &pegInAddressRegistryRootMismatchError{
+			return [32]byte{}, pending, &pegInAddressRegistryRootMismatchError{
 				blockNumber: event.BlockNumber,
 				localRoot:   localRoot,
 				chainRoot:   event.RegistrationRoot,
 				source:      fmt.Sprintf("event_%s_%d", event.TxHash, event.LogIndex),
 			}
 		}
-		if err = useCase.discoverEvent(ctx, event, pending); err != nil {
-			return [32]byte{}, err
+		pending, err = useCase.discoverEvent(ctx, event, pending)
+		if err != nil {
+			return [32]byte{}, pending, err
 		}
 	}
-	return localRoot, nil
+	return localRoot, pending, nil
 }
 
 type registryEventIdentity struct {
@@ -442,34 +444,35 @@ func foldRegistrationRoots(
 
 func (useCase *ReplayRegisteredAddressesUseCase) retryDiscoveredEntries(
 	ctx context.Context,
-	pending *[]*rootstock.PegInWatch,
-) error {
+	pending []*rootstock.PegInWatch,
+) ([]*rootstock.PegInWatch, error) {
 	entries, err := useCase.repository.List(ctx)
 	if err != nil {
-		return err
+		return pending, err
 	}
 	for index := range entries {
 		if entries[index].State != rootstock.PegInWatchDiscovered {
 			continue
 		}
-		if err = useCase.discoverEvent(ctx, blockchain.NewAddressRegisteredFromWatchEntry(entries[index]), pending); err != nil {
-			return err
+		pending, err = useCase.discoverEvent(ctx, blockchain.NewAddressRegisteredFromWatchEntry(entries[index]), pending)
+		if err != nil {
+			return pending, err
 		}
 	}
-	return nil
+	return pending, nil
 }
 
 func (useCase *ReplayRegisteredAddressesUseCase) discoverEvent(
 	ctx context.Context,
 	event blockchain.AddressRegistered,
-	pending *[]*rootstock.PegInWatch,
-) error {
-	if rootstock.PegInWatches(*pending).Contains(event.RskAddress) {
-		return nil
+	pending []*rootstock.PegInWatch,
+) ([]*rootstock.PegInWatch, error) {
+	if rootstock.PegInWatches(pending).Contains(event.RskAddress) {
+		return pending, nil
 	}
 	entry, err := loadOrCreateWatchEntry(ctx, useCase.repository, event, usecases.ReplayRegisteredAddressesId)
 	if err != nil {
-		return err
+		return pending, err
 	}
 	needsRescan, err := resolveAndImportWatchEntry(
 		ctx,
@@ -480,11 +483,10 @@ func (useCase *ReplayRegisteredAddressesUseCase) discoverEvent(
 		usecases.ReplayRegisteredAddressesId,
 	)
 	if err != nil {
-		return err
+		return pending, err
 	}
 	if entry == nil || !needsRescan {
-		return nil
+		return pending, nil
 	}
-	*pending = append(*pending, entry)
-	return nil
+	return append(pending, entry), nil
 }
