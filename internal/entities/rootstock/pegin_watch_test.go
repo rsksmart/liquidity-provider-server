@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,9 +29,9 @@ func TestNewPegInWatch(t *testing.T) {
 func TestPegInWatch_SetEncoding_LeavesSupportedEncodingDiscovered(t *testing.T) {
 	watch := rootstock.NewPegInWatch("0xhash", 1, 1, "0xrsk", "0xregistrant", [32]byte{})
 	watch.LastError = "previous"
-	watch.SetEncoding(uint8(blockchain.PegInAddressRegistryEncodingBase58))
+	watch.SetEncoding(rootstock.PegInAddressRegistryEncodingBase58)
 
-	assert.Equal(t, uint8(blockchain.PegInAddressRegistryEncodingBase58), watch.Encoding)
+	assert.Equal(t, uint8(rootstock.PegInAddressRegistryEncodingBase58), watch.Encoding)
 	assert.Equal(t, rootstock.PegInWatchDiscovered, watch.State)
 	assert.Equal(t, "previous", watch.LastError)
 }
@@ -40,13 +39,19 @@ func TestPegInWatch_SetEncoding_LeavesSupportedEncodingDiscovered(t *testing.T) 
 func TestPegInWatch_SetEncoding_MarksUnsupportedAndSetsLastError(t *testing.T) {
 	watch := rootstock.NewPegInWatch("0xhash", 1, 1, "0xrsk", "0xregistrant", [32]byte{})
 	watch.LastError = "previous"
-	watch.SetEncoding(uint8(blockchain.PegInAddressRegistryEncodingBech32))
+	watch.SetEncoding(rootstock.PegInAddressRegistryEncodingBech32)
 
-	assert.Equal(t, uint8(blockchain.PegInAddressRegistryEncodingBech32), watch.Encoding)
+	assert.Equal(t, uint8(rootstock.PegInAddressRegistryEncodingBech32), watch.Encoding)
 	assert.Equal(t, rootstock.PegInWatchUnsupportedEncoding, watch.State)
 	assert.NotEmpty(t, watch.LastError)
 	assert.NotEqual(t, "previous", watch.LastError)
 	assert.True(t, watch.UpdatedAt.After(watch.CreatedAt) || watch.UpdatedAt.Equal(watch.CreatedAt))
+}
+
+func TestIsSupportedPegInEncoding(t *testing.T) {
+	assert.True(t, rootstock.IsSupportedPegInEncoding(rootstock.PegInAddressRegistryEncodingBase58))
+	assert.False(t, rootstock.IsSupportedPegInEncoding(rootstock.PegInAddressRegistryEncodingBech32))
+	assert.False(t, rootstock.IsSupportedPegInEncoding(rootstock.PegInAddressRegistryEncodingBech32M))
 }
 
 func TestPegInWatch_SameLog(t *testing.T) {

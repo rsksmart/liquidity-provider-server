@@ -14,6 +14,19 @@ const (
 	PegInWatchUnsupportedEncoding PegInWatchState = "unsupported_encoding" // encoding cannot be converted to a Bitcoin address
 )
 
+// PegInAddressRegistryEncoding mirrors the on-chain IPegInAddressRegistry.Encoding enum.
+type PegInAddressRegistryEncoding uint8
+
+const (
+	PegInAddressRegistryEncodingBase58 PegInAddressRegistryEncoding = iota
+	PegInAddressRegistryEncodingBech32
+	PegInAddressRegistryEncodingBech32M
+)
+
+func IsSupportedPegInEncoding(encoding PegInAddressRegistryEncoding) bool {
+	return encoding == PegInAddressRegistryEncodingBase58
+}
+
 type PegInWatch struct {
 	TxHash           string          `json:"txHash" bson:"tx_hash"`
 	LogIndex         uint            `json:"logIndex" bson:"log_index"`
@@ -54,14 +67,10 @@ func NewPegInWatch(
 	}
 }
 
-// pegInWatchEncodingBase58 matches blockchain.PegInAddressRegistryEncodingBase58 (iota 0).
-// rootstock cannot import blockchain without an import cycle.
-const pegInWatchEncodingBase58 uint8 = 0
-
-func (watch *PegInWatch) SetEncoding(encoding uint8) {
-	watch.Encoding = encoding
+func (watch *PegInWatch) SetEncoding(encoding PegInAddressRegistryEncoding) {
+	watch.Encoding = uint8(encoding)
 	watch.UpdatedAt = time.Now().UTC()
-	if encoding == pegInWatchEncodingBase58 {
+	if IsSupportedPegInEncoding(encoding) {
 		return
 	}
 	watch.State = PegInWatchUnsupportedEncoding
