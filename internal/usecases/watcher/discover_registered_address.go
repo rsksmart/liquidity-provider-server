@@ -30,32 +30,36 @@ func NewDiscoverRegisteredAddressUseCase(
 	}
 }
 
+type DiscoverRegisteredAddressResult struct {
+	Watch       *rootstock.PegInWatch
+	NeedsRescan bool
+}
+
 func (useCase *DiscoverRegisteredAddressUseCase) Run(
 	ctx context.Context,
 	event blockchain.AddressRegistered,
-) (watch *rootstock.PegInWatch, needsRescan bool, err error) {
-	watch, err = useCase.loadOrCreate(ctx, event)
+) (DiscoverRegisteredAddressResult, error) {
+	watch, err := useCase.loadOrCreate(ctx, event)
 	if err != nil {
-		return nil, false, err
+		return DiscoverRegisteredAddressResult{}, err
 	}
 	if watch.State == rootstock.PegInWatchImported ||
 		watch.State == rootstock.PegInWatchUnsupportedEncoding {
-		return watch, false, nil
+		return DiscoverRegisteredAddressResult{Watch: watch}, nil
 	}
 
 	pegInAddress, err := useCase.registry.GetPegInAddress(watch.RskAddress)
 	if err != nil {
-		return watch, false, useCase.persistError(
+		return DiscoverRegisteredAddressResult{Watch: watch}, useCase.persistError(
 			ctx,
 			watch,
 			fmt.Errorf("resolve PegIn address for event %s/%d: %w", watch.TxHash, watch.LogIndex, err),
 		)
 	}
-	watch.Encoding = uint8(pegInAddress.Encoding)
-	if pegInAddress.Encoding != blockchain.PegInAddressRegistryEncodingBase58 {
-		watch.MarkUnsupportedEncoding(uint8(pegInAddress.Encoding))
+	watch.SetEncoding(uint8(pegInAddress.Encoding))
+	if watch.State == rootstock.PegInWatchUnsupportedEncoding {
 		if err = useCase.repository.Update(ctx, *watch); err != nil {
-			return nil, false, usecases.WrapUseCaseError(
+			return DiscoverRegisteredAddressResult{}, usecases.WrapUseCaseError(
 				usecases.DiscoverRegisteredAddressId,
 				fmt.Errorf("persist unsupported encoding for event %s/%d: %w", watch.TxHash, watch.LogIndex, err),
 			)
@@ -66,23 +70,23 @@ func (useCase *DiscoverRegisteredAddressUseCase) Run(
 			watch.LogIndex,
 			pegInAddress.Encoding,
 		)
-		return watch, false, nil
+		return DiscoverRegisteredAddressResult{Watch: watch}, nil
 	}
 	if watch.BtcAddress, err = bitcoin.EncodeAddressBase58(pegInAddress.Payload); err != nil {
-		return watch, false, useCase.persistError(
+		return DiscoverRegisteredAddressResult{Watch: watch}, useCase.persistError(
 			ctx,
 			watch,
 			fmt.Errorf("encode PegIn address for event %s/%d: %w", watch.TxHash, watch.LogIndex, err),
 		)
 	}
 	if err = useCase.wallet.ImportAddress(watch.BtcAddress); err != nil && !btcclient.IsAddressAlreadyImported(err) {
-		return watch, false, useCase.persistError(
+		return DiscoverRegisteredAddressResult{Watch: watch}, useCase.persistError(
 			ctx,
 			watch,
 			fmt.Errorf("import PegIn address for event %s/%d: %w", watch.TxHash, watch.LogIndex, err),
 		)
 	}
-	return watch, true, nil
+	return DiscoverRegisteredAddressResult{Watch: watch, NeedsRescan: true}, nil
 }
 
 func (useCase *DiscoverRegisteredAddressUseCase) loadOrCreate(
