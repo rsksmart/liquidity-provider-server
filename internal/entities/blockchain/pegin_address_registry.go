@@ -6,17 +6,17 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
 
-// PegInAddressRegistryEncoding mirrors the on-chain IPegInAddressRegistry.Encoding enum.
-type PegInAddressRegistryEncoding uint8
+// PegInAddressRegistryEncoding is the on-chain IPegInAddressRegistry.Encoding enum.
+type PegInAddressRegistryEncoding = rootstock.PegInAddressRegistryEncoding
 
 const (
-	PegInAddressRegistryEncodingBase58 PegInAddressRegistryEncoding = iota
-	PegInAddressRegistryEncodingBech32
-	PegInAddressRegistryEncodingBech32M
+	PegInAddressRegistryEncodingBase58  = rootstock.PegInAddressRegistryEncodingBase58
+	PegInAddressRegistryEncodingBech32  = rootstock.PegInAddressRegistryEncodingBech32
+	PegInAddressRegistryEncodingBech32M = rootstock.PegInAddressRegistryEncodingBech32M
 )
 
 func IsSupportedPegInEncoding(encoding PegInAddressRegistryEncoding) bool {
-	return encoding == PegInAddressRegistryEncodingBase58
+	return rootstock.IsSupportedPegInEncoding(encoding)
 }
 
 // PegInAddress is a registered BTC address payload together with the encoding needed to read it.

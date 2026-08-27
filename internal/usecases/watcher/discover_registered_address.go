@@ -56,7 +56,7 @@ func (useCase *DiscoverRegisteredAddressUseCase) Run(
 			fmt.Errorf("resolve PegIn address for event %s/%d: %w", watch.TxHash, watch.LogIndex, err),
 		)
 	}
-	watch.SetEncoding(uint8(pegInAddress.Encoding))
+	watch.SetEncoding(pegInAddress.Encoding)
 	if watch.State == rootstock.PegInWatchUnsupportedEncoding {
 		if err = useCase.repository.Update(ctx, *watch); err != nil {
 			return DiscoverRegisteredAddressResult{}, usecases.WrapUseCaseError(
