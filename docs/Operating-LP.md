@@ -1,4 +1,4 @@
-A Liquidity Provider (LP) contributes funds in Rootstock (rBTC) and Bitcoin (BTC) to a liquidity pool. In exchange for providing this liquidity and facilitating trades between the two assets, LPs earn rewards (fees) generated from trading activity. 
+A Liquidity Provider (LP) contributes funds in Rootstock (rBTC) and Bitcoin (BTC) to a liquidity pool. In exchange for providing this liquidity and facilitating trades between the two assets, LPs earn rewards (fees) generated from trading activity.
 
 > LPs can be individuals, institutions, exchanges, or aggregators. See the [glossary](/developers/integrate/flyover/glossary/) for term definitions.
 
@@ -57,3 +57,9 @@ See the [minimum security requirements](https://github.com/rsksmart/liquidity-pr
 - [Liquidity Bridge Contract](https://github.com/rsksmart/liquidity-bridge-contract)
 - [Flyover LBC Mainnet Contract Address](https://explorer.rootstock.io/address/0xaa9caf1e3967600578727f975f283446a3da6612)
 - [Flyover LBC Testnet Contract Address](https://explorer.testnet.rootstock.io/address/0xc2a630c053d12d63d32b025082f6ba268db18300)
+
+## Bound code
+
+- `@./cmd/application/lps/application.go#Application`
+- `@./internal/configuration/environment/environment.go#Environment`
+- `@./internal/adapters/entrypoints/rest/routes/routes.go#ConfigureRoutes`

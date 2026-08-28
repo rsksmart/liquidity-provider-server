@@ -34,3 +34,7 @@ Depending on your use case (full node, archive node, or light node), some module
 - [Troubleshooting Guide](https://dev.rootstock.io/node-operators/troubleshooting/)
 
 _This document is meant as a high-level best practices summary. Always refer to the official Rootstock DevPortal for up-to-date configuration instructions._
+
+## Bound code
+
+- `@./docker-compose/rskj/rsk.conf`

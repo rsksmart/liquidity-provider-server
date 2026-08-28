@@ -158,7 +158,7 @@ Testing can be done on regtest (local) for development, or on testnet/mainnet fo
      --keystore-file /path/to/keystore.json \
      --all
    ```
-   
+
    Or to withdraw a specific amount:
    ```bash
    ./utils/withdraw \
@@ -179,7 +179,7 @@ To test legacy contract migration on regtest, start the environment which will d
    export LPS_STAGE=regtest
    ./lps-env.sh up
    ```
-   
+
    This will:
    - Start the local RSK regtest node and Bitcoin node
    - Deploy the LEGACY LiquidityBridgeContract for migration testing
@@ -237,12 +237,12 @@ To test legacy contract migration on regtest, start the environment which will d
    # Check the resignation delay
    DELAY=$(cast to-dec $(cast call $LBC_ADDR "getResignDelayBlocks()" --rpc-url http://localhost:4444))
    echo "Resignation delay: $DELAY blocks"
-   
+
    # Mine the required number of blocks
    for i in $(seq 1 $DELAY); do
      cast rpc evm_mine --rpc-url http://localhost:4444 > /dev/null
    done
-   
+
    echo "Mined $DELAY blocks"
    ```
 
@@ -258,7 +258,7 @@ To test legacy contract migration on regtest, start the environment which will d
    ```
 
 9. **Withdraw funds used for pegins**:
-   
+
    Withdraw all funds:
    ```bash
    ./utils/withdraw \
@@ -269,7 +269,7 @@ To test legacy contract migration on regtest, start the environment which will d
      --all
    # Password: test
    ```
-   
+
    Or withdraw a specific amount (in wei):
    ```bash
    ./utils/withdraw \
@@ -283,3 +283,12 @@ To test legacy contract migration on regtest, start the environment which will d
 
 **Note**: The legacy contract is a single contract that contains all functionality (collateral management, pegin, pegout, discovery). These migration utilities are designed specifically for migrating FROM the legacy contract.
 
+## Bound code
+
+- `@./cmd/utils/scripts/input.go#BaseInput`
+- `@./cmd/utils/scripts/input.go#ReadBaseInput`
+- `@./cmd/utils/resign_utils/resign_utils.go#ExecuteResign`
+- `@./cmd/utils/resign_utils/resign_utils.go#ExecuteWithdrawCollateral`
+- `@./cmd/utils/withdraw/withdraw.go#ExecuteWithdraw`
+- `@./cmd/utils/defaults/defaults.go`
+- `@./Makefile`

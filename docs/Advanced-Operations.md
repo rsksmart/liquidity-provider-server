@@ -1,9 +1,9 @@
 ## Custom network setups
 To configure custom networks, see [Configuration](https://github.com/rsksmart/flyover-sdk/tree/main?tab=readme-ov-file#configuration) section.
 
-## Captcha token handling 
+## Captcha token handling
 
-The `tokenResolver` asynchronously fetches a token from the state managed by a store. 
+The `tokenResolver` asynchronously fetches a token from the state managed by a store.
 
 ```js
 const tokenResolver = function () {
@@ -23,7 +23,7 @@ A Liquidity Provider can choose to enable captcha in the service to ensure only 
 
 ## Assigning Resolver in the Flyover Instance
 
-Add the `captchaTokenResolver: tokenResolver` in the Flyover instance. 
+Add the `captchaTokenResolver: tokenResolver` in the Flyover instance.
 
 ```js
 const flyover = new Flyover({
@@ -37,3 +37,11 @@ const flyover = new Flyover({
 ## FlyoverUtils
 
 Flyover SDK exports an object with a collection of util functions that the client application might use during the integration with the SDK. You can see the [list of the utility functions](https://github.com/rsksmart/flyover-sdk/blob/main/docs/modules.md#flyoverutils) and also when importing the FlyoverUtils object from the SDK package every function has a JsDoc explaining its usage.
+
+## Bound code
+
+- `@./internal/adapters/entrypoints/rest/middlewares/captcha.go#NewCaptchaMiddleware`
+- `@./internal/adapters/entrypoints/rest/routes/routes.go#registerPublicRoutes`
+- `@./internal/adapters/entrypoints/rest/routes/public.go#PublicEndpoint`
+- `@./internal/configuration/environment/environment.go#CaptchaEnv`
+- `@./internal/usecases/liquidity_provider/provider_detail.go#GetDetailUseCase`

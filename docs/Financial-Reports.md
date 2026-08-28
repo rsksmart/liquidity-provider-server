@@ -366,3 +366,15 @@ The Liquidity Provider Server provides financial reporting endpoints to monitor 
 - `PegoutStateSendPegoutFailed` - LP failed to send BTC
 - `PegoutStateRefundPegOutFailed` - Refund attempt failed
 - `PegoutStateBridgeTxFailed` - Bridge transaction failed
+
+## Bound code
+
+- `@./internal/usecases/reports/get_summaries_report.go#SummariesUseCase`
+- `@./internal/usecases/reports/get_assets_report.go#GetAssetsReportUseCase`
+- `@./internal/usecases/reports/get_revenue_report.go#GetRevenueReportUseCase`
+- `@./internal/usecases/reports/get_pegin_report.go#GetPeginReportUseCase`
+- `@./internal/usecases/reports/get_pegout_report.go#GetPegoutReportUseCase`
+- `@./internal/usecases/reports/get_transactions.go#GetTransactionsUseCase`
+- `@./internal/entities/quote/pegin_quote.go#PeginState`
+- `@./internal/entities/quote/pegout_quote.go#PegoutState`
+- `@./internal/adapters/entrypoints/rest/routes/management.go#GetManagementEndpoints`

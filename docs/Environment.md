@@ -75,3 +75,15 @@ You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidi
 
 ## Other variables
 You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidity-provider-server/blob/master/sample-config.env) there are variables that aren't in the table and don't belong to AWS. Those variables are used to run scripts or to set up the local environment, they should not be present in a productive environment for this application.
+
+## Bound code
+
+- `@./internal/configuration/environment/environment.go#Environment`
+- `@./internal/configuration/environment/environment.go#RskEnv`
+- `@./internal/configuration/environment/environment.go#BtcEnv`
+- `@./internal/configuration/environment/environment.go#CaptchaEnv`
+- `@./internal/configuration/environment/environment.go#ManagementEnv`
+- `@./internal/configuration/environment/environment.go#TimeoutEnv`
+- `@./internal/configuration/environment/environment.go#EclipseEnv`
+- `@./internal/configuration/environment/timeout.go#DefaultTimeouts`
+- `@./internal/configuration/environment/environment_reader.go#Load`

@@ -1,0 +1,321 @@
+version = 1
+
+[[bindings]]
+doc = "docs/Advanced-Operations.md"
+target = "internal/adapters/entrypoints/rest/middlewares/captcha.go#NewCaptchaMiddleware"
+sig = "b90b1755d512a1c8"
+
+[[bindings]]
+doc = "docs/Advanced-Operations.md"
+target = "internal/adapters/entrypoints/rest/routes/public.go#PublicEndpoint"
+sig = "17387a1dfe41b0db"
+
+[[bindings]]
+doc = "docs/Advanced-Operations.md"
+target = "internal/adapters/entrypoints/rest/routes/routes.go#registerPublicRoutes"
+sig = "17cb0b5db0f70744"
+
+[[bindings]]
+doc = "docs/Advanced-Operations.md"
+target = "internal/configuration/environment/environment.go#CaptchaEnv"
+sig = "7198c067cc18cac5"
+
+[[bindings]]
+doc = "docs/Advanced-Operations.md"
+target = "internal/usecases/liquidity_provider/provider_detail.go#GetDetailUseCase"
+sig = "ffc083e9cd2cc386"
+
+[[bindings]]
+doc = "docs/DESIGN.md"
+target = "internal/adapters/dataproviders/rootstock/pegin_contract.go#CallForUser"
+sig = "e26cdcf9405b6b19"
+
+[[bindings]]
+doc = "docs/DESIGN.md"
+target = "internal/adapters/dataproviders/rootstock/pegin_contract.go#RegisterPegin"
+sig = "670df73500919881"
+
+[[bindings]]
+doc = "docs/DESIGN.md"
+target = "internal/adapters/entrypoints/watcher/pegin_bridge_watcher.go"
+sig = "3151c254683f1907"
+
+[[bindings]]
+doc = "docs/DESIGN.md"
+target = "internal/adapters/entrypoints/watcher/pegin_btc_deposit_watcher.go"
+sig = "b59ba8cd340fdfbc"
+
+[[bindings]]
+doc = "docs/DESIGN.md"
+target = "internal/usecases/pegin/call_for_user.go#CallForUserUseCase"
+sig = "7515eebb3281c871"
+
+[[bindings]]
+doc = "docs/DESIGN.md"
+target = "internal/usecases/pegin/register_pegin.go#RegisterPeginUseCase"
+sig = "91c4200ff9261c01"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/environment.go#BtcEnv"
+sig = "2d6e239ec3f0330d"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/environment.go#CaptchaEnv"
+sig = "7198c067cc18cac5"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/environment.go#EclipseEnv"
+sig = "0cb4c6ddbaf9706e"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/environment.go#Environment"
+sig = "9197d03efd8dbf75"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/environment.go#ManagementEnv"
+sig = "9474c5395a366666"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/environment.go#RskEnv"
+sig = "77602f7fa14c1292"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/environment.go#TimeoutEnv"
+sig = "fe6c7efef77b057b"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/environment_reader.go#Load"
+sig = "5324d2ed777ad305"
+
+[[bindings]]
+doc = "docs/Environment.md"
+target = "internal/configuration/environment/timeout.go#DefaultTimeouts"
+sig = "439bb9c31c330c49"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/adapters/entrypoints/rest/routes/management.go#GetManagementEndpoints"
+sig = "8b526e5b6c75e2bf"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/entities/quote/pegin_quote.go#PeginState"
+sig = "136e4458fe9a0f40"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/entities/quote/pegout_quote.go#PegoutState"
+sig = "1ed7bd7948f3cb38"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/usecases/reports/get_assets_report.go#GetAssetsReportUseCase"
+sig = "2b30dd3948cc1e1c"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/usecases/reports/get_pegin_report.go#GetPeginReportUseCase"
+sig = "6c8c4c5cd88aade7"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/usecases/reports/get_pegout_report.go#GetPegoutReportUseCase"
+sig = "46f41ea0be6dde04"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/usecases/reports/get_revenue_report.go#GetRevenueReportUseCase"
+sig = "b6108a3ab5b48248"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/usecases/reports/get_summaries_report.go#SummariesUseCase"
+sig = "57fc17f783b5b72b"
+
+[[bindings]]
+doc = "docs/Financial-Reports.md"
+target = "internal/usecases/reports/get_transactions.go#GetTransactionsUseCase"
+sig = "d133628ddf7346a1"
+
+[[bindings]]
+doc = "docs/LP-Management.md"
+target = "OpenApi.yml"
+sig = "9db680049e891cf5"
+
+[[bindings]]
+doc = "docs/LP-Management.md"
+target = "internal/adapters/entrypoints/rest/handlers/management.go#NewManagementInterfaceHandler"
+sig = "76cdbeb64f378e47"
+
+[[bindings]]
+doc = "docs/LP-Management.md"
+target = "internal/adapters/entrypoints/rest/handlers/management_login.go#NewManagementLoginHandler"
+sig = "001ed8a0e0fd0618"
+
+[[bindings]]
+doc = "docs/LP-Management.md"
+target = "internal/adapters/entrypoints/rest/routes/management.go#GetManagementEndpoints"
+sig = "8b526e5b6c75e2bf"
+
+[[bindings]]
+doc = "docs/LP-Management.md"
+target = "internal/adapters/entrypoints/rest/routes/public.go#GetPublicEndpoints"
+sig = "45c4e6bdfc994668"
+
+[[bindings]]
+doc = "docs/LP-Management.md"
+target = "internal/adapters/entrypoints/rest/routes/routes.go#ConfigureRoutes"
+sig = "03d090ba09eae134"
+
+[[bindings]]
+doc = "docs/LP-Management.md"
+target = "internal/configuration/environment/environment.go#ManagementEnv"
+sig = "9474c5395a366666"
+
+[[bindings]]
+doc = "docs/LP-Management.md"
+target = "internal/usecases/liquidity_provider/generate_default_credentials.go#GenerateDefaultCredentialsUseCase"
+sig = "7785a5d43cfae4c0"
+
+[[bindings]]
+doc = "docs/LP-Migration-Utils.md"
+target = "Makefile"
+sig = "42d9213f59c6a756"
+
+[[bindings]]
+doc = "docs/LP-Migration-Utils.md"
+target = "cmd/utils/defaults/defaults.go"
+sig = "51e2340389fd05c4"
+
+[[bindings]]
+doc = "docs/LP-Migration-Utils.md"
+target = "cmd/utils/resign_utils/resign_utils.go#ExecuteResign"
+sig = "9d0df436b67b5440"
+
+[[bindings]]
+doc = "docs/LP-Migration-Utils.md"
+target = "cmd/utils/resign_utils/resign_utils.go#ExecuteWithdrawCollateral"
+sig = "a524a52ed6ef1b87"
+
+[[bindings]]
+doc = "docs/LP-Migration-Utils.md"
+target = "cmd/utils/scripts/input.go#BaseInput"
+sig = "7f1ba338d328799c"
+
+[[bindings]]
+doc = "docs/LP-Migration-Utils.md"
+target = "cmd/utils/scripts/input.go#ReadBaseInput"
+sig = "fb9723fc5d3d3d53"
+
+[[bindings]]
+doc = "docs/LP-Migration-Utils.md"
+target = "cmd/utils/withdraw/withdraw.go#ExecuteWithdraw"
+sig = "99f0cc61f391f0ac"
+
+[[bindings]]
+doc = "docs/Operating-LP.md"
+target = "cmd/application/lps/application.go#Application"
+sig = "9057536ec7e3b527"
+
+[[bindings]]
+doc = "docs/Operating-LP.md"
+target = "internal/adapters/entrypoints/rest/routes/routes.go#ConfigureRoutes"
+sig = "03d090ba09eae134"
+
+[[bindings]]
+doc = "docs/Operating-LP.md"
+target = "internal/configuration/environment/environment.go#Environment"
+sig = "9197d03efd8dbf75"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/entities/quote/pegin_quote.go#PeginState"
+sig = "136e4458fe9a0f40"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/entities/quote/pegout_quote.go#PegoutState"
+sig = "1ed7bd7948f3cb38"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/usecases/pegin/accept_pegin_quote.go#AcceptQuoteUseCase"
+sig = "062738cc81b9603d"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/usecases/pegin/call_for_user.go#CallForUserUseCase"
+sig = "7515eebb3281c871"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/usecases/pegin/get_pegin_quote.go#GetQuoteUseCase"
+sig = "8b2d4ae43a68bdc2"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/usecases/pegin/register_pegin.go#RegisterPeginUseCase"
+sig = "91c4200ff9261c01"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/usecases/pegout/accept_pegout_quote.go#AcceptQuoteUseCase"
+sig = "df3b64fd64df4168"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/usecases/pegout/get_pegout_quote.go#GetQuoteUseCase"
+sig = "90cc5fee763547ae"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/usecases/pegout/refund_pegout.go#RefundPegoutUseCase"
+sig = "d93d27e23495f482"
+
+[[bindings]]
+doc = "docs/Overview.md"
+target = "internal/usecases/pegout/send_pegout.go#SendPegoutUseCase"
+sig = "a6cf38dae36b973b"
+
+[[bindings]]
+doc = "docs/Rskj-Configuration.md"
+target = "docker-compose/rskj/rsk.conf"
+sig = "ba5d1f35088943e2"
+
+[[bindings]]
+doc = "docs/Trusted-Accounts.md"
+target = "internal/adapters/entrypoints/rest/handlers/accept_pegin_authenticated_quote.go#NewAcceptPeginAuthenticatedQuoteHandler"
+sig = "72a3b15cf10c8b30"
+
+[[bindings]]
+doc = "docs/Trusted-Accounts.md"
+target = "internal/adapters/entrypoints/rest/handlers/accept_pegout_authenticated_quote.go#NewAcceptPegoutAuthenticatedQuoteHandler"
+sig = "22231beb04b9c82f"
+
+[[bindings]]
+doc = "docs/Trusted-Accounts.md"
+target = "internal/adapters/entrypoints/rest/routes/management.go#GetManagementEndpoints"
+sig = "8b526e5b6c75e2bf"
+
+[[bindings]]
+doc = "docs/Trusted-Accounts.md"
+target = "internal/adapters/entrypoints/rest/routes/public.go#GetPublicEndpoints"
+sig = "45c4e6bdfc994668"
+
+[[bindings]]
+doc = "docs/Trusted-Accounts.md"
+target = "internal/entities/liquidity_provider/trusted_account.go#TrustedAccountDetails"
+sig = "07193d4e8111d2b8"
+
+[[bindings]]
+doc = "docs/Trusted-Accounts.md"
+target = "internal/usecases/liquidity_provider/add_trusted_account.go#AddTrustedAccountUseCase"
+sig = "1f8068cc3ac6e6e1"

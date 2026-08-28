@@ -140,3 +140,14 @@ Encountering difficulties with the SDK setup, LPS configuration, or specific Fly
 :::
 
 ---
+
+## Bound code
+
+- `@./internal/adapters/entrypoints/rest/routes/public.go#GetPublicEndpoints`
+- `@./internal/adapters/entrypoints/rest/routes/management.go#GetManagementEndpoints`
+- `@./internal/adapters/entrypoints/rest/routes/routes.go#ConfigureRoutes`
+- `@./internal/adapters/entrypoints/rest/handlers/management.go#NewManagementInterfaceHandler`
+- `@./internal/adapters/entrypoints/rest/handlers/management_login.go#NewManagementLoginHandler`
+- `@./internal/usecases/liquidity_provider/generate_default_credentials.go#GenerateDefaultCredentialsUseCase`
+- `@./internal/configuration/environment/environment.go#ManagementEnv`
+- `@./OpenApi.yml`

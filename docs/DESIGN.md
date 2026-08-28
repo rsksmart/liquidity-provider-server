@@ -30,3 +30,12 @@ The following diagrams show the interactions between Liquidity Provider, Liquidi
 ![Flyover Sequence Diagram](https://raw.githubusercontent.com/rsksmart/liquidity-provider-server/master/docs/diagrams/flyover-ad-no-call.png)
 
 * Figure 3 - Fast bridge interactions when the LP fails to call the LBC on behalf of the user. The LBC slashes the LP's collateral and refunds the user on the refund RSK address._
+
+## Bound code
+
+- `@./internal/adapters/dataproviders/rootstock/pegin_contract.go#CallForUser`
+- `@./internal/adapters/dataproviders/rootstock/pegin_contract.go#RegisterPegin`
+- `@./internal/usecases/pegin/call_for_user.go#CallForUserUseCase`
+- `@./internal/usecases/pegin/register_pegin.go#RegisterPeginUseCase`
+- `@./internal/adapters/entrypoints/watcher/pegin_btc_deposit_watcher.go`
+- `@./internal/adapters/entrypoints/watcher/pegin_bridge_watcher.go`

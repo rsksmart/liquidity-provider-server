@@ -316,3 +316,16 @@ See [Flyover SDK Integration](/developers/integrate/flyover/sdk/) for the full g
 - [LP Onboarding](/developers/integrate/flyover/LP/)
 - [LP Management API](/developers/integrate/flyover/LP/management/)
 - [PowPeg App](https://powpeg.rootstock.io)
+
+## Bound code
+
+- `@./internal/usecases/pegin/get_pegin_quote.go#GetQuoteUseCase`
+- `@./internal/usecases/pegin/accept_pegin_quote.go#AcceptQuoteUseCase`
+- `@./internal/usecases/pegin/call_for_user.go#CallForUserUseCase`
+- `@./internal/usecases/pegin/register_pegin.go#RegisterPeginUseCase`
+- `@./internal/usecases/pegout/get_pegout_quote.go#GetQuoteUseCase`
+- `@./internal/usecases/pegout/accept_pegout_quote.go#AcceptQuoteUseCase`
+- `@./internal/usecases/pegout/send_pegout.go#SendPegoutUseCase`
+- `@./internal/usecases/pegout/refund_pegout.go#RefundPegoutUseCase`
+- `@./internal/entities/quote/pegin_quote.go#PeginState`
+- `@./internal/entities/quote/pegout_quote.go#PegoutState`

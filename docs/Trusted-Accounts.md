@@ -91,3 +91,12 @@ Follow the documentation in the above repository for commands and setup steps.
 ## 📦 Related Resources
 - **Flyover SDK (npm):** [@rsksmart/flyover-sdk](https://www.npmjs.com/package/@rsksmart/flyover-sdk)
 - **GitHub Repo:** [Flyover SDK](https://github.com/rsksmart/flyover-sdk)
+
+## Bound code
+
+- `@./internal/entities/liquidity_provider/trusted_account.go#TrustedAccountDetails`
+- `@./internal/usecases/liquidity_provider/add_trusted_account.go#AddTrustedAccountUseCase`
+- `@./internal/adapters/entrypoints/rest/handlers/accept_pegin_authenticated_quote.go#NewAcceptPeginAuthenticatedQuoteHandler`
+- `@./internal/adapters/entrypoints/rest/handlers/accept_pegout_authenticated_quote.go#NewAcceptPegoutAuthenticatedQuoteHandler`
+- `@./internal/adapters/entrypoints/rest/routes/public.go#GetPublicEndpoints`
+- `@./internal/adapters/entrypoints/rest/routes/management.go#GetManagementEndpoints`
