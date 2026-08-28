@@ -29,11 +29,11 @@ type ApplicationTimeouts struct {
 
 func DefaultTimeouts() ApplicationTimeouts {
 	return ApplicationTimeouts{
-		Bootstrap:           240,
+		Bootstrap:           60,
 		WatcherPreparation:  15,
 		WatcherValidation:   15,
-		DatabaseInteraction: 3,
-		MiningWait:          300,
+		DatabaseInteraction: 30,
+		MiningWait:          30,
 		DatabaseConnection:  10,
 		ServerReadHeader:    5,
 		ServerWrite:         60,
