@@ -77,7 +77,7 @@ func (watch *PegInWatch) SetEncoding(encoding PegInAddressRegistryEncoding) {
 	watch.LastError = fmt.Sprintf("unsupported encoding %d", encoding)
 }
 
-func (watch PegInWatch) SameLog(txHash string, logIndex uint) bool {
+func (watch *PegInWatch) SameLog(txHash string, logIndex uint) bool {
 	return watch.TxHash == txHash && watch.LogIndex == logIndex
 }
 
