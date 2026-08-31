@@ -27,6 +27,7 @@ type Environment struct {
 	Rsk              RskEnv
 	Btc              BtcEnv
 	Provider         ProviderEnv
+	Pegin            PeginEnv
 	Pegout           PegoutEnv
 	Captcha          CaptchaEnv
 	Timeouts         TimeoutEnv
@@ -207,8 +208,16 @@ func (env *ProviderEnv) ProviderType() liquidity_provider.ProviderType {
 	}
 }
 
-// PeginEnv This structure was kept just in case, right now all the parameters are manipulated through management API
-type PeginEnv struct{}
+type PeginEnv struct {
+	AddressRegistryWatcherStartBlock uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"`
+	AddressRegistryWatcherPageSize   uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"`
+}
+
+func (env *PeginEnv) FillWithDefaults() *PeginEnv {
+	const defaultPageSize uint64 = 1000
+	env.AddressRegistryWatcherPageSize = utils.FirstNonZero(env.AddressRegistryWatcherPageSize, defaultPageSize)
+	return env
+}
 
 type PegoutEnv struct {
 	DepositCacheStartBlock      uint64 `env:"PEGOUT_DEPOSIT_CACHE_START_BLOCK"`
