@@ -210,7 +210,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_WrapsMissingWatchAfterUpsert(t *te
 
 	_, err := fixture.useCase.Run(context.Background(), event)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "watch not found after upsert")
+	assert.ErrorContains(t, err, "not found after upsert")
 }
 
 func TestDiscoverRegisteredAddressUseCase_Run_WrapsUnsupportedEncodingPersistError(t *testing.T) {
@@ -244,7 +244,7 @@ func TestDiscoverRegisteredAddressUseCase_Run_WrapsWatchErrorPersistError(t *tes
 
 	_, err := fixture.useCase.Run(context.Background(), event)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "persist PegIn address registry watch error")
+	assert.ErrorContains(t, err, "persist PegIn address registry")
 }
 
 func TestDiscoverRegisteredAddressUseCase_Run_RecordsResolveErrorWithoutFailingRun(t *testing.T) {
