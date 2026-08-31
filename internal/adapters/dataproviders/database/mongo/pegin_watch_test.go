@@ -18,7 +18,7 @@ import (
 //nolint:funlen // One fixture shared across the round-trip scenarios keeps the event identity identical in each.
 func TestPegInWatchMongoRepository(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Millisecond)
-	watch := rootstock.PegInWatch{
+	entry := rootstock.PegInWatch{
 		TxHash:      "0x1234",
 		LogIndex:    7,
 		BlockNumber: 100,
@@ -27,19 +27,19 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	identity := bson.M{"tx_hash": watch.TxHash, "log_index": watch.LogIndex}
+	identity := bson.M{"rsk_address": entry.RskAddress}
 
 	t.Run("upserts with set-on-insert", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
 		collection.EXPECT().UpdateOne(
 			mock.Anything,
 			identity,
-			bson.M{"$setOnInsert": watch},
+			bson.M{"$setOnInsert": entry},
 			withUpdateUpsert(),
 		).Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		require.NoError(t, repo.Upsert(context.Background(), watch))
+		require.NoError(t, repo.Upsert(context.Background(), entry))
 		collection.AssertExpectations(t)
 	})
 
@@ -49,7 +49,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(nil, mongoDb.WriteException{WriteErrors: []mongoDb.WriteError{{Code: 11000}}}).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		require.NoError(t, repo.Upsert(context.Background(), watch))
+		require.NoError(t, repo.Upsert(context.Background(), entry))
 		collection.AssertExpectations(t)
 	})
 
@@ -59,19 +59,19 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(nil, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		require.ErrorIs(t, repo.Upsert(context.Background(), watch), assert.AnError)
+		require.ErrorIs(t, repo.Upsert(context.Background(), entry), assert.AnError)
 		collection.AssertExpectations(t)
 	})
 
 	t.Run("returns the document matching the identity", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
 		collection.EXPECT().FindOne(mock.Anything, identity).
-			Return(mongoDb.NewSingleResultFromDocument(watch, nil, nil)).Once()
+			Return(mongoDb.NewSingleResultFromDocument(entry, nil, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		result, err := repo.Get(context.Background(), watch.TxHash, watch.LogIndex)
+		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.NoError(t, err)
-		assert.Equal(t, &watch, result)
+		assert.Equal(t, &entry, result)
 		collection.AssertExpectations(t)
 	})
 
@@ -81,7 +81,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInWatch{}, mongoDb.ErrNoDocuments, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		result, err := repo.Get(context.Background(), watch.TxHash, watch.LogIndex)
+		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.NoError(t, err)
 		assert.Nil(t, result)
 		collection.AssertExpectations(t)
@@ -93,7 +93,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInWatch{}, assert.AnError, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		result, err := repo.Get(context.Background(), watch.TxHash, watch.LogIndex)
+		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Nil(t, result)
 		collection.AssertExpectations(t)
@@ -101,18 +101,18 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 
 	t.Run("lists documents sorted by block number and log index", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		second := watch
+		second := entry
 		second.LogIndex = 9
 		collection.EXPECT().Find(
 			mock.Anything,
-			bson.M{"tx_hash": bson.M{"$exists": true}},
+			bson.M{"rsk_address": bson.M{"$exists": true}},
 			sortedBy(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
-		).Return(mongoDb.NewCursorFromDocuments([]any{watch, second}, nil, nil)).Once()
+		).Return(mongoDb.NewCursorFromDocuments([]any{entry, second}, nil, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
 		result, err := repo.List(context.Background())
 		require.NoError(t, err)
-		assert.Equal(t, []rootstock.PegInWatch{watch, second}, result)
+		assert.Equal(t, []rootstock.PegInWatch{entry, second}, result)
 		collection.AssertExpectations(t)
 	})
 
@@ -120,7 +120,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
 		collection.EXPECT().Find(
 			mock.Anything,
-			bson.M{"tx_hash": bson.M{"$exists": true}},
+			bson.M{"rsk_address": bson.M{"$exists": true}},
 			sortedBy(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
 		).Return(nil, assert.AnError).Once()
 
@@ -133,7 +133,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 
 	t.Run("replaces the document when one row matches", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		imported := watch
+		imported := entry
 		imported.State = rootstock.PegInWatchImported
 		collection.EXPECT().ReplaceOne(mock.Anything, identity, imported).
 			Return(&mongoDb.UpdateResult{MatchedCount: 1, ModifiedCount: 1}, nil).Once()
@@ -145,7 +145,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 
 	t.Run("returns not-found when ReplaceOne matches nothing", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		imported := watch
+		imported := entry
 		imported.State = rootstock.PegInWatchImported
 		collection.EXPECT().ReplaceOne(mock.Anything, identity, imported).
 			Return(&mongoDb.UpdateResult{MatchedCount: 0}, nil).Once()
@@ -157,7 +157,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 
 	t.Run("returns the ReplaceOne error", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		imported := watch
+		imported := entry
 		imported.State = rootstock.PegInWatchImported
 		collection.EXPECT().ReplaceOne(mock.Anything, identity, imported).
 			Return(nil, assert.AnError).Once()
@@ -169,7 +169,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 
 	t.Run("updates and reads a document in unsupported encoding state", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		unsupported := watch
+		unsupported := entry
 		unsupported.State = rootstock.PegInWatchUnsupportedEncoding
 		unsupported.Encoding = 1
 		collection.EXPECT().ReplaceOne(mock.Anything, identity, unsupported).
@@ -179,7 +179,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
 		require.NoError(t, repo.Update(context.Background(), unsupported))
-		result, err := repo.Get(context.Background(), unsupported.TxHash, unsupported.LogIndex)
+		result, err := repo.Get(context.Background(), unsupported.RskAddress)
 		require.NoError(t, err)
 		assert.Equal(t, &unsupported, result)
 		collection.AssertExpectations(t)
