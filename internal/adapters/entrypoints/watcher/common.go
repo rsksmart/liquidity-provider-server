@@ -26,6 +26,8 @@ const (
 	rootstockReorgCheckInterval      = 30 * time.Second
 	bitcoinPeerCheckInterval         = 1 * time.Minute
 	rootstockPeerCheckInterval       = 1 * time.Minute
+	// Deposits older than this stay invisible after import.
+	peginAddressRegistryRescanDepthBlocks int64 = 100
 )
 
 type Watcher interface {

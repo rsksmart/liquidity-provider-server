@@ -50,3 +50,10 @@ func TestIsLockUnspentAlreadyUnlocked(t *testing.T) {
 	otherErr := btcjson.NewRPCError(btcjson.ErrRPCMethodNotFound.Code, "Method not found")
 	assert.False(t, btcclient.IsLockUnspentAlreadyUnlocked(otherErr))
 }
+
+func TestIsAddressAlreadyImported(t *testing.T) {
+	assert.False(t, btcclient.IsAddressAlreadyImported(nil))
+	assert.True(t, btcclient.IsAddressAlreadyImported(errors.New("address already imported")))
+	assert.True(t, btcclient.IsAddressAlreadyImported(errors.New("Address Already Imported")))
+	assert.False(t, btcclient.IsAddressAlreadyImported(errors.New("connection refused")))
+}
