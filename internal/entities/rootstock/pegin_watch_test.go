@@ -43,8 +43,7 @@ func TestPegInWatch_SetEncoding_MarksUnsupportedAndSetsLastError(t *testing.T) {
 
 	assert.Equal(t, uint8(rootstock.PegInAddressRegistryEncodingBech32), watch.Encoding)
 	assert.Equal(t, rootstock.PegInWatchUnsupportedEncoding, watch.State)
-	assert.NotEmpty(t, watch.LastError)
-	assert.NotEqual(t, "previous", watch.LastError)
+	assert.Equal(t, "unsupported encoding 1", watch.LastError)
 	assert.True(t, watch.UpdatedAt.After(watch.CreatedAt) || watch.UpdatedAt.Equal(watch.CreatedAt))
 }
 
