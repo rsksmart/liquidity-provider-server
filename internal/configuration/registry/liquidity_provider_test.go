@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -41,8 +40,8 @@ func TestNewLiquidityProvider(t *testing.T) {
 	walletMock := new(mocks.RskSignerWalletMock)
 	walletMock.EXPECT().Address().Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock.On("RskWallet").Return(walletMock, nil)
-	rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+	rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, 0)
+	rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 
 	connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))
@@ -87,8 +86,8 @@ func TestNewLiquidityProvider_ColdWalletError(t *testing.T) {
 	walletMock := new(mocks.RskSignerWalletMock)
 	walletMock.EXPECT().Address().Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock.On("RskWallet").Return(walletMock, nil)
-	rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+	rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, 0)
+	rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 
 	connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))
