@@ -82,7 +82,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	mutexes := environment.NewApplicationMutexes()
 
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
 		env: env, timeouts: timeouts,
 		lpRegistry: lpRegistry, useCaseRegistry: useCaseRegistry,
@@ -200,6 +200,7 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 	watchers := []watcher.Watcher{
 		app.watcherRegistry.PeginDepositAddressWatcher,
 		app.watcherRegistry.PegInAddressRegistryWatcher,
+		app.watcherRegistry.PegInClaimWatcher,
 		app.watcherRegistry.PeginBridgeWatcher,
 		app.watcherRegistry.PegoutRskDepositWatcher,
 		app.watcherRegistry.PegoutBtcTransferWatcher,
