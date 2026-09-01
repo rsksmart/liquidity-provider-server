@@ -15,7 +15,7 @@ type Database struct {
 	PenalizedEventRepository    penalization.PenalizedEventRepository
 	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
 	BatchPegOutRepository       rootstock.BatchPegOutRepository
-	PegInWatchRepository        rootstock.PegInWatchRepository
+	PegInWatchRepository        rootstock.PegInWatchRepositorySet
 	Connection                  *mongo.Connection
 }
 

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
@@ -45,7 +46,13 @@ type rskBoundContracts struct {
 }
 
 // nolint:funlen
-func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClient, walletFactory wallet.AbstractFactory, timeouts environment.ApplicationTimeouts) (*Rootstock, error) {
+func NewRootstockRegistry(
+	ctx context.Context,
+	env environment.Environment,
+	client *rootstock.RskClient,
+	walletFactory wallet.AbstractFactory,
+	timeouts environment.ApplicationTimeouts,
+) (*Rootstock, error) {
 	contractBindings := createContractBindings()
 
 	boundContracts, err := createBoundContracts(env, contractBindings, client)
@@ -64,6 +71,20 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 	}
 
 	abis := rootstock.MustLoadFlyoverABIs()
+
+	peginAddressRegistry, err := rootstock.NewValidatedPegInAddressRegistryContract(
+		ctx,
+		client,
+		env.Rsk.PegInAddressRegistryAddress,
+		boundContracts.peginAddressRegistry,
+		rootstock.DefaultRetryParams,
+		contractBindings.peginAddressRegistry,
+		abis,
+		env.Pegin.AddressRegistryWatcherStartBlock,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Rootstock{
 		Contracts: blockchain.RskContracts{
@@ -124,14 +145,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				contractBindings.discovery,
 				abis,
 			),
-			PegInAddressRegistry: rootstock.NewPegInAddressRegistryContractImpl(
-				client,
-				env.Rsk.PegInAddressRegistryAddress,
-				boundContracts.peginAddressRegistry,
-				rootstock.DefaultRetryParams,
-				contractBindings.peginAddressRegistry,
-				abis,
-			),
+			PegInAddressRegistry: peginAddressRegistry,
 			FlyoverConfigurations: rootstock.NewFlyoverConfigurationsContractImpl(
 				client,
 				env.Rsk.FlyoverConfigurationsAddress,
