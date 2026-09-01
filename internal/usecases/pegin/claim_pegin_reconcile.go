@@ -94,4 +94,3 @@ func logUnrecoverableClaimReceipt(claim rootstock.PegInClaim) {
 		claim.DepositTxID,
 	)
 }
-
