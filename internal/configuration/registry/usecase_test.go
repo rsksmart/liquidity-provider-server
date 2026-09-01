@@ -28,6 +28,7 @@ func TestNewUseCaseRegistry(t *testing.T) {
 				PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
 				PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
 				PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
+				PauseRegistryAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA2",
 				FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
 				BridgeAddress:                "0x0000000000000000000000000000000001000006",
 			},

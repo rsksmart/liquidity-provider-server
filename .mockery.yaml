@@ -98,6 +98,7 @@ packages:
       DiscoveryContract:
       CollateralManagementContract:
       PegInAddressRegistryContract:
+      PauseRegistryContract:
       FlyoverConfigurationsContract:
   github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
     interfaces:
