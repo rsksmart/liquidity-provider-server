@@ -15,15 +15,22 @@ import (
 )
 
 const (
-	RskZeroAddress = "0x0000000000000000000000000000000000000000"
+	RskZeroAddress     = "0x0000000000000000000000000000000000000000"
+	SuccessfulTxStatus = 1
 )
 
 var (
-	rskAddressRegex       = regexp.MustCompile("^0x[a-fA-F0-9]{40}$")
-	WaitingForBridgeError = errors.New("waiting for rootstock bridge")
-	InvalidAddressError   = errors.New("invalid rootstock address")
-	ContractPausedError   = errors.New("contract is paused")
-	TxFailedError         = errors.New("transaction failed")
+	rskAddressRegex                   = regexp.MustCompile("^0x[a-fA-F0-9]{40}$")
+	WaitingForBridgeError             = errors.New("waiting for rootstock bridge")
+	InvalidAddressError               = errors.New("invalid rootstock address")
+	ContractPausedError               = errors.New("contract is paused")
+	TxFailedError                     = errors.New("transaction failed")
+	ErrPegInAlreadyProcessed          = errors.New("peg-in already processed")
+	ErrAddressNotRegistered           = errors.New("address not registered")
+	ErrDepositOutputNotFound          = errors.New("deposit output not found")
+	ErrInsufficientConfirmations      = errors.New("insufficient confirmations")
+	ErrIncorrectFronting              = errors.New("incorrect fronting")
+	ErrWitnessSerializedTxNotAccepted = errors.New("witness-serialized tx not accepted")
 )
 
 type RskContracts struct {
@@ -33,6 +40,7 @@ type RskContracts struct {
 	CollateralManagement  CollateralManagementContract
 	Discovery             DiscoveryContract
 	PegInAddressRegistry  PegInAddressRegistryContract
+	PauseRegistry         PauseRegistryContract
 	FlyoverConfigurations FlyoverConfigurationsContract
 }
 
@@ -68,6 +76,7 @@ type TransactionReceipt struct {
 	GasUsed           *big.Int
 	Value             *entities.Wei
 	GasPrice          *entities.Wei
+	Status            uint64
 	Logs              []TransactionLog
 }
 

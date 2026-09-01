@@ -385,6 +385,67 @@ func TestBitcoinTransactionInformation_AmountToAddress(t *testing.T) {
 	})
 }
 
+func TestBitcoinTransactionInformation_FirstOutputToAddress(t *testing.T) {
+	address := "2N2Sg8C2uX1YtugYSxEQvRqf9V2EivxcWER"
+	cases := test.Table[blockchain.BitcoinTransactionInformation, *entities.Wei]{
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs:       map[string][]*entities.Wei{address: {entities.NewWei(500)}},
+		},
+			Result: entities.NewWei(500),
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs: map[string][]*entities.Wei{
+				"2N1nBfGejU5iLEqAS42fBKJ1Dw6mw4su8eQ": {entities.NewWei(100)},
+				address:                               {entities.NewWei(500), entities.NewWei(1100)},
+				"2MvHto2NWaAtiMeDsy2oAHesnK8Rug3Lavc": {entities.NewWei(300)},
+			},
+		},
+			Result: entities.NewWei(500),
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs:       map[string][]*entities.Wei{address: {entities.NewWei(400), entities.NewWei(1100)}},
+		},
+			Result: entities.NewWei(400),
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs:       map[string][]*entities.Wei{},
+		},
+			Result: entities.NewWei(0),
+		},
+		{Value: blockchain.BitcoinTransactionInformation{
+			Hash:          "0x1234",
+			Confirmations: 1,
+			Outputs:       map[string][]*entities.Wei{"2MvHto2NWaAtiMeDsy2oAHesnK8Rug3Lavc": {entities.NewWei(400), entities.NewWei(1100)}},
+		},
+			Result: entities.NewWei(0),
+		},
+	}
+
+	test.RunTable(t, cases, func(value blockchain.BitcoinTransactionInformation) *entities.Wei {
+		return value.FirstOutputToAddress(address)
+	})
+}
+
+func TestBitcoinTransactionInformation_FirstOutputToAddress_DiffersFromSum(t *testing.T) {
+	address := "2N2Sg8C2uX1YtugYSxEQvRqf9V2EivxcWER"
+	tx := blockchain.BitcoinTransactionInformation{
+		Hash:          "0x1234",
+		Confirmations: 1,
+		Outputs:       map[string][]*entities.Wei{address: {entities.SatoshiToWei(1000), entities.SatoshiToWei(2000)}},
+	}
+	assert.Equal(t, entities.SatoshiToWei(1000), tx.FirstOutputToAddress(address))
+	assert.Equal(t, entities.SatoshiToWei(3000), tx.AmountToAddress(address))
+	assert.NotEqual(t, tx.FirstOutputToAddress(address), tx.AmountToAddress(address))
+}
+
 func TestBitcoinTransactionInformation_UTXOsToAddress(t *testing.T) {
 	address := "2N1DB2ZfVwWUSm8rxnDpo879awEvwFwtHL9"
 	cases := test.Table[blockchain.BitcoinTransactionInformation, []*entities.Wei]{
