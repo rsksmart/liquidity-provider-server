@@ -41,7 +41,6 @@ func NewWatcherRegistry(
 	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
 	lpRegistry *LiquidityProvider,
-	dbRegistry *Database,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 	timeouts environment.ApplicationTimeouts,

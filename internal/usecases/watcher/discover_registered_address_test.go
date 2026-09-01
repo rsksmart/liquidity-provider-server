@@ -114,7 +114,6 @@ func TestDiscoverRegisteredAddressUseCase_Run_AlreadyImportedIsNoOp(t *testing.T
 	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 }
 
-
 func TestDiscoverRegisteredAddressUseCase_Run_DuplicateRskAddressKeepsFirstRow(t *testing.T) {
 	fixture := newDiscoverRegisteredAddressFixture(t)
 	payload, address := registryDepositPayload()
