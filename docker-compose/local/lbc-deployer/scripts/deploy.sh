@@ -3,9 +3,42 @@
 DEPLOYER_PRIVATE_KEY=$(cast wallet derive-private-key "$DEPLOYER_MNEMONIC")
 export DEV_SIGNER_PRIVATE_KEY=$DEPLOYER_PRIVATE_KEY
 
+LIBRARIES_OUTPUT=$(forge script script/deployment/DeployLibraries.s.sol:DeployLibraries \
+    --rpc-url  "$RSK_ENDPOINT" \
+    --private-key "$DEPLOYER_PRIVATE_KEY" \
+    --broadcast \
+    --legacy \
+    --slow 2>&1) || {
+      echo "Foundry library deployment failed:"
+      echo "$LIBRARIES_OUTPUT"
+      exit 1
+    }
+
+echo "$LIBRARIES_OUTPUT"
+
+QUOTES_LIB=$(echo "$LIBRARIES_OUTPUT" | grep -o 'Quotes: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+SIGNATURE_VALIDATOR_LIB=$(echo "$LIBRARIES_OUTPUT" | grep -o 'SignatureValidator: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+BTC_UTILS_LIB=$(echo "$LIBRARIES_OUTPUT" | grep -o 'BtcUtils: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+
+if [ -z "$QUOTES_LIB" ] || [ -z "$SIGNATURE_VALIDATOR_LIB" ] || [ -z "$BTC_UTILS_LIB" ]; then
+    echo "ERROR: Failed to parse library addresses from library deployment output"
+    exit 1
+fi
+
+echo ""
+echo "Linking libraries:"
+echo "  Quotes: $QUOTES_LIB"
+echo "  SignatureValidator: $SIGNATURE_VALIDATOR_LIB"
+echo "  BtcUtils: $BTC_UTILS_LIB"
+echo ""
+forge clean
+
 DEPLOY_OUTPUT=$(forge script script/deployment/DeployFlyover.s.sol:DeployFlyover \
     --rpc-url  "$RSK_ENDPOINT" \
     --private-key "$DEPLOYER_PRIVATE_KEY" \
+    --libraries "src/libraries/Quotes.sol:Quotes:$QUOTES_LIB" \
+    --libraries "src/libraries/SignatureValidator.sol:SignatureValidator:$SIGNATURE_VALIDATOR_LIB" \
+    --libraries "node_modules/@rsksmart/btc-transaction-solidity-helper/contracts/BtcUtils.sol:BtcUtils:$BTC_UTILS_LIB" \
     --broadcast \
     --legacy \
     --slow 2>&1) || {

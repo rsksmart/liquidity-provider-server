@@ -4,10 +4,21 @@
  * Migrates the regtest RSK federation from legacy P2SH to segwit-compatible P2SH-P2WSH.
  *
  * Background:
- *   RSKIP-305 is active from block 0 in regtest (reed800 = 0, reed810 = 0 in regtest.conf). Any
- *   federation committed after genesis is automatically created as P2SH-P2WSH by the bridge.
- *   The genesis federation is legacy P2SH, so a federation change vote is required to
- *   produce the first segwit-compatible federation.
+ *   RSKIP-305 (segwit-compatible powpeg) is mapped to the reed800 network upgrade, and regtest
+ *   ships reed800 = 0. rskj derives the *genesis* federation address under the activations of
+ *   the block being queried, so on this regtest the active federation is already P2SH-P2WSH
+ *   from block 0 and no federation change is needed at all.
+ *
+ *   The script therefore starts by checking the active federation format and exits early when
+ *   it is already segwit. The migration path below only runs on a chain where reed800 is not
+ *   active at genesis.
+ *
+ * Detecting the format:
+ *   Both legacy and segwit powpeg addresses are base58 P2SH addresses, so the prefix cannot
+ *   distinguish them. getActivePowpegRedeemScript() returns the redeem script, from which both
+ *   candidate addresses are derived and compared against getFederationAddress():
+ *     legacy     = base58check(version || hash160(redeemScript))
+ *     P2SH-P2WSH = base58check(version || hash160(OP_0 << sha256(redeemScript)))
  *
  * Vote mechanism:
  *   Federation changes are voted on by 5 authorized addresses hardcoded in the regtest
@@ -22,27 +33,39 @@
  *   and count down federationActivationAge blocks.
  *
  *   Pre-conditions for SVP to succeed:
- *     1. The bridge must have synced BTC headers (getBtcBlockchainBestChainHeight > 0) before
+ *     1. RSKIP-419 must already be active. Below its activation height the bridge exposes no SVP
+ *        methods, the VETIVER federator panics calling them and stops relaying BTC headers, so
+ *        the bridge BTC height stays at 0 and commitFederation follows the legacy (no-SVP) path.
+ *        Both rsk.conf and the powpeg regtest-fed.conf leave rskip419 at its default mapping of
+ *        lovell700, which is height 0 in regtest, so it is active from the first block.
+ *     2. The bridge must have synced BTC headers (getBtcBlockchainBestChainHeight > 0) before
  *        commit, or it cannot build the svpFundTx.
- *     2. The active (genesis) federation must hold BTC, or the fund tx fails with
+ *     3. The active (genesis) federation must hold BTC, or the fund tx fails with
  *        INSUFFICIENT_MONEY.
  *
- *   This script satisfies both conditions before committing:
- *     a. primeBtcRelay — interleaves RSK + BTC block production until the bridge BTC height
+ *   This script satisfies all three conditions before committing:
+ *     a. mineRskToHeight — mines past the RSKIP-419 activation height.
+ *     b. primeBtcRelay — interleaves RSK + BTC block production until the bridge BTC height
  *        catches up to the bitcoind tip.
- *     b. fundFederation — sends BTC to the genesis federation address so SVP has funds.
+ *     c. fundFederation — sends BTC to the genesis federation address so SVP has funds.
  *
  * Steps:
  *   1.  Wait for the RSK node to be reachable.
- *   2.  Fund auth-a/b/c from the pre-unlocked coinbase so they can pay for gas.
- *   3.  Vote createFederation() — 3 times to reach majority.
- *   4.  Vote addFederatorPublicKeyMultikey() for each of the 3 federation members — 3 times each.
- *   5.  Call getPendingFederationHash() to retrieve the hash for the commit step.
- *   6.  Prime BTC header relay, then fund the active (genesis) federation.
- *   7.  Vote commitFederation(hash) — 3 times, then drive SVP + activation via interleaved
- *       BTC/RSK block production until the federation address changes.
- *   8.  Verify the active federation address changed (confirms activation succeeded).
- *   9.  Write USE_SEGWIT_FEDERATION=true to the env file so LPS starts with the right flag.
+ *   2.  Check the active federation format; skip to step 10 if it is already P2SH-P2WSH.
+ *   3.  Fund auth-a/b/c from the pre-unlocked coinbase so they can pay for gas.
+ *   4.  Vote createFederation() — 3 times to reach majority.
+ *   5.  Vote addFederatorPublicKeyMultikey() for each of the 3 federation members — 3 times each.
+ *   6.  Call getPendingFederationHash() to retrieve the hash for the commit step.
+ *   7.  Mine past RSKIP-419 activation, prime BTC header relay, then fund the active federation.
+ *   8.  Vote commitFederation(hash) — 3 times, then drive SVP + activation via interleaved
+ *       BTC/RSK block production until getFederationCreationBlockNumber() advances.
+ *   9.  Verify the committed federation is segwit-compatible.
+ *   10. Write USE_SEGWIT_FEDERATION=true to the env file so LPS starts with the right flag.
+ *
+ * Note on the activation signal: the federation members are intentionally the same 3 keys as
+ * the genesis federation, so a re-commit yields a byte-identical redeem script and therefore an
+ * identical address. Activation is detected via getFederationCreationBlockNumber(), which always
+ * advances on commit, rather than by watching for the address to change.
  */
 
 const fs = require('fs');
@@ -113,6 +136,9 @@ const BTC_BLOCKS_PER_ROUND = 4;
 const RSK_BLOCKS_PER_ROUND = 2;
 const ROUND_DELAY_MS = 2000;
 
+const SVP_ACTIVATION_HEIGHT = Number(process.env.SVP_ACTIVATION_HEIGHT ?? 0);
+const SVP_ACTIVATION_MARGIN = 5;
+
 // ── Bridge ABI ────────────────────────────────────────────────────────────────
 
 const BRIDGE_ABI = [
@@ -121,8 +147,13 @@ const BRIDGE_ABI = [
     'function getPendingFederationHash() view returns (bytes)',
     'function commitFederation(bytes hash) returns (int256)',
     'function getFederationAddress() view returns (string)',
+    'function getFederationCreationBlockNumber() view returns (uint256)',
+    'function getActivePowpegRedeemScript() view returns (bytes)',
     'function getBtcBlockchainBestChainHeight() view returns (uint256)',
 ];
+
+// Base58 P2SH version byte for BTC regtest/testnet (0x05 on mainnet).
+const BTC_P2SH_VERSION = '0xc4';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -201,6 +232,56 @@ async function getFederationAddress(provider, bridgeInterface) {
     return bridgeInterface.decodeFunctionResult('getFederationAddress', result)[0];
 }
 
+// Advances on every commitFederation, so it detects activation even when the new federation
+// has the same members (and therefore the same address) as the previous one.
+async function getFederationCreationBlock(provider, bridgeInterface) {
+    const result = await provider.call({
+        to: BRIDGE_ADDRESS,
+        data: bridgeInterface.encodeFunctionData('getFederationCreationBlockNumber'),
+    });
+    return Number(bridgeInterface.decodeFunctionResult('getFederationCreationBlockNumber', result)[0]);
+}
+
+async function getActivePowpegRedeemScript(provider, bridgeInterface) {
+    const result = await provider.call({
+        to: BRIDGE_ADDRESS,
+        data: bridgeInterface.encodeFunctionData('getActivePowpegRedeemScript'),
+    });
+    return bridgeInterface.decodeFunctionResult('getActivePowpegRedeemScript', result)[0];
+}
+
+function base58CheckAddress(hash160) {
+    const payload = ethers.concat([BTC_P2SH_VERSION, hash160]);
+    const checksum = ethers.dataSlice(ethers.sha256(ethers.sha256(payload)), 0, 4);
+    return ethers.encodeBase58(ethers.concat([payload, checksum]));
+}
+
+function legacyP2shAddress(redeemScript) {
+    return base58CheckAddress(ethers.ripemd160(ethers.sha256(redeemScript)));
+}
+
+// P2SH-wrapped P2WSH: the redeemed script is the witness program `OP_0 <sha256(redeemScript)>`.
+function p2shP2wshAddress(redeemScript) {
+    const witnessProgram = ethers.concat(['0x0020', ethers.sha256(redeemScript)]);
+    return base58CheckAddress(ethers.ripemd160(ethers.sha256(witnessProgram)));
+}
+
+// Determines the active federation's script format by deriving both candidate addresses from
+// its redeem script and matching them against the address the bridge reports.
+async function inspectFederationFormat(provider, bridgeInterface) {
+    const address = await getFederationAddress(provider, bridgeInterface);
+    const redeemScript = await getActivePowpegRedeemScript(provider, bridgeInterface);
+    if (!redeemScript || redeemScript === '0x') {
+        throw new Error('getActivePowpegRedeemScript returned no data; cannot determine federation format');
+    }
+    const legacy = legacyP2shAddress(redeemScript);
+    const segwit = p2shP2wshAddress(redeemScript);
+    let format = 'unknown';
+    if (address === segwit) format = 'P2SH-P2WSH';
+    else if (address === legacy) format = 'legacy P2SH';
+    return { address, format, legacy, segwit, isSegwit: format === 'P2SH-P2WSH' };
+}
+
 async function fundAuthAddresses(addresses) {
     for (const addr of addresses) {
         await rskRpcCall('eth_sendTransaction', [{
@@ -240,6 +321,20 @@ async function mineRsk(count) {
         }]);
         await delay(50);
     }
+}
+
+// Mines RSK blocks until the chain reaches targetHeight. Used to cross the RSKIP-419
+// activation height before committing, since the federator cannot relay BTC headers and the
+// bridge exposes no SVP methods below it.
+async function mineRskToHeight(provider, targetHeight) {
+    const current = await provider.getBlockNumber();
+    if (current >= targetHeight) {
+        console.log(`  RSK height ${current} already past ${targetHeight}`);
+        return;
+    }
+    console.log(`  Mining RSK from ${current} to ${targetHeight}...`);
+    await mineRsk(targetHeight - current);
+    console.log(`  RSK height is now ${await provider.getBlockNumber()}`);
 }
 
 // Interleaves RSK + BTC block production until the bridge BTC height is within
@@ -312,21 +407,50 @@ async function main() {
     const authWallets = AUTH_PRIVATE_KEYS.map(pk => new ethers.Wallet(pk, provider));
 
     // ── Step 1: Wait for RSK node ─────────────────────────────────────────────
-    console.log('\n[1/9] Waiting for RSK node...');
+    console.log('\n[1/10] Waiting for RSK node...');
     await waitForNode(provider);
 
-    // ── Step 2: Fund authorized addresses ────────────────────────────────────
-    console.log('\n[2/9] Funding authorized addresses from coinbase...');
+    // ── Step 2: Is a migration needed at all? ────────────────────────────────
+    // With reed800 = 0 the genesis federation is already derived as P2SH-P2WSH, so the whole
+    // federation change is a no-op and would only burn ~20 minutes of block production.
+    console.log('\n[2/10] Inspecting the active federation format...');
+    const initialFederation = await inspectFederationFormat(provider, bridgeInterface);
+    console.log(`  Active federation address: ${initialFederation.address}`);
+    console.log(`  Derived legacy P2SH      : ${initialFederation.legacy}`);
+    console.log(`  Derived P2SH-P2WSH       : ${initialFederation.segwit}`);
+    console.log(`  Format                   : ${initialFederation.format}`);
+
+    if (initialFederation.isSegwit) {
+        console.log('\n  The active federation is already segwit-compatible; skipping the migration.');
+        console.log('\n[10/10] Updating env file...');
+        updateEnvFile(ENV_FILE_PATH);
+        console.log('\n Nothing to migrate.');
+        console.log(`  The segwit-compatible (P2SH-P2WSH) federation is active.\n`);
+        return;
+    }
+
+    if (initialFederation.format === 'unknown') {
+        throw new Error(
+            'Could not match the active federation address to either script format.\n' +
+            `  Bridge address    : ${initialFederation.address}\n` +
+            `  Derived legacy    : ${initialFederation.legacy}\n` +
+            `  Derived P2SH-P2WSH: ${initialFederation.segwit}\n` +
+            `Check that BTC_P2SH_VERSION (${BTC_P2SH_VERSION}) matches the bitcoind network.`,
+        );
+    }
+
+    // ── Step 3: Fund authorized addresses ────────────────────────────────────
+    console.log('\n[3/10] Funding authorized addresses from coinbase...');
     await fundAuthAddresses(authWallets.map(w => w.address));
 
-    // ── Step 3: createFederation ──────────────────────────────────────────────
+    // ── Step 4: createFederation ──────────────────────────────────────────────
     // Three votes reach the majority threshold (3/5) required by the regtest bridge.
-    console.log('\n[3/9] createFederation (3 votes)...');
+    console.log('\n[4/10] createFederation (3 votes)...');
     await voteAll(authWallets, bridgeInterface, 'createFederation', [], 'createFederation');
 
-    // ── Step 4: addFederatorPublicKeyMultikey ─────────────────────────────────
+    // ── Step 5: addFederatorPublicKeyMultikey ─────────────────────────────────
     // Add each powpeg member to the pending federation.
-    console.log('\n[4/9] addFederatorPublicKeyMultikey for each member (3 votes each)...');
+    console.log('\n[5/10] addFederatorPublicKeyMultikey for each member (3 votes each)...');
     for (const pubkeyHex of FEDERATION_MEMBER_PUBKEYS) {
         const keyBytes = '0x' + pubkeyHex;
         await voteAll(
@@ -338,8 +462,8 @@ async function main() {
         );
     }
 
-    // ── Step 5: getPendingFederationHash ──────────────────────────────────────
-    console.log('\n[5/9] Fetching pending federation hash...');
+    // ── Step 6: getPendingFederationHash ──────────────────────────────────────
+    console.log('\n[6/10] Fetching pending federation hash...');
     const hashCallResult = await provider.call({
         to: BRIDGE_ADDRESS,
         data: bridgeInterface.encodeFunctionData('getPendingFederationHash'),
@@ -347,27 +471,31 @@ async function main() {
     const [pendingHash] = bridgeInterface.decodeFunctionResult('getPendingFederationHash', hashCallResult);
     console.log(`  Pending federation hash: ${pendingHash}`);
 
-    const oldFederationAddress = await getFederationAddress(provider, bridgeInterface);
-    console.log(`  Current (old) federation address: ${oldFederationAddress}`);
+    const oldFederationCreationBlock = await getFederationCreationBlock(provider, bridgeInterface);
+    console.log(`  Current (old) federation address: ${initialFederation.address}`);
+    console.log(`  Current (old) federation creation block: ${oldFederationCreationBlock}`);
 
     // Get a BTC address to mine rewards to throughout the rest of the migration.
     const btcMiningAddr = await getBtcMiningAddress();
     console.log(`  BTC mining address: ${btcMiningAddr}`);
 
-    // ── Step 6: Prime relay + fund active federation (before commit) ──────────
+    // ── Step 7: Activate SVP + prime relay + fund federation (before commit) ──
     // These must happen BEFORE commitFederation so the SVP validation window is
     // not consumed by pre-conditions work.
-    console.log('\n[6/9] Priming BTC header relay before commit...');
+    console.log('\n[7/10] Mining past the RSKIP-419 activation height before commit...');
+    await mineRskToHeight(provider, SVP_ACTIVATION_HEIGHT + SVP_ACTIVATION_MARGIN);
+
+    console.log('      Priming BTC header relay before commit...');
     await primeBtcRelay(provider, bridgeInterface, btcMiningAddr);
 
     console.log('      Funding the active federation for SVP...');
     await fundFederation(provider, bridgeInterface, btcMiningAddr);
 
-    // ── Step 7: commitFederation + SVP driving ────────────────────────────────
+    // ── Step 8: commitFederation + SVP driving ────────────────────────────────
     // After commit the bridge starts the SVP validation period. Interleave BTC and
     // RSK block production so the federators can complete the fund→confirm→spend→confirm
     // cycle within the validation window, then count down federationActivationAge.
-    console.log('\n[7/9] commitFederation (3 votes)...');
+    console.log('\n[8/10] commitFederation (3 votes)...');
     await voteAll(authWallets, bridgeInterface, 'commitFederation', [pendingHash], 'commitFederation');
 
     console.log('      Driving SVP validation + activation (interleaved RSK+BTC mining)...');
@@ -381,11 +509,13 @@ async function main() {
             const bridgeBtcHeight = await getBridgeBtcHeight(provider, bridgeInterface);
             const btcTip = await btcHeight();
             const curFedAddr = await getFederationAddress(provider, bridgeInterface);
+            const curCreationBlock = await getFederationCreationBlock(provider, bridgeInterface);
             console.log(
                 `      round ${String(round).padStart(3)}: fedAddr=${curFedAddr}` +
+                ` creationBlock=${curCreationBlock}` +
                 ` bridgeBtcHeight=${bridgeBtcHeight} btcTip=${btcTip}`,
             );
-            if (curFedAddr !== oldFederationAddress) {
+            if (curCreationBlock > oldFederationCreationBlock) {
                 activated = true;
                 break;
             }
@@ -394,25 +524,34 @@ async function main() {
 
     if (!activated) {
         throw new Error(
-            `SVP activation did not complete within ${SVP_MAX_ROUNDS} rounds.\n` +
-            'Increase SVP_MAX_ROUNDS or check the powpeg federator logs for errors.',
+            `Federation did not activate within ${SVP_MAX_ROUNDS} rounds ` +
+            `(getFederationCreationBlockNumber stayed at ${oldFederationCreationBlock}).\n` +
+            'Check the powpeg federator logs (volumes/powpeg/*/logs/rsk.log) for errors.',
         );
     }
 
-    // ── Step 8: Verify federation activated ──────────────────────────────────
-    console.log('\n[8/9] Verifying federation activation...');
-    const newFederationAddress = await getFederationAddress(provider, bridgeInterface);
-    if (newFederationAddress === oldFederationAddress) {
+    // ── Step 9: Verify the new federation is segwit-compatible ───────────────
+    // The members are the same 3 keys as before, so the address alone proves nothing: the
+    // format has to be derived from the redeem script the bridge now reports.
+    console.log('\n[9/10] Verifying federation activation...');
+    const newFederationCreationBlock = await getFederationCreationBlock(provider, bridgeInterface);
+    const newFederation = await inspectFederationFormat(provider, bridgeInterface);
+    console.log(`  Federation committed at block ${newFederationCreationBlock} (was ${oldFederationCreationBlock})`);
+    console.log(`  Active federation address: ${newFederation.address} (${newFederation.format})`);
+
+    if (!newFederation.isSegwit) {
         throw new Error(
-            `Federation address did not change.\n` +
-            `  Old address: ${oldFederationAddress}\n` +
-            `  New address: ${newFederationAddress}`,
+            `Federation was committed but is not segwit-compatible (${newFederation.format}).\n` +
+            `  Address: ${newFederation.address}\n` +
+            'Check that RSKIP-305 is active: it is mapped to the reed800 network upgrade, so\n' +
+            'reed800 must be set in the hardforkActivationHeights of both rskj/rsk.conf and the\n' +
+            'powpeg regtest-fed.conf.',
         );
     }
-    console.log(`  Federation activation confirmed. New address: ${newFederationAddress}`);
+    console.log('  Federation activation confirmed.');
 
-    // ── Step 9: Update env file ───────────────────────────────────────────────
-    console.log('\n[9/9] Updating env file...');
+    // ── Step 10: Update env file ──────────────────────────────────────────────
+    console.log('\n[10/10] Updating env file...');
     updateEnvFile(ENV_FILE_PATH);
 
     console.log('\n Migration complete.');

@@ -18,8 +18,8 @@ FROM --platform=linux/amd64 ubuntu:noble@sha256:d22e4fb389065efa4a61bb3641676869
 # Do not bump this without bumping POWPEG_VERSION in
 # local/powpeg/{pegin,pegout}/Dockerfile to a powpeg-node release built on the
 # matching rskj-core. The URL and the checksum always move together.
-ARG RSKJ_DEB_URL="https://launchpad.net/~rsksmart/+archive/ubuntu/rskj/+files/rskj_9.0.3~noble_all.deb"
-ARG RSKJ_DEB_SHA256="9373866f46063917d38a75b2d077cd007d4dd1b1d937794d51701a4fad5f83e3"
+ARG RSKJ_DEB_URL="https://launchpad.net/~rsksmart/+archive/ubuntu/rskj/+files/rskj_9.0.4~noble_all.deb"
+ARG RSKJ_DEB_SHA256="342a107fa9c3ebc46ae3e220f38ba8875a3436251d8bd00182d5ec3feb79b511"
 
 # The package creates the rsk user with uid 888. Here the uid comes from the
 # compose file so the bind-mounted volumes stay writable by the host user.

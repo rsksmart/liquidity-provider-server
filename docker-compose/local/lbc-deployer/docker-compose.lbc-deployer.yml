@@ -1,7 +1,12 @@
 services:
   lbc-deployer:
-    image: "${LBC_IMAGE}"
-    pull_policy: always
+    build:
+      context: ./lbc-deployer
+      args:
+        LBC_COMMIT: "${LBC_COMMIT}"
+        DEPLOYER_MNEMONIC: "${DEPLOYER_MNEMONIC}"
+    pull_policy: build
+    image: lbc-deployer:local
     volumes:
       - ./lbc-deployer/scripts:/scripts
       - ./${ENV_FILE}:/${ENV_FILE}
@@ -18,7 +23,7 @@ services:
     networks:
       - net_lps
   lps-approver:
-    image: "${LBC_IMAGE}"
+    image: lbc-deployer:local
     pull_policy: never
     volumes:
       - ./lbc-deployer/scripts:/scripts
