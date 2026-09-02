@@ -55,3 +55,7 @@ The provided docker-compose files can be extended to include additional services
 * Make sure to update the documentation with the new service or initialization process and how to use it.
 * If you need to add a new service that depends on the existing services, make sure to add the necessary dependencies in the docker-compose files and update the `lps-local.sh` script accordingly.
 * Avoid installing new dependencies in the host machine. Use docker images to run the necessary scripts and services. If you need to install new dependencies, create a new docker image for it and use it in the `lps-local.sh` script.
+
+## LPS × LBC compatibility (local)
+
+To validate which LPS and LBC git refs work together for split-contract Flyover deployments, use the scripts under `lps-lbc-compat/` (they call `lps-local.sh` / `lps-env.sh` and run smokes from the sibling `flyover-lps-api-e2e` repo). See [Compatibility-Matrix.md](../../docs/Compatibility-Matrix.md).
