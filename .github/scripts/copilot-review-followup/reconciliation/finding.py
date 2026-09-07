@@ -21,7 +21,7 @@ DETAILS_SUPPRESSED_RE = re.compile(
     re.IGNORECASE,
 )
 HEADING_SUPPRESSED_RE = re.compile(
-    r"^(?P<hashes>#{1,6})\s*Suppressed comments",
+    r"^(?P<hashes>#{1,6})[ \t]+Suppressed comments",
     re.IGNORECASE | re.MULTILINE,
 )
 REVIEW_STATS_RE = re.compile(
