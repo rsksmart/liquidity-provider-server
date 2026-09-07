@@ -74,6 +74,24 @@ func DecodeAddressBase58(address string, keepVersion bool) ([]byte, error) {
 	return buff.Bytes(), nil
 }
 
+func EncodeAddressBase58(payload []byte) (string, error) {
+	const (
+		versionSize  = 1
+		hashSize     = 20
+		checksumSize = 4
+		payloadSize  = versionSize + hashSize + checksumSize
+	)
+	if len(payload) != payloadSize {
+		return "", fmt.Errorf("base58check payload must be %d bytes, got %d", payloadSize, len(payload))
+	}
+	body, checksum := payload[:payloadSize-checksumSize], payload[payloadSize-checksumSize:]
+	expectedChecksum := chainhash.DoubleHashB(body)[:checksumSize]
+	if !bytes.Equal(expectedChecksum, checksum) {
+		return "", errors.New("base58check payload carries an invalid checksum")
+	}
+	return base58.Encode(payload), nil
+}
+
 func ToSwappedBytes32[T [32]byte | *chainhash.Hash | chainhash.Hash](hash T) [32]byte {
 	var result [32]byte
 	for i := 0; i < chainhash.HashSize/2; i++ {
@@ -190,6 +208,32 @@ func getTransactionsToAddress(address string, params *chaincfg.Params, client bt
 		delete(txs, key)
 	}
 	return result, nil
+}
+
+func getWalletTransaction(hash string, client btcclient.RpcClient) (blockchain.BitcoinTransactionInformation, error) {
+	parsedHash, err := chainhash.NewHashFromStr(hash)
+	if err != nil {
+		return blockchain.BitcoinTransactionInformation{}, err
+	}
+	transaction, err := client.GetTransaction(parsedHash)
+	if err != nil {
+		return blockchain.BitcoinTransactionInformation{}, err
+	}
+	if transaction.TxID != hash {
+		return blockchain.BitcoinTransactionInformation{}, fmt.Errorf(
+			"wallet returned transaction %s for requested hash %s",
+			transaction.TxID,
+			hash,
+		)
+	}
+	confirmations := uint64(0)
+	if transaction.Confirmations > 0 {
+		confirmations = uint64(transaction.Confirmations)
+	}
+	return blockchain.BitcoinTransactionInformation{
+		Hash:          transaction.TxID,
+		Confirmations: confirmations,
+	}, nil
 }
 
 func parseTransactionOutputs(outputs []btcjson.Vout) (map[string][]*entities.Wei, error) {
