@@ -41,9 +41,12 @@ env:
 
 jobs:
   followup:
+    # Copilot code review has two identities for the same reviewer: the webhook
+    # payload says "Copilot" while the REST reviews API says "copilot-pull-request-reviewer[bot]"
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.review.user.login == 'copilot-pull-request-reviewer[bot]'
+      github.event.review.user.login == 'copilot-pull-request-reviewer[bot]' ||
+      github.event.review.user.login == 'Copilot'
     runs-on: ubuntu-latest
     outputs:
       has_lessons: ${{ steps.reconciliation.outputs.has_lessons }}
@@ -72,7 +75,7 @@ jobs:
             REVIEW_ID="$INPUT_REVIEW_ID"
             if [ -z "$REVIEW_ID" ]; then
               REVIEW_ID="$(gh api "repos/${REPO}/pulls/${PR}/reviews" \
-                --jq '[.[] | select(.user.login=="copilot-pull-request-reviewer[bot]")] | last | .id')"
+                --jq '[.[] | select(.user.login | test("^copilot"; "i"))] | last | .id')"
             fi
             HEAD_SHA="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
             DRY_RUN="$INPUT_DRY_RUN"
