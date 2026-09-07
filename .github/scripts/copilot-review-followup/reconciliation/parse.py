@@ -240,7 +240,7 @@ def build_change_state(config: Config, data: ReviewData) -> ChangeState:
     prior_sha = (data.prior[-1].get("commit_id") if data.prior else "") or ""
     current_sha = data.current.get("commit_id") or ""
     code_changed = bool(prior_sha and current_sha and prior_sha != current_sha)
-    touched = changed_files(config.repo, prior_sha, current_sha, code_changed)
+    touched = files_touched_since(config.repo, prior_sha, current_sha)
     return ChangeState(
         first_pass=first_pass,
         code_changed=code_changed,
@@ -250,29 +250,33 @@ def build_change_state(config: Config, data: ReviewData) -> ChangeState:
     )
 
 
-def changed_files(
-    repo: str, prior_sha: str, current_sha: str, code_changed: bool
-) -> set[str]:
-    return files_touched_since(repo, prior_sha, current_sha) if code_changed else set()
-
-
 def files_touched_since(
     repo: str, prior_sha: str, current_sha: str
-) -> set[str]:
-    if not prior_sha or not current_sha or prior_sha == current_sha:
+) -> set[str] | None:
+    """Files changed between the two commits, or None if that is unknowable.
+
+    An empty set means nothing changed, which is evidence a finding is still
+    open. A failed compare means we know nothing, so it must not be mistaken
+    for one; that case returns None.
+    """
+    if not prior_sha or not current_sha:
+        return None
+    if prior_sha == current_sha:
         return set()
     try:
         compare = gh_json([f"repos/{repo}/compare/{prior_sha}...{current_sha}"])
     except subprocess.CalledProcessError as exc:
         log(f"compare failed: {exc.stderr}")
-        return set()
+        return None
     files = compare.get("files") or []
     return {f.get("filename") for f in files if f.get("filename")}
 
 
 def log_state(state: ChangeState, inventories: Inventories) -> None:
+    touched = "unknown" if state.touched is None else len(state.touched)
     log(
         f"first_pass={state.first_pass} code_changed={state.code_changed} "
+        f"touched_files={touched} "
         f"prior_findings={len(inventories.prior)} "
         f"current_findings={len(inventories.current)} "
         f"prior_sha={state.prior_sha[:8]} current_sha={state.current_sha[:8]}"

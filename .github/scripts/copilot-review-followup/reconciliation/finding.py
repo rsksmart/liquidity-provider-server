@@ -48,15 +48,23 @@ class Finding:
 
 @dataclass
 class Classified:
-    addressed: list[Finding] = field(default_factory=list)
-    not_addressed: list[Finding] = field(default_factory=list)
+    """Classifications this pass can reach without reading the code.
+
+    There is no "addressed" bucket: confirming a fix requires inspecting the
+    file at the head commit, which this pass never does. Every prior finding
+    lands in one of the buckets below, so an unfixed finding is never dropped
+    for lack of proof — it is reported as open or flagged for confirmation.
+
+    Entries carry the evidence behind the classification.
+    """
+
+    not_addressed: list[tuple[Finding, str]] = field(default_factory=list)
     declined: list[tuple[Finding, str, str]] = field(default_factory=list)
-    unverified: list[Finding] = field(default_factory=list)
+    unverified: list[tuple[Finding, str]] = field(default_factory=list)
 
     def has_findings(self) -> bool:
         return any(
             [
-                self.addressed,
                 self.not_addressed,
                 self.declined,
                 self.unverified,
@@ -84,4 +92,5 @@ class ChangeState:
     code_changed: bool
     prior_sha: str
     current_sha: str
-    touched: set[str]
+    # None when the change set could not be determined; see files_touched_since.
+    touched: set[str] | None

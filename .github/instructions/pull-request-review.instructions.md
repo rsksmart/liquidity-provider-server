@@ -93,6 +93,15 @@ Record per item: the file and line, a one-sentence restatement of the original p
 classification, and the evidence — the commit that changed it, or the current code showing it
 unchanged. For **Unverified**, record what blocked the determination.
 
+Every finding in the inventory takes exactly one classification and none may be dropped. When you
+cannot read the code behind one — a tool call failed, the file is gone from your view, or the
+content came back empty — classify it **Unverified** and name what failed. A tool failure never
+silences a finding and never counts as evidence of a fix.
+
+When the evidence is thin, report the finding as open rather than closing it. An empty **Addressed**
+section is a perfectly acceptable outcome. A finding that was never fixed and never mentioned is
+not.
+
 ### How a developer declines a finding
 
 A finding is **Declined** when a human replies in its thread with a message beginning `Won't fix:`
@@ -184,6 +193,10 @@ as where the reconciliation lands.
   determination, then ask the author to confirm. Do not assert that the code is unfixed and do not
   give it an occurrence count.
 - Post no inline comment for **Addressed**, **Declined**, or **No longer applicable** findings.
+
+Silence is never a classification. Every finding you did not verify as fixed reaches the reader as
+either a **Not addressed** comment or an **Unverified** question, on this pass and on every later
+one, until the code shows it was fixed or a human declines it.
 
 Where you summarize the review, group the findings under a `Previous Copilot review follow-up`
 heading with one subsection per classification — Addressed, Partially addressed, Not addressed,

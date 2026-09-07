@@ -25,6 +25,10 @@ def render_reconciliation(classified: Classified, review_id: int) -> str:
         MARKER_RECONCILIATION.format(review_id=review_id),
         "## Previous Copilot review follow-up",
         "",
+        "Tracked from review metadata and the commit range, without reading the"
+        " code, so no finding here is claimed to be fixed. Each entry states the"
+        " evidence behind it.",
+        "",
     ]
 
     def add(title: str, lines: list[str]) -> None:
@@ -35,12 +39,11 @@ def render_reconciliation(classified: Classified, review_id: int) -> str:
         sections.append("")
 
     add(
-        "Addressed",
-        [f"- `{f.key}` — {f.summary()}" for f in classified.addressed],
-    )
-    add(
         "Not addressed",
-        [f"- `{f.key}` — {f.summary()}" for f in classified.not_addressed],
+        [
+            f"- `{f.key}` — {f.summary()} — {reason}"
+            for f, reason in classified.not_addressed
+        ],
     )
     add(
         "Declined",
@@ -51,7 +54,10 @@ def render_reconciliation(classified: Classified, review_id: int) -> str:
     )
     add(
         "Unverified",
-        [f"- `{f.key}` — {f.summary()}" for f in classified.unverified],
+        [
+            f"- `{f.key}` — {f.summary()} — {reason}"
+            for f, reason in classified.unverified
+        ],
     )
     return "\n".join(sections).rstrip() + "\n"
 
@@ -104,7 +110,7 @@ def reconcile(
         inventories.prior,
         inventories.current,
         data.comments,
-        state.touched,
+        state,
     )
     if not classified.has_findings():
         log("no classified findings; skipping reconciliation post")

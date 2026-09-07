@@ -82,11 +82,11 @@ def classify(
     prior: list[Finding],
     current: list[Finding],
     comments: list[dict[str, Any]],
-    touched: set[str],
+    state: ChangeState,
 ) -> Classified:
     result = Classified()
     for finding in prior:
-        category, item = classify_finding(finding, current, comments, touched)
+        category, item = classify_finding(finding, current, comments, state)
         getattr(result, category).append(item)
     return result
 
@@ -95,16 +95,41 @@ def classify_finding(
     finding: Finding,
     current: list[Finding],
     comments: list[dict[str, Any]],
-    touched: set[str],
-) -> tuple[str, Finding | tuple[Finding, str, str]]:
+    state: ChangeState,
+) -> tuple[str, tuple[Finding, str] | tuple[Finding, str, str]]:
+    """Classify one prior finding, never silently assuming it was fixed.
+
+    This pass cannot confirm a fix, so it never reports one. It reports a
+    finding as open whenever it can point at evidence that the code did not
+    change, and asks for confirmation otherwise.
+    """
     decline = find_decline(finding, comments)
     if decline:
         return "declined", (finding, decline[0], decline[1])
     if any(similar(finding, candidate) for candidate in current):
-        return "not_addressed", finding
-    if finding.path in touched:
-        return "unverified", finding
-    return "unverified", finding
+        return "not_addressed", (finding, "raised again in the current review")
+    unchanged = unchanged_evidence(finding, state)
+    if unchanged:
+        return "not_addressed", (finding, unchanged)
+    return "unverified", (finding, needs_inspection_reason(state))
+
+
+def unchanged_evidence(finding: Finding, state: ChangeState) -> str:
+    """Evidence that the code behind this finding never changed, if any."""
+    if state.touched is None:
+        return ""
+    short = state.prior_sha[:8]
+    if not state.code_changed:
+        return f"no commits since the prior review ({short})"
+    if finding.path not in state.touched:
+        return f"`{finding.path}` untouched by the commits since {short}"
+    return ""
+
+
+def needs_inspection_reason(state: ChangeState) -> str:
+    if state.touched is None:
+        return "could not determine what changed since the prior review"
+    return "file changed since the prior review; needs code inspection"
 
 
 def new_findings(prior: list[Finding], current: list[Finding]) -> list[Finding]:
@@ -123,8 +148,8 @@ def new_findings(prior: list[Finding], current: list[Finding]) -> list[Finding]:
 
 
 def reconciliation_skip_reason(state: ChangeState) -> str:
+    # A pass with no new commits is not a reason to stay quiet: it means every
+    # prior finding is still open, which is exactly what has to be reported.
     if state.first_pass:
         return "first pass"
-    if not state.code_changed:
-        return "no code changes since prior Copilot review"
     return ""
