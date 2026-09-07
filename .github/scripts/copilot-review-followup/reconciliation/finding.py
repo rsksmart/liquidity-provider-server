@@ -16,8 +16,17 @@ WONT_FIX_RE = re.compile(r"Won'?t\s+fix\s*:", re.IGNORECASE)
 SUPPRESSED_FINDING_HEADER_RE = re.compile(
     r"^\*\*(?P<path>.+):(?P<line>\d+)\*\*$"
 )
+SUPPRESSED_SECTION_RE = re.compile(
+    r"(?:<summary>\s*)?#{0,6}\s*Suppressed comments",
+    re.IGNORECASE,
+)
+REVIEW_STATS_RE = re.compile(
+    r"^- \*\*(Files reviewed|Comments generated|Review effort)",
+    re.IGNORECASE,
+)
+PREVIOUSLY_MISSED_RE = re.compile(r"^\*\*Previously missed", re.IGNORECASE)
 REPEAT_HINT_RE = re.compile(
-    r"(already raised|repeat from earlier|was already raised)",
+    r"(already raised|repeat from earlier|was already raised|previously missed|previously raised)",
     re.IGNORECASE,
 )
 MARKER_RECONCILIATION = "<!-- ccr-followup:reconciliation:{review_id} -->"
@@ -33,6 +42,7 @@ class Finding:
     source: str  # "comment" | "suppressed"
     comment_id: int | None = None
     review_id: int | None = None
+    commit_id: str = ""
     is_repeat: bool = False
 
     @property
@@ -92,5 +102,6 @@ class ChangeState:
     code_changed: bool
     prior_sha: str
     current_sha: str
-    # None when the change set could not be determined; see files_touched_since.
-    touched: set[str] | None
+    # Origin review SHA -> files changed between that SHA and current_sha.
+    # Missing key or None value means the change set is unknowable.
+    touched_since: dict[str, set[str] | None]

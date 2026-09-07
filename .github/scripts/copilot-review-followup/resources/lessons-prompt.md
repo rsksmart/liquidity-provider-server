@@ -7,6 +7,9 @@ described below — no preamble, no analysis outside that comment.
 ## Hard rules
 
 - Use only the findings in `FINDINGS_JSON`. Do not invent extra findings.
+- `FINDINGS_JSON` contains **posted inline comments only**. Never turn a
+  suppressed / withheld Copilot finding into a lesson, even if it appears
+  elsewhere in the pull request.
 - Cap at 5 lessons. Prefer high-severity / repo-pattern issues over style nits.
 - Skip anything that looks like a repeat, decline, or formatting-only nit.
 - Each lesson MUST match the schema in SCHEMA_MD exactly (no extra top-level fields).

@@ -111,30 +111,46 @@ def classify_finding(
     unchanged = unchanged_evidence(finding, state)
     if unchanged:
         return "not_addressed", (finding, unchanged)
-    return "unverified", (finding, needs_inspection_reason(state))
+    return "unverified", (finding, needs_inspection_reason(finding, state))
 
 
 def unchanged_evidence(finding: Finding, state: ChangeState) -> str:
-    """Evidence that the code behind this finding never changed, if any."""
-    if state.touched is None:
+    """Evidence that the code behind this finding never changed, if any.
+
+    Measured from the review that originally raised the finding, not from the
+    most recent prior review. A later review that left the file alone is not
+    evidence the earlier finding is still open.
+    """
+    origin = finding.commit_id
+    if not origin or not state.current_sha:
         return ""
-    short = state.prior_sha[:8]
-    if not state.code_changed:
-        return f"no commits since the prior review ({short})"
-    if finding.path not in state.touched:
-        return f"`{finding.path}` untouched by the commits since {short}"
+    if origin == state.current_sha:
+        return f"no commits since this finding's review ({origin[:8]})"
+    if origin not in state.touched_since:
+        return ""
+    touched = state.touched_since[origin]
+    if touched is None:
+        return ""
+    if finding.path not in touched:
+        return f"`{finding.path}` untouched since this finding's review ({origin[:8]})"
     return ""
 
 
-def needs_inspection_reason(state: ChangeState) -> str:
-    if state.touched is None:
-        return "could not determine what changed since the prior review"
-    return "file changed since the prior review; needs code inspection"
+def needs_inspection_reason(finding: Finding, state: ChangeState) -> str:
+    origin = finding.commit_id
+    if not origin or origin not in state.touched_since:
+        return "could not determine what changed since this finding's review"
+    if state.touched_since[origin] is None:
+        return "could not determine what changed since this finding's review"
+    return "file changed since this finding's review; needs code inspection"
 
 
 def new_findings(prior: list[Finding], current: list[Finding]) -> list[Finding]:
+    """Posted comments that are new on this pass. Suppressed findings never qualify."""
     out: list[Finding] = []
     for cur in current:
+        if cur.source != "comment":
+            continue
         is_new = (
             not cur.is_repeat
             and not REPEAT_HINT_RE.search(cur.body)
@@ -142,8 +158,7 @@ def new_findings(prior: list[Finding], current: list[Finding]) -> list[Finding]:
         )
         if is_new:
             out.append(cur)
-    # Prefer comment-sourced, higher signal; cap at 5.
-    out.sort(key=lambda f: (0 if f.source == "comment" else 1, f.path, f.line))
+    out.sort(key=lambda f: (f.path, f.line))
     return out[:5]
 
 

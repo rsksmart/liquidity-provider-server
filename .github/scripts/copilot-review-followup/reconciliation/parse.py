@@ -11,8 +11,11 @@ from .config import Config, log
 from .finding import (
     COPILOT_LOGINS,
     LINE_PROXIMITY,
+    PREVIOUSLY_MISSED_RE,
     REPEAT_HINT_RE,
+    REVIEW_STATS_RE,
     SUPPRESSED_FINDING_HEADER_RE,
+    SUPPRESSED_SECTION_RE,
     ChangeState,
     Finding,
     Inventories,
@@ -24,6 +27,7 @@ from .github import gh_json, gh_paginated
 @dataclass
 class SuppressedParser:
     review_id: int
+    commit_id: str = ""
     findings: list[Finding] = field(default_factory=list)
     path: str | None = None
     line: int = 0
@@ -34,8 +38,13 @@ class SuppressedParser:
         if header:
             self.start(header.group("path"), int(header.group("line")))
             return
-        if body_line == "</details>":
+        if (
+            body_line.strip() == "</details>"
+            or REVIEW_STATS_RE.match(body_line)
+        ):
             self.finish()
+            return
+        if PREVIOUSLY_MISSED_RE.match(body_line):
             return
         if self.path is not None:
             self.body.append(body_line)
@@ -63,6 +72,7 @@ class SuppressedParser:
                 body=text,
                 source="suppressed",
                 review_id=self.review_id,
+                commit_id=self.commit_id,
                 is_repeat=bool(REPEAT_HINT_RE.search(text)),
             )
         )
@@ -74,11 +84,11 @@ def is_copilot_user(login: str | None) -> bool:
     return login in COPILOT_LOGINS or login.lower().startswith("copilot")
 
 
-def parse_suppressed(body: str, review_id: int) -> list[Finding]:
+def parse_suppressed(body: str, review_id: int, commit_id: str = "") -> list[Finding]:
     section = suppressed_section(body)
     if not section:
         return []
-    parser = SuppressedParser(review_id)
+    parser = SuppressedParser(review_id, commit_id=commit_id)
     for body_line in section.splitlines():
         parser.consume(body_line)
     parser.finish()
@@ -86,10 +96,10 @@ def parse_suppressed(body: str, review_id: int) -> list[Finding]:
 
 
 def suppressed_section(body: str) -> str:
-    marker = "<summary>Suppressed comments"
-    if marker not in body:
+    match = SUPPRESSED_SECTION_RE.search(body)
+    if not match:
         return ""
-    after_marker = body.partition(marker)[2]
+    after_marker = body[match.end() :]
     return after_marker.partition("</details>")[0]
 
 
@@ -100,7 +110,7 @@ def suppressed_summary(lines: list[str]) -> str:
 
 
 def findings_from_comments(
-    comments: list[dict[str, Any]], review_id: int
+    comments: list[dict[str, Any]], review_id: int, commit_id: str = ""
 ) -> list[Finding]:
     out: list[Finding] = []
     for c in comments:
@@ -121,6 +131,7 @@ def findings_from_comments(
                     source="comment",
                     comment_id=c.get("id"),
                     review_id=review_id,
+                    commit_id=commit_id,
                     is_repeat=bool(REPEAT_HINT_RE.search(comment_body)),
                 )
             )
@@ -131,8 +142,9 @@ def inventory_for_review(
     review: dict[str, Any], comments: list[dict[str, Any]]
 ) -> list[Finding]:
     rid = int(review["id"])
-    findings = findings_from_comments(comments, rid)
-    findings.extend(parse_suppressed(review.get("body") or "", rid))
+    commit_id = review.get("commit_id") or ""
+    findings = findings_from_comments(comments, rid, commit_id)
+    findings.extend(parse_suppressed(review.get("body") or "", rid, commit_id))
     return dedupe_findings(findings)
 
 
@@ -240,13 +252,20 @@ def build_change_state(config: Config, data: ReviewData) -> ChangeState:
     prior_sha = (data.prior[-1].get("commit_id") if data.prior else "") or ""
     current_sha = data.current.get("commit_id") or ""
     code_changed = bool(prior_sha and current_sha and prior_sha != current_sha)
-    touched = files_touched_since(config.repo, prior_sha, current_sha)
+    origin_shas: list[str] = []
+    for review in data.prior:
+        sha = review.get("commit_id") or ""
+        if sha and sha not in origin_shas:
+            origin_shas.append(sha)
+    touched_since = {
+        sha: files_touched_since(config.repo, sha, current_sha) for sha in origin_shas
+    }
     return ChangeState(
         first_pass=first_pass,
         code_changed=code_changed,
         prior_sha=prior_sha,
         current_sha=current_sha,
-        touched=touched,
+        touched_since=touched_since,
     )
 
 
@@ -273,10 +292,10 @@ def files_touched_since(
 
 
 def log_state(state: ChangeState, inventories: Inventories) -> None:
-    touched = "unknown" if state.touched is None else len(state.touched)
+    origins = len(state.touched_since)
     log(
         f"first_pass={state.first_pass} code_changed={state.code_changed} "
-        f"touched_files={touched} "
+        f"origin_shas={origins} "
         f"prior_findings={len(inventories.prior)} "
         f"current_findings={len(inventories.current)} "
         f"prior_sha={state.prior_sha[:8]} current_sha={state.current_sha[:8]}"

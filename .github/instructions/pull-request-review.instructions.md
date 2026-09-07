@@ -71,9 +71,11 @@ Inventory every prior Copilot finding. They come from two sources and both count
 
 - **Posted comments** — the threads from `get_review_comments`.
 - **Suppressed findings** — those listed in each prior Copilot review `body`, usually under a heading
-  such as "Comments suppressed due to low confidence". Being withheld does not make a finding new. A
+  such as "Suppressed comments" (sometimes nested under "Review details", sometimes in a
+  `<summary>Suppressed comments</summary>` block). Being withheld does not make a finding new. A
   suppressed finding has no thread, so it carries no thread metadata and no comment URL; link the
-  review that contains it instead.
+  review that contains it instead. The follow-up workflow still inventories these for
+  reconciliation; it never uses them as sources for lesson cards.
 
 Classify each finding as:
 
