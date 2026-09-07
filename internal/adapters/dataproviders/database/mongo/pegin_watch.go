@@ -35,7 +35,7 @@ func (repo *peginWatchMongoRepository) Upsert(
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	filter := eventIdentity(watch.TxHash, watch.LogIndex)
+	filter := rskAddressIdentity(watch.RskAddress)
 	update := bson.M{"$setOnInsert": watch}
 	_, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
 		dbCtx,
@@ -51,15 +51,14 @@ func (repo *peginWatchMongoRepository) Upsert(
 
 func (repo *peginWatchMongoRepository) Get(
 	ctx context.Context,
-	txHash string,
-	logIndex uint,
+	rskAddress string,
 ) (*rootstock.PegInWatch, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	var watch rootstock.PegInWatch
 	err := repo.conn.Collection(PegInWatchCollection).
-		FindOne(dbCtx, eventIdentity(txHash, logIndex)).
+		FindOne(dbCtx, rskAddressIdentity(rskAddress)).
 		Decode(&watch)
 	if errors.Is(err, mongoDb.ErrNoDocuments) {
 		return nil, nil
@@ -78,7 +77,7 @@ func (repo *peginWatchMongoRepository) List(
 
 	cursor, err := repo.conn.Collection(PegInWatchCollection).Find(
 		dbCtx,
-		bson.M{"tx_hash": bson.M{"$exists": true}},
+		bson.M{"rsk_address": bson.M{"$exists": true}},
 		options.Find().SetSort(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
 	)
 	if err != nil {
@@ -102,7 +101,7 @@ func (repo *peginWatchMongoRepository) Update(
 
 	result, err := repo.conn.Collection(PegInWatchCollection).ReplaceOne(
 		dbCtx,
-		eventIdentity(watch.TxHash, watch.LogIndex),
+		rskAddressIdentity(watch.RskAddress),
 		watch,
 	)
 	if err != nil {
@@ -149,6 +148,6 @@ func (repo *peginWatchMongoRepository) SetCursor(
 	return err
 }
 
-func eventIdentity(txHash string, logIndex uint) bson.M {
-	return bson.M{"tx_hash": txHash, "log_index": logIndex}
+func rskAddressIdentity(rskAddress string) bson.M {
+	return bson.M{"rsk_address": rskAddress}
 }
