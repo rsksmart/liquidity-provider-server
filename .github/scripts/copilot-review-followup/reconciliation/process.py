@@ -103,7 +103,7 @@ def classify_finding(
     if any(similar(finding, candidate) for candidate in current):
         return "not_addressed", finding
     if finding.path in touched:
-        return "addressed", finding
+        return "unverified", finding
     return "unverified", finding
 
 
