@@ -182,8 +182,23 @@ func (app *Application) addRunningService(service entities.Closeable) {
 
 func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher, error) {
 	var err error
+	watchers := app.enabledWatchers()
+
+	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
+	defer cancel()
+	for _, w := range watchers {
+		if err = w.Prepare(prepareCtx); err != nil {
+			return nil, err
+		}
+		app.addRunningService(w)
+	}
+	return watchers, nil
+}
+
+func (app *Application) enabledWatchers() []watcher.Watcher {
 	watchers := []watcher.Watcher{
 		app.watcherRegistry.PeginDepositAddressWatcher,
+		app.watcherRegistry.PegInAddressRegistryWatcher,
 		app.watcherRegistry.PeginBridgeWatcher,
 		app.watcherRegistry.PegoutRskDepositWatcher,
 		app.watcherRegistry.PegoutBtcTransferWatcher,
@@ -208,15 +223,7 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 		watchers = append(watchers, app.watcherRegistry.BitcoinEclipseWatcher)
 	}
 
-	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
-	defer cancel()
-	for _, w := range watchers {
-		if err = w.Prepare(prepareCtx); err != nil {
-			return nil, err
-		}
-		app.addRunningService(w)
-	}
-	return watchers, nil
+	return watchers
 }
 
 func (app *Application) ShutdownServices() {

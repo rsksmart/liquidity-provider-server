@@ -19,50 +19,63 @@ import (
 	"time"
 )
 
+func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *registry.WatcherRegistry {
+	t.Helper()
+	env := environment.Environment{
+		Rsk: environment.RskEnv{
+			DiscoveryAddress:             "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
+			CollateralManagementAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
+			PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
+			PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
+			PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
+			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
+			BridgeAddress:                "0x0000000000000000000000000000000001000006",
+		},
+		Btc:    environment.BtcEnv{Network: "testnet"},
+		Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
+	}
+
+	client := &mocks.DbClientBindingMock{}
+	client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
+	conn := mongo.NewConnection(client, time.Duration(1))
+	dbRegistry := registry.NewDatabaseRegistry(conn)
+
+	rskWalletMock := new(mocks.RskSignerWalletMock)
+	rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
+	walletFactoryMock := new(mocks.AbstractFactoryMock)
+	walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
+	rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
+	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+	require.NoError(t, err)
+
+	connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))
+	walletFactoryMock.On("BitcoinMonitoringWallet", bitcoin.PeginWalletId).Return(new(mocks.BitcoinWalletMock), nil)
+	walletFactoryMock.On("BitcoinPaymentWallet", bitcoin.DerivativeWalletId).Return(new(mocks.BitcoinWalletMock), nil)
+	walletFactoryMock.EXPECT().ColdWallet(mock.Anything).Return(new(mocks.ColdWalletMock), nil)
+	btcRegistry, err := registry.NewBitcoinRegistry(walletFactoryMock, connection)
+	require.NoError(t, err)
+
+	messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, connection, registry.ExternalRpc{})
+	lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
+	require.NoError(t, err)
+	mutexes := environment.NewApplicationMutexes()
+	useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+
+	return registry.NewWatcherRegistry(
+		env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, messagingRegistry,
+		tickers, environment.DefaultTimeouts(),
+	)
+}
+
+// The registry is built once per process: NewWatcherRegistry registers its metrics with the
+// default Prometheus registerer, which rejects a second registration.
 func TestNewWatcherRegistry(t *testing.T) {
+	scanTicker, scanTickerStopped := stopReportingTicker()
+	tickers := watcher.NewApplicationTickers()
+	tickers.PegInAddressRegistryWatcherTicker = scanTicker
+	watcherRegistry := buildWatcherRegistry(t, tickers)
+
 	t.Run("Watcher registry constructor should initialize every watcher", func(t *testing.T) {
-		env := environment.Environment{
-			Rsk: environment.RskEnv{
-				DiscoveryAddress:             "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
-				CollateralManagementAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
-				PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
-				PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
-				PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
-				FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
-				BridgeAddress:                "0x0000000000000000000000000000000001000006",
-			},
-			Btc:    environment.BtcEnv{Network: "testnet"},
-			Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
-		}
-
-		client := &mocks.DbClientBindingMock{}
-		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
-		conn := mongo.NewConnection(client, time.Duration(1))
-		dbRegistry := registry.NewDatabaseRegistry(conn)
-
-		rskWalletMock := new(mocks.RskSignerWalletMock)
-		rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
-		walletFactoryMock := new(mocks.AbstractFactoryMock)
-		walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
-		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
-		require.NoError(t, err)
-
-		connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))
-		walletFactoryMock.On("BitcoinMonitoringWallet", bitcoin.PeginWalletId).Return(new(mocks.BitcoinWalletMock), nil)
-		walletFactoryMock.On("BitcoinPaymentWallet", bitcoin.DerivativeWalletId).Return(new(mocks.BitcoinWalletMock), nil)
-		walletFactoryMock.EXPECT().ColdWallet(mock.Anything).Return(new(mocks.ColdWalletMock), nil)
-		btcRegistry, err := registry.NewBitcoinRegistry(walletFactoryMock, connection)
-		require.NoError(t, err)
-
-		messagingRegistry := registry.NewMessagingRegistry(context.Background(), environment.Environment{}, rskClient, connection, registry.ExternalRpc{})
-		lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
-		require.NoError(t, err)
-		mutexes := environment.NewApplicationMutexes()
-		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
-
-		watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, messagingRegistry, watcher.NewApplicationTickers(), environment.DefaultTimeouts())
-
 		require.NotNil(t, watcherRegistry)
 		value := reflect.ValueOf(watcherRegistry).Elem()
 		for i := 0; i < value.NumField(); i++ {
@@ -71,4 +84,38 @@ func TestNewWatcherRegistry(t *testing.T) {
 			}
 		}
 	})
+	t.Run("PegIn address registry watcher should stop its ticker", func(t *testing.T) {
+		stopWatcher(t, watcherRegistry.PegInAddressRegistryWatcher)
+		require.True(t, stoppedWithin(scanTickerStopped, time.Second), "the scan loop did not stop its own ticker")
+	})
+}
+
+func stopReportingTicker() (*mocks.TickerMock, chan struct{}) {
+	ticker := &mocks.TickerMock{}
+	stopCalls := make(chan struct{}, 1)
+	ticker.EXPECT().C().Return(make(chan time.Time))
+	ticker.EXPECT().Stop().Run(func() {
+		select {
+		case stopCalls <- struct{}{}:
+		default:
+		}
+	}).Return()
+	return ticker, stopCalls
+}
+
+func stopWatcher(t *testing.T, target watcher.Watcher) {
+	t.Helper()
+	closeChannel := make(chan bool, 1)
+	go target.Start()
+	target.Shutdown(closeChannel)
+	<-closeChannel
+}
+
+func stoppedWithin(stopCalls chan struct{}, timeout time.Duration) bool {
+	select {
+	case <-stopCalls:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
