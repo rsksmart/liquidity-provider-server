@@ -16,9 +16,13 @@ WONT_FIX_RE = re.compile(r"Won'?t\s+fix\s*:", re.IGNORECASE)
 SUPPRESSED_FINDING_HEADER_RE = re.compile(
     r"^\*\*(?P<path>.+):(?P<line>\d+)\*\*$"
 )
-SUPPRESSED_SECTION_RE = re.compile(
-    r"(?:<summary>\s*)?#{0,6}\s*Suppressed comments",
+DETAILS_SUPPRESSED_RE = re.compile(
+    r"<summary>\s*Suppressed comments",
     re.IGNORECASE,
+)
+HEADING_SUPPRESSED_RE = re.compile(
+    r"^(?P<hashes>#{1,6})\s*Suppressed comments",
+    re.IGNORECASE | re.MULTILINE,
 )
 REVIEW_STATS_RE = re.compile(
     r"^- \*\*(Files reviewed|Comments generated|Review effort)",

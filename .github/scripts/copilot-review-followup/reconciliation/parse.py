@@ -10,12 +10,13 @@ from typing import Any
 from .config import Config, log
 from .finding import (
     COPILOT_LOGINS,
+    DETAILS_SUPPRESSED_RE,
+    HEADING_SUPPRESSED_RE,
     LINE_PROXIMITY,
     PREVIOUSLY_MISSED_RE,
     REPEAT_HINT_RE,
     REVIEW_STATS_RE,
     SUPPRESSED_FINDING_HEADER_RE,
-    SUPPRESSED_SECTION_RE,
     ChangeState,
     Finding,
     Inventories,
@@ -96,11 +97,31 @@ def parse_suppressed(body: str, review_id: int, commit_id: str = "") -> list[Fin
 
 
 def suppressed_section(body: str) -> str:
-    match = SUPPRESSED_SECTION_RE.search(body)
-    if not match:
+    """Slice the suppressed-comments block out of a review body.
+
+    Copilot has used two layouts: a ``<summary>Suppressed comments`` details
+    block, and a Markdown heading (often nested under Review details). The
+    details form ends at ``</details>``. The heading form also ends at the next
+    heading of the same or higher level, so a later ``**path:line**`` section
+    cannot be ingested as another suppressed finding.
+    """
+    details = DETAILS_SUPPRESSED_RE.search(body)
+    heading = HEADING_SUPPRESSED_RE.search(body)
+    if details and (heading is None or details.start() <= heading.start()):
+        return body[details.end() :].partition("</details>")[0]
+    if heading is None:
         return ""
-    after_marker = body[match.end() :]
-    return after_marker.partition("</details>")[0]
+    after_marker = body[heading.end() :]
+    level = len(heading.group("hashes"))
+    peer = re.compile(rf"^#{{1,{level}}}\s", re.MULTILINE)
+    stops = [len(after_marker)]
+    details_end = after_marker.find("</details>")
+    if details_end != -1:
+        stops.append(details_end)
+    peer_match = peer.search(after_marker)
+    if peer_match:
+        stops.append(peer_match.start())
+    return after_marker[: min(stops)]
 
 
 def suppressed_summary(lines: list[str]) -> str:
