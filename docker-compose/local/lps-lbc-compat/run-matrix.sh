@@ -13,14 +13,39 @@ E2E_REPO="${E2E_REPO:-${LPS_REPO}/../flyover-lps-api-e2e}"
 MATRIX_CLI=(npx --yes tsx "${E2E_REPO}/scripts/compat-matrix-cli.ts")
 
 matrix_cli() {
+  # Explicit || exit: this script has no set -e, and callers may also suppress it.
   (
-    cd "$E2E_REPO"
+    cd "$E2E_REPO" || exit 1
     "${MATRIX_CLI[@]}" "$@"
   )
-  return 0
 }
 
-TOTAL_CELLS="$(matrix_cli pair-count)"
+# Capture CLI stdout; exit with a clear error if the CLI fails.
+# This script does not use set -e, so callers must check or use this helper.
+require_matrix_cli() {
+  local output=""
+  local rc=0
+  output="$(matrix_cli "$@")"
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    echo "ERROR: compatibility matrix CLI failed: $*" >&2
+    exit 1
+  fi
+  printf '%s\n' "$output"
+}
+
+if [[ ! -d "$E2E_REPO" ]]; then
+  echo "ERROR: flyover-lps-api-e2e repo not found: ${E2E_REPO}" >&2
+  exit 1
+fi
+
+TOTAL_CELLS="$(require_matrix_cli pair-count)"
+TOTAL_CELLS="$(printf '%s' "$TOTAL_CELLS" | tr -d '[:space:]')"
+if [[ -z "$TOTAL_CELLS" || "$TOTAL_CELLS" -eq 0 ]]; then
+  echo "ERROR: compatibility matrix CLI returned no pairs (pair-count=${TOTAL_CELLS:-empty})" >&2
+  exit 1
+fi
+
 RESULTS_FILE="$(mktemp "${TMPDIR:-/tmp}/compat-matrix-results-XXXXXX.json")"
 GREEN_CELLS=0
 ORANGE_CELLS=0
@@ -98,7 +123,7 @@ extract_failure_reason() {
   local reason=""
 
   if parse_smoke_summary "$log"; then
-    reason="$(matrix_cli smoke-reason "$SMOKE_PASSED" "$SMOKE_TOTAL")"
+    reason="$(matrix_cli smoke-reason "$SMOKE_PASSED" "$SMOKE_TOTAL" 2>/dev/null || true)"
     if [[ -n "$reason" ]]; then
       echo "$reason"
       return 0
@@ -147,7 +172,10 @@ run_cell() {
     passed="$SMOKE_PASSED"
     failed="$SMOKE_FAILED"
     total="$SMOKE_TOTAL"
-    status="$(matrix_cli smoke-status "$passed" "$total")"
+    status="$(matrix_cli smoke-status "$passed" "$total" 2>/dev/null || true)"
+    if [[ -z "$status" ]]; then
+      status="fail"
+    fi
   else
     passed=0
     failed=0
@@ -184,17 +212,18 @@ echo "=== LPS x LBC smoke matrix (${TOTAL_CELLS} pairs from flyover-lps-api-e2e)
 echo "E2E repo: ${E2E_REPO}"
 echo ""
 
-if [[ ! -d "$E2E_REPO" ]]; then
-  echo "ERROR: flyover-lps-api-e2e repo not found: ${E2E_REPO}" >&2
+init_results_file
+
+PAIRS_TSV="$(require_matrix_cli pairs-tsv)"
+if [[ -z "$(printf '%s' "$PAIRS_TSV" | tr -d '[:space:]')" ]]; then
+  echo "ERROR: compatibility matrix CLI returned no pairs (pairs-tsv empty)" >&2
   exit 1
 fi
-
-init_results_file
 
 while IFS=$'\t' read -r lps_ref lbc_ref; do
   [[ -z "$lps_ref" ]] && continue
   run_cell "$lps_ref" "$lbc_ref" || true
-done < <(matrix_cli pairs-tsv)
+done <<<"$PAIRS_TSV"
 
 finalize_results_file
 
