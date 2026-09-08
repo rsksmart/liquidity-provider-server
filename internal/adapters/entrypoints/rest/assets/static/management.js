@@ -820,11 +820,17 @@ const addCollateral = async (amountId, endpoint, elementId, loadingBarId, button
     loadingBar.style.display = 'block';
     button.disabled = true;
     try {
-        const amountInWei = Number(etherToWei(amountInEther));
+        const amountInWei = etherToWei(amountInEther);
+        // The server field is a Go *big.Int, so the amount has to go out as an exact
+        // bare integer literal. JSON.stringify of a JS number drops digits past 2^53
+        // and writes exponent notation from 1e21 up, which big.Int refuses.
+        if (!/^\d+$/.test(amountInWei) || BigInt(amountInWei) <= 0n) {
+            throw new RangeError(`"${amountInEther}" is not a positive whole number of wei.`);
+        }
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-            body: JSON.stringify({ amount: amountInWei })
+            body: `{"amount":${amountInWei}}`
         });
         if (response.ok) {
             fetchData(endpoint.replace('/addCollateral', '/collateral'), elementId, csrfToken);
