@@ -2,10 +2,16 @@ package monitoring
 
 import (
 	"context"
+	"errors"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	log "github.com/sirupsen/logrus"
+)
+
+var (
+	ErrNilMetrics  = errors.New("monitoring watcher requires application metrics")
+	ErrNilEventBus = errors.New("monitoring watcher requires an event bus")
 )
 
 type PegInAddressRegistryMetricsWatcher struct {
@@ -26,6 +32,16 @@ func NewPegInAddressRegistryMetricsWatcher(
 }
 
 func (watcher *PegInAddressRegistryMetricsWatcher) Prepare(context.Context) error {
+	return watcher.validateDependencies()
+}
+
+func (watcher *PegInAddressRegistryMetricsWatcher) validateDependencies() error {
+	if watcher.appMetrics == nil {
+		return ErrNilMetrics
+	}
+	if watcher.eventBus == nil {
+		return ErrNilEventBus
+	}
 	return nil
 }
 

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
@@ -27,6 +26,8 @@ func newRskWalletFactoryMock() (*mocks.AbstractFactoryMock, *mocks.RskSignerWall
 	return walletFactoryMock, rskWalletMock
 }
 
+// newRskClientWithGenesisRegistry expects only the code reads that prove the deployment block, so
+// any registration-root read or event replay during construction fails as an unexpected call.
 func newRskClientWithGenesisRegistry(t *testing.T, registryAddress string, deploymentBlock uint64) *rootstock.RskClient {
 	t.Helper()
 	rpc := mocks.NewRpcClientBindingMock(t)
@@ -35,8 +36,6 @@ func newRskClientWithGenesisRegistry(t *testing.T, registryAddress string, deplo
 	if deploymentBlock > 0 {
 		rpc.On("CodeAt", mock.Anything, address, new(big.Int).SetUint64(deploymentBlock-1)).Return([]byte{}, nil)
 	}
-	rpc.On("CallContract", mock.Anything, mock.Anything, mock.Anything).Return(make([]byte, 32), nil)
-	rpc.On("FilterLogs", mock.Anything, mock.Anything).Return([]geth.Log{}, nil)
 	return rootstock.NewRskClient(rpc)
 }
 

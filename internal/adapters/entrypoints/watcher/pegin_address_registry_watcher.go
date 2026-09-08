@@ -87,9 +87,7 @@ func (watcher *PegInWatcher) resyncAfterReorg(event entities.Event) {
 	if !ok || reorg.NodeType != entities.NodeTypeRootstock || reorg.CurrentDepth == 0 {
 		return
 	}
-	if err := watcher.resync(context.Background()); err != nil {
-		log.Errorf("PegIn address registry watcher scan failed: %v", err)
-	}
+	watcher.scanAndLog()
 }
 
 func (watcher *PegInWatcher) Shutdown(closeChannel chan<- bool) {
@@ -99,18 +97,10 @@ func (watcher *PegInWatcher) Shutdown(closeChannel chan<- bool) {
 }
 
 func (watcher *PegInWatcher) scan(ctx context.Context) error {
-	return watcher.runIntegrity(ctx, false)
-}
-
-func (watcher *PegInWatcher) resync(ctx context.Context) error {
-	return watcher.runIntegrity(ctx, true)
-}
-
-func (watcher *PegInWatcher) runIntegrity(ctx context.Context, discardCheckpoint bool) error {
 	watcher.scanMutex.Lock()
 	defer watcher.scanMutex.Unlock()
 
-	pending, err := watcher.replayUseCase.Run(ctx, discardCheckpoint, watcher.startBlock, watcher.pageSize)
+	pending, err := watcher.replayUseCase.Run(ctx, watcher.startBlock, watcher.pageSize)
 	if err != nil {
 		return err
 	}
