@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sort"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
@@ -29,7 +28,7 @@ func NewPegInAddressRegistryContractImpl(
 	retryParams RetryParams,
 	binding *bindings.PegInAddressRegistryContract,
 	abis *FlyoverABIs,
-) blockchain.PegInAddressRegistryContract {
+) *peginAddressRegistryContractImpl {
 	return &peginAddressRegistryContractImpl{
 		client:      client.client,
 		address:     address,
@@ -50,14 +49,7 @@ func NewValidatedPegInAddressRegistryContract(
 	abis *FlyoverABIs,
 	deploymentBlock uint64,
 ) (blockchain.PegInAddressRegistryContract, error) {
-	impl := &peginAddressRegistryContractImpl{
-		client:      client.client,
-		address:     address,
-		contract:    contract,
-		retryParams: retryParams,
-		binding:     binding,
-		abis:        abis,
-	}
+	impl := NewPegInAddressRegistryContractImpl(client, address, contract, retryParams, binding, abis)
 	if err := impl.ValidateAtBlock(ctx, deploymentBlock); err != nil {
 		return nil, err
 	}
@@ -75,58 +67,7 @@ func (registry *peginAddressRegistryContractImpl) ValidateAtBlock(
 	if !isDeploymentBlock {
 		return fmt.Errorf("configured start block %d is not the PegIn address registry deployment block", deploymentBlock)
 	}
-	deploymentRoot, err := registry.GetRegistrationRoot(ctx, deploymentBlock)
-	if err != nil {
-		return fmt.Errorf("validate PegIn address registry at deployment block %d: %w", deploymentBlock, err)
-	}
-	toBlock := deploymentBlock
-	addressRegisteredEvents, err := registry.GetAddressRegisteredEvents(ctx, deploymentBlock, &toBlock)
-	if err != nil {
-		return fmt.Errorf("read PegIn address registry events at deployment block %d: %w", deploymentBlock, err)
-	}
-	replayedDeploymentRoot, err := foldPegInAddressRegistryDeployment(addressRegisteredEvents, deploymentBlock)
-	if err != nil {
-		return err
-	}
-	if deploymentRoot != replayedDeploymentRoot {
-		return fmt.Errorf("PegIn address registry deployment block %d already has registry state", deploymentBlock)
-	}
 	return nil
-}
-
-func foldPegInAddressRegistryDeployment(
-	addressRegisteredEvents []blockchain.AddressRegistered,
-	deploymentBlock uint64,
-) ([32]byte, error) {
-	sort.Slice(addressRegisteredEvents, func(first, second int) bool {
-		return addressRegisteredEvents[first].LogIndex < addressRegisteredEvents[second].LogIndex
-	})
-	replayedDeploymentRoot := [32]byte{}
-	for _, event := range addressRegisteredEvents {
-		if event.BlockNumber != deploymentBlock {
-			return [32]byte{}, fmt.Errorf(
-				"PegIn address registry returned block %d while validating deployment block %d",
-				event.BlockNumber,
-				deploymentBlock,
-			)
-		}
-		var foldErr error
-		replayedDeploymentRoot, foldErr = blockchain.FoldPegInAddressRegistryRoot(replayedDeploymentRoot, event.RskAddress)
-		if foldErr != nil {
-			return [32]byte{}, fmt.Errorf(
-				"validate PegIn address registry event at deployment block %d: %w",
-				deploymentBlock,
-				foldErr,
-			)
-		}
-		if event.RegistrationRoot != replayedDeploymentRoot {
-			return [32]byte{}, fmt.Errorf(
-				"PegIn address registry event root differs at deployment block %d",
-				deploymentBlock,
-			)
-		}
-	}
-	return replayedDeploymentRoot, nil
 }
 
 func (registry *peginAddressRegistryContractImpl) GetAddress() string {

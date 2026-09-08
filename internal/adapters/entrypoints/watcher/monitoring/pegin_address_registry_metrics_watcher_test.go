@@ -12,6 +12,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,6 +46,27 @@ func TestPegInAddressRegistryMetricsWatcher_UpdatesIntegrityCounters(t *testing.
 	metricsWatcher.Shutdown(closeDone)
 	<-closeDone
 	eventBus.AssertExpectations(t)
+}
+
+func TestPegInAddressRegistryMetricsWatcher_RequiresEventBus(t *testing.T) {
+	appMetrics := monitoring.NewMetrics(prometheus.NewRegistry())
+	metricsWatcher := monitoring.NewPegInAddressRegistryMetricsWatcher(appMetrics, nil)
+
+	require.ErrorIs(t, metricsWatcher.Prepare(context.Background()), monitoring.ErrNilEventBus)
+}
+
+func TestPegInAddressRegistryMetricsWatcher_RequiresMetrics(t *testing.T) {
+	eventBus := &mocks.EventBusMock{}
+	metricsWatcher := monitoring.NewPegInAddressRegistryMetricsWatcher(nil, eventBus)
+
+	require.ErrorIs(t, metricsWatcher.Prepare(context.Background()), monitoring.ErrNilMetrics)
+	eventBus.AssertNotCalled(t, "Subscribe", mock.Anything)
+}
+
+func TestPegInAddressRegistryMetricsWatcher_ReportsMissingMetricsFirst(t *testing.T) {
+	metricsWatcher := monitoring.NewPegInAddressRegistryMetricsWatcher(nil, nil)
+
+	require.ErrorIs(t, metricsWatcher.Prepare(context.Background()), monitoring.ErrNilMetrics)
 }
 
 func counterValue(counter prometheus.Counter) float64 {

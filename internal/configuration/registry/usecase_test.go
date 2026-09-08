@@ -19,26 +19,31 @@ import (
 	"time"
 )
 
+func useCaseRegistryEnvironment() environment.Environment {
+	return environment.Environment{
+		Rsk: environment.RskEnv{
+			DiscoveryAddress:             "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
+			CollateralManagementAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
+			PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
+			PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
+			PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
+			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
+			BridgeAddress:                "0x0000000000000000000000000000000001000006",
+		},
+		Btc:    environment.BtcEnv{Network: "testnet"},
+		Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
+	}
+}
+
 func TestNewUseCaseRegistry(t *testing.T) {
 	t.Run("Use case registry constructor should initialize every use case", func(t *testing.T) {
-		env := environment.Environment{
-			Rsk: environment.RskEnv{
-				DiscoveryAddress:             "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
-				CollateralManagementAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
-				PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
-				PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
-				PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
-				FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
-				BridgeAddress:                "0x0000000000000000000000000000000001000006",
-			},
-			Btc:    environment.BtcEnv{Network: "testnet"},
-			Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
-		}
+		env := useCaseRegistryEnvironment()
 
 		client := &mocks.DbClientBindingMock{}
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
 		conn := mongo.NewConnection(client, time.Duration(1))
 		dbRegistry := registry.NewDatabaseRegistry(conn)
+		assert.Same(t, dbRegistry.PegInWatchRepository, dbRegistry.PegInWatchCheckpointRepository)
 
 		walletFactoryMock := new(mocks.AbstractFactoryMock)
 		rskWalletMock := new(mocks.RskSignerWalletMock)
@@ -67,6 +72,12 @@ func TestNewUseCaseRegistry(t *testing.T) {
 				t.Errorf("Field %s of use case registry is nil", value.Type().Field(i).Name)
 			}
 		}
+
+		replayHashFunction := reflect.ValueOf(useCaseRegistry.ReplayRegisteredAddressesUseCase()).
+			Elem().
+			FieldByName("hashFunction")
+		require.True(t, replayHashFunction.IsValid(), "replay use case must keep a hashFunction field")
+		assert.False(t, replayHashFunction.IsNil(), "replay use case must be wired with a hash function")
 
 		// ensure that all methods of the UseCaseRegistry interface return a non-nil value
 		registryInterfaceType := reflect.TypeOf((*registryInterface.UseCaseRegistry)(nil)).Elem()
