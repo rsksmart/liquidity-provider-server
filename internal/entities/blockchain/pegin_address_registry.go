@@ -2,12 +2,14 @@ package blockchain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"golang.org/x/crypto/sha3"
 )
+
+var InvalidRootHashFunctionError = errors.New("invalid PegIn address registry root hash function")
 
 // PegInAddressRegistryEncoding is the on-chain IPegInAddressRegistry.Encoding enum.
 type PegInAddressRegistryEncoding = rootstock.PegInAddressRegistryEncoding
@@ -78,9 +80,16 @@ type PegInAddressRegistryResyncStartedEvent struct {
 }
 
 // FoldPegInAddressRegistryRoot mirrors
-// keccak256(abi.encodePacked(previousRoot, rskAddress)): exactly 32 root bytes
+// hashFunction(abi.encodePacked(previousRoot, rskAddress)): exactly 32 root bytes
 // followed by the unpadded 20-byte RSK address.
-func FoldPegInAddressRegistryRoot(previousRoot [32]byte, rskAddress string) ([32]byte, error) {
+func FoldPegInAddressRegistryRoot(
+	hashFunction entities.HashFunction,
+	previousRoot [32]byte,
+	rskAddress string,
+) ([32]byte, error) {
+	if hashFunction == nil {
+		return [32]byte{}, fmt.Errorf("%w: hash function is nil", InvalidRootHashFunctionError)
+	}
 	normalizedAddress, err := NormalizeRskAddress(rskAddress)
 	if err != nil {
 		return [32]byte{}, err
@@ -97,13 +106,15 @@ func FoldPegInAddressRegistryRoot(previousRoot [32]byte, rskAddress string) ([32
 	copy(preimage[:32], previousRoot[:])
 	copy(preimage[32:], addressBytes)
 
-	hasher := sha3.NewLegacyKeccak256()
-	if _, err = hasher.Write(preimage[:]); err != nil {
-		return [32]byte{}, fmt.Errorf("fold PegIn address registry root: %w", err)
+	hash := hashFunction(preimage[:])
+	if len(hash) != 32 {
+		return [32]byte{}, fmt.Errorf(
+			"%w: hash function returned %d bytes, want 32",
+			InvalidRootHashFunctionError,
+			len(hash),
+		)
 	}
-	var root [32]byte
-	copy(root[:], hasher.Sum(nil))
-	return root, nil
+	return [32]byte(hash), nil
 }
 
 // PegInAddressRegistryContract is a read-only port over the frozen IPegInAddressRegistry ABI.

@@ -22,6 +22,53 @@ func (_m *PegInWatchRepositoryMock) EXPECT() *PegInWatchRepositoryMock_Expecter 
 	return &PegInWatchRepositoryMock_Expecter{mock: &_m.Mock}
 }
 
+// DeleteFromBlock provides a mock function with given fields: ctx, fromBlock
+func (_m *PegInWatchRepositoryMock) DeleteFromBlock(ctx context.Context, fromBlock uint64) error {
+	ret := _m.Called(ctx, fromBlock)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteFromBlock")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) error); ok {
+		r0 = rf(ctx, fromBlock)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PegInWatchRepositoryMock_DeleteFromBlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteFromBlock'
+type PegInWatchRepositoryMock_DeleteFromBlock_Call struct {
+	*mock.Call
+}
+
+// DeleteFromBlock is a helper method to define mock.On call
+//   - ctx context.Context
+//   - fromBlock uint64
+func (_e *PegInWatchRepositoryMock_Expecter) DeleteFromBlock(ctx interface{}, fromBlock interface{}) *PegInWatchRepositoryMock_DeleteFromBlock_Call {
+	return &PegInWatchRepositoryMock_DeleteFromBlock_Call{Call: _e.mock.On("DeleteFromBlock", ctx, fromBlock)}
+}
+
+func (_c *PegInWatchRepositoryMock_DeleteFromBlock_Call) Run(run func(ctx context.Context, fromBlock uint64)) *PegInWatchRepositoryMock_DeleteFromBlock_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uint64))
+	})
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_DeleteFromBlock_Call) Return(_a0 error) *PegInWatchRepositoryMock_DeleteFromBlock_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_DeleteFromBlock_Call) RunAndReturn(run func(context.Context, uint64) error) *PegInWatchRepositoryMock_DeleteFromBlock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: ctx, rskAddress
 func (_m *PegInWatchRepositoryMock) Get(ctx context.Context, rskAddress string) (*rootstock.PegInWatch, error) {
 	ret := _m.Called(ctx, rskAddress)

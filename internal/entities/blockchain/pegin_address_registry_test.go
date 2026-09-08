@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/stretchr/testify/assert"
@@ -67,7 +68,7 @@ func TestRootFoldMatchesPinnedContractVectors(t *testing.T) {
 		var root [32]byte
 		for index, address := range addresses {
 			var err error
-			root, err = blockchain.FoldPegInAddressRegistryRoot(root, address)
+			root, err = blockchain.FoldPegInAddressRegistryRoot(crypto.Keccak256, root, address)
 			require.NoError(t, err)
 			assert.Equal(t, expectedRoots[index], root)
 		}
@@ -77,7 +78,7 @@ func TestRootFoldMatchesPinnedContractVectors(t *testing.T) {
 		var reversedRoot [32]byte
 		for index := len(addresses) - 1; index >= 0; index-- {
 			var err error
-			reversedRoot, err = blockchain.FoldPegInAddressRegistryRoot(reversedRoot, addresses[index])
+			reversedRoot, err = blockchain.FoldPegInAddressRegistryRoot(crypto.Keccak256, reversedRoot, addresses[index])
 			require.NoError(t, err)
 		}
 		assert.NotEqual(t, expectedRoots[len(expectedRoots)-1], reversedRoot)
@@ -91,9 +92,30 @@ func TestRootFoldMatchesPinnedContractVectors(t *testing.T) {
 			"0x00000000000000000000000000000000000000zz",
 		} {
 			t.Run(address, func(t *testing.T) {
-				_, err := blockchain.FoldPegInAddressRegistryRoot([32]byte{}, address)
+				_, err := blockchain.FoldPegInAddressRegistryRoot(crypto.Keccak256, [32]byte{}, address)
 				require.ErrorIs(t, err, blockchain.InvalidAddressError)
 			})
+		}
+	})
+}
+
+func TestRootFoldRejectsUnusableHashFunctions(t *testing.T) {
+	const address = "0x00000000000000000000000000000000000000a1"
+
+	t.Run("rejects a nil hash function", func(t *testing.T) {
+		_, err := blockchain.FoldPegInAddressRegistryRoot(nil, [32]byte{}, address)
+
+		require.ErrorIs(t, err, blockchain.InvalidRootHashFunctionError)
+	})
+
+	t.Run("rejects a hash function that does not return 32 bytes", func(t *testing.T) {
+		for _, length := range []int{0, 31, 33} {
+			shortHash := func(...[]byte) []byte { return make([]byte, length) }
+
+			_, err := blockchain.FoldPegInAddressRegistryRoot(shortHash, [32]byte{}, address)
+
+			require.ErrorIs(t, err, blockchain.InvalidRootHashFunctionError)
+			assert.ErrorContains(t, err, "32")
 		}
 	})
 }

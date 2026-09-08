@@ -167,6 +167,20 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 		collection.AssertExpectations(t)
 	})
 
+	t.Run("deletes watch rows from the requested block without matching the checkpoint", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+		filter := bson.M{
+			"rsk_address":  bson.M{"$exists": true},
+			"block_number": bson.M{"$gte": uint64(101)},
+		}
+		collection.EXPECT().DeleteMany(mock.Anything, filter).
+			Return(&mongoDb.DeleteResult{DeletedCount: 2}, nil).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		require.NoError(t, repo.DeleteFromBlock(context.Background(), 101))
+		collection.AssertExpectations(t)
+	})
+
 	t.Run("updates and reads a document in unsupported encoding state", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
 		unsupported := entry
@@ -195,7 +209,6 @@ func TestPegInWatchMongoRepository_Checkpoint(t *testing.T) {
 	t.Run("writes the root and block atomically", func(t *testing.T) {
 		testWriteRegistryCheckpoint(t, checkpoint)
 	})
-	t.Run("deletes the checkpoint before a full replay", testDeleteRegistryCheckpoint)
 	t.Run("reads a complete checkpoint", func(t *testing.T) {
 		testReadRegistryCheckpoint(t, checkpoint)
 	})
@@ -209,10 +222,9 @@ func testMissingRegistryCheckpoint(t *testing.T) {
 		Return(mongoDb.NewSingleResultFromDocument(bson.M{}, mongoDb.ErrNoDocuments, nil)).Once()
 
 	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-	result, found, err := repo.GetCheckpoint(context.Background())
+	result, err := repo.GetCheckpoint(context.Background())
 	require.NoError(t, err)
-	assert.False(t, found)
-	assert.Zero(t, result)
+	assert.Nil(t, result)
 }
 
 func testWriteRegistryCheckpoint(t *testing.T, checkpoint rootstock.PegInWatchCheckpoint) {
@@ -232,18 +244,6 @@ func testWriteRegistryCheckpoint(t *testing.T, checkpoint rootstock.PegInWatchCh
 	collection.AssertExpectations(t)
 }
 
-func testDeleteRegistryCheckpoint(t *testing.T) {
-	client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-	collection.EXPECT().DeleteOne(
-		mock.Anything,
-		bson.M{"_id": "checkpoint"},
-	).Return(&mongoDb.DeleteResult{DeletedCount: 1}, nil).Once()
-
-	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-	require.NoError(t, repo.DeleteCheckpoint(context.Background()))
-	collection.AssertExpectations(t)
-}
-
 func testReadRegistryCheckpoint(t *testing.T, checkpoint rootstock.PegInWatchCheckpoint) {
 	client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
 	collection.EXPECT().FindOne(mock.Anything, bson.M{"_id": "checkpoint"}).
@@ -258,10 +258,9 @@ func testReadRegistryCheckpoint(t *testing.T, checkpoint rootstock.PegInWatchChe
 		)).Once()
 
 	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-	result, found, err := repo.GetCheckpoint(context.Background())
+	result, err := repo.GetCheckpoint(context.Background())
 	require.NoError(t, err)
-	assert.True(t, found)
-	assert.Equal(t, checkpoint, result)
+	assert.Equal(t, &checkpoint, result)
 }
 
 func testIncompleteRegistryCheckpoints(
@@ -285,10 +284,9 @@ func testIncompleteRegistryCheckpoints(
 				Return(mongoDb.NewSingleResultFromDocument(document, nil, nil)).Once()
 
 			repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-			result, found, err := repo.GetCheckpoint(context.Background())
+			result, err := repo.GetCheckpoint(context.Background())
 			require.NoError(t, err)
-			assert.False(t, found)
-			assert.Zero(t, result)
+			assert.Nil(t, result)
 		})
 	}
 }
@@ -307,9 +305,8 @@ func testDamagedRegistryCheckpoint(t *testing.T) {
 		)).Once()
 
 	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-	_, found, err := repo.GetCheckpoint(context.Background())
+	_, err := repo.GetCheckpoint(context.Background())
 	require.Error(t, err)
-	assert.False(t, found)
 }
 
 func withUpdateUpsert() interface{} {

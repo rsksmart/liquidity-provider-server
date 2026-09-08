@@ -25,7 +25,7 @@ type peginAddressRegistryCheckpointDocument struct {
 	LastProcessedBlock *uint64   `bson:"last_processed_block,omitempty"`
 }
 
-func NewPegInWatchMongoRepository(conn *Connection) rootstock.PegInWatchRepositorySet {
+func NewPegInWatchMongoRepository(conn *Connection) *peginWatchMongoRepository {
 	return &peginWatchMongoRepository{conn: conn}
 }
 
@@ -114,9 +114,20 @@ func (repo *peginWatchMongoRepository) Update(
 	return nil
 }
 
+func (repo *peginWatchMongoRepository) DeleteFromBlock(ctx context.Context, fromBlock uint64) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	_, err := repo.conn.Collection(PegInWatchCollection).DeleteMany(dbCtx, bson.M{
+		"rsk_address":  bson.M{"$exists": true},
+		"block_number": bson.M{"$gte": fromBlock},
+	})
+	return err
+}
+
 func (repo *peginWatchMongoRepository) GetCheckpoint(
 	ctx context.Context,
-) (rootstock.PegInWatchCheckpoint, bool, error) {
+) (*rootstock.PegInWatchCheckpoint, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
@@ -125,19 +136,19 @@ func (repo *peginWatchMongoRepository) GetCheckpoint(
 		FindOne(dbCtx, bson.M{"_id": peginAddressRegistryCheckpointDocumentID}).
 		Decode(&checkpointDocument)
 	if errors.Is(err, mongoDb.ErrNoDocuments) {
-		return rootstock.PegInWatchCheckpoint{}, false, nil
+		return nil, nil
 	}
 	if err != nil {
-		return rootstock.PegInWatchCheckpoint{}, false, err
+		return nil, err
 	}
 	if checkpointDocument.LocalRoot == nil ||
 		checkpointDocument.LastProcessedBlock == nil {
-		return rootstock.PegInWatchCheckpoint{}, false, nil
+		return nil, nil
 	}
-	return rootstock.PegInWatchCheckpoint{
+	return &rootstock.PegInWatchCheckpoint{
 		LocalRoot:          *checkpointDocument.LocalRoot,
 		LastProcessedBlock: *checkpointDocument.LastProcessedBlock,
-	}, true, nil
+	}, nil
 }
 
 func (repo *peginWatchMongoRepository) SetCheckpoint(
@@ -163,17 +174,6 @@ func (repo *peginWatchMongoRepository) SetCheckpoint(
 		return errors.New("pegin address registry checkpoint was not persisted")
 	}
 	return nil
-}
-
-func (repo *peginWatchMongoRepository) DeleteCheckpoint(ctx context.Context) error {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-
-	_, err := repo.conn.Collection(PegInWatchCollection).DeleteOne(
-		dbCtx,
-		bson.M{"_id": peginAddressRegistryCheckpointDocumentID},
-	)
-	return err
 }
 
 func rskAddressIdentity(rskAddress string) bson.M {

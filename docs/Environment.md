@@ -43,8 +43,8 @@ These are the environment variables required by the liquidity provider server (L
 | `PROVIDER_TYPE` | Whether the liquidity provider will provide for pegin, pegout or both operations. | One of the following: `pegin`, `pegout`, `both` | YES |
 | `LP_REGISTRATION_POLL_INTERVAL_SECONDS` | How often (in seconds) the server polls the discovery contract for registration approval while waiting for an admin to approve the registration. | `30` | NO |
 | `PEGOUT_DEPOSIT_CACHE_START_BLOCK` | If provided, the LPS will upsert into the database all the pegout deposits that were done from this block to the current one. | `500` | NO |
-| `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` | Block from which the pegin address registry watcher starts scanning. Always used; `0` is a valid origin. | `0` | NO |
-| `PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE` | Number of blocks scanned per page by the pegin address registry watcher. Always used; `0` defaults to `1000`. | `1000` | NO |
+| `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` | Block from which the pegin address registry watcher starts scanning. Always used; `0` is a valid origin. See [PegIn address registry recovery](./PegIn-Address-Registry-Recovery.md). | `0` | NO |
+| `PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE` | Number of blocks scanned per page by the pegin address registry watcher. Always used; `0` defaults to `1000`. See [PegIn address registry recovery](./PegIn-Address-Registry-Recovery.md). | `1000` | NO |
 | `CAPTCHA_SECRET_KEY` | Captcha key used in the server to validate client requests. | `<a captcha secret>` | NO |
 | `CAPTCHA_SITE_KEY` | Captcha key used by the client to perform the challenge. | `<a captcha site key>` | NO |
 | `CAPTCHA_THRESHOLD` | Threshold from zero to one to consider requests as valid when using recaptcha v3 (right now we're using v2). | `0.8` | NO |
@@ -78,19 +78,6 @@ These are the environment variables required by the liquidity provider server (L
 | `COLD_WALLET_FORCE_TRANSFER_AFTER_SECONDS` | Number of seconds after which excess liquidity will be transferred to cold wallet even if below threshold | `1209600` (2 weeks) | No |
 | `HOT_WALLET_LOW_LIQUIDITY_WARNING` | Hot wallet liquidity threshold in whole coins (BTC/RBTC) below which a warning alert is emitted every check cycle | `3` | No |
 | `HOT_WALLET_LOW_LIQUIDITY_CRITICAL` | Hot wallet liquidity threshold in whole coins (BTC/RBTC) below which a critical alert is emitted every check cycle. Must be less than `HOT_WALLET_LOW_LIQUIDITY_WARNING` | `1` | No |
-
-## PegIn address registry watcher recovery
-Use this procedure after an incorrect registry address or deployment block, an LBC reference change, or a root mismatch that remains after automatic resync.
-
-1. **Disable.** Unset both `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` and `PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE`, restart LPS, and verify the log says `PegIn address registry watchers are disabled`. Do not modify watcher data while either loop is running.
-2. **Verify configuration.** Against the `RSK_ENDPOINT` selected by `LPS_STAGE` and `CHAIN_ID`, confirm that `PEGIN_ADDRESS_REGISTRY_ADDRESS` contains the expected registry bytecode and that `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` is its deployment block and is not ahead of the current head. Confirm that `LBC_ADDR` and the registry-producing watcher's LBC reference identify the same active-network LBC. If the LBC reference changed, use the replacement registry address and deployment block; do not mix records from the old registry.
-3. **Replay from empty state.** Back up MongoDB, then remove only the registry watch state while LPS is disabled:
-   ```javascript
-   db.peginAddressRegistryWatch.deleteMany({})
-   ```
-   Set the verified registry address, deployment block, and a non-zero page size. This deletion forces a full event replay; it does not delete quotes or deposits.
-4. **Enable and compare.** Restart LPS with both watcher variables set and verify the log reports the active chain id, deployment block, and page size. Read `_id: "checkpoint"` from `peginAddressRegistryWatch`, then compare its `local_root` with `getRegistrationRoot()` at the same `last_processed_block` on the configured registry.
-5. **Persistent difference.** If the roots still differ after one full replay, disable the watchers again. Record the compared block and both roots, verify the canonical Rootstock endpoint, registry address/deployment block, and both LBC references, and investigate or escalate before re-enabling.
 
 ## AWS variables
 You may notice that in [`sample-config.env`](https://github.com/rsksmart/liquidity-provider-server/blob/master/sample-config.env) there are some environment variables that are related to AWS. These variables are required to use AWS services, however, they are not listed in the table as the AWS SDK has the functionality to load them from multiple sources. For that reason, they are not accessed directly from the code and are not listed in the table above.

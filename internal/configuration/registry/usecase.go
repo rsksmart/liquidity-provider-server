@@ -19,6 +19,7 @@ import (
 )
 
 var signingHashFunction = crypto.Keccak256
+var registryRootHashFunction = crypto.Keccak256
 
 const nodePeerAlertCooldown = 30 * time.Minute
 
@@ -120,11 +121,12 @@ func NewUseCaseRegistry(
 	)
 	replayRegisteredAddressesUseCase := watcher.NewReplayRegisteredAddressesUseCase(
 		databaseRegistry.PegInWatchRepository,
+		databaseRegistry.PegInWatchCheckpointRepository,
 		rskRegistry.Contracts.PegInAddressRegistry,
 		messaging.Rpc.Rsk,
 		messaging.EventBus,
 		btcRegistry.MonitoringWallet,
-		env.Rsk.FillWithDefaults().MaxReorgDepth,
+		registryRootHashFunction,
 	)
 	finalizeRegisteredAddressImportUseCase := watcher.NewFinalizeRegisteredAddressImportUseCase(
 		databaseRegistry.PegInWatchRepository,
