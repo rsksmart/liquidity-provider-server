@@ -4,9 +4,10 @@ import { describe, expectTypeOf, it } from 'vitest'
 type AddCollateralBody = ManagementPostBodies['/pegin/addCollateral']
 
 describe('apiFetch.post body types', () => {
-  it('requires numeric add-collateral amount', () => {
-    expectTypeOf<AddCollateralBody>().toEqualTypeOf<{ amount: number }>()
+  it('requires a bigint add-collateral amount', () => {
+    expectTypeOf<AddCollateralBody>().toEqualTypeOf<{ amount: bigint }>()
     expectTypeOf({ amount: '1000000000000000000' }).not.toEqualTypeOf<AddCollateralBody>()
-    expectTypeOf({ amount: 1_000_000_000_000_000_000 }).toEqualTypeOf<AddCollateralBody>()
+    expectTypeOf({ amount: 1_000_000_000_000_000_000 }).not.toEqualTypeOf<AddCollateralBody>()
+    expectTypeOf({ amount: 1000000000000000001n }).toEqualTypeOf<AddCollateralBody>()
   })
 })
