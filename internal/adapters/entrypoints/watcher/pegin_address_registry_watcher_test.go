@@ -194,8 +194,7 @@ func uint64Pointer(expected uint64) interface{} {
 
 type overlappingReplayRepository struct {
 	mutex      sync.Mutex
-	checkpoint rootstock.PegInWatchCheckpoint
-	found      bool
+	checkpoint *rootstock.PegInWatchCheckpoint
 	setCalls   int
 	pruneCalls int
 }
@@ -232,10 +231,10 @@ func (repository *overlappingReplayRepository) GetCheckpoint(
 ) (*rootstock.PegInWatchCheckpoint, error) {
 	repository.mutex.Lock()
 	defer repository.mutex.Unlock()
-	if !repository.found {
+	if repository.checkpoint == nil {
 		return nil, nil
 	}
-	checkpoint := repository.checkpoint
+	checkpoint := *repository.checkpoint
 	return &checkpoint, nil
 }
 
@@ -246,8 +245,7 @@ func (repository *overlappingReplayRepository) SetCheckpoint(
 	repository.mutex.Lock()
 	defer repository.mutex.Unlock()
 	repository.setCalls++
-	repository.checkpoint = checkpoint
-	repository.found = true
+	repository.checkpoint = &checkpoint
 	return nil
 }
 
@@ -259,14 +257,17 @@ func (repository *overlappingReplayRepository) DeleteFromBlock(context.Context, 
 }
 
 func (repository *overlappingReplayRepository) checkpointState() (
-	rootstock.PegInWatchCheckpoint,
-	bool,
+	*rootstock.PegInWatchCheckpoint,
 	int,
 	int,
 ) {
 	repository.mutex.Lock()
 	defer repository.mutex.Unlock()
-	return repository.checkpoint, repository.found, repository.setCalls, repository.pruneCalls
+	if repository.checkpoint == nil {
+		return nil, repository.setCalls, repository.pruneCalls
+	}
+	checkpoint := *repository.checkpoint
+	return &checkpoint, repository.setCalls, repository.pruneCalls
 }
 
 func newShortHeadCheckpointWatcher(t *testing.T) (
@@ -280,7 +281,7 @@ func newShortHeadCheckpointWatcher(t *testing.T) (
 		LocalRoot:          [32]byte{1},
 		LastProcessedBlock: 105,
 	}
-	repository := &overlappingReplayRepository{checkpoint: original, found: true}
+	repository := &overlappingReplayRepository{checkpoint: &original}
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
 	rskRpc := mocks.NewRootstockRpcServerMock(t)
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(99), nil).Once()
@@ -304,9 +305,9 @@ func TestPegInWatcher_ScanKeepsCheckpointWhenHeadIsBelowStart(t *testing.T) {
 
 	require.NoError(t, watcher.scan(context.Background()))
 
-	checkpoint, found, setCalls, pruneCalls := repository.checkpointState()
-	require.True(t, found)
-	assert.Equal(t, original, checkpoint)
+	checkpoint, setCalls, pruneCalls := repository.checkpointState()
+	require.NotNil(t, checkpoint)
+	assert.Equal(t, original, *checkpoint)
 	assert.Zero(t, setCalls)
 	assert.Zero(t, pruneCalls)
 	registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
@@ -390,7 +391,7 @@ func TestPegInWatcher_LogsRootReadFailureWithoutPublishingCheckpoint(t *testing.
 		LocalRoot:          [32]byte{1},
 		LastProcessedBlock: 100,
 	}
-	repository := &overlappingReplayRepository{checkpoint: original, found: true}
+	repository := &overlappingReplayRepository{checkpoint: &original}
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
 	rskRpc := mocks.NewRootstockRpcServerMock(t)
 	registry.EXPECT().
@@ -423,9 +424,9 @@ func TestPegInWatcher_LogsRootReadFailureWithoutPublishingCheckpoint(t *testing.
 		"PegIn address registry watcher scan failed: ReplayRegisteredAddresses: get PegIn address registry root at block 101: RSK registry root read failed",
 		logEntries[0].Message(),
 	)
-	checkpoint, found, setCalls, pruneCalls := repository.checkpointState()
-	require.True(t, found)
-	assert.Equal(t, original, checkpoint)
+	checkpoint, setCalls, pruneCalls := repository.checkpointState()
+	require.NotNil(t, checkpoint)
+	assert.Equal(t, original, *checkpoint)
 	assert.Zero(t, setCalls)
 	assert.Zero(t, pruneCalls)
 }
