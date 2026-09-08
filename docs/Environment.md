@@ -22,6 +22,7 @@ These are the environment variables required by the liquidity provider server (L
 | `RSK_ENDPOINT` | URL to connect to the Rootstock node. Must be an http endpoint. | `http://rskj:4444` | YES |
 | `CHAIN_ID` | RSK chain id. | `33` | YES |
 | `LBC_ADDR` | Address of the Liquidity Bridge Contract (LBC). | `0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8` | YES |
+| `PEGIN_ADDRESS_REGISTRY_ADDRESS` | Address of the PegIn address registry on the active Rootstock network. Same class as `LBC_ADDR`. Required at start. The discovery watchers still need `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` and `PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE` together to run. | `0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4` | YES |
 | `RSK_BRIDGE_ADDR` | Address of the Rootstock bridge. | `0x0000000000000000000000000000000001000006` | YES |
 | `RSK_REQUIRED_BRIDGE_CONFIRMATIONS` | The number of confirmations that need to pass before being able to register a pegin, it changes depending on the network. | `100` | YES |
 | `ERP_KEYS` | Keys that are used as a secondary multisig that would be allowed to spend UTXOs after a year they were created. |`0216c23b2ea8e4f11c3f9e22711addb1d16a93964796913830856b568cc3ea21d3`,`0275562901dd8faae20de0a4166362a4f82188db77dbed4ca887422ea1ec185f14`,`034db69f2112f4fb1bb6141bf6e2bd6631f0484d0bd95b16767902c9fe219d4a6f` | YES |
@@ -42,8 +43,8 @@ These are the environment variables required by the liquidity provider server (L
 | `PROVIDER_TYPE` | Whether the liquidity provider will provide for pegin, pegout or both operations. | One of the following: `pegin`, `pegout`, `both` | YES |
 | `LP_REGISTRATION_POLL_INTERVAL_SECONDS` | How often (in seconds) the server polls the discovery contract for registration approval while waiting for an admin to approve the registration. | `30` | NO |
 | `PEGOUT_DEPOSIT_CACHE_START_BLOCK` | If provided, the LPS will upsert into the database all the pegout deposits that were done from this block to the current one. | `500` | NO |
-| `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` | Block from which the pegin address registry watcher starts scanning. Always used; `0` is a valid origin. | `0` | NO |
-| `PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE` | Number of blocks scanned per page by the pegin address registry watcher. Always used; `0` defaults to `1000`. | `1000` | NO |
+| `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` | Block from which the pegin address registry watcher starts scanning. Always used; `0` is a valid origin. See [PegIn address registry recovery](./PegIn-Address-Registry-Recovery.md). | `0` | NO |
+| `PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE` | Number of blocks scanned per page by the pegin address registry watcher. Always used; `0` defaults to `1000`. See [PegIn address registry recovery](./PegIn-Address-Registry-Recovery.md). | `1000` | NO |
 | `CAPTCHA_SECRET_KEY` | Captcha key used in the server to validate client requests. | `<a captcha secret>` | NO |
 | `CAPTCHA_SITE_KEY` | Captcha key used by the client to perform the challenge. | `<a captcha site key>` | NO |
 | `CAPTCHA_THRESHOLD` | Threshold from zero to one to consider requests as valid when using recaptcha v3 (right now we're using v2). | `0.8` | NO |

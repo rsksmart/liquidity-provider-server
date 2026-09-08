@@ -167,6 +167,20 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 		collection.AssertExpectations(t)
 	})
 
+	t.Run("deletes watch rows from the requested block without matching the checkpoint", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+		filter := bson.M{
+			"rsk_address":  bson.M{"$exists": true},
+			"block_number": bson.M{"$gte": uint64(101)},
+		}
+		collection.EXPECT().DeleteMany(mock.Anything, filter).
+			Return(&mongoDb.DeleteResult{DeletedCount: 2}, nil).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		require.NoError(t, repo.DeleteFromBlock(context.Background(), 101))
+		collection.AssertExpectations(t)
+	})
+
 	t.Run("updates and reads a document in unsupported encoding state", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
 		unsupported := entry
@@ -186,71 +200,113 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 	})
 }
 
-func TestPegInWatchMongoRepository_Cursor(t *testing.T) {
-	t.Run("returns not found when no cursor document exists", func(t *testing.T) {
-		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		collection.EXPECT().FindOne(mock.Anything, mock.Anything).
-			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, mongoDb.ErrNoDocuments, nil)).Once()
-
-		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		block, found, err := repo.GetCursor(context.Background())
-		require.NoError(t, err)
-		assert.Zero(t, block)
-		assert.False(t, found)
+func TestPegInWatchMongoRepository_Checkpoint(t *testing.T) {
+	checkpoint := rootstock.PegInWatchCheckpoint{
+		LocalRoot:          [32]byte{1, 2, 3},
+		LastProcessedBlock: 123,
+	}
+	t.Run("returns no checkpoint before the first replay", testMissingRegistryCheckpoint)
+	t.Run("writes the root and block atomically", func(t *testing.T) {
+		testWriteRegistryCheckpoint(t, checkpoint)
 	})
-
-	t.Run("writes and reads the scan cursor", func(t *testing.T) {
-		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		collection.EXPECT().UpdateOne(
-			mock.Anything,
-			bson.M{"_id": "scanCursor"},
-			bson.M{"$set": bson.M{"last_scanned_block": uint64(123)}},
-			withUpdateUpsert(),
-		).Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
-		collection.EXPECT().FindOne(mock.Anything, bson.M{"_id": "scanCursor"}).
-			Return(mongoDb.NewSingleResultFromDocument(
-				bson.M{"_id": "scanCursor", "last_scanned_block": uint64(123)},
-				nil,
-				nil,
-			)).Once()
-
-		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		require.NoError(t, repo.SetCursor(context.Background(), 123))
-		block, found, err := repo.GetCursor(context.Background())
-		require.NoError(t, err)
-		assert.Equal(t, uint64(123), block)
-		assert.True(t, found)
-		collection.AssertExpectations(t)
+	t.Run("reads a complete checkpoint", func(t *testing.T) {
+		testReadRegistryCheckpoint(t, checkpoint)
 	})
+	testIncompleteRegistryCheckpoints(t, checkpoint)
+	t.Run("rejects a damaged checkpoint", testDamagedRegistryCheckpoint)
 }
 
-func TestPegInWatchMongoRepository_CursorErrors(t *testing.T) {
-	t.Run("returns the FindOne error", func(t *testing.T) {
-		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		collection.EXPECT().FindOne(mock.Anything, bson.M{"_id": "scanCursor"}).
-			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, assert.AnError, nil)).Once()
+func testMissingRegistryCheckpoint(t *testing.T) {
+	client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+	collection.EXPECT().FindOne(mock.Anything, bson.M{"_id": "checkpoint"}).
+		Return(mongoDb.NewSingleResultFromDocument(bson.M{}, mongoDb.ErrNoDocuments, nil)).Once()
 
-		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		block, found, err := repo.GetCursor(context.Background())
-		require.ErrorIs(t, err, assert.AnError)
-		assert.Zero(t, block)
-		assert.False(t, found)
-		collection.AssertExpectations(t)
-	})
+	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.GetCheckpoint(context.Background())
+	require.NoError(t, err)
+	assert.Nil(t, result)
+}
 
-	t.Run("returns the UpdateOne error", func(t *testing.T) {
-		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		collection.EXPECT().UpdateOne(
-			mock.Anything,
-			bson.M{"_id": "scanCursor"},
-			bson.M{"$set": bson.M{"last_scanned_block": uint64(123)}},
-			withUpdateUpsert(),
-		).Return(nil, assert.AnError).Once()
+func testWriteRegistryCheckpoint(t *testing.T, checkpoint rootstock.PegInWatchCheckpoint) {
+	client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+	collection.EXPECT().UpdateOne(
+		mock.Anything,
+		bson.M{"_id": "checkpoint"},
+		bson.M{"$set": bson.M{
+			"local_root":           checkpoint.LocalRoot,
+			"last_processed_block": checkpoint.LastProcessedBlock,
+		}},
+		withUpdateUpsert(),
+	).Return(&mongoDb.UpdateResult{MatchedCount: 1}, nil).Once()
 
-		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		require.ErrorIs(t, repo.SetCursor(context.Background(), 123), assert.AnError)
-		collection.AssertExpectations(t)
-	})
+	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+	require.NoError(t, repo.SetCheckpoint(context.Background(), checkpoint))
+	collection.AssertExpectations(t)
+}
+
+func testReadRegistryCheckpoint(t *testing.T, checkpoint rootstock.PegInWatchCheckpoint) {
+	client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+	collection.EXPECT().FindOne(mock.Anything, bson.M{"_id": "checkpoint"}).
+		Return(mongoDb.NewSingleResultFromDocument(
+			bson.M{
+				"_id":                  "checkpoint",
+				"local_root":           checkpoint.LocalRoot,
+				"last_processed_block": checkpoint.LastProcessedBlock,
+			},
+			nil,
+			nil,
+		)).Once()
+
+	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.GetCheckpoint(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, &checkpoint, result)
+}
+
+func testIncompleteRegistryCheckpoints(
+	t *testing.T,
+	checkpoint rootstock.PegInWatchCheckpoint,
+) {
+	incompleteCheckpoints := map[string]bson.M{
+		"missing root": {
+			"_id":                  "checkpoint",
+			"last_processed_block": uint64(123),
+		},
+		"missing block": {
+			"_id":        "checkpoint",
+			"local_root": checkpoint.LocalRoot,
+		},
+	}
+	for name, document := range incompleteCheckpoints {
+		t.Run("recovers from "+name+" as a cold start", func(t *testing.T) {
+			client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+			collection.EXPECT().FindOne(mock.Anything, bson.M{"_id": "checkpoint"}).
+				Return(mongoDb.NewSingleResultFromDocument(document, nil, nil)).Once()
+
+			repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+			result, err := repo.GetCheckpoint(context.Background())
+			require.NoError(t, err)
+			assert.Nil(t, result)
+		})
+	}
+}
+
+func testDamagedRegistryCheckpoint(t *testing.T) {
+	client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+	collection.EXPECT().FindOne(mock.Anything, bson.M{"_id": "checkpoint"}).
+		Return(mongoDb.NewSingleResultFromDocument(
+			bson.M{
+				"_id":                  "checkpoint",
+				"local_root":           "not-bytes32",
+				"last_processed_block": uint64(123),
+			},
+			nil,
+			nil,
+		)).Once()
+
+	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+	_, err := repo.GetCheckpoint(context.Background())
+	require.Error(t, err)
 }
 
 func withUpdateUpsert() interface{} {

@@ -11,27 +11,28 @@ import (
 type WatcherRegistry struct {
 	PegInAddressRegistryWatcher *watcher.PegInWatcher
 
-	PeginDepositAddressWatcher *watcher.PeginDepositAddressWatcher
-	PeginBridgeWatcher         *watcher.PeginBridgeWatcher
-	QuoteCleanerWatcher        *watcher.QuoteCleanerWatcher
-	PegoutRskDepositWatcher    *watcher.PegoutRskDepositWatcher
-	PegoutBtcTransferWatcher   *watcher.PegoutBtcTransferWatcher
-	LiquidityCheckWatcher      *watcher.LiquidityCheckWatcher
-	PenalizationAlertWatcher   *watcher.PenalizationAlertWatcher
-	PegoutBridgeWatcher        *watcher.PegoutBridgeWatcher
-	BitcoinEclipseWatcher      *watcher.EclipseWatcher
-	RskEclipseWatcher          *watcher.EclipseWatcher
-	BtcReleaseWatcher          *watcher.BtcReleaseWatcher
-	BitcoinPeerWatcher         *watcher.BitcoinPeerWatcher
-	RootstockPeerWatcher       *watcher.RootstockPeerWatcher
-	QuoteMetricsWatcher        *monitoring.QuoteMetricsWatcher
-	PeerMetricsWatcher         *monitoring.PeerMetricsWatcher
-	AssetReportWatcher         *monitoring.AssetReportWatcher
-	TransferColdWalletWatcher  *watcher.TransferColdWalletWatcher
-	ColdWalletMetricsWatcher   *monitoring.ColdWalletMetricsWatcher
-	BitcoinReorgWatcher        *watcher.BitcoinReorgWatcher
-	RootstockReorgWatcher      *watcher.RootstockReorgWatcher
-	ReorgMetricsWatcher        *monitoring.ReorgMetricsWatcher
+	PeginDepositAddressWatcher         *watcher.PeginDepositAddressWatcher
+	PeginBridgeWatcher                 *watcher.PeginBridgeWatcher
+	QuoteCleanerWatcher                *watcher.QuoteCleanerWatcher
+	PegoutRskDepositWatcher            *watcher.PegoutRskDepositWatcher
+	PegoutBtcTransferWatcher           *watcher.PegoutBtcTransferWatcher
+	LiquidityCheckWatcher              *watcher.LiquidityCheckWatcher
+	PenalizationAlertWatcher           *watcher.PenalizationAlertWatcher
+	PegoutBridgeWatcher                *watcher.PegoutBridgeWatcher
+	BitcoinEclipseWatcher              *watcher.EclipseWatcher
+	RskEclipseWatcher                  *watcher.EclipseWatcher
+	BtcReleaseWatcher                  *watcher.BtcReleaseWatcher
+	BitcoinPeerWatcher                 *watcher.BitcoinPeerWatcher
+	RootstockPeerWatcher               *watcher.RootstockPeerWatcher
+	QuoteMetricsWatcher                *monitoring.QuoteMetricsWatcher
+	PeerMetricsWatcher                 *monitoring.PeerMetricsWatcher
+	AssetReportWatcher                 *monitoring.AssetReportWatcher
+	TransferColdWalletWatcher          *watcher.TransferColdWalletWatcher
+	ColdWalletMetricsWatcher           *monitoring.ColdWalletMetricsWatcher
+	BitcoinReorgWatcher                *watcher.BitcoinReorgWatcher
+	RootstockReorgWatcher              *watcher.RootstockReorgWatcher
+	ReorgMetricsWatcher                *monitoring.ReorgMetricsWatcher
+	PegInAddressRegistryMetricsWatcher *monitoring.PegInAddressRegistryMetricsWatcher
 }
 
 // nolint:funlen
@@ -46,7 +47,7 @@ func NewWatcherRegistry(
 	timeouts environment.ApplicationTimeouts,
 ) *WatcherRegistry {
 	appMetrics := monitoring.NewMetrics(prometheus.DefaultRegisterer)
-	peginWatcher := newPegInWatcher(env, useCaseRegistry, rskRegistry, btcRegistry, messaging, tickers)
+	peginWatcher := newPegInWatcher(env, useCaseRegistry, btcRegistry, messaging, tickers)
 
 	return &WatcherRegistry{
 		PegInAddressRegistryWatcher: peginWatcher,
@@ -182,34 +183,29 @@ func NewWatcherRegistry(
 			appMetrics,
 			messaging.EventBus,
 		),
+		PegInAddressRegistryMetricsWatcher: monitoring.NewPegInAddressRegistryMetricsWatcher(
+			appMetrics,
+			messaging.EventBus,
+		),
 	}
 }
 
 func newPegInWatcher(
 	env environment.Environment,
 	useCaseRegistry *UseCaseRegistry,
-	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 ) *watcher.PegInWatcher {
 	pegin := env.Pegin.FillWithDefaults()
 	return watcher.NewPegInWatcher(
-		watcher.NewPegInWatcherUseCases(
-			useCaseRegistry.getWatchedRegisteredAddressesUseCase,
-			useCaseRegistry.getRegistryWatchCursorUseCase,
-			useCaseRegistry.setRegistryWatchCursorUseCase,
-			useCaseRegistry.discoverRegisteredAddressUseCase,
-			useCaseRegistry.markRegisteredAddressImportedUseCase,
-			useCaseRegistry.recordRegisteredAddressWatchErrorUseCase,
-		),
-		rskRegistry.Contracts.PegInAddressRegistry,
-		messaging.Rpc.Rsk,
+		useCaseRegistry.replayRegisteredAddressesUseCase,
+		useCaseRegistry.finalizeRegisteredAddressImportUseCase,
 		messaging.Rpc.Btc,
 		btcRegistry.MonitoringWallet,
+		messaging.EventBus,
 		tickers.PegInAddressRegistryWatcherTicker,
 		pegin.AddressRegistryWatcherStartBlock,
 		pegin.AddressRegistryWatcherPageSize,
-		env.Rsk.FillWithDefaults().MaxReorgDepth,
 	)
 }

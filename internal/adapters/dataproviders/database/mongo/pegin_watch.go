@@ -11,20 +11,21 @@ import (
 )
 
 const (
-	PegInWatchCollection = "peginWatch"
-	peginWatchCursorId   = "scanCursor"
+	PegInWatchCollection                     = "peginWatch"
+	peginAddressRegistryCheckpointDocumentID = "checkpoint"
 )
 
 type peginWatchMongoRepository struct {
 	conn *Connection
 }
 
-type peginWatchCursor struct {
-	Id               string `bson:"_id"`
-	LastScannedBlock uint64 `bson:"last_scanned_block"`
+type peginAddressRegistryCheckpointDocument struct {
+	Id                 string    `bson:"_id"`
+	LocalRoot          *[32]byte `bson:"local_root,omitempty"`
+	LastProcessedBlock *uint64   `bson:"last_processed_block,omitempty"`
 }
 
-func NewPegInWatchMongoRepository(conn *Connection) rootstock.PegInWatchRepository {
+func NewPegInWatchMongoRepository(conn *Connection) *peginWatchMongoRepository {
 	return &peginWatchMongoRepository{conn: conn}
 }
 
@@ -113,39 +114,66 @@ func (repo *peginWatchMongoRepository) Update(
 	return nil
 }
 
-func (repo *peginWatchMongoRepository) GetCursor(
-	ctx context.Context,
-) (uint64, bool, error) {
+func (repo *peginWatchMongoRepository) DeleteFromBlock(ctx context.Context, fromBlock uint64) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	var cursor peginWatchCursor
-	err := repo.conn.Collection(PegInWatchCollection).
-		FindOne(dbCtx, bson.M{"_id": peginWatchCursorId}).
-		Decode(&cursor)
-	if errors.Is(err, mongoDb.ErrNoDocuments) {
-		return 0, false, nil
-	}
-	if err != nil {
-		return 0, false, err
-	}
-	return cursor.LastScannedBlock, true, nil
+	_, err := repo.conn.Collection(PegInWatchCollection).DeleteMany(dbCtx, bson.M{
+		"rsk_address":  bson.M{"$exists": true},
+		"block_number": bson.M{"$gte": fromBlock},
+	})
+	return err
 }
 
-func (repo *peginWatchMongoRepository) SetCursor(
+func (repo *peginWatchMongoRepository) GetCheckpoint(
 	ctx context.Context,
-	lastScannedBlock uint64,
+) (*rootstock.PegInWatchCheckpoint, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	var checkpointDocument peginAddressRegistryCheckpointDocument
+	err := repo.conn.Collection(PegInWatchCollection).
+		FindOne(dbCtx, bson.M{"_id": peginAddressRegistryCheckpointDocumentID}).
+		Decode(&checkpointDocument)
+	if errors.Is(err, mongoDb.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if checkpointDocument.LocalRoot == nil ||
+		checkpointDocument.LastProcessedBlock == nil {
+		return nil, nil
+	}
+	return &rootstock.PegInWatchCheckpoint{
+		LocalRoot:          *checkpointDocument.LocalRoot,
+		LastProcessedBlock: *checkpointDocument.LastProcessedBlock,
+	}, nil
+}
+
+func (repo *peginWatchMongoRepository) SetCheckpoint(
+	ctx context.Context,
+	checkpoint rootstock.PegInWatchCheckpoint,
 ) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	_, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
+	result, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
 		dbCtx,
-		bson.M{"_id": peginWatchCursorId},
-		bson.M{"$set": bson.M{"last_scanned_block": lastScannedBlock}},
+		bson.M{"_id": peginAddressRegistryCheckpointDocumentID},
+		bson.M{"$set": bson.M{
+			"local_root":           checkpoint.LocalRoot,
+			"last_processed_block": checkpoint.LastProcessedBlock,
+		}},
 		options.UpdateOne().SetUpsert(true),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if result == nil || result.MatchedCount+result.UpsertedCount != 1 {
+		return errors.New("pegin address registry checkpoint was not persisted")
+	}
+	return nil
 }
 
 func rskAddressIdentity(rskAddress string) bson.M {

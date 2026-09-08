@@ -28,12 +28,16 @@ func TestNewMetrics(t *testing.T) {
 		assert.NotNil(t, metrics.NodePeerBelowThreshold)
 		assert.NotNil(t, metrics.NodePeerCheckErrors)
 		assert.NotNil(t, metrics.NodePeerAlerts)
+		assert.NotNil(t, metrics.PegInAddressRegistryRootMismatchMetric)
+		assert.NotNil(t, metrics.PegInAddressRegistryResyncMetric)
 
 		// Verify metric names and help text by checking descriptors
 		peginDesc := getMetricDesc(metrics.PeginQuotesMetric)
 		pegoutDesc := getMetricDesc(metrics.PegoutQuotesMetric)
 		serverInfoDesc := getMetricDesc(metrics.ServerInfoMetric)
 		assetsDesc := getMetricDesc(metrics.AssetsMetrics)
+		rootMismatchDesc := getMetricDesc(metrics.PegInAddressRegistryRootMismatchMetric)
+		resyncDesc := getMetricDesc(metrics.PegInAddressRegistryResyncMetric)
 
 		assert.Contains(t, peginDesc, "lps_pegin_quotes")
 		assert.Contains(t, peginDesc, "Pegin quotes processed")
@@ -52,6 +56,9 @@ func TestNewMetrics(t *testing.T) {
 		assert.Contains(t, assetsDesc, "Liquidity provider asset balances and metrics")
 		assert.Contains(t, assetsDesc, "currency")
 		assert.Contains(t, assetsDesc, "type")
+
+		assert.Contains(t, rootMismatchDesc, "lps_pegin_address_registry_root_mismatch_total")
+		assert.Contains(t, resyncDesc, "lps_pegin_address_registry_resync_total")
 
 		registerer.AssertExpectations(t)
 	})
@@ -204,6 +211,8 @@ func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.Registerer
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerBelowThreshold
 		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerCheckErrors
 		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerAlerts
+		mock.AnythingOfType("*prometheus.counter"),    // PegInAddressRegistryRootMismatchMetric
+		mock.AnythingOfType("*prometheus.counter"),    // PegInAddressRegistryResyncMetric
 	).Return()
 
 	metrics := monitoring.NewMetrics(registerer)
