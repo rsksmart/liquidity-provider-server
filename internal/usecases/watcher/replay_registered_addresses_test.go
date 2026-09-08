@@ -856,19 +856,18 @@ func TestReplayRegisteredAddressesUseCase_Run_RowBelowStartFailsWithoutMutation(
 	assert.Empty(t, scenario.checkpoints.sets)
 }
 
-func TestReplayRegisteredAddressesUseCase_Run_RowAboveHeadPrunesAfterSuccessfulRootRead(t *testing.T) {
+func TestReplayRegisteredAddressesUseCase_Run_RowAboveHeadFailsWithoutMutation(t *testing.T) {
 	scenario := newReplayScenario(t, 104)
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(105, 0, "a", addressA)}
 
 	_, err := scenario.useCase.Run(context.Background(), 100, 10)
 
-	require.NoError(t, err)
+	require.ErrorContains(t, err, "PegIn watch exists above current head 104")
 	assert.Equal(t, []uint64{104}, scenario.registry.rootReads)
-	assert.Equal(t, []uint64{105}, scenario.repository.deletes)
-	require.Len(t, scenario.eventBus.events, 1)
-	resync, ok := scenario.eventBus.events[0].(blockchain.PegInAddressRegistryResyncStartedEvent)
-	require.True(t, ok)
-	assert.Equal(t, "rows_above_head", resync.Reason)
+	assert.Empty(t, scenario.repository.deletes)
+	require.Len(t, scenario.repository.rows, 1)
+	assert.Empty(t, scenario.checkpoints.sets)
+	assert.Empty(t, scenario.eventBus.events)
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_RowAboveHeadSurvivesRootReadError(t *testing.T) {

@@ -180,11 +180,7 @@ func (useCase *ReplayRegisteredAddressesUseCase) completeCurrentState(
 	state initialReconciliation,
 ) ([]*rootstock.PegInWatch, error) {
 	if state.timeline.hasAfterHead {
-		pruneFrom := state.head + 1
-		useCase.reportResyncStarted("rows_above_head")
-		if err := useCase.repository.DeleteFromBlock(ctx, pruneFrom); err != nil {
-			return nil, fmt.Errorf("delete PegIn watches from block %d: %w", pruneFrom, err)
-		}
+		return nil, fmt.Errorf("PegIn watch exists above current head %d", state.head)
 	}
 	finalCheckpoint := rootstock.PegInWatchCheckpoint{
 		LocalRoot:          state.chainRootAtHead,
