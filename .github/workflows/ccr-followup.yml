@@ -2,7 +2,8 @@ name: Copilot Code Review follow-up
 
 # Posts Copilot reconciliation + authored Rootstock lessons after a Copilot
 # code review. pull_request_review workflows must live on the default branch to
-# run automatically; workflow_dispatch supports dry-runs before that merge.
+# run automatically. After the initial version lands there, workflow_dispatch
+# can dry-run later workflow revisions before they merge.
 
 on:
   pull_request_review:
@@ -48,6 +49,7 @@ jobs:
       github.event.review.user.login == 'copilot-pull-request-reviewer[bot]' ||
       github.event.review.user.login == 'Copilot'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       has_lessons: ${{ steps.reconciliation.outputs.has_lessons }}
       review_id: ${{ steps.reconciliation.outputs.review_id }}
@@ -74,8 +76,9 @@ jobs:
             PR="$INPUT_PR_NUMBER"
             REVIEW_ID="$INPUT_REVIEW_ID"
             if [ -z "$REVIEW_ID" ]; then
-              REVIEW_ID="$(gh api "repos/${REPO}/pulls/${PR}/reviews" \
-                --jq '[.[] | select(.user.login | test("^copilot"; "i"))] | last | .id')"
+              REVIEW_ID="$(gh api --paginate "repos/${REPO}/pulls/${PR}/reviews" \
+                --jq '.[] | select(.user.login == "copilot-pull-request-reviewer[bot]" or .user.login == "Copilot") | .id' \
+                | tail -n 1)"
             fi
             HEAD_SHA="$(gh api "repos/${REPO}/pulls/${PR}" --jq .head.sha)"
             DRY_RUN="$INPUT_DRY_RUN"
@@ -103,7 +106,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && steps.meta.outputs.head_sha || github.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.repository.default_branch }}
+          persist-credentials: false
 
       - name: Run reconciliation
         id: reconciliation
@@ -131,13 +135,6 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload follow-up artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ccr-followup-${{ steps.meta.outputs.pr_number }}-${{ steps.meta.outputs.review_id }}
-          path: ${{ runner.temp }}/ccr/
-          if-no-files-found: ignore
-
       - name: Build lessons prompt
         id: prompt
         if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
@@ -157,7 +154,7 @@ jobs:
 
       - name: Install Copilot CLI
         if: steps.reconciliation.outputs.has_lessons == 'true' && steps.meta.outputs.skip_lessons != 'true'
-        run: npm install -g @github/copilot
+        run: npm install --global --ignore-scripts @github/copilot@1.0.76
 
       - name: Author lessons with Copilot CLI
         id: lessons_ai
@@ -225,3 +222,11 @@ jobs:
           set -euo pipefail
           BODY="ccr-followup: lessons skipped — Copilot CLI authoring failed (see workflow run ${GITHUB_RUN_ID})"
           gh api "repos/${REPO}/issues/${PR}/comments" -X POST -f body="$BODY"
+
+      - name: Upload follow-up artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ccr-followup-${{ steps.meta.outputs.pr_number }}-${{ steps.meta.outputs.review_id }}
+          path: ${{ runner.temp }}/ccr/
+          if-no-files-found: ignore

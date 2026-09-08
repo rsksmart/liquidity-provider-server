@@ -127,8 +127,10 @@ before the call.
   findings unchanged and say the decline could not be matched to a single location.
 - Match the marker case-insensitively and tolerate a missing apostrophe, so `Won't fix:`,
   `won't fix:`, and `Wont fix:` all count.
-- Ignore the marker in comments authored by Copilot or any other bot. Any human commenter may
-  decline, including the author.
+- Ignore the marker in comments authored by Copilot or any other bot. Honor a human decline only
+  when GitHub's `author_association` is `OWNER`, `MEMBER`, `COLLABORATOR`, `CONTRIBUTOR`,
+  `FIRST_TIME_CONTRIBUTOR`, or `FIRST_TIMER` — that includes the PR author. Ignore `NONE`
+  (drive-by commenters with no association to the repository).
 - A reason is required. Without one, keep the finding **Not addressed** and use its inline comment to
   say that a decline was found, that it was not honored because no reason was given, and that adding
   a reason will retire the comment.

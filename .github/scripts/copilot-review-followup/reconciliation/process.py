@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from .finding import (
+    DECLINE_ASSOCIATIONS,
     LINE_PROXIMITY,
     REPEAT_HINT_RE,
     WONT_FIX_RE,
@@ -14,6 +15,12 @@ from .finding import (
     Finding,
 )
 from .parse import is_copilot_user
+
+TOP_LEVEL_DECLINE_RE = re.compile(
+    r"^\s*Won'?t\s+fix\s*:\s*(?P<path>.+):(?P<line>\d+)"
+    r"\s*(?:—|–|-)\s*(?P<reason>\S.*)$",
+    re.IGNORECASE,
+)
 
 
 def normalize(text: str) -> str:
@@ -40,33 +47,90 @@ def similar(a: Finding, b: Finding) -> bool:
 
 
 def find_decline(
-    finding: Finding, comments: list[dict[str, Any]]
+    finding: Finding,
+    comments: list[dict[str, Any]],
+    findings: list[Finding],
 ) -> tuple[str, str] | None:
     """Return (user, reason) if a Won't fix reply exists for this finding."""
     comments_by_id = {c.get("id"): c for c in comments}
-    declines = [
-        c
-        for c in comments
-        if WONT_FIX_RE.search(c.get("body") or "")
-        and not is_copilot_user((c.get("user") or {}).get("login"))
+    for decline in human_declines(comments):
+        matched = decline_for_finding(
+            finding, decline, comments_by_id, findings
+        )
+        if matched:
+            return matched
+    return None
+
+
+def human_declines(comments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        comment
+        for comment in comments
+        if WONT_FIX_RE.search(comment.get("body") or "")
+        and may_decline(comment)
     ]
 
-    for decline in declines:
-        reply_to = decline.get("in_reply_to_id")
-        parent = comments_by_id.get(reply_to)
-        direct_reply = bool(finding.comment_id and reply_to == finding.comment_id)
-        top_level_match = (
-            reply_to is None
-            and finding.path in (decline.get("body") or "")
-            and str(finding.line) in (decline.get("body") or "")
-        )
-        nearby_reply = parent_matches_finding(parent, finding)
-        if direct_reply or top_level_match or nearby_reply:
-            body = decline.get("body") or ""
-            login = (decline.get("user") or {}).get("login") or "unknown"
-            reason = WONT_FIX_RE.split(body, maxsplit=1)[-1].strip()
-            return login, reason or body.strip()
-    return None
+
+def may_decline(comment: dict[str, Any]) -> bool:
+    if (comment.get("user") or {}).get("type") == "Bot":
+        return False
+    if is_copilot_user((comment.get("user") or {}).get("login")):
+        return False
+    association = (comment.get("author_association") or "").upper()
+    return association in DECLINE_ASSOCIATIONS
+
+
+def decline_for_finding(
+    finding: Finding,
+    decline: dict[str, Any],
+    comments_by_id: dict[Any, dict[str, Any]],
+    findings: list[Finding],
+) -> tuple[str, str] | None:
+    body = decline.get("body") or ""
+    marker_reason = WONT_FIX_RE.split(body, maxsplit=1)[-1].strip()
+    if not marker_reason:
+        return None
+    reply_to = decline.get("in_reply_to_id")
+    parent = comments_by_id.get(reply_to)
+    if thread_decline_matches(finding, reply_to, parent):
+        return comment_author(decline), marker_reason
+    return top_level_decline_for_finding(finding, decline, findings)
+
+
+def thread_decline_matches(
+    finding: Finding,
+    reply_to: Any,
+    parent: dict[str, Any] | None,
+) -> bool:
+    direct_reply = bool(finding.comment_id and reply_to == finding.comment_id)
+    return direct_reply or parent_matches_finding(parent, finding)
+
+
+def top_level_decline_for_finding(
+    finding: Finding,
+    decline: dict[str, Any],
+    findings: list[Finding],
+) -> tuple[str, str] | None:
+    if decline.get("in_reply_to_id") is not None:
+        return None
+    parsed = TOP_LEVEL_DECLINE_RE.match(decline.get("body") or "")
+    if parsed is None:
+        return None
+    path = parsed.group("path").strip()
+    line = int(parsed.group("line"))
+    matches = [
+        candidate
+        for candidate in findings
+        if candidate.path == path
+        and abs(candidate.line - line) <= LINE_PROXIMITY
+    ]
+    if len(matches) != 1 or matches[0] != finding:
+        return None
+    return comment_author(decline), parsed.group("reason").strip()
+
+
+def comment_author(comment: dict[str, Any]) -> str:
+    return (comment.get("user") or {}).get("login") or "unknown"
 
 
 def parent_matches_finding(
@@ -86,13 +150,16 @@ def classify(
 ) -> Classified:
     result = Classified()
     for finding in prior:
-        category, item = classify_finding(finding, current, comments, state)
+        category, item = classify_finding(
+            finding, prior, current, comments, state
+        )
         getattr(result, category).append(item)
     return result
 
 
 def classify_finding(
     finding: Finding,
+    prior: list[Finding],
     current: list[Finding],
     comments: list[dict[str, Any]],
     state: ChangeState,
@@ -103,7 +170,7 @@ def classify_finding(
     finding as open whenever it can point at evidence that the code did not
     change, and asks for confirmation otherwise.
     """
-    decline = find_decline(finding, comments)
+    decline = find_decline(finding, comments, prior)
     if decline:
         return "declined", (finding, decline[0], decline[1])
     if any(similar(finding, candidate) for candidate in current):

@@ -19,6 +19,8 @@ from .finding import (
 from .github import gh_paginated
 from .process import classify, new_findings, reconciliation_skip_reason
 
+WORKFLOW_COMMENT_LOGIN = "github-actions[bot]"
+
 
 def render_reconciliation(classified: Classified, review_id: int) -> str:
     sections: list[str] = [
@@ -64,7 +66,13 @@ def render_reconciliation(classified: Classified, review_id: int) -> str:
 
 def comment_exists(repo: str, pr: int, marker: str) -> bool:
     comments = gh_paginated(f"repos/{repo}/issues/{pr}/comments")
-    return any(marker in (c.get("body") or "") for c in comments)
+    return any(is_workflow_marker(comment, marker) for comment in comments)
+
+
+def is_workflow_marker(comment: dict[str, Any], marker: str) -> bool:
+    if (comment.get("user") or {}).get("login") != WORKFLOW_COMMENT_LOGIN:
+        return False
+    return marker in (comment.get("body") or "")
 
 
 def post_comment(repo: str, pr: int, body: str, dry_run: bool) -> None:
@@ -103,7 +111,7 @@ def reconcile(
         log(f"skipping reconciliation ({reason})")
         return False
     marker = MARKER_RECONCILIATION.format(review_id=config.review_id)
-    if comment_exists(config.repo, config.pr, marker):
+    if not config.dry_run and comment_exists(config.repo, config.pr, marker):
         log(f"reconciliation already posted for review {config.review_id}")
         return False
     classified = classify(
@@ -126,7 +134,7 @@ def write_lessons_input(
 ) -> list[dict[str, Any]]:
     eligible = new_findings(inventories.all_prior, inventories.current)
     marker = MARKER_LESSONS.format(review_id=config.review_id)
-    if comment_exists(config.repo, config.pr, marker):
+    if not config.dry_run and comment_exists(config.repo, config.pr, marker):
         log(f"lessons already posted for review {config.review_id}")
         eligible = []
     payload = [finding_payload(finding) for finding in eligible]

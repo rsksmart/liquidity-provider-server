@@ -82,7 +82,7 @@ class SuppressedParser:
 def is_copilot_user(login: str | None) -> bool:
     if not login:
         return False
-    return login in COPILOT_LOGINS or login.lower().startswith("copilot")
+    return login in COPILOT_LOGINS
 
 
 def parse_suppressed(body: str, review_id: int, commit_id: str = "") -> list[Finding]:
@@ -170,14 +170,14 @@ def inventory_for_review(
 
 
 def dedupe_findings(findings: list[Finding]) -> list[Finding]:
-    """Keep one finding per path + nearby line, preferring inline comments."""
+    """Deduplicate the same nearby finding, preferring inline comments."""
     best: list[Finding] = []
     for f in findings:
         match_idx = next(
             (
                 i
                 for i, other in enumerate(best)
-                if other.path == f.path and abs(other.line - f.line) <= LINE_PROXIMITY
+                if is_duplicate_finding(other, f)
             ),
             None,
         )
@@ -186,6 +186,34 @@ def dedupe_findings(findings: list[Finding]) -> list[Finding]:
         else:
             best[match_idx] = preferred_finding(best[match_idx], f)
     return best
+
+
+TOKEN_OVERLAP_THRESHOLD = 0.35
+
+
+def is_duplicate_finding(previous: Finding, candidate: Finding) -> bool:
+    if (
+        previous.comment_id is not None
+        and previous.comment_id == candidate.comment_id
+    ):
+        return True
+    if previous.path != candidate.path:
+        return False
+    if abs(previous.line - candidate.line) > LINE_PROXIMITY:
+        return False
+    previous_tokens = significant_tokens(previous.body)
+    candidate_tokens = significant_tokens(candidate.body)
+    if not previous_tokens or not candidate_tokens:
+        return False
+    overlap = len(previous_tokens & candidate_tokens)
+    return (
+        overlap / min(len(previous_tokens), len(candidate_tokens))
+        >= TOKEN_OVERLAP_THRESHOLD
+    )
+
+
+def significant_tokens(body: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9_]{4,}", body.lower()))
 
 
 def preferred_finding(previous: Finding, candidate: Finding) -> Finding:
@@ -197,11 +225,17 @@ def preferred_finding(previous: Finding, candidate: Finding) -> Finding:
 
 def load_review_data(config: Config) -> ReviewData | None:
     reviews = gh_paginated(f"repos/{config.repo}/pulls/{config.pr}/reviews")
-    comments = gh_paginated(f"repos/{config.repo}/pulls/{config.pr}/comments")
+    review_comments = gh_paginated(
+        f"repos/{config.repo}/pulls/{config.pr}/comments"
+    )
+    issue_comments = gh_paginated(
+        f"repos/{config.repo}/issues/{config.pr}/comments"
+    )
+    comments = review_comments + issue_comments
     copilot_reviews = sorted_copilot_reviews(reviews)
-    current = find_current_review(reviews, copilot_reviews, config.review_id)
+    current = find_current_review(copilot_reviews, config.review_id)
     if current is None:
-        log(f"review {config.review_id} not found on PR {config.pr}")
+        log(f"Copilot review {config.review_id} not found on PR {config.pr}")
         return None
     prior = reviews_before(copilot_reviews, current)
     return ReviewData(current=current, prior=prior, comments=comments)
@@ -225,20 +259,13 @@ def review_submitted_at(review: dict[str, Any]) -> str:
 
 
 def find_current_review(
-    reviews: list[dict[str, Any]],
     copilot_reviews: list[dict[str, Any]],
     review_id: int,
 ) -> dict[str, Any] | None:
-    current = next(
+    return next(
         (review for review in copilot_reviews if int(review["id"]) == review_id),
         None,
     )
-    if current is None:
-        current = next(
-            (review for review in reviews if int(review["id"]) == review_id),
-            None,
-        )
-    return current
 
 
 def reviews_before(
@@ -260,10 +287,9 @@ def build_inventories(data: ReviewData) -> Inventories:
     for review in data.prior:
         all_prior_findings.extend(inventory_for_review(review, data.comments))
     all_prior = dedupe_findings(all_prior_findings)
-    original_prior = [finding for finding in all_prior if not finding.is_repeat]
     return Inventories(
         current=current,
-        prior=original_prior or all_prior,
+        prior=all_prior,
         all_prior=all_prior,
     )
 
@@ -290,14 +316,17 @@ def build_change_state(config: Config, data: ReviewData) -> ChangeState:
     )
 
 
+COMPARE_FILE_CAP = 300
+
+
 def files_touched_since(
     repo: str, prior_sha: str, current_sha: str
 ) -> set[str] | None:
     """Files changed between the two commits, or None if that is unknowable.
 
     An empty set means nothing changed, which is evidence a finding is still
-    open. A failed compare means we know nothing, so it must not be mistaken
-    for one; that case returns None.
+    open. A failed or truncated compare means we know nothing, so it must not
+    be mistaken for an untouched file; those cases return None.
     """
     if not prior_sha or not current_sha:
         return None
@@ -308,8 +337,27 @@ def files_touched_since(
     except subprocess.CalledProcessError as exc:
         log(f"compare failed: {exc.stderr}")
         return None
+    if not isinstance(compare, dict):
+        return None
     files = compare.get("files") or []
-    return {f.get("filename") for f in files if f.get("filename")}
+    # GitHub does not paginate compare `files`, it caps the array at 300 and sets truncated
+    if compare.get("truncated") or len(files) >= COMPARE_FILE_CAP:
+        log(
+            f"compare {prior_sha[:8]}...{current_sha[:8]} file list truncated "
+            f"({len(files)} files); treating change set as unknown"
+        )
+        return None
+    return compare_filenames(files)
+
+
+def compare_filenames(files: list[Any]) -> set[str]:
+    names: set[str] = set()
+    for entry in files:
+        for key in ("filename", "previous_filename"):
+            name = entry.get(key)
+            if name:
+                names.add(name)
+    return names
 
 
 def log_state(state: ChangeState, inventories: Inventories) -> None:

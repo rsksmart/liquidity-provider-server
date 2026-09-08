@@ -12,7 +12,7 @@ COPILOT_LOGINS = {
     "copilot-pull-request-reviewer",
 }
 
-WONT_FIX_RE = re.compile(r"Won'?t\s+fix\s*:", re.IGNORECASE)
+WONT_FIX_RE = re.compile(r"^\s*Won'?t\s+fix\s*:", re.IGNORECASE)
 SUPPRESSED_FINDING_HEADER_RE = re.compile(
     r"^\*\*(?P<path>.+):(?P<line>\d+)\*\*$"
 )
@@ -36,6 +36,15 @@ REPEAT_HINT_RE = re.compile(
 MARKER_RECONCILIATION = "<!-- ccr-followup:reconciliation:{review_id} -->"
 MARKER_LESSONS = "<!-- ccr-followup:lessons:{review_id} -->"
 LINE_PROXIMITY = 5
+
+DECLINE_ASSOCIATIONS = {
+    "OWNER",
+    "MEMBER",
+    "COLLABORATOR",
+    "CONTRIBUTOR",
+    "FIRST_TIME_CONTRIBUTOR",
+    "FIRST_TIMER",
+}
 
 
 @dataclass
