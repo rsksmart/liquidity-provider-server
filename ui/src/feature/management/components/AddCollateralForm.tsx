@@ -10,7 +10,7 @@ import {
   managementFieldTitleClass,
   managementLoadingBarClass,
 } from '@feature/management/management-styles'
-import { etherToWei, weiToApiAmount } from '@shared/utils/wei'
+import { etherToWei } from '@shared/utils/wei'
 import { type ChangeEvent, type SubmitEvent, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -65,13 +65,18 @@ export function AddCollateralForm({ kind }: AddCollateralFormProps) {
 
   const submit = useCallback(
     async (amountEther: string) => {
-      let weiStr: string
+      let weiAmount: bigint
       try {
-        weiStr = etherToWei(amountEther)
+        const weiStr = etherToWei(amountEther)
         // etherToWei can return a non-integral string for sub-wei ether inputs
         // (Decimal.times(1e18).toFixed() keeps fractional wei). BigInt throws on
         // those; keep the guard in this try so submit never silently no-ops.
-        if (!/^\d+$/.test(weiStr) || BigInt(weiStr) <= 0n) {
+        if (!/^\d+$/.test(weiStr)) {
+          toast.error(invalidAmountMessage(amountEther))
+          return
+        }
+        weiAmount = BigInt(weiStr)
+        if (weiAmount <= 0n) {
           toast.error(invalidAmountMessage(amountEther))
           return
         }
@@ -82,7 +87,7 @@ export function AddCollateralForm({ kind }: AddCollateralFormProps) {
 
       setSubmitting(true)
       try {
-        await apiFetch.post(config.addEndpoint, { amount: weiToApiAmount(weiStr) })
+        await apiFetch.post(config.addEndpoint, { amount: weiAmount })
 
         setAmount('')
         await refresh()

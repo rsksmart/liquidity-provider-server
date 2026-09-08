@@ -1,4 +1,4 @@
-import { etherToWei, weiToApiAmount, weiToEther } from '@shared/utils/wei'
+import { etherToWei, weiToEther } from '@shared/utils/wei'
 import { describe, expect, it } from 'vitest'
 
 describe('wei conversion', () => {
@@ -21,8 +21,13 @@ describe('wei conversion', () => {
     expect(() => etherToWei('abc')).toThrow(/Failed to convert ether to wei/)
   })
 
-  it('converts wei string to API JSON number', () => {
-    expect(weiToApiAmount('11000000000000000000')).toBe(11_000_000_000_000_000_000)
+  it('keeps every digit of a full 18-decimal ether amount', () => {
+    expect(etherToWei('1.000000000000000001')).toBe('1000000000000000001')
+    expect(etherToWei('0.123456789012345678')).toBe('123456789012345678')
+  })
+
+  it('converts amounts of 1000 ether and above without exponent notation', () => {
+    expect(etherToWei('1000')).toBe('1000000000000000000000')
   })
 
   it('rejects invalid wei input', () => {

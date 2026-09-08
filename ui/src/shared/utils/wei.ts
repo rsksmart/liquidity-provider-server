@@ -32,8 +32,3 @@ export function etherToWei(ether: string | number): string {
     throw new Error(`Failed to convert ether to wei. Input: "${String(ether)}". Error: ${message}`)
   }
 }
-
-/** Wei as JSON number for pkg.AddCollateralRequest (legacy management.js parity). */
-export function weiToApiAmount(wei: string): number {
-  return Number(wei)
-}
