@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"math/big"
 	"slices"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
@@ -107,8 +107,6 @@ func (session *watcherSession) stop() {
 	)
 }
 
-// --- merged from pegin_address_registry_test_helpers_test.go ---
-
 type depositAddress struct {
 	payload []byte
 	address string
@@ -154,93 +152,9 @@ func registrationRoot(t *testing.T, encoded string) [32]byte {
 	return [32]byte(decoded)
 }
 
-// --- merged from pegin_address_registry_watcher_test.go ---
-
-type pegInAddressRegistryWatchRepositorySetMock struct {
-	*mocks.PegInWatchRepositoryMock
-	checkpoints mock.Mock
-}
-
-func newPegInWatchRepositorySetMock(
-	t *testing.T,
-) *pegInAddressRegistryWatchRepositorySetMock {
-	t.Helper()
-	repository := &pegInAddressRegistryWatchRepositorySetMock{
-		PegInWatchRepositoryMock: mocks.NewPegInWatchRepositoryMock(t),
-	}
-	repository.checkpoints.Test(t)
-	t.Cleanup(func() { repository.checkpoints.AssertExpectations(t) })
-	return repository
-}
-
-func (repository *pegInAddressRegistryWatchRepositorySetMock) GetCheckpoint(
-	ctx context.Context,
-) (rootstock.PegInWatchCheckpoint, bool, error) {
-	args := repository.checkpoints.MethodCalled("GetCheckpoint", ctx)
-	checkpoint, ok := args.Get(0).(rootstock.PegInWatchCheckpoint)
-	if !ok {
-		return rootstock.PegInWatchCheckpoint{}, false, errors.New("invalid checkpoint mock result")
-	}
-	return checkpoint, args.Bool(1), args.Error(2)
-}
-
-func (repository *pegInAddressRegistryWatchRepositorySetMock) SetCheckpoint(
-	ctx context.Context,
-	checkpoint rootstock.PegInWatchCheckpoint,
-) error {
-	return repository.checkpoints.MethodCalled("SetCheckpoint", ctx, checkpoint).Error(0)
-}
-
-func (repository *pegInAddressRegistryWatchRepositorySetMock) DeleteCheckpoint(ctx context.Context) error {
-	return repository.checkpoints.MethodCalled("DeleteCheckpoint", ctx).Error(0)
-}
-
-type pegInAddressRegistryWatcherFixture struct {
-	t          *testing.T
-	repository *pegInAddressRegistryWatchRepositorySetMock
-	registry   *mocks.PegInAddressRegistryContractMock
-	rskRpc     *mocks.RootstockRpcServerMock
-	btcNetwork *mocks.BtcRpcMock
-	wallet     *mocks.BitcoinWalletMock
-	ticker     *sessionTicker
-	watcher    *PegInWatcher
-}
-
-//nolint:unparam // Fixed start/finality values make each scenario's checkpoint arithmetic explicit at the call site.
-func newPegInWatcherFixture(
-	t *testing.T,
-	startBlock uint64,
-	pageSize uint64,
-	finalityDepth uint64,
-) *pegInAddressRegistryWatcherFixture {
-	t.Helper()
-	fixture := &pegInAddressRegistryWatcherFixture{
-		t:          t,
-		repository: newPegInWatchRepositorySetMock(t),
-		registry:   mocks.NewPegInAddressRegistryContractMock(t),
-		rskRpc:     mocks.NewRootstockRpcServerMock(t),
-		btcNetwork: &mocks.BtcRpcMock{},
-		wallet:     mocks.NewBitcoinWalletMock(t),
-		ticker:     newSessionTicker(),
-	}
-	t.Cleanup(func() { fixture.btcNetwork.AssertExpectations(t) })
-	fixture.watcher = newRegistryWatcher(
-		fixture.repository,
-		fixture.registry,
-		fixture.rskRpc,
-		fixture.btcNetwork,
-		fixture.wallet,
-		nil,
-		fixture.ticker,
-		startBlock,
-		pageSize,
-		finalityDepth,
-	)
-	return fixture
-}
-
 func newRegistryWatcher(
-	repository rootstock.PegInWatchRepositorySet,
+	repository rootstock.PegInWatchRepository,
+	checkpoints rootstock.PegInWatchCheckpointRepository,
 	registry blockchain.PegInAddressRegistryContract,
 	rskRpc blockchain.RootstockRpcServer,
 	btcNetwork blockchain.BitcoinNetwork,
@@ -249,15 +163,15 @@ func newRegistryWatcher(
 	ticker utils.Ticker,
 	startBlock uint64,
 	pageSize uint64,
-	finalityDepth uint64,
 ) *PegInWatcher {
 	replay := w.NewReplayRegisteredAddressesUseCase(
 		repository,
+		checkpoints,
 		registry,
 		rskRpc,
 		eventBus,
 		wallet,
-		finalityDepth,
+		crypto.Keccak256,
 	)
 	finalize := w.NewFinalizeRegisteredAddressImportUseCase(repository)
 	return NewPegInWatcher(
@@ -272,603 +186,18 @@ func newRegistryWatcher(
 	)
 }
 
-func (fixture *pegInAddressRegistryWatcherFixture) expectBoundedRescan() {
-	fixture.t.Helper()
-	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
-	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
-		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
-		Once()
-}
-
-func discoveredWatchEntry(event blockchain.AddressRegistered) rootstock.PegInWatch {
-	return rootstock.PegInWatch{
-		TxHash:      event.TxHash,
-		LogIndex:    event.LogIndex,
-		BlockNumber: event.BlockNumber,
-		RskAddress:  event.RskAddress,
-		State:       rootstock.PegInWatchDiscovered,
-	}
-}
-
-func (fixture *pegInAddressRegistryWatcherFixture) expectDiscover(event blockchain.AddressRegistered) {
-	fixture.t.Helper()
-	persisted := discoveredWatchEntry(event)
-	fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(nil, nil).Once()
-	fixture.repository.EXPECT().Upsert(mock.Anything, mock.Anything).Return(nil).Once()
-	fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
-}
-
-func (fixture *pegInAddressRegistryWatcherFixture) expectCheckpoint(
-	checkpoint rootstock.PegInWatchCheckpoint,
-	found bool,
-) {
-	fixture.t.Helper()
-	fixture.repository.checkpoints.On("GetCheckpoint", mock.Anything).
-		Return(checkpoint, found, nil).
-		Once()
-}
-
-func (fixture *pegInAddressRegistryWatcherFixture) expectCheckpointAdvance(toBlock uint64) {
-	fixture.t.Helper()
-	fixture.repository.checkpoints.On(
-		"SetCheckpoint",
-		mock.Anything,
-		mock.MatchedBy(func(checkpoint rootstock.PegInWatchCheckpoint) bool {
-			return checkpoint.LastProcessedBlock == toBlock
-		}),
-	).Return(nil).Once()
-}
-
-// runScan is one boot, one tick, one shutdown. The session returns from the tick when the scan has
-// finished, so a scenario does not have to nominate a repository call as the end of the poll.
-func (fixture *pegInAddressRegistryWatcherFixture) runScan() {
-	fixture.t.Helper()
-	session := startWatcherSession(fixture.t, fixture.watcher, fixture.ticker)
-	session.poll()
-	session.stop()
-}
-
-func TestPegInWatcher_DoesNotQueryOrCheckpointBeforeConfiguredStart(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 10, 2)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(101), nil).Once()
-
-	fixture.runScan()
-
-	fixture.registry.AssertNotCalled(t, "GetPegInAddress", mock.Anything)
-	fixture.registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
-	fixture.registry.AssertNotCalled(t, "GetRegistrationRoot", mock.Anything, mock.Anything)
-	fixture.repository.checkpoints.AssertNotCalled(t, "SetCheckpoint", mock.Anything, mock.Anything)
-	fixture.repository.checkpoints.AssertNotCalled(t, "DeleteCheckpoint", mock.Anything)
-}
-
-func TestPegInWatcher_VerifiesRootAtCapturedHead(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 10, 2)
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{}, nil).
-		Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{}, false)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(104), nil).Once()
-	fixture.registry.EXPECT().
-		GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(102)).
-		Return([]blockchain.AddressRegistered{}, nil).
-		Once()
-	fixture.expectCheckpointAdvance(102)
-
-	var latestHead atomic.Uint64
-	latestHead.Store(104)
-	fixture.registry.EXPECT().
-		GetAddressRegisteredEvents(mock.Anything, uint64(103), uint64Pointer(104)).
-		Run(func(context.Context, uint64, *uint64) {
-			latestHead.Store(105)
-		}).
-		Return([]blockchain.AddressRegistered{}, nil).
-		Once()
-	fixture.registry.EXPECT().
-		GetRegistrationRoot(mock.Anything, uint64(104)).
-		RunAndReturn(func(context.Context, uint64) ([32]byte, error) {
-			require.Equal(t, uint64(105), latestHead.Load(), "latest state must advance before the pinned root read")
-			return [32]byte{}, nil
-		}).
-		Once()
-
-	session := startWatcherSession(t, fixture.watcher, fixture.ticker)
-	session.poll()
-	session.stop()
-
-	fixture.repository.checkpoints.AssertNotCalled(t, "DeleteCheckpoint", mock.Anything)
-}
-
-//nolint:funlen // One scenario records the complete persist/import/checkpoint ordering across three events.
-func TestPegInWatcher_SortsEventsAndClampsToFinalizedHead(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 20, 2)
-	events := []blockchain.AddressRegistered{
-		{
-			TxHash:           "third",
-			RskAddress:       "0x00000000000000000000000000000000000000a3",
-			BlockNumber:      102,
-			LogIndex:         5,
-			RegistrationRoot: registrationRoot(t, "b80604f49f0685bb17dd0f5cc0f611383d724f10f53db8aebcec3e9541f552d8"),
-		},
-		{
-			TxHash:           "first",
-			RskAddress:       "0x00000000000000000000000000000000000000a1",
-			BlockNumber:      101,
-			LogIndex:         9,
-			RegistrationRoot: registrationRoot(t, "5a16856e66cb2b1b463f7773c427085d55afdd19d778290b45fb959a6224877e"),
-		},
-		{
-			TxHash:           "second",
-			RskAddress:       "0x00000000000000000000000000000000000000a2",
-			BlockNumber:      102,
-			LogIndex:         1,
-			RegistrationRoot: registrationRoot(t, "95bdcbc864b6248af173e5feb03f5830479e972a492e705c3c2a2bddcb8ca643"),
-		},
-	}
-	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{}, nil).Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{}, false)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(105), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(103)).
-		Return(events, nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(104), uint64Pointer(105)).
-		Return([]blockchain.AddressRegistered{}, nil).Once()
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(105)).
-		Return(events[0].RegistrationRoot, nil).Once()
-
-	var operations []string
-	var operationsMutex sync.Mutex
-	ordered := []blockchain.AddressRegistered{events[1], events[2], events[0]}
-	for index, event := range ordered {
-		deposit := knownDepositAddress(index)
-		persisted := discoveredWatchEntry(event)
-		fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(nil, nil).Once()
-		fixture.repository.On("Upsert", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-			return entry.RskAddress == event.RskAddress
-		})).
-			Run(func(arguments mock.Arguments) {
-				entry, ok := arguments.Get(1).(rootstock.PegInWatch)
-				require.True(t, ok)
-				operationsMutex.Lock()
-				operations = append(operations, fmt.Sprintf("upsert:%d/%d/%s", entry.BlockNumber, entry.LogIndex, entry.TxHash))
-				operationsMutex.Unlock()
-			}).
-			Return(nil).
-			Once()
-		fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
-		fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).
-			Return(blockchain.PegInAddress{
-				Payload:  deposit.payload,
-				Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-			}, nil).
-			Once()
-		var importErr error
-		if event.TxHash == "second" {
-			importErr = errors.New("address already imported")
-		}
-		fixture.wallet.EXPECT().ImportAddress(deposit.address).
-			Run(func(string) {
-				operationsMutex.Lock()
-				operations = append(operations, "import:"+event.TxHash)
-				operationsMutex.Unlock()
-			}).
-			Return(importErr).
-			Once()
-		fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-			return entry.RskAddress == event.RskAddress &&
-				entry.BtcAddress == deposit.address &&
-				entry.Encoding == uint8(blockchain.PegInAddressRegistryEncodingBase58) &&
-				entry.State == rootstock.PegInWatchImported
-		})).Run(func(mock.Arguments) {
-			operationsMutex.Lock()
-			operations = append(operations, "update:"+event.TxHash)
-			operationsMutex.Unlock()
-		}).Return(nil).Once()
-	}
-	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
-	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
-		Run(func(int64) {
-			operationsMutex.Lock()
-			operations = append(operations, "rescan")
-			operationsMutex.Unlock()
-		}).
-		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
-		Once()
-	fixture.repository.checkpoints.On(
-		"SetCheckpoint",
-		mock.Anything,
-		mock.MatchedBy(func(checkpoint rootstock.PegInWatchCheckpoint) bool {
-			return checkpoint.LastProcessedBlock == 103
-		}),
-	).
-		Run(func(mock.Arguments) {
-			operationsMutex.Lock()
-			operations = append(operations, "checkpoint")
-			operationsMutex.Unlock()
-		}).
-		Return(nil).
-		Once()
-	fixture.runScan()
-
-	operationsMutex.Lock()
-	assert.Equal(t, []string{
-		"upsert:101/9/first", "import:first",
-		"upsert:102/1/second", "import:second",
-		"upsert:102/5/third", "import:third",
-		"checkpoint",
-		"rescan",
-		"update:first", "update:second", "update:third",
-	}, operations)
-	operationsMutex.Unlock()
-}
-
-func TestPegInWatcher_SkipsUnsupportedEncodingsAndContinues(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	events := unsupportedEncodingEvents(t)
-	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{}, nil).Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{}, false)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
-		Return(events, nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(101), uint64Pointer(102)).
-		Return([]blockchain.AddressRegistered{}, nil).Once()
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(102)).
-		Return(events[2].RegistrationRoot, nil).Once()
-
-	expectEncodingOutcomes(fixture, events)
-	fixture.expectCheckpointAdvance(100)
-
-	fixture.runScan()
-}
-
-func unsupportedEncodingEvents(t *testing.T) []blockchain.AddressRegistered {
-	t.Helper()
-	return []blockchain.AddressRegistered{
-		{
-			TxHash:           "bech32",
-			RskAddress:       "0x00000000000000000000000000000000000000a1",
-			BlockNumber:      100,
-			LogIndex:         1,
-			RegistrationRoot: registrationRoot(t, "5a16856e66cb2b1b463f7773c427085d55afdd19d778290b45fb959a6224877e"),
-		},
-		{
-			TxHash:           "bech32m",
-			RskAddress:       "0x00000000000000000000000000000000000000a2",
-			BlockNumber:      100,
-			LogIndex:         2,
-			RegistrationRoot: registrationRoot(t, "95bdcbc864b6248af173e5feb03f5830479e972a492e705c3c2a2bddcb8ca643"),
-		},
-		{
-			TxHash:           "base58",
-			RskAddress:       "0x00000000000000000000000000000000000000a3",
-			BlockNumber:      100,
-			LogIndex:         3,
-			RegistrationRoot: registrationRoot(t, "b80604f49f0685bb17dd0f5cc0f611383d724f10f53db8aebcec3e9541f552d8"),
-		},
-	}
-}
-
-func expectEncodingOutcomes(
-	fixture *pegInAddressRegistryWatcherFixture,
-	events []blockchain.AddressRegistered,
-) {
-	fixture.t.Helper()
-	encodings := []blockchain.PegInAddressRegistryEncoding{
-		blockchain.PegInAddressRegistryEncodingBech32,
-		blockchain.PegInAddressRegistryEncodingBech32M,
-		blockchain.PegInAddressRegistryEncodingBase58,
-	}
-	for index, event := range events {
-		deposit := knownDepositAddress(index)
-		fixture.expectDiscover(event)
-		fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).
-			Return(blockchain.PegInAddress{
-				Payload:  deposit.payload,
-				Encoding: encodings[index],
-			}, nil).
-			Once()
-		expectedState := rootstock.PegInWatchUnsupportedEncoding
-		// An encoding the scanner cannot render must leave BtcAddress empty rather than storing the
-		// raw payload, which is not a valid address in any encoding.
-		expectedAddress := ""
-		if encodings[index] == blockchain.PegInAddressRegistryEncodingBase58 {
-			expectedState = rootstock.PegInWatchImported
-			expectedAddress = deposit.address
-			fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
-			fixture.expectBoundedRescan()
-		}
-		fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-			return entry.TxHash == event.TxHash &&
-				entry.State == expectedState &&
-				entry.BtcAddress == expectedAddress
-		})).Return(nil).Once()
-	}
-}
-
-func TestPegInWatcher_RecordsEntryErrorAndContinues(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	broken, valid := entryErrorEvents(t)
-	fixture.repository.EXPECT().List(mock.Anything).Return(nil, nil).Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{}, false)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
-		Return([]blockchain.AddressRegistered{broken, valid}, nil).
-		Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(101), uint64Pointer(102)).
-		Return([]blockchain.AddressRegistered{}, nil).Once()
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(102)).
-		Return(valid.RegistrationRoot, nil).Once()
-
-	expectBrokenEntryUpdate(fixture, broken)
-	expectValidEntryUpdate(fixture, valid)
-	fixture.expectCheckpointAdvance(100)
-
-	fixture.runScan()
-}
-
-func entryErrorEvents(t *testing.T) (blockchain.AddressRegistered, blockchain.AddressRegistered) {
-	t.Helper()
-	broken := blockchain.AddressRegistered{
-		TxHash:           "broken",
-		RskAddress:       "0x00000000000000000000000000000000000000a1",
-		BlockNumber:      100,
-		LogIndex:         1,
-		RegistrationRoot: registrationRoot(t, "5a16856e66cb2b1b463f7773c427085d55afdd19d778290b45fb959a6224877e"),
-	}
-	valid := blockchain.AddressRegistered{
-		TxHash:           "valid",
-		RskAddress:       "0x00000000000000000000000000000000000000a2",
-		BlockNumber:      100,
-		LogIndex:         2,
-		RegistrationRoot: registrationRoot(t, "95bdcbc864b6248af173e5feb03f5830479e972a492e705c3c2a2bddcb8ca643"),
-	}
-	return broken, valid
-}
-
-func expectBrokenEntryUpdate(
-	fixture *pegInAddressRegistryWatcherFixture,
-	broken blockchain.AddressRegistered,
-) {
-	fixture.t.Helper()
-	fixture.expectDiscover(broken)
-	fixture.registry.EXPECT().GetPegInAddress(broken.RskAddress).
-		Return(blockchain.PegInAddress{}, assert.AnError).
-		Once()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-		return entry.TxHash == broken.TxHash &&
-			entry.State == rootstock.PegInWatchDiscovered &&
-			entry.LastError != ""
-	})).Return(nil).Once()
-}
-
-func expectValidEntryUpdate(
-	fixture *pegInAddressRegistryWatcherFixture,
-	valid blockchain.AddressRegistered,
-) {
-	fixture.t.Helper()
-	fixture.expectDiscover(valid)
-	validDeposit := knownDepositAddress(0)
-	fixture.registry.EXPECT().GetPegInAddress(valid.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload:  validDeposit.payload,
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.wallet.EXPECT().ImportAddress(validDeposit.address).Return(nil).Once()
-	fixture.expectBoundedRescan()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-		return entry.TxHash == valid.TxHash &&
-			entry.State == rootstock.PegInWatchImported &&
-			entry.LastError == ""
-	})).Return(nil).Once()
-}
-
-func TestPegInWatcher_RetriesPersistedDiscoveredEntryOutsideOverlap(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	entry := rootstock.PegInWatch{
-		TxHash:      "retry-registration",
-		LogIndex:    1,
-		BlockNumber: 90,
-		RskAddress:  "retry-rsk",
-		State:       rootstock.PegInWatchDiscovered,
-		LastError:   "previous transient failure",
-	}
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{entry}, nil).
-		Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{LastProcessedBlock: 105}, true)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
-		Return(nil, nil).
-		Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(107), uint64Pointer(108)).
-		Return(nil, nil).Once()
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(108)).Return([32]byte{}, nil).Once()
-	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
-	deposit := knownDepositAddress(0)
-	fixture.registry.EXPECT().GetPegInAddress(entry.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload:  deposit.payload,
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
-	fixture.expectBoundedRescan()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
-		return updated.TxHash == entry.TxHash &&
-			updated.BtcAddress == deposit.address &&
-			updated.State == rootstock.PegInWatchImported &&
-			updated.LastError == ""
-	})).Return(nil).Once()
-	fixture.expectCheckpointAdvance(106)
-
-	fixture.runScan()
-}
-
-// An entry that keeps failing the same way every tick must not rewrite the same error to Mongo,
-// which only holds if the persisted error survives the successful steps that precede the failure.
-func TestPegInWatcher_SuppressesRepeatedIdenticalEntryErrors(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	entry := rootstock.PegInWatch{
-		TxHash:      "stuck",
-		LogIndex:    1,
-		BlockNumber: 90,
-		RskAddress:  "stuck-rsk",
-		State:       rootstock.PegInWatchDiscovered,
-		LastError:   fmt.Sprintf("import PegIn address for event stuck/1: %v", assert.AnError),
-	}
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{entry}, nil).
-		Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{LastProcessedBlock: 105}, true)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
-		Return(nil, nil).
-		Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(107), uint64Pointer(108)).
-		Return(nil, nil).Once()
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(108)).Return([32]byte{}, nil).Once()
-	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
-	deposit := knownDepositAddress(0)
-	fixture.registry.EXPECT().GetPegInAddress(entry.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload:  deposit.payload,
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(assert.AnError).Once()
-	fixture.expectCheckpointAdvance(106)
-
-	fixture.runScan()
-
-	fixture.repository.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
-}
-
-// The registry returns a payload rather than an address, so a payload that cannot be encoded must
-// park the entry with the reason instead of importing something a node would reject.
-func TestPegInWatcher_RecordsUnencodablePayload(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	entry := rootstock.PegInWatch{
-		TxHash:      "truncated-payload",
-		LogIndex:    1,
-		BlockNumber: 90,
-		RskAddress:  "truncated-rsk",
-		State:       rootstock.PegInWatchDiscovered,
-	}
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{entry}, nil).
-		Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{LastProcessedBlock: 105}, true)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
-		Return(nil, nil).
-		Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(107), uint64Pointer(108)).
-		Return(nil, nil).Once()
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(108)).Return([32]byte{}, nil).Once()
-	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
-	truncated := knownDepositAddress(0).payload[:20]
-	fixture.registry.EXPECT().GetPegInAddress(entry.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload:  truncated,
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
-		return updated.TxHash == entry.TxHash &&
-			updated.State == rootstock.PegInWatchDiscovered &&
-			updated.BtcAddress == "" &&
-			strings.Contains(updated.LastError, "encode PegIn address for event truncated-payload/1")
-	})).Return(nil).Once()
-	fixture.expectCheckpointAdvance(106)
-
-	fixture.runScan()
-
-	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
-	fixture.wallet.AssertNotCalled(t, "RescanBlockchain", mock.Anything)
-}
-
-func TestPegInWatcher_DoesNotReimportPersistedEntry(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	event := unsupportedEncodingEvents(t)[0]
-	persisted := rootstock.PegInWatch{
-		TxHash:     event.TxHash,
-		LogIndex:   event.LogIndex,
-		RskAddress: event.RskAddress,
-		State:      rootstock.PegInWatchImported,
-		BtcAddress: knownDepositAddress(0).address,
-	}
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{persisted}, nil).
-		Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{}, false)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
-		Return([]blockchain.AddressRegistered{event}, nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(101), uint64Pointer(102)).
-		Return([]blockchain.AddressRegistered{}, nil).Once()
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(102)).
-		Return(event.RegistrationRoot, nil).Once()
-	fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
-	fixture.expectCheckpointAdvance(100)
-
-	fixture.runScan()
-
-	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
-	fixture.repository.AssertNotCalled(t, "Upsert", mock.Anything, mock.Anything)
-}
-
-func TestPegInWatcher_DuplicateRskAddressKeepsOneWatchRow(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	first := unsupportedEncodingEvents(t)[0]
-	replayRoot, err := blockchain.FoldPegInAddressRegistryRoot(first.RegistrationRoot, first.RskAddress)
-	require.NoError(t, err)
-	replay := blockchain.AddressRegistered{
-		TxHash:           "replay-reg",
-		RskAddress:       first.RskAddress,
-		BlockNumber:      100,
-		LogIndex:         2,
-		RegistrationRoot: replayRoot,
-	}
-	imported := rootstock.PegInWatch{
-		TxHash:     first.TxHash,
-		LogIndex:   first.LogIndex,
-		RskAddress: first.RskAddress,
-		State:      rootstock.PegInWatchImported,
-		BtcAddress: knownDepositAddress(0).address,
-	}
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{imported}, nil).
-		Once()
-	fixture.expectCheckpoint(rootstock.PegInWatchCheckpoint{}, false)
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
-		Return([]blockchain.AddressRegistered{first, replay}, nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(101), uint64Pointer(102)).
-		Return([]blockchain.AddressRegistered{}, nil).Once()
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(102)).
-		Return(replayRoot, nil).Once()
-	fixture.repository.EXPECT().Get(mock.Anything, first.RskAddress).Return(&imported, nil).Twice()
-	fixture.expectCheckpointAdvance(100)
-
-	fixture.runScan()
-
-	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
-	fixture.repository.AssertNotCalled(t, "Upsert", mock.Anything, mock.Anything)
-}
-
 func uint64Pointer(expected uint64) interface{} {
 	return mock.MatchedBy(func(actual *uint64) bool {
 		return actual != nil && *actual == expected
 	})
 }
 
-// --- merged from pegin_address_registry_resync_test.go ---
-
 type overlappingReplayRepository struct {
-	mutex       sync.Mutex
-	checkpoint  rootstock.PegInWatchCheckpoint
-	found       bool
-	setCalls    int
-	deleteCalls int
+	mutex      sync.Mutex
+	checkpoint rootstock.PegInWatchCheckpoint
+	found      bool
+	setCalls   int
+	pruneCalls int
 }
 
 func (repository *overlappingReplayRepository) Upsert(
@@ -900,10 +229,14 @@ func (repository *overlappingReplayRepository) Update(
 
 func (repository *overlappingReplayRepository) GetCheckpoint(
 	context.Context,
-) (rootstock.PegInWatchCheckpoint, bool, error) {
+) (*rootstock.PegInWatchCheckpoint, error) {
 	repository.mutex.Lock()
 	defer repository.mutex.Unlock()
-	return repository.checkpoint, repository.found, nil
+	if !repository.found {
+		return nil, nil
+	}
+	checkpoint := repository.checkpoint
+	return &checkpoint, nil
 }
 
 func (repository *overlappingReplayRepository) SetCheckpoint(
@@ -918,12 +251,10 @@ func (repository *overlappingReplayRepository) SetCheckpoint(
 	return nil
 }
 
-func (repository *overlappingReplayRepository) DeleteCheckpoint(context.Context) error {
+func (repository *overlappingReplayRepository) DeleteFromBlock(context.Context, uint64) error {
 	repository.mutex.Lock()
 	defer repository.mutex.Unlock()
-	repository.deleteCalls++
-	repository.checkpoint = rootstock.PegInWatchCheckpoint{}
-	repository.found = false
+	repository.pruneCalls++
 	return nil
 }
 
@@ -935,7 +266,7 @@ func (repository *overlappingReplayRepository) checkpointState() (
 ) {
 	repository.mutex.Lock()
 	defer repository.mutex.Unlock()
-	return repository.checkpoint, repository.found, repository.setCalls, repository.deleteCalls
+	return repository.checkpoint, repository.found, repository.setCalls, repository.pruneCalls
 }
 
 func newShortHeadCheckpointWatcher(t *testing.T) (
@@ -952,8 +283,9 @@ func newShortHeadCheckpointWatcher(t *testing.T) (
 	repository := &overlappingReplayRepository{checkpoint: original, found: true}
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
 	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(101), nil).Once()
+	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(99), nil).Once()
 	watcher := newRegistryWatcher(
+		repository,
 		repository,
 		registry,
 		rskRpc,
@@ -963,7 +295,6 @@ func newShortHeadCheckpointWatcher(t *testing.T) (
 		nil,
 		100,
 		10,
-		2,
 	)
 	return repository, registry, watcher, original
 }
@@ -973,140 +304,84 @@ func TestPegInWatcher_ScanKeepsCheckpointWhenHeadIsBelowStart(t *testing.T) {
 
 	require.NoError(t, watcher.scan(context.Background()))
 
-	checkpoint, found, setCalls, deleteCalls := repository.checkpointState()
+	checkpoint, found, setCalls, pruneCalls := repository.checkpointState()
 	require.True(t, found)
 	assert.Equal(t, original, checkpoint)
 	assert.Zero(t, setCalls)
-	assert.Zero(t, deleteCalls)
+	assert.Zero(t, pruneCalls)
 	registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
 	registry.AssertNotCalled(t, "GetRegistrationRoot", mock.Anything, mock.Anything)
 }
 
-func TestPegInWatcher_ResyncDeletesCheckpointWhenHeadIsBelowStart(t *testing.T) {
-	repository, registry, watcher, _ := newShortHeadCheckpointWatcher(t)
-
-	require.NoError(t, watcher.resync(context.Background()))
-
-	checkpoint, found, setCalls, deleteCalls := repository.checkpointState()
-	assert.False(t, found)
-	assert.Zero(t, checkpoint)
-	assert.Zero(t, setCalls)
-	assert.Equal(t, 1, deleteCalls)
-	registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
-	registry.AssertNotCalled(t, "GetRegistrationRoot", mock.Anything, mock.Anything)
-}
-
-func TestPegInWatcher_SerializesOverlappingResyncs(t *testing.T) {
+func TestPegInWatcher_SerializesOverlappingScans(t *testing.T) {
 	repository := &overlappingReplayRepository{}
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
 	rskRpc := mocks.NewRootstockRpcServerMock(t)
 	wallet := mocks.NewBitcoinWalletMock(t)
 
-	firstQueryStarted := make(chan struct{})
-	releaseFirstQuery := make(chan struct{})
-	var queryCalls atomic.Int64
-	var activeQueries atomic.Int64
-	var maximumActiveQueries atomic.Int64
+	firstRootReadStarted := make(chan struct{})
+	releaseFirstRootRead := make(chan struct{})
+	var rootReads atomic.Int64
+	var activeRootReads atomic.Int64
+	var maximumActiveRootReads atomic.Int64
 	registry.EXPECT().
-		GetAddressRegisteredEvents(mock.Anything, uint64(0), mock.Anything).
-		RunAndReturn(func(context.Context, uint64, *uint64) ([]blockchain.AddressRegistered, error) {
-			call := queryCalls.Add(1)
-			active := activeQueries.Add(1)
+		GetRegistrationRoot(mock.Anything, uint64(0)).
+		RunAndReturn(func(context.Context, uint64) ([32]byte, error) {
+			call := rootReads.Add(1)
+			active := activeRootReads.Add(1)
 			for {
-				maximum := maximumActiveQueries.Load()
-				if active <= maximum || maximumActiveQueries.CompareAndSwap(maximum, active) {
+				maximum := maximumActiveRootReads.Load()
+				if active <= maximum || maximumActiveRootReads.CompareAndSwap(maximum, active) {
 					break
 				}
 			}
-			defer activeQueries.Add(-1)
+			defer activeRootReads.Add(-1)
 			if call == 1 {
-				close(firstQueryStarted)
-				<-releaseFirstQuery
+				close(firstRootReadStarted)
+				<-releaseFirstRootRead
 			}
-			return nil, nil
+			return [32]byte{}, nil
 		}).
 		Twice()
-	registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(0)).Return([32]byte{}, nil).Twice()
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(0), nil).Twice()
 
 	watcher := newOverlappingReplayWatcher(repository, registry, rskRpc, wallet)
 
 	firstResult := make(chan error, 1)
 	go func() {
-		firstResult <- watcher.resync(context.Background())
+		firstResult <- watcher.scan(context.Background())
 	}()
 	select {
-	case <-firstQueryStarted:
+	case <-firstRootReadStarted:
 	case <-time.After(time.Second):
-		require.FailNow(t, "first replay did not reach the page query")
+		require.FailNow(t, "first replay did not reach the root read")
 	}
 
 	secondStarted := make(chan struct{})
 	secondResult := make(chan error, 1)
 	go func() {
 		close(secondStarted)
-		secondResult <- watcher.resync(context.Background())
+		secondResult <- watcher.scan(context.Background())
 	}()
 	<-secondStarted
 	assert.Never(t, func() bool {
-		return queryCalls.Load() > 1
+		return rootReads.Load() > 1
 	}, 50*time.Millisecond, time.Millisecond, "a second replay entered while the first was active")
 
-	close(releaseFirstQuery)
+	close(releaseFirstRootRead)
 	require.NoError(t, <-firstResult)
 	require.NoError(t, <-secondResult)
-	assert.Equal(t, int64(2), queryCalls.Load())
-	assert.Equal(t, int64(1), maximumActiveQueries.Load())
+	assert.Equal(t, int64(2), rootReads.Load())
+	assert.Equal(t, int64(1), maximumActiveRootReads.Load())
 }
 
 func newOverlappingReplayWatcher(
-	repository rootstock.PegInWatchRepositorySet,
+	repository *overlappingReplayRepository,
 	registry blockchain.PegInAddressRegistryContract,
 	rskRpc blockchain.RootstockRpcServer,
 	wallet blockchain.BitcoinWallet,
 ) *PegInWatcher {
-	return newRegistryWatcher(repository, registry, rskRpc, nil, wallet, nil, nil, 0, 1, 0)
-}
-
-func TestPegInWatcher_DoesNotPublishIncrementalReplayBeforeRootVerification(t *testing.T) {
-	rootErr := errors.New("root read failed")
-	original := rootstock.PegInWatchCheckpoint{
-		LastProcessedBlock: 100,
-	}
-	repository := &overlappingReplayRepository{checkpoint: original, found: true}
-	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	wallet := mocks.NewBitcoinWalletMock(t)
-	registry.EXPECT().
-		GetAddressRegisteredEvents(mock.Anything, uint64(101), mock.Anything).
-		Return(nil, nil).
-		Once()
-	registry.EXPECT().
-		GetRegistrationRoot(mock.Anything, uint64(101)).
-		Return([32]byte{}, rootErr).
-		Once()
-	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(101), nil).Once()
-	watcher := newRegistryWatcher(
-		repository,
-		registry,
-		rskRpc,
-		nil,
-		wallet,
-		nil,
-		nil,
-		0,
-		10,
-		0,
-	)
-	require.NoError(t, watcher.Prepare(context.Background()))
-
-	err := watcher.scan(context.Background())
-
-	require.ErrorIs(t, err, rootErr)
-	checkpoint, found, checkpointErr := repository.GetCheckpoint(context.Background())
-	require.NoError(t, checkpointErr)
-	require.True(t, found)
-	assert.Equal(t, original, checkpoint)
+	return newRegistryWatcher(repository, repository, registry, rskRpc, nil, wallet, nil, nil, 0, 1)
 }
 
 func TestPegInWatcher_LogsRootReadFailureWithoutPublishingCheckpoint(t *testing.T) {
@@ -1119,15 +394,12 @@ func TestPegInWatcher_LogsRootReadFailureWithoutPublishingCheckpoint(t *testing.
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
 	rskRpc := mocks.NewRootstockRpcServerMock(t)
 	registry.EXPECT().
-		GetAddressRegisteredEvents(mock.Anything, uint64(101), mock.Anything).
-		Return(nil, nil).
-		Once()
-	registry.EXPECT().
 		GetRegistrationRoot(mock.Anything, uint64(101)).
 		Return([32]byte{}, rootErr).
 		Once()
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(101), nil).Once()
 	watcher := newRegistryWatcher(
+		repository,
 		repository,
 		registry,
 		rskRpc,
@@ -1137,7 +409,6 @@ func TestPegInWatcher_LogsRootReadFailureWithoutPublishingCheckpoint(t *testing.
 		nil,
 		0,
 		10,
-		0,
 	)
 	require.NoError(t, watcher.Prepare(context.Background()))
 	capturedLogs := test.CaptureStructuredLogs(t)
@@ -1149,17 +420,15 @@ func TestPegInWatcher_LogsRootReadFailureWithoutPublishingCheckpoint(t *testing.
 	assert.Equal(t, "error", logEntries[0].Level())
 	assert.Equal(
 		t,
-		"PegIn address registry watcher scan failed: ReplayRegisteredAddresses: get PegIn address registry root: RSK registry root read failed",
+		"PegIn address registry watcher scan failed: ReplayRegisteredAddresses: get PegIn address registry root at block 101: RSK registry root read failed",
 		logEntries[0].Message(),
 	)
-	checkpoint, found, setCalls, deleteCalls := repository.checkpointState()
+	checkpoint, found, setCalls, pruneCalls := repository.checkpointState()
 	require.True(t, found)
 	assert.Equal(t, original, checkpoint)
 	assert.Zero(t, setCalls)
-	assert.Zero(t, deleteCalls)
+	assert.Zero(t, pruneCalls)
 }
-
-// --- merged from pegin_address_registry_recovery_test.go ---
 
 // A write that fails and a write lost to a dying process leave the same state behind, so a scenario
 // injects this to stop a watcher at a boundary it cannot otherwise be stopped at.
@@ -1175,7 +444,6 @@ type registryWatchStore struct {
 	checkpoint    rootstock.PegInWatchCheckpoint
 	hasCheckpoint bool
 	advances      []uint64
-	clears        int
 
 	// Each of these fails the next call to the method it names and is then cleared.
 	failGet           error
@@ -1232,10 +500,14 @@ func (store *registryWatchStore) Update(_ context.Context, entry rootstock.PegIn
 
 func (store *registryWatchStore) GetCheckpoint(
 	context.Context,
-) (rootstock.PegInWatchCheckpoint, bool, error) {
+) (*rootstock.PegInWatchCheckpoint, error) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-	return store.checkpoint, store.hasCheckpoint, nil
+	if !store.hasCheckpoint {
+		return nil, nil
+	}
+	checkpoint := store.checkpoint
+	return &checkpoint, nil
 }
 
 func (store *registryWatchStore) SetCheckpoint(
@@ -1253,25 +525,20 @@ func (store *registryWatchStore) SetCheckpoint(
 	return nil
 }
 
-func (store *registryWatchStore) DeleteCheckpoint(context.Context) error {
+func (store *registryWatchStore) DeleteFromBlock(_ context.Context, fromBlock uint64) error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-	store.checkpoint = rootstock.PegInWatchCheckpoint{}
-	store.hasCheckpoint = false
-	store.clears++
+	store.entries = pruneWatchEntriesFromBlock(store.entries, fromBlock)
 	return nil
 }
 
-func (store *registryWatchStore) checkpointClears() int {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
-	return store.clears
-}
-
-func (store *registryWatchStore) checkpointFound() bool {
-	store.mutex.Lock()
-	defer store.mutex.Unlock()
-	return store.hasCheckpoint
+func pruneWatchEntriesFromBlock(
+	entries []rootstock.PegInWatch,
+	fromBlock uint64,
+) []rootstock.PegInWatch {
+	return slices.DeleteFunc(entries, func(entry rootstock.PegInWatch) bool {
+		return entry.BlockNumber >= fromBlock
+	})
 }
 
 // checkpointAdvances is every block the checkpoint was moved to, in order, so a restart can be
@@ -1314,12 +581,11 @@ func takeNextFailure(failure *error) error {
 // reorg or a node that under-reported a block, so a test states what the chain holds rather than
 // what the node returns on call N.
 type rskChain struct {
-	mutex       sync.Mutex
-	head        uint64
-	logs        []blockchain.AddressRegistered
-	requested   [][2]uint64
-	omitOnce    map[string]int
-	includeOnce map[string]bool
+	mutex     sync.Mutex
+	head      uint64
+	logs      []blockchain.AddressRegistered
+	requested [][2]uint64
+	omitOnce  map[string]int
 }
 
 func (chain *rskChain) setHead(head uint64) {
@@ -1353,27 +619,6 @@ func (chain *rskChain) omitOnNextQueries(event blockchain.AddressRegistered, cou
 	chain.omitOnce[eventIdentity(event)] += count
 }
 
-func (chain *rskChain) includeOnNextQuery(event blockchain.AddressRegistered) {
-	chain.mutex.Lock()
-	defer chain.mutex.Unlock()
-	if chain.includeOnce == nil {
-		chain.includeOnce = make(map[string]bool)
-	}
-	chain.includeOnce[eventIdentity(event)] = true
-}
-
-func (chain *rskChain) drop(event blockchain.AddressRegistered) {
-	chain.mutex.Lock()
-	defer chain.mutex.Unlock()
-	remaining := make([]blockchain.AddressRegistered, 0, len(chain.logs))
-	for _, log := range chain.logs {
-		if log.TxHash != event.TxHash || log.LogIndex != event.LogIndex {
-			remaining = append(remaining, log)
-		}
-	}
-	chain.logs = remaining
-}
-
 func (chain *rskChain) logsIn(fromBlock, toBlock uint64) []blockchain.AddressRegistered {
 	chain.mutex.Lock()
 	defer chain.mutex.Unlock()
@@ -1382,12 +627,11 @@ func (chain *rskChain) logsIn(fromBlock, toBlock uint64) []blockchain.AddressReg
 	for _, log := range chain.logs {
 		identity := eventIdentity(log)
 		inRequestedRange := log.BlockNumber >= fromBlock && log.BlockNumber <= toBlock
-		if inRequestedRange || chain.includeOnce[identity] {
-			if chain.omitOnce[eventIdentity(log)] > 0 {
-				chain.omitOnce[eventIdentity(log)]--
+		if inRequestedRange {
+			if chain.omitOnce[identity] > 0 {
+				chain.omitOnce[identity]--
 				continue
 			}
-			delete(chain.includeOnce, identity)
 			events = append(events, log)
 		}
 	}
@@ -1456,15 +700,14 @@ type registryRestartFixture struct {
 	wallet     *mocks.BitcoinWalletMock
 	eventBus   *registryReorgEventBus
 
-	mutex       sync.Mutex
-	deposits    map[string]depositAddress
-	imports     []string
-	heightCalls int
-	rootReads   []uint64
+	mutex     sync.Mutex
+	deposits  map[string]depositAddress
+	imports   []string
+	rootReads []uint64
+	rescanErr error
 
-	startBlock    uint64
-	pageSize      uint64
-	finalityDepth uint64
+	startBlock uint64
+	pageSize   uint64
 }
 
 type registryReorgEventBus struct {
@@ -1497,10 +740,6 @@ func (bus *registryReorgEventBus) Shutdown(closeChannel chan<- bool) {
 	closeChannel <- true
 }
 
-func (bus *registryReorgEventBus) publishedCount(id entities.EventId) int {
-	return len(bus.publishedEvents(id))
-}
-
 func (bus *registryReorgEventBus) publishedEvents(id entities.EventId) []entities.Event {
 	bus.mutex.Lock()
 	defer bus.mutex.Unlock()
@@ -1513,38 +752,36 @@ func (bus *registryReorgEventBus) publishedEvents(id entities.EventId) []entitie
 	return events
 }
 
-//nolint:unparam // Fixed start/page/finality values keep each scenario's checkpoint arithmetic explicit at the call site.
-func newRegistryRestartFixture(
-	t *testing.T,
-	startBlock uint64,
-	pageSize uint64,
-	finalityDepth uint64,
-) *registryRestartFixture {
+func (bus *registryReorgEventBus) clearPublished() {
+	bus.mutex.Lock()
+	defer bus.mutex.Unlock()
+	bus.published = nil
+}
+
+const registryRestartStartBlock = uint64(100)
+
+func newRegistryRestartFixture(t *testing.T, pageSize uint64) *registryRestartFixture {
 	t.Helper()
 	fixture := &registryRestartFixture{
-		t:             t,
-		store:         &registryWatchStore{},
-		chain:         &rskChain{},
-		registry:      mocks.NewPegInAddressRegistryContractMock(t),
-		rskRpc:        mocks.NewRootstockRpcServerMock(t),
-		btcNetwork:    &mocks.BtcRpcMock{},
-		wallet:        mocks.NewBitcoinWalletMock(t),
-		eventBus:      newRegistryReorgEventBus(),
-		deposits:      make(map[string]depositAddress),
-		startBlock:    startBlock,
-		pageSize:      pageSize,
-		finalityDepth: finalityDepth,
+		t:          t,
+		store:      &registryWatchStore{},
+		chain:      &rskChain{},
+		registry:   mocks.NewPegInAddressRegistryContractMock(t),
+		rskRpc:     mocks.NewRootstockRpcServerMock(t),
+		btcNetwork: &mocks.BtcRpcMock{},
+		wallet:     mocks.NewBitcoinWalletMock(t),
+		eventBus:   newRegistryReorgEventBus(),
+		deposits:   make(map[string]depositAddress),
+		startBlock: registryRestartStartBlock,
+		pageSize:   pageSize,
 	}
 
 	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).RunAndReturn(func(context.Context) (uint64, error) {
-		fixture.mutex.Lock()
-		fixture.heightCalls++
-		fixture.mutex.Unlock()
 		return fixture.chain.currentHead(), nil
 	})
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, mock.Anything, mock.Anything).
 		RunAndReturn(func(_ context.Context, fromBlock uint64, toBlock *uint64) ([]blockchain.AddressRegistered, error) {
-			require.NotNil(t, toBlock, "the scanner must always bound its range at the finalized head")
+			require.NotNil(t, toBlock, "the scanner must always bound its range at the captured head")
 			return fixture.chain.logsIn(fromBlock, *toBlock), nil
 		})
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, mock.Anything).
@@ -1591,7 +828,9 @@ func (fixture *registryRestartFixture) expectAddressImports() {
 	})
 	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Maybe()
 	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
-		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
+		RunAndReturn(func(int64) (blockchain.BitcoinRescanResult, error) {
+			return blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, fixture.rescanErr
+		}).
 		Maybe()
 }
 
@@ -1660,12 +899,6 @@ func (fixture *registryRestartFixture) checkpointAdvances() []uint64 {
 	return fixture.store.checkpointAdvances()
 }
 
-func (fixture *registryRestartFixture) rootstockHeightCalls() int {
-	fixture.mutex.Lock()
-	defer fixture.mutex.Unlock()
-	return fixture.heightCalls
-}
-
 func (fixture *registryRestartFixture) rootReadBlocks() []uint64 {
 	fixture.mutex.Lock()
 	defer fixture.mutex.Unlock()
@@ -1677,6 +910,7 @@ func (fixture *registryRestartFixture) startScanner() *watcherSession {
 	ticker := newSessionTicker()
 	return startWatcherSession(fixture.t, newRegistryWatcher(
 		fixture.store,
+		fixture.store,
 		fixture.registry,
 		fixture.rskRpc,
 		fixture.btcNetwork,
@@ -1685,7 +919,6 @@ func (fixture *registryRestartFixture) startScanner() *watcherSession {
 		ticker,
 		fixture.startBlock,
 		fixture.pageSize,
-		fixture.finalityDepth,
 	), ticker)
 }
 
@@ -1729,7 +962,7 @@ func TestPegInWatcher_ConvergesAfterRestartAtEveryBoundary(t *testing.T) {
 	}
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
-			fixture := newRegistryRestartFixture(t, 100, 3, 2)
+			fixture := newRegistryRestartFixture(t, 3)
 			event := fixture.chainRegisters("registration", registrationBlock, 4)
 			fixture.chain.setHead(104)
 
@@ -1739,7 +972,7 @@ func TestPegInWatcher_ConvergesAfterRestartAtEveryBoundary(t *testing.T) {
 
 			requireImportedEntry(t, fixture, event)
 			assert.Len(t, fixture.importedAddresses(), testCase.imports)
-			assert.Equal(t, []uint64{102}, fixture.checkpointAdvances())
+			assert.Equal(t, []uint64{104}, fixture.checkpointAdvances())
 		})
 	}
 }
@@ -1763,7 +996,7 @@ func requireImportedEntry(
 // not produce a second entry, a second import, a state regression, or a checkpoint that moves
 // anywhere but forward.
 func TestPegInWatcher_AbsorbsDuplicateAndLateEventDelivery(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 3, 2)
+	fixture := newRegistryRestartFixture(t, 3)
 	fixture.chain.setHead(106)
 
 	session := fixture.startScanner()
@@ -1783,11 +1016,7 @@ func TestPegInWatcher_AbsorbsDuplicateAndLateEventDelivery(t *testing.T) {
 	session.poll()
 
 	assert.Equal(t, [][2]uint64{
-		{100, 102}, {103, 104}, {105, 106},
-		{105, 107},
-		{100, 102}, {103, 105}, {106, 108},
-		{109, 110},
-		{109, 110},
+		{102, 104}, {105, 107}, {108, 110},
 	}, fixture.chain.requestedRanges())
 	entries := fixture.watchSet()
 	require.Len(t, entries, 2)
@@ -1801,221 +1030,103 @@ func TestPegInWatcher_AbsorbsDuplicateAndLateEventDelivery(t *testing.T) {
 		[]string{fixture.depositAddressOf(late), fixture.depositAddressOf(repeated)},
 		fixture.importedAddresses(),
 	)
-	assert.Equal(t, fixture.chain.rootAt(108), fixture.store.checkpoint.LocalRoot)
-	assert.Equal(t, []uint64{104, 108}, fixture.checkpointAdvances())
+	assert.Equal(t, fixture.chain.rootAt(110), fixture.store.checkpoint.LocalRoot)
+	assert.Equal(t, []uint64{106, 110}, fixture.checkpointAdvances())
 }
 
-func TestPegInWatcher_DoesNotAcceptCheckpointAfterSkippedTailEvent(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 2, 1)
-	first := fixture.chainRegisters("first", 100, 0)
-	skippedTail := fixture.chainRegisters("skipped-tail", 101, 0)
-	fixture.chain.omitOnNextQuery(skippedTail)
-	fixture.chain.setHead(102)
+func TestPegInWatcher_ImportsThroughCapturedHead(t *testing.T) {
+	fixture := newRegistryRestartFixture(t, 2)
+	atHead := fixture.chainRegisters("captured-head", 103, 0)
+	fixture.chain.setHead(103)
 
 	fixture.scanOnce()
 
-	requireImportedEntryCount(t, fixture, first, skippedTail)
-	assert.Equal(t, fixture.chain.rootAt(101), fixture.store.checkpoint.LocalRoot)
+	requireImportedEntry(t, fixture, atHead)
+	requireMatchingCheckpoint(t, fixture, atHead.RegistrationRoot, 103)
+	assert.Equal(t, [][2]uint64{{103, 103}}, fixture.chain.requestedRanges())
 }
 
-func TestPegInWatcher_SecondColdMismatchLeavesNoTrustedCheckpoint(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 2, 0)
-	fixture.chainRegisters("baseline", 100, 0)
-	omitted := fixture.chainRegisters("omitted-twice", 100, 1)
-	fixture.chain.omitOnNextQueries(omitted, 2)
-	fixture.chain.setHead(100)
-
-	fixture.scanOnce()
-
-	assert.Equal(t, 2, fixture.store.checkpointClears(), "cold verification mismatch must invalidate its page checkpoint")
-	assert.False(t, fixture.store.checkpointFound(), "restart must not trust the failed cold replay")
-
-	fixture.chain.drop(omitted)
-	fixture.scanOnce()
-	replaysFromDeployment := 0
-	for _, requestedRange := range fixture.chain.requestedRanges() {
-		if requestedRange[0] == 100 {
-			replaysFromDeployment++
-		}
-	}
-	assert.Equal(t, 3, replaysFromDeployment, "restart must begin at the configured deployment block")
-}
-
-func TestPegInWatcher_DoesNotCheckpointUnconfirmedLog(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 10, 2)
-	confirmed := fixture.chainRegisters("confirmed", 100, 0)
-	unconfirmed := fixture.chainRegisters("unconfirmed", 103, 0)
-	fixture.chain.includeOnNextQuery(unconfirmed)
-	fixture.chain.setHead(104)
-
-	fixture.scanOnce()
-
-	requireImportedEntry(t, fixture, confirmed)
-	assert.Equal(t, []string{fixture.depositAddressOf(confirmed)}, fixture.importedAddresses())
-	assert.Equal(t, fixture.chain.rootAt(102), fixture.store.checkpoint.LocalRoot)
-	assert.Equal(t, uint64(102), fixture.store.checkpoint.LastProcessedBlock)
-
-	fixture.chain.drop(unconfirmed)
-	fixture.chain.setHead(108)
-	fixture.scanOnce()
-
-	requireImportedEntry(t, fixture, confirmed)
-	assert.Equal(t, fixture.chain.rootAt(106), fixture.store.checkpoint.LocalRoot)
-}
-
-func TestPegInWatcher_UnconfirmedTailOmissionTriggersAuthoritativeReplay(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 10, 2)
-	confirmed := fixture.chainRegisters("confirmed", 100, 0)
-	fixture.chainRegisters("unconfirmed-first", 103, 0)
-	unconfirmedTail := fixture.chainRegisters("unconfirmed-tail", 104, 0)
-	fixture.chain.omitOnNextQuery(unconfirmedTail)
-	fixture.chain.setHead(104)
-
-	fixture.scanOnce()
-
-	requireImportedEntry(t, fixture, confirmed)
-	assert.Equal(t, 1, fixture.store.checkpointClears())
-	replaysFromDeployment := 0
-	for _, requestedRange := range fixture.chain.requestedRanges() {
-		if requestedRange[0] == 100 {
-			replaysFromDeployment++
-		}
-	}
-	assert.Equal(t, 2, replaysFromDeployment)
-}
-
-func TestPegInWatcher_ReorgSignalDiscardsCheckpointAndReplaysFromDeployment(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 2, 1)
-	fixture.chainRegisters("existing", 100, 0)
-	fixture.chain.setHead(102)
+func TestPegInWatcher_TimerAndReorgUseSameReplayPath(t *testing.T) {
+	fixture := newRegistryRestartFixture(t, 2)
+	fixture.chainRegisters("same-path", 103, 0)
+	fixture.chain.setHead(103)
 	session := fixture.startScanner()
 	defer session.stop()
-	session.poll()
 
-	replaysFromDeployment := func() int {
-		count := 0
-		for _, requestedRange := range fixture.chain.requestedRanges() {
-			if requestedRange[0] == 100 {
-				count++
-			}
-		}
-		return count
-	}
-	require.Equal(t, 1, replaysFromDeployment())
+	session.poll()
+	firstRanges := fixture.chain.requestedRanges()
+	require.Equal(t, [][2]uint64{{103, 103}}, firstRanges)
+
+	fixture.store.mutex.Lock()
+	fixture.store.entries = nil
+	fixture.store.checkpoint = rootstock.PegInWatchCheckpoint{}
+	fixture.store.hasCheckpoint = false
+	fixture.store.mutex.Unlock()
 	fixture.eventBus.Publish(blockchain.NodeReorgCheckEvent{
 		BaseEvent:    entities.NewBaseEvent(blockchain.NodeReorgCheckEventId),
 		NodeType:     entities.NodeTypeRootstock,
 		CurrentDepth: 1,
 	})
 
-	assert.Eventually(t, func() bool {
-		return replaysFromDeployment() == 2 && fixture.store.checkpointClears() == 1
-	}, time.Second, time.Millisecond)
-}
-
-func TestPegInWatcher_ColdReplayWaitsForConfiguredStart(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 10, 2)
-	boundary := fixture.chainRegisters("boundary", 100, 0)
-
-	fixture.chain.setHead(100)
-	fixture.scanOnce()
-	checkpoint, found := fixture.checkpointSnapshot()
-	assert.False(t, found)
-	assert.Zero(t, checkpoint)
-	assert.Empty(t, fixture.chain.requestedRanges())
-
-	fixture.chain.setHead(101)
-	fixture.scanOnce()
-	_, found = fixture.checkpointSnapshot()
-	assert.False(t, found)
-	assert.Empty(t, fixture.chain.requestedRanges())
-
-	fixture.chain.setHead(102)
-	fixture.scanOnce()
-	checkpoint, found = fixture.checkpointSnapshot()
-	require.True(t, found)
-	assert.Equal(t, uint64(100), checkpoint.LastProcessedBlock)
-	assert.Equal(t, [][2]uint64{{100, 100}, {101, 102}}, fixture.chain.requestedRanges())
-	requireImportedEntry(t, fixture, boundary)
-}
-
-func TestPegInWatcher_ReorgInvalidatesCheckpointBeforeShortHeadReturn(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 2, 2)
-	fixture.chainRegisters("existing", 100, 0)
-	fixture.chain.setHead(104)
-	session := fixture.startScanner()
-	defer session.stop()
-	session.poll()
-
-	fixture.chain.setHead(1)
-	fixture.eventBus.Publish(blockchain.NodeReorgCheckEvent{
-		BaseEvent:    entities.NewBaseEvent(blockchain.NodeReorgCheckEventId),
-		NodeType:     entities.NodeTypeRootstock,
-		CurrentDepth: 1,
-	})
 	require.Eventually(t, func() bool {
-		return fixture.rootstockHeightCalls() == 2
-	}, time.Second, time.Millisecond, "reorg signal was not consumed")
-	assert.Equal(t, 1, fixture.store.checkpointClears(), "accepted reorg must invalidate before the short-head return")
-
-	fixture.chain.setHead(104)
-	session.poll()
-	replaysFromDeployment := 0
-	for _, requestedRange := range fixture.chain.requestedRanges() {
-		if requestedRange[0] == 100 {
-			replaysFromDeployment++
-		}
-	}
-	assert.Equal(t, 2, replaysFromDeployment, "the next run must remain forced into cold replay")
+		return len(fixture.chain.requestedRanges()) == 2*len(firstRanges)
+	}, time.Second, time.Millisecond)
+	assert.Equal(t, append(firstRanges, firstRanges...), fixture.chain.requestedRanges())
 }
 
-func requireImportedEntryCount(
-	t *testing.T,
-	fixture *registryRestartFixture,
-	events ...blockchain.AddressRegistered,
-) {
-	t.Helper()
-	entries := fixture.watchSet()
-	require.Len(t, entries, len(events))
-	for index, event := range events {
-		assert.Equal(t, event.TxHash, entries[index].TxHash)
-		assert.Equal(t, rootstock.PegInWatchImported, entries[index].State)
-	}
-}
-
-// The checkpoint may never advance over a log that can still be reorganised away.
-func TestPegInWatcher_DoesNotCompleteLogRemovedBeforeFinality(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 10, 2)
-	fixture.chain.setHead(104)
-	reorgedOut := fixture.chainRegisters("reorged-out", 103, 0)
-
-	session := fixture.startScanner()
+func TestPegInWatcher_IgnoresInvalidReorgSignalsAndClosedSubscription(t *testing.T) {
+	eventBus := newRegistryReorgEventBus()
+	rskRpc := mocks.NewRootstockRpcServerMock(t)
+	ticker := newSessionTicker()
+	repository := &overlappingReplayRepository{}
+	watcher := newRegistryWatcher(
+		repository,
+		repository,
+		mocks.NewPegInAddressRegistryContractMock(t),
+		rskRpc,
+		nil,
+		mocks.NewBitcoinWalletMock(t),
+		eventBus,
+		ticker,
+		100,
+		2,
+	)
+	session := startWatcherSession(t, watcher, ticker)
 	defer session.stop()
-	session.poll()
 
-	assert.Equal(t, [][2]uint64{{100, 102}, {103, 104}}, fixture.chain.requestedRanges())
-	assert.Empty(t, fixture.watchSet(), "a log above the finalized head must not reach the watch set")
-	assert.Empty(t, fixture.importedAddresses())
+	eventBus.Publish(entities.NewBaseEvent(blockchain.NodeReorgCheckEventId))
+	eventBus.Publish(blockchain.NodeReorgCheckEvent{
+		BaseEvent:    entities.NewBaseEvent(blockchain.NodeReorgCheckEventId),
+		NodeType:     entities.NodeTypeBitcoin,
+		CurrentDepth: 1,
+	})
+	eventBus.Publish(blockchain.NodeReorgCheckEvent{
+		BaseEvent:    entities.NewBaseEvent(blockchain.NodeReorgCheckEventId),
+		NodeType:     entities.NodeTypeRootstock,
+		CurrentDepth: 0,
+	})
+	selectsBeforeClose := ticker.selects.Load()
+	close(eventBus.events)
 
-	fixture.chain.drop(reorgedOut)
-	replacement := fixture.chainRegisters("replacement", 103, 0)
-	fixture.chain.setHead(108)
-	session.poll()
+	require.Eventually(t, func() bool {
+		return ticker.selects.Load() > selectsBeforeClose
+	}, time.Second, time.Millisecond)
+	rskRpc.AssertNotCalled(t, "GetHeight", mock.Anything)
+}
+
+func TestPegInWatcher_RescanFailureLeavesEntryPending(t *testing.T) {
+	fixture := newRegistryRestartFixture(t, 2)
+	fixture.rescanErr = assert.AnError
+	event := fixture.chainRegisters("rescan-failure", 100, 0)
+	fixture.chain.setHead(100)
+
+	fixture.scanOnce()
 
 	entries := fixture.watchSet()
 	require.Len(t, entries, 1)
-	assert.Equal(t, replacement.TxHash, entries[0].TxHash)
-	assert.Equal(t, rootstock.PegInWatchImported, entries[0].State)
-	assert.Equal(t, []string{fixture.depositAddressOf(replacement)}, fixture.importedAddresses())
-	assert.Equal(
-		t,
-		[][2]uint64{{100, 102}, {103, 104}, {103, 106}, {107, 108}},
-		fixture.chain.requestedRanges(),
-	)
-	assert.Equal(t, []uint64{102, 106}, fixture.checkpointAdvances())
+	assert.Equal(t, event.RskAddress, entries[0].RskAddress)
+	assert.Equal(t, rootstock.PegInWatchDiscovered, entries[0].State)
 }
-
-// --- merged from pegin_address_registry_checkpoint_test.go ---
 
 type checkpointRestartStore struct {
 	mutex             sync.Mutex
@@ -2070,10 +1181,14 @@ func (store *checkpointRestartStore) Update(_ context.Context, entry rootstock.P
 
 func (store *checkpointRestartStore) GetCheckpoint(
 	context.Context,
-) (rootstock.PegInWatchCheckpoint, bool, error) {
+) (*rootstock.PegInWatchCheckpoint, error) {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-	return store.checkpoint, store.hasCheckpoint, nil
+	if !store.hasCheckpoint {
+		return nil, nil
+	}
+	checkpoint := store.checkpoint
+	return &checkpoint, nil
 }
 
 func (store *checkpointRestartStore) SetCheckpoint(
@@ -2093,11 +1208,10 @@ func (store *checkpointRestartStore) SetCheckpoint(
 	return nil
 }
 
-func (store *checkpointRestartStore) DeleteCheckpoint(context.Context) error {
+func (store *checkpointRestartStore) DeleteFromBlock(_ context.Context, fromBlock uint64) error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
-	store.checkpoint = rootstock.PegInWatchCheckpoint{}
-	store.hasCheckpoint = false
+	store.entries = pruneWatchEntriesFromBlock(store.entries, fromBlock)
 	return nil
 }
 
@@ -2127,18 +1241,18 @@ func TestPegInWatcher_RestartsAfterEntryWriteBeforeCheckpoint(t *testing.T) {
 
 	scenario.scanOnce(t)
 	entries, checkpoint, _ := scenario.store.snapshot()
-	require.Len(t, entries, 1)
-	assert.Equal(t, rootstock.PegInWatchDiscovered, entries[0].State)
+	require.Len(t, entries, 2)
+	assert.Equal(t, rootstock.PegInWatchDiscovered, entries[1].State)
 	assert.Equal(t, uint64(100), checkpoint.LastProcessedBlock)
 	assert.Equal(t, scenario.previousRoot, checkpoint.LocalRoot)
 
 	scenario.scanOnce(t)
 	entries, checkpoint, operations := scenario.store.snapshot()
-	require.Len(t, entries, 1)
-	assert.Equal(t, rootstock.PegInWatchImported, entries[0].State)
+	require.Len(t, entries, 2)
+	assert.Equal(t, rootstock.PegInWatchImported, entries[1].State)
 	assert.Equal(t, rootstock.PegInWatchCheckpoint{
 		LocalRoot:          scenario.expectedRoot,
-		LastProcessedBlock: 102,
+		LastProcessedBlock: 103,
 	}, checkpoint)
 	assert.Equal(t, []string{
 		"entry-upsert",
@@ -2158,72 +1272,93 @@ type checkpointRestartScenario struct {
 	expectedRoot [32]byte
 }
 
+const (
+	checkpointRestartStartBlock = uint64(100)
+	checkpointRestartEventBlock = uint64(101)
+)
+
 func newCheckpointRestartScenario(t *testing.T) *checkpointRestartScenario {
 	t.Helper()
-	const (
-		startBlock = uint64(100)
-		eventBlock = uint64(101)
-	)
 	vectors := pinnedLBCRegistrations(t)
-	previousRoot := vectors[0].root
-	rskAddress := vectors[1].rskAddress
-	expectedRoot := vectors[1].root
+	prior := vectors[0]
+	registered := vectors[1]
 	event := blockchain.AddressRegistered{
 		TxHash:           "registration",
 		LogIndex:         1,
-		BlockNumber:      eventBlock,
-		RskAddress:       rskAddress,
-		RegistrationRoot: expectedRoot,
+		BlockNumber:      checkpointRestartEventBlock,
+		RskAddress:       registered.rskAddress,
+		RegistrationRoot: registered.root,
 	}
 	deposit := knownDepositAddress(0)
-	store := &checkpointRestartStore{
+	rskRpc := mocks.NewRootstockRpcServerMock(t)
+	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(103), nil).Twice()
+	wallet := mocks.NewBitcoinWalletMock(t)
+	wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Twice()
+	wallet.EXPECT().RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
+		Once()
+	btcNetwork := &mocks.BtcRpcMock{}
+	t.Cleanup(func() { btcNetwork.AssertExpectations(t) })
+	btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+
+	return &checkpointRestartScenario{
+		store:        newCheckpointRestartStore(prior),
+		registry:     newCheckpointRestartRegistry(t, event, prior.root, deposit),
+		rskRpc:       rskRpc,
+		btcNetwork:   btcNetwork,
+		wallet:       wallet,
+		previousRoot: prior.root,
+		expectedRoot: registered.root,
+	}
+}
+
+func newCheckpointRestartStore(prior pinnedLBCRegistration) *checkpointRestartStore {
+	return &checkpointRestartStore{
+		entries: []rootstock.PegInWatch{{
+			TxHash:           "prior-registration",
+			BlockNumber:      checkpointRestartStartBlock,
+			RskAddress:       prior.rskAddress,
+			RegistrationRoot: prior.root,
+			State:            rootstock.PegInWatchImported,
+		}},
 		checkpoint: rootstock.PegInWatchCheckpoint{
-			LocalRoot:          previousRoot,
-			LastProcessedBlock: startBlock,
+			LocalRoot:          prior.root,
+			LastProcessedBlock: checkpointRestartStartBlock,
 		},
 		hasCheckpoint:     true,
 		failSetCheckpoint: errProcessStopped,
 	}
+}
+
+func newCheckpointRestartRegistry(
+	t *testing.T,
+	event blockchain.AddressRegistered,
+	previousRoot [32]byte,
+	deposit depositAddress,
+) *mocks.PegInAddressRegistryContractMock {
+	t.Helper()
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
-	registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(101), uint64Pointer(102)).
+	registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(101), uint64Pointer(103)).
 		Return([]blockchain.AddressRegistered{event}, nil).
+		Once()
+	registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(103)).
+		Return(event.RegistrationRoot, nil).
 		Twice()
-	registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(103), uint64Pointer(103)).
-		Return([]blockchain.AddressRegistered{}, nil).
-		Twice()
-	registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(103)).Return(expectedRoot, nil).Twice()
-	registry.EXPECT().GetPegInAddress(rskAddress).
+	registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(100)).Return(previousRoot, nil).Once()
+	registry.EXPECT().GetPegInAddress(event.RskAddress).
 		Return(blockchain.PegInAddress{
 			Payload:  deposit.payload,
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Twice()
-	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(103), nil).Twice()
-	wallet := mocks.NewBitcoinWalletMock(t)
-	wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Twice()
-	btcNetwork := &mocks.BtcRpcMock{}
-	t.Cleanup(func() { btcNetwork.AssertExpectations(t) })
-	btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
-	wallet.EXPECT().RescanBlockchain(int64(100)).
-		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
-		Once()
-
-	return &checkpointRestartScenario{
-		store:        store,
-		registry:     registry,
-		rskRpc:       rskRpc,
-		btcNetwork:   btcNetwork,
-		wallet:       wallet,
-		previousRoot: previousRoot,
-		expectedRoot: expectedRoot,
-	}
+	return registry
 }
 
 func (scenario *checkpointRestartScenario) scanOnce(t *testing.T) {
 	t.Helper()
 	ticker := newSessionTicker()
 	watcher := newRegistryWatcher(
+		scenario.store,
 		scenario.store,
 		scenario.registry,
 		scenario.rskRpc,
@@ -2233,18 +1368,14 @@ func (scenario *checkpointRestartScenario) scanOnce(t *testing.T) {
 		ticker,
 		100,
 		3,
-		1,
 	)
 	session := startWatcherSession(t, watcher, ticker)
 	session.poll()
 	session.stop()
 }
 
-// --- merged from pegin_address_registry_acceptance_test.go ---
-
 func TestFirstBootBackfillsRegistrationsAndStoresMatchingCheckpoint(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 2, 1)
-	capturedLogs := test.CaptureStructuredLogs(t)
+	fixture := newRegistryRestartFixture(t, 2)
 	first := fixture.chainRegisters("first", 100, 0)
 	second := fixture.chainRegisters("second", 101, 0)
 	fixture.chain.setHead(103)
@@ -2254,13 +1385,13 @@ func TestFirstBootBackfillsRegistrationsAndStoresMatchingCheckpoint(t *testing.T
 	session.poll()
 
 	requireCompleteImportedWatchSet(t, fixture, first, second)
-	requireMatchingCheckpoint(t, fixture, second.RegistrationRoot, 102)
+	requireMatchingCheckpoint(t, fixture, second.RegistrationRoot, 103)
 	initialRanges := fixture.chain.requestedRanges()
 	require.NotEmpty(t, initialRanges)
 	assert.Equal(t, fixture.startBlock, initialRanges[0][0],
-		"first boot must replay from the configured deployment block")
-	assert.Equal(t, []uint64{103}, fixture.rootReadBlocks(), "the local root must be checked at the captured head")
-	requireNoIntegritySignal(t, fixture, capturedLogs())
+		"the first mismatch is at the deployment block in this fixture")
+	assert.Equal(t, []uint64{103, 101, 100}, fixture.rootReadBlocks(),
+		"first boot must check the head and find the first mismatching block")
 
 	requestCountBeforeIncrementalPoll := len(fixture.chain.requestedRanges())
 	third := fixture.chainRegisters("third", 103, 0)
@@ -2268,25 +1399,37 @@ func TestFirstBootBackfillsRegistrationsAndStoresMatchingCheckpoint(t *testing.T
 	session.poll()
 
 	requireCompleteImportedWatchSet(t, fixture, first, second, third)
-	requireMatchingCheckpoint(t, fixture, third.RegistrationRoot, 103)
+	requireMatchingCheckpoint(t, fixture, third.RegistrationRoot, 104)
 	incrementalRanges := fixture.chain.requestedRanges()[requestCountBeforeIncrementalPoll:]
 	require.NotEmpty(t, incrementalRanges)
 	assert.Equal(t, uint64(103), incrementalRanges[0][0], "normal operation must continue after the saved checkpoint")
-	assert.Equal(t, []uint64{102, 103}, fixture.checkpointAdvances())
-	assert.Equal(t, []uint64{103, 104}, fixture.rootReadBlocks())
-	requireNoIntegritySignal(t, fixture, capturedLogs())
+	assert.Equal(t, []uint64{103, 104}, fixture.checkpointAdvances())
+	rootReads := fixture.rootReadBlocks()
+	assert.Contains(t, rootReads, uint64(104))
+}
+
+func TestFirstBootSkipsIdleDeploymentRange(t *testing.T) {
+	fixture := newRegistryRestartFixture(t, 2)
+	first := fixture.chainRegisters("first-after-idle", 102, 0)
+	fixture.chain.setHead(103)
+
+	fixture.scanOnce()
+
+	requireCompleteImportedWatchSet(t, fixture, first)
+	requireMatchingCheckpoint(t, fixture, first.RegistrationRoot, 103)
+	assert.Equal(t, [][2]uint64{{102, 103}}, fixture.chain.requestedRanges())
+	assert.Equal(t, []uint64{103, 101, 102}, fixture.rootReadBlocks())
 }
 
 func TestRestartResumesFromTrustedCheckpointWithMatchingRoot(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 2, 1)
-	capturedLogs := test.CaptureStructuredLogs(t)
+	fixture := newRegistryRestartFixture(t, 2)
 	first := fixture.chainRegisters("persisted-first", 100, 0)
 	second := fixture.chainRegisters("persisted-second", 101, 0)
 	fixture.chain.setHead(102)
 	fixture.scanOnce()
 
 	requireCompleteImportedWatchSet(t, fixture, first, second)
-	requireMatchingCheckpoint(t, fixture, second.RegistrationRoot, 101)
+	requireMatchingCheckpoint(t, fixture, second.RegistrationRoot, 102)
 	entriesBeforeRestart := fixture.watchSet()
 	requestCountBeforeRestart := len(fixture.chain.requestedRanges())
 
@@ -2304,46 +1447,51 @@ func TestRestartResumesFromTrustedCheckpointWithMatchingRoot(t *testing.T) {
 	for _, requestedRange := range restartRanges {
 		assert.NotEqual(t, uint64(100), requestedRange[0], "restart must not replay from the deployment block")
 	}
-	requireMatchingCheckpoint(t, fixture, third.RegistrationRoot, 102)
-	assert.Equal(t, []uint64{101, 102}, fixture.checkpointAdvances())
+	requireMatchingCheckpoint(t, fixture, third.RegistrationRoot, 103)
+	assert.Equal(t, []uint64{102, 103}, fixture.checkpointAdvances())
 	rootReads := fixture.rootReadBlocks()
 	require.NotEmpty(t, rootReads)
-	assert.Equal(t, uint64(103), rootReads[len(rootReads)-1], "restart must verify against the captured head")
-	requireNoIntegritySignal(t, fixture, capturedLogs())
+	assert.Contains(t, rootReads, uint64(103), "restart must verify against the captured head")
 }
 
 func TestMissedEventSignalsMismatchAndRepairsCompleteWatchSet(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 2, 1)
+	fixture := newRegistryRestartFixture(t, 2)
 	capturedLogs := test.CaptureStructuredLogs(t)
 	first := fixture.chainRegisters("first", 100, 0)
 	fixture.chain.setHead(101)
 	fixture.scanOnce()
 	requireCompleteImportedWatchSet(t, fixture, first)
-	requireNoIntegritySignal(t, fixture, capturedLogs())
 
 	skipped := fixture.chainRegisters("skipped", 101, 0)
 	last := fixture.chainRegisters("last", 102, 0)
 	fixture.chain.omitOnNextQuery(skipped)
 	fixture.chain.setHead(103)
 	fixture.scanOnce()
+	fixture.eventBus.clearPublished()
+	logOffset := len(capturedLogs())
+	fixture.scanOnce()
 
-	requireCompleteImportedWatchSet(t, fixture, first, skipped, last)
-	requireMatchingCheckpoint(t, fixture, last.RegistrationRoot, 102)
-	assert.Equal(t, 2, replayCountFromDeployment(fixture),
-		"the mismatch repair must add one cold replay from the deployment block")
-	assert.Len(t, fixture.importedAddresses(), 3, "repair must not repeat the first registration import")
-	mismatchSignal := requireOneIntegritySignal(t, fixture, last.BlockNumber, last.RegistrationRoot)
-	logEntry := requireSingleMismatchLog(t, capturedLogs())
+	requireCompleteWatchSet(t, fixture, first, skipped, last)
+	assert.Equal(t, []string{
+		fixture.depositAddressOf(first),
+		fixture.depositAddressOf(skipped),
+		fixture.depositAddressOf(last),
+	}, fixture.importedAddresses())
+	requireMatchingCheckpoint(t, fixture, last.RegistrationRoot, 103)
+	assert.Equal(t, 1, replayCountFromDeployment(fixture))
+	assert.Len(t, fixture.importedAddresses(), 3)
+	mismatchSignal := requireOneIntegritySignal(t, fixture, 103, last.RegistrationRoot)
+	logEntry := requireSingleMismatchLog(t, capturedLogs()[logOffset:])
 	assert.Equal(t, "error", logEntry.Level())
-	assert.InDelta(t, float64(last.BlockNumber), logEntry.Field(test.LogKey("block_number")), 0)
+	assert.InDelta(t, float64(103), logEntry.Field(test.LogKey("block_number")), 0)
 	assert.Equal(t, fmt.Sprintf("0x%x", mismatchSignal.LocalRoot), logEntry.Field(test.LogKey("local_root")))
 	assert.Equal(t, fmt.Sprintf("0x%x", last.RegistrationRoot), logEntry.Field(test.LogKey("chain_root")))
 	assert.NotEqual(t, logEntry.Field(test.LogKey("chain_root")), logEntry.Field(test.LogKey("local_root")))
-	assert.Equal(t, "event_last_0", logEntry.Field(test.LogKey("source")))
+	assert.Equal(t, "captured_head", logEntry.Field(test.LogKey("source")))
 }
 
 func TestSilentEventStreamHealthCheckSignalsMismatchAndReplays(t *testing.T) {
-	fixture := newRegistryRestartFixture(t, 100, 2, 1)
+	fixture := newRegistryRestartFixture(t, 2)
 	capturedLogs := test.CaptureStructuredLogs(t)
 	first := fixture.chainRegisters("first", 100, 0)
 	fixture.chain.setHead(101)
@@ -2352,28 +1500,34 @@ func TestSilentEventStreamHealthCheckSignalsMismatchAndReplays(t *testing.T) {
 	defer session.stop()
 	session.poll()
 	requireCompleteImportedWatchSet(t, fixture, first)
-	requireMatchingCheckpoint(t, fixture, first.RegistrationRoot, 100)
+	requireMatchingCheckpoint(t, fixture, first.RegistrationRoot, 101)
 
 	session.poll()
 	requireCompleteImportedWatchSet(t, fixture, first)
-	requireMatchingCheckpoint(t, fixture, first.RegistrationRoot, 100)
+	requireMatchingCheckpoint(t, fixture, first.RegistrationRoot, 101)
 	assert.Equal(t, 1, replayCountFromDeployment(fixture), "an equal-root tick must not start a cold replay")
-	assert.Equal(t, []uint64{100}, fixture.checkpointAdvances(), "an equal-root tick must not republish progress")
-	requireNoIntegritySignal(t, fixture, capturedLogs())
+	assert.Equal(t, []uint64{101}, fixture.checkpointAdvances(), "an equal-root tick must not republish progress")
+	fixture.eventBus.clearPublished()
+	logOffset := len(capturedLogs())
 
-	// The node's first reading of finalized block 100 omitted this registration. The head and
+	// The node's first reading of block 100 omitted this registration. The head and
 	// trusted checkpoint cannot advance, so only the same-head root check can expose the gap.
 	silentlyOmitted := fixture.chainRegisters("silently-omitted", 100, 1)
 	session.poll()
 
-	requireCompleteImportedWatchSet(t, fixture, first, silentlyOmitted)
-	requireMatchingCheckpoint(t, fixture, silentlyOmitted.RegistrationRoot, 100)
+	requireCompleteWatchSet(t, fixture, first, silentlyOmitted)
+	assert.Equal(t, []string{
+		fixture.depositAddressOf(first),
+		fixture.depositAddressOf(first),
+		fixture.depositAddressOf(silentlyOmitted),
+	}, fixture.importedAddresses())
+	requireMatchingCheckpoint(t, fixture, silentlyOmitted.RegistrationRoot, 101)
 	assert.Equal(t, 2, replayCountFromDeployment(fixture),
 		"the health mismatch must use the cold replay procedure")
-	assert.Len(t, fixture.importedAddresses(), 2, "health repair must not repeat the first registration import")
+	assert.Len(t, fixture.importedAddresses(), 3, "health repair must reimport the pruned registration")
 	mismatchSignal := requireOneIntegritySignal(t, fixture, 101, silentlyOmitted.RegistrationRoot)
 	assert.Equal(t, first.RegistrationRoot, mismatchSignal.LocalRoot)
-	logEntry := requireSingleMismatchLog(t, capturedLogs())
+	logEntry := requireSingleMismatchLog(t, capturedLogs()[logOffset:])
 	assert.Equal(t, "error", logEntry.Level())
 	assert.InDelta(t, float64(101), logEntry.Field(test.LogKey("block_number")), 0)
 	assert.Equal(t, fmt.Sprintf("0x%x", first.RegistrationRoot), logEntry.Field(test.LogKey("local_root")))
@@ -2387,9 +1541,23 @@ func requireCompleteImportedWatchSet(
 	events ...blockchain.AddressRegistered,
 ) []rootstock.PegInWatch {
 	t.Helper()
+	entries := requireCompleteWatchSet(t, fixture, events...)
+	expectedImports := make([]string, 0, len(events))
+	for _, event := range events {
+		expectedImports = append(expectedImports, fixture.depositAddressOf(event))
+	}
+	assert.Equal(t, expectedImports, fixture.importedAddresses())
+	return entries
+}
+
+func requireCompleteWatchSet(
+	t *testing.T,
+	fixture *registryRestartFixture,
+	events ...blockchain.AddressRegistered,
+) []rootstock.PegInWatch {
+	t.Helper()
 	entries := fixture.watchSet()
 	require.Len(t, entries, len(events))
-	expectedImports := make([]string, 0, len(events))
 	for index, event := range events {
 		assert.Equal(t, event.TxHash, entries[index].TxHash)
 		assert.Equal(t, event.LogIndex, entries[index].LogIndex)
@@ -2399,9 +1567,7 @@ func requireCompleteImportedWatchSet(
 		assert.Equal(t, rootstock.PegInWatchImported, entries[index].State)
 		assert.Equal(t, fixture.depositAddressOf(event), entries[index].BtcAddress)
 		assert.Empty(t, entries[index].LastError)
-		expectedImports = append(expectedImports, fixture.depositAddressOf(event))
 	}
-	assert.Equal(t, expectedImports, fixture.importedAddresses())
 	return entries
 }
 
@@ -2428,17 +1594,6 @@ func replayCountFromDeployment(fixture *registryRestartFixture) int {
 		}
 	}
 	return count
-}
-
-func requireNoIntegritySignal(
-	t *testing.T,
-	fixture *registryRestartFixture,
-	logEntries []test.LogEntry,
-) {
-	t.Helper()
-	assert.Zero(t, fixture.eventBus.publishedCount(blockchain.PegInAddressRegistryRootMismatchEventId))
-	assert.Zero(t, fixture.eventBus.publishedCount(blockchain.PegInAddressRegistryResyncStartedEventId))
-	assert.Empty(t, mismatchLogs(logEntries))
 }
 
 func requireOneIntegritySignal(

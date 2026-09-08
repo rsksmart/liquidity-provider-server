@@ -2,7 +2,6 @@ package rootstock_test
 
 import (
 	"context"
-	"encoding/hex"
 	"math/big"
 	"testing"
 
@@ -79,14 +78,12 @@ func TestPegInAddressRegistryContractImpl_GetAddress(t *testing.T) {
 	assert.Equal(t, test.AnyAddress, registry.GetAddress())
 }
 
+// nolint:funlen
 func TestPegInAddressRegistryContractImpl_IsDeploymentBlock(t *testing.T) {
-	type deploymentBlockVerifier interface {
-		IsDeploymentBlock(context.Context, uint64) (bool, error)
-	}
+	address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
 
 	t.Run("accepts the first block containing contract code", func(t *testing.T) {
 		client := mocks.NewRpcClientBindingMock(t)
-		address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
 		registry := rootstock.NewPegInAddressRegistryContractImpl(
 			rootstock.NewRskClient(client),
 			address.Hex(),
@@ -95,12 +92,10 @@ func TestPegInAddressRegistryContractImpl_IsDeploymentBlock(t *testing.T) {
 			nil,
 			Abis,
 		)
-		verifier, ok := registry.(deploymentBlockVerifier)
-		require.True(t, ok, "registry adapter does not expose an exact deployment-block proof")
 		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return([]byte{1}, nil).Once()
 		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(99)).Return(nil, nil).Once()
 
-		isDeploymentBlock, err := verifier.IsDeploymentBlock(context.Background(), 100)
+		isDeploymentBlock, err := registry.IsDeploymentBlock(context.Background(), 100)
 
 		require.NoError(t, err)
 		assert.True(t, isDeploymentBlock)
@@ -108,7 +103,6 @@ func TestPegInAddressRegistryContractImpl_IsDeploymentBlock(t *testing.T) {
 
 	t.Run("returns false when contract code already exists in the previous block", func(t *testing.T) {
 		client := mocks.NewRpcClientBindingMock(t)
-		address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
 		registry := rootstock.NewPegInAddressRegistryContractImpl(
 			rootstock.NewRskClient(client),
 			address.Hex(),
@@ -117,14 +111,103 @@ func TestPegInAddressRegistryContractImpl_IsDeploymentBlock(t *testing.T) {
 			nil,
 			Abis,
 		)
-		verifier, ok := registry.(deploymentBlockVerifier)
-		require.True(t, ok, "registry adapter does not expose an exact deployment-block proof")
 		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return([]byte{1}, nil).Once()
 		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(99)).Return([]byte{1}, nil).Once()
 
-		isDeploymentBlock, err := verifier.IsDeploymentBlock(context.Background(), 100)
+		isDeploymentBlock, err := registry.IsDeploymentBlock(context.Background(), 100)
 
 		require.NoError(t, err)
+		assert.False(t, isDeploymentBlock)
+	})
+
+	t.Run("accepts the genesis block when it already holds contract code", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		registry := rootstock.NewPegInAddressRegistryContractImpl(
+			rootstock.NewRskClient(client),
+			address.Hex(),
+			nil,
+			rootstock.RetryParams{},
+			nil,
+			Abis,
+		)
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(0)).Return([]byte{1}, nil).Once()
+
+		isDeploymentBlock, err := registry.IsDeploymentBlock(context.Background(), 0)
+
+		require.NoError(t, err)
+		assert.True(t, isDeploymentBlock)
+	})
+
+	t.Run("returns false when the candidate block holds no contract code", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		registry := rootstock.NewPegInAddressRegistryContractImpl(
+			rootstock.NewRskClient(client),
+			address.Hex(),
+			nil,
+			rootstock.RetryParams{},
+			nil,
+			Abis,
+		)
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return(nil, nil).Once()
+
+		isDeploymentBlock, err := registry.IsDeploymentBlock(context.Background(), 100)
+
+		require.NoError(t, err)
+		assert.False(t, isDeploymentBlock)
+	})
+
+	t.Run("Error handling on code read fail", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		registry := rootstock.NewPegInAddressRegistryContractImpl(
+			rootstock.NewRskClient(client),
+			address.Hex(),
+			nil,
+			rootstock.RetryParams{},
+			nil,
+			Abis,
+		)
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return(nil, assert.AnError).Once()
+
+		isDeploymentBlock, err := registry.IsDeploymentBlock(context.Background(), 100)
+
+		require.ErrorContains(t, err, "read PegIn address registry code at block 100")
+		require.ErrorIs(t, err, assert.AnError)
+		assert.False(t, isDeploymentBlock)
+	})
+
+	t.Run("Error handling on parent code read fail", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		registry := rootstock.NewPegInAddressRegistryContractImpl(
+			rootstock.NewRskClient(client),
+			address.Hex(),
+			nil,
+			rootstock.RetryParams{},
+			nil,
+			Abis,
+		)
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return([]byte{1}, nil).Once()
+		client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(99)).Return(nil, assert.AnError).Once()
+
+		isDeploymentBlock, err := registry.IsDeploymentBlock(context.Background(), 100)
+
+		require.ErrorContains(t, err, "read PegIn address registry code at block 99")
+		require.ErrorIs(t, err, assert.AnError)
+		assert.False(t, isDeploymentBlock)
+	})
+
+	t.Run("Invalid address", func(t *testing.T) {
+		registry := rootstock.NewPegInAddressRegistryContractImpl(
+			rootstock.NewRskClient(mocks.NewRpcClientBindingMock(t)),
+			test.AnyString,
+			nil,
+			rootstock.RetryParams{},
+			nil,
+			Abis,
+		)
+
+		isDeploymentBlock, err := registry.IsDeploymentBlock(context.Background(), 100)
+
+		require.ErrorIs(t, err, blockchain.InvalidAddressError)
 		assert.False(t, isDeploymentBlock)
 	})
 }
@@ -419,96 +502,49 @@ func TestNewValidatedPegInAddressRegistryContract_RejectsBlockThatIsNotDeploymen
 	require.ErrorContains(t, err, "configured start block 100 is not the PegIn address registry deployment block")
 }
 
-func TestNewValidatedPegInAddressRegistryContract_WrapsIncompatibleDeployment(t *testing.T) {
+func TestNewValidatedPegInAddressRegistryContract_WrapsCodeReadFailure(t *testing.T) {
 	client := mocks.NewRpcClientBindingMock(t)
 	address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
-	expectExactDeploymentCode(client, address, 100)
-	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	contractMock.caller.EXPECT().CallContract(
-		mock.Anything,
-		matchCallData(registryBinding.PackGetRegistrationRoot()),
-		mock.Anything,
-	).Return(nil, assert.AnError).Once()
+	client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return(nil, assert.AnError).Once()
 
 	_, err := rootstock.NewValidatedPegInAddressRegistryContract(
 		context.Background(),
 		rootstock.NewRskClient(client),
 		address.Hex(),
-		contractMock.contract,
+		nil,
 		rootstock.RetryParams{},
-		registryBinding,
+		nil,
 		Abis,
 		100,
 	)
 
-	require.ErrorContains(t, err, "validate PegIn address registry at deployment block 100")
+	require.ErrorContains(t, err, "prove PegIn address registry deployment block 100")
 	require.ErrorIs(t, err, assert.AnError)
 }
 
-func TestNewValidatedPegInAddressRegistryContract_RejectsMismatchedDeploymentRoot(t *testing.T) {
-	client := mocks.NewRpcClientBindingMock(t)
-	address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
-	expectExactDeploymentCode(client, address, 100)
-	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	contractMock.caller.EXPECT().CallContract(
-		mock.Anything,
-		matchCallData(registryBinding.PackGetRegistrationRoot()),
-		mock.Anything,
-	).Return(mustPackBytes32(t, [32]byte{1}), nil).Once()
-	contractMock.filterer.EXPECT().
-		FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(100, 100))).
-		Return([]geth.Log{}, nil).
-		Once()
-
+func TestNewValidatedPegInAddressRegistryContract_RejectsInvalidAddress(t *testing.T) {
 	_, err := rootstock.NewValidatedPegInAddressRegistryContract(
 		context.Background(),
-		rootstock.NewRskClient(client),
-		address.Hex(),
-		contractMock.contract,
+		rootstock.NewRskClient(mocks.NewRpcClientBindingMock(t)),
+		test.AnyString,
+		nil,
 		rootstock.RetryParams{},
-		registryBinding,
+		nil,
 		Abis,
 		100,
 	)
 
-	require.ErrorContains(t, err, "deployment block 100 already has registry state")
+	require.ErrorIs(t, err, blockchain.InvalidAddressError)
 }
 
-func TestNewValidatedPegInAddressRegistryContract_AllowsFirstEventOnDeploymentBlock(t *testing.T) {
+// TestNewValidatedPegInAddressRegistryContract_AcceptsDeploymentBlock pins validation to the code
+// transition only: no registration-root read and no event replay, so any registry state already
+// present at the deployment block is accepted.
+func TestNewValidatedPegInAddressRegistryContract_AcceptsDeploymentBlock(t *testing.T) {
 	client := mocks.NewRpcClientBindingMock(t)
 	address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
-	rootBytes, err := hex.DecodeString("5a16856e66cb2b1b463f7773c427085d55afdd19d778290b45fb959a6224877e")
-	require.NoError(t, err)
-	deploymentRoot := [32]byte(rootBytes)
 	expectExactDeploymentCode(client, address, 100)
 	contractMock := createBoundContractMock()
-	registryBinding := bindings.NewPegInAddressRegistryContract()
-	contractMock.caller.EXPECT().CallContract(
-		mock.Anything,
-		matchCallData(registryBinding.PackGetRegistrationRoot()),
-		mock.Anything,
-	).Return(mustPackBytes32(t, deploymentRoot), nil).Once()
-
-	registryAbi, err := bindings.PegInAddressRegistryContractMetaData.ParseABI()
-	require.NoError(t, err)
-	eventID := registryAbi.Events["AddressRegistered"].ID
-	registrant := common.HexToAddress("0x0200000000000000000000000000000000000000")
-	contractMock.filterer.EXPECT().
-		FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(100, 100))).
-		Return([]geth.Log{{
-			TxHash:      common.Hash{7},
-			BlockNumber: 100,
-			Index:       0,
-			Topics: []common.Hash{
-				eventID,
-				common.BytesToHash(address.Bytes()),
-				common.BytesToHash(registrant.Bytes()),
-			},
-			Data: deploymentRoot[:],
-		}}, nil).
-		Once()
 
 	validated, err := rootstock.NewValidatedPegInAddressRegistryContract(
 		context.Background(),
@@ -516,11 +552,36 @@ func TestNewValidatedPegInAddressRegistryContract_AllowsFirstEventOnDeploymentBl
 		address.Hex(),
 		contractMock.contract,
 		rootstock.RetryParams{},
-		registryBinding,
+		bindings.NewPegInAddressRegistryContract(),
 		Abis,
 		100,
 	)
 
 	require.NoError(t, err)
 	require.NotNil(t, validated)
+	contractMock.caller.AssertNotCalled(t, "CallContract", mock.Anything, mock.Anything, mock.Anything)
+	contractMock.filterer.AssertNotCalled(t, "FilterLogs", mock.Anything, mock.Anything)
+}
+
+func TestNewValidatedPegInAddressRegistryContract_AcceptsGenesisDeploymentBlock(t *testing.T) {
+	client := mocks.NewRpcClientBindingMock(t)
+	address := common.HexToAddress("0x00000000000000000000000000000000000000a1")
+	client.EXPECT().CodeAt(mock.Anything, address, big.NewInt(0)).Return([]byte{1}, nil).Once()
+	contractMock := createBoundContractMock()
+
+	validated, err := rootstock.NewValidatedPegInAddressRegistryContract(
+		context.Background(),
+		rootstock.NewRskClient(client),
+		address.Hex(),
+		contractMock.contract,
+		rootstock.RetryParams{},
+		bindings.NewPegInAddressRegistryContract(),
+		Abis,
+		0,
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, validated)
+	contractMock.caller.AssertNotCalled(t, "CallContract", mock.Anything, mock.Anything, mock.Anything)
+	contractMock.filterer.AssertNotCalled(t, "FilterLogs", mock.Anything, mock.Anything)
 }

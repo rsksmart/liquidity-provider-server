@@ -104,21 +104,12 @@ type PegInWatchRepository interface {
 	Get(ctx context.Context, rskAddress string) (*PegInWatch, error)
 	List(ctx context.Context) ([]PegInWatch, error)
 	Update(ctx context.Context, watch PegInWatch) error
+	DeleteFromBlock(ctx context.Context, fromBlock uint64) error
 }
 
 type PegInWatchCheckpointRepository interface {
-	GetCheckpoint(ctx context.Context) (checkpoint PegInWatchCheckpoint, found bool, err error)
+	GetCheckpoint(ctx context.Context) (*PegInWatchCheckpoint, error)
 	SetCheckpoint(ctx context.Context, checkpoint PegInWatchCheckpoint) error
-	DeleteCheckpoint(ctx context.Context) error
-}
-
-// PegInWatchRepositorySet is the Replay port.
-// Discover takes only PegInWatchRepository because it never
-// reads or writes the checkpoint. Replay needs both the entry methods and the
-// checkpoint methods. Keep the split so Discover cannot call DeleteCheckpoint.
-type PegInWatchRepositorySet interface {
-	PegInWatchRepository
-	PegInWatchCheckpointRepository
 }
 
 type PegInWatches []*PegInWatch

@@ -15,15 +15,16 @@ import (
 )
 
 type ReplayRegisteredAddressesUseCase struct {
-	repository    rootstock.PegInWatchRepositorySet
-	registry      blockchain.PegInAddressRegistryContract
-	rskRpc        blockchain.RootstockRpcServer
-	eventBus      entities.EventBus
-	wallet        blockchain.BitcoinWallet
-	startBlock    uint64
-	pageSize      uint64
-	finalityDepth uint64
-	replayMutex   sync.Mutex
+	repository   rootstock.PegInWatchRepository
+	checkpoints  rootstock.PegInWatchCheckpointRepository
+	registry     blockchain.PegInAddressRegistryContract
+	rskRpc       blockchain.RootstockRpcServer
+	eventBus     entities.EventBus
+	wallet       blockchain.BitcoinWallet
+	hashFunction entities.HashFunction
+	startBlock   uint64
+	pageSize     uint64
+	replayMutex  sync.Mutex
 }
 
 var errPegInAddressRegistryRootMismatch = errors.New("PegIn address registry roots differ")
@@ -51,26 +52,27 @@ func (mismatch *pegInAddressRegistryRootMismatchError) Unwrap() error {
 }
 
 func NewReplayRegisteredAddressesUseCase(
-	repository rootstock.PegInWatchRepositorySet,
+	watches rootstock.PegInWatchRepository,
+	checkpoints rootstock.PegInWatchCheckpointRepository,
 	registry blockchain.PegInAddressRegistryContract,
 	rskRpc blockchain.RootstockRpcServer,
 	eventBus entities.EventBus,
 	wallet blockchain.BitcoinWallet,
-	finalityDepth uint64,
+	hashFunction entities.HashFunction,
 ) *ReplayRegisteredAddressesUseCase {
 	return &ReplayRegisteredAddressesUseCase{
-		repository:    repository,
-		registry:      registry,
-		rskRpc:        rskRpc,
-		eventBus:      eventBus,
-		wallet:        wallet,
-		finalityDepth: finalityDepth,
+		repository:   watches,
+		checkpoints:  checkpoints,
+		registry:     registry,
+		rskRpc:       rskRpc,
+		eventBus:     eventBus,
+		wallet:       wallet,
+		hashFunction: hashFunction,
 	}
 }
 
 func (useCase *ReplayRegisteredAddressesUseCase) Run(
 	ctx context.Context,
-	discardCheckpoint bool,
 	startBlock uint64,
 	pageSize uint64,
 ) ([]*rootstock.PegInWatch, error) {
@@ -80,7 +82,13 @@ func (useCase *ReplayRegisteredAddressesUseCase) Run(
 	useCase.startBlock = startBlock
 	useCase.pageSize = pageSize
 
-	pending, err := useCase.runReplay(ctx, discardCheckpoint)
+	if pageSize == 0 {
+		return nil, usecases.WrapUseCaseError(
+			usecases.ReplayRegisteredAddressesId,
+			errors.New("replay page size must be greater than zero"),
+		)
+	}
+	pending, err := useCase.runReplay(ctx)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.ReplayRegisteredAddressesId, err)
 	}
@@ -89,136 +97,412 @@ func (useCase *ReplayRegisteredAddressesUseCase) Run(
 
 func (useCase *ReplayRegisteredAddressesUseCase) runReplay(
 	ctx context.Context,
-	discardCheckpoint bool,
 ) ([]*rootstock.PegInWatch, error) {
-	replay, err := useCase.prepareReplay(ctx, discardCheckpoint)
-	if err != nil {
-		return nil, err
-	}
-	if replay == nil {
-		return nil, nil
-	}
-	pending := []*rootstock.PegInWatch{}
-	pending, err = useCase.retryDiscoveredEntries(ctx, pending)
-	if err != nil {
-		return nil, err
-	}
-	if replay.recoveryReason != "" {
-		useCase.reportResyncStarted(replay.recoveryReason)
-	}
-	checkpoint, pending, err := useCase.replayAndVerify(ctx, replay.trustedCheckpoint, replay.finalizedHead, replay.head, pending)
-	if err == nil {
-		if err = useCase.publishReplayCheckpoint(ctx, checkpoint, replay.trustedCheckpoint); err != nil {
-			return nil, err
-		}
-		return pending, nil
-	}
-	return useCase.recoverFromRootMismatch(ctx, err, replay.finalizedHead, replay.head)
-}
-
-type pegInAddressRegistryReplay struct {
-	head              uint64
-	finalizedHead     uint64
-	trustedCheckpoint *rootstock.PegInWatchCheckpoint
-	recoveryReason    string
-}
-
-func (useCase *ReplayRegisteredAddressesUseCase) prepareReplay(
-	ctx context.Context,
-	discardCheckpoint bool,
-) (*pegInAddressRegistryReplay, error) {
-	recoveryReason := ""
-	if discardCheckpoint {
-		if err := useCase.discardCheckpoint(ctx); err != nil {
-			return nil, err
-		}
-		recoveryReason = "chain_reorganization"
-	}
 	head, err := useCase.rskRpc.GetHeight(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get RSK height: %w", err)
 	}
-	if head < useCase.finalityDepth {
-		return nil, nil
+	if head < useCase.startBlock {
+		return []*rootstock.PegInWatch{}, nil
 	}
-	finalizedHead := head - useCase.finalityDepth
-	if finalizedHead < useCase.startBlock {
-		return nil, nil
-	}
-	trustedCheckpoint, err := useCase.loadTrustedCheckpoint(ctx)
+	state, err := useCase.loadInitialState(ctx, head)
 	if err != nil {
 		return nil, err
 	}
-	return &pegInAddressRegistryReplay{
-		head:              head,
-		finalizedHead:     finalizedHead,
-		trustedCheckpoint: trustedCheckpoint,
-		recoveryReason:    recoveryReason,
+	if state.localRootAtHead == state.chainRootAtHead {
+		return useCase.completeCurrentState(ctx, state)
+	}
+
+	plan, err := useCase.planReplay(ctx, state)
+	if plan.resyncReason == "root_mismatch" {
+		useCase.reportRootMismatch(&pegInAddressRegistryRootMismatchError{
+			blockNumber: state.head,
+			localRoot:   state.localRootAtHead,
+			chainRoot:   state.chainRootAtHead,
+			source:      "captured_head",
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	return useCase.rebuildFromPlan(ctx, state, plan)
+}
+
+type initialReconciliation struct {
+	head            uint64
+	checkpoint      *rootstock.PegInWatchCheckpoint
+	timeline        localRootTimeline
+	localRootAtHead [32]byte
+	chainRootAtHead [32]byte
+}
+
+func (useCase *ReplayRegisteredAddressesUseCase) loadInitialState(
+	ctx context.Context,
+	head uint64,
+) (initialReconciliation, error) {
+	checkpoint, err := useCase.checkpoints.GetCheckpoint(ctx)
+	if err != nil {
+		return initialReconciliation{}, fmt.Errorf("load PegIn address registry checkpoint: %w", err)
+	}
+	entries, err := useCase.repository.List(ctx)
+	if err != nil {
+		return initialReconciliation{}, fmt.Errorf("list PegIn watches: %w", err)
+	}
+	timeline, err := buildLocalRootTimeline(entries, useCase.startBlock, head, useCase.hashFunction)
+	if err != nil {
+		return initialReconciliation{}, err
+	}
+	if timeline.hasBeforeStart {
+		return initialReconciliation{}, fmt.Errorf(
+			"PegIn watch exists below configured start block %d",
+			useCase.startBlock,
+		)
+	}
+	chainRootAtHead, err := useCase.registry.GetRegistrationRoot(ctx, head)
+	if err != nil {
+		return initialReconciliation{}, fmt.Errorf(
+			"get PegIn address registry root at block %d: %w",
+			head,
+			err,
+		)
+	}
+	return initialReconciliation{
+		head:            head,
+		checkpoint:      checkpoint,
+		timeline:        timeline,
+		localRootAtHead: timeline.RootAt(head),
+		chainRootAtHead: chainRootAtHead,
 	}, nil
 }
 
-func (useCase *ReplayRegisteredAddressesUseCase) loadTrustedCheckpoint(
+func (useCase *ReplayRegisteredAddressesUseCase) completeCurrentState(
 	ctx context.Context,
-) (*rootstock.PegInWatchCheckpoint, error) {
-	checkpoint, found, err := useCase.repository.GetCheckpoint(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("load PegIn address registry checkpoint: %w", err)
-	}
-	if !found {
-		return nil, nil
-	}
-	return &checkpoint, nil
-}
-
-func (useCase *ReplayRegisteredAddressesUseCase) replayAndVerify(
-	ctx context.Context,
-	trustedCheckpoint *rootstock.PegInWatchCheckpoint,
-	finalizedHead uint64,
-	head uint64,
-	pending []*rootstock.PegInWatch,
-) (rootstock.PegInWatchCheckpoint, []*rootstock.PegInWatch, error) {
-	checkpoint, pending, err := useCase.replay(ctx, trustedCheckpoint, finalizedHead, pending)
-	if err != nil {
-		return checkpoint, pending, err
-	}
-	err = useCase.verifyReplayRoot(ctx, checkpoint.LocalRoot, checkpoint.LastProcessedBlock, head)
-	return checkpoint, pending, err
-}
-
-func (useCase *ReplayRegisteredAddressesUseCase) publishReplayCheckpoint(
-	ctx context.Context,
-	checkpoint rootstock.PegInWatchCheckpoint,
-	trustedCheckpoint *rootstock.PegInWatchCheckpoint,
-) error {
-	if trustedCheckpoint != nil && checkpoint == *trustedCheckpoint {
-		return nil
-	}
-	return useCase.publishCheckpoint(ctx, checkpoint)
-}
-
-func (useCase *ReplayRegisteredAddressesUseCase) recoverFromRootMismatch(
-	ctx context.Context,
-	replayErr error,
-	finalizedHead uint64,
-	head uint64,
+	state initialReconciliation,
 ) ([]*rootstock.PegInWatch, error) {
-	if !errors.Is(replayErr, errPegInAddressRegistryRootMismatch) {
-		return nil, replayErr
+	if state.timeline.hasAfterHead {
+		pruneFrom := state.head + 1
+		useCase.reportResyncStarted("rows_above_head")
+		if err := useCase.repository.DeleteFromBlock(ctx, pruneFrom); err != nil {
+			return nil, fmt.Errorf("delete PegIn watches from block %d: %w", pruneFrom, err)
+		}
 	}
-	useCase.reportRootMismatch(replayErr)
-	if discardErr := useCase.discardCheckpoint(ctx); discardErr != nil {
-		return nil, errors.Join(replayErr, discardErr)
+	finalCheckpoint := rootstock.PegInWatchCheckpoint{
+		LocalRoot:          state.chainRootAtHead,
+		LastProcessedBlock: state.head,
 	}
-	useCase.reportResyncStarted("root_mismatch")
-	recovered := []*rootstock.PegInWatch{}
-	checkpoint, recovered, err := useCase.replayAndVerify(ctx, nil, finalizedHead, head, recovered)
-	if err == nil {
-		if err = useCase.publishCheckpoint(ctx, checkpoint); err != nil {
+	if state.checkpoint == nil || *state.checkpoint != finalCheckpoint {
+		if err := useCase.publishCheckpoint(ctx, finalCheckpoint); err != nil {
 			return nil, err
 		}
-		return recovered, nil
 	}
-	return nil, errors.Join(err, useCase.discardCheckpoint(ctx))
+	return useCase.retryDiscoveredEntries(ctx, []*rootstock.PegInWatch{})
+}
+
+type replayPlan struct {
+	fromBlock    uint64
+	seedRoot     [32]byte
+	resyncReason string
+}
+
+func (useCase *ReplayRegisteredAddressesUseCase) planReplay(
+	ctx context.Context,
+	state initialReconciliation,
+) (replayPlan, error) {
+	trusted, err := useCase.checkpointSurvivesVerification(ctx, state)
+	if err != nil {
+		return replayPlan{}, err
+	}
+	if trusted {
+		return replayPlan{
+			fromBlock:    state.checkpoint.LastProcessedBlock + 1,
+			seedRoot:     state.checkpoint.LocalRoot,
+			resyncReason: "catch_up",
+		}, nil
+	}
+	plan := replayPlan{resyncReason: "root_mismatch"}
+	fromBlock, err := useCase.findFirstMismatchingBlock(
+		ctx,
+		state.timeline,
+		useCase.startBlock,
+		state.head,
+	)
+	if err != nil {
+		return plan, err
+	}
+	plan.fromBlock = fromBlock
+	if fromBlock > useCase.startBlock {
+		plan.seedRoot = state.timeline.RootAt(fromBlock - 1)
+	}
+	return plan, nil
+}
+
+func (useCase *ReplayRegisteredAddressesUseCase) checkpointSurvivesVerification(
+	ctx context.Context,
+	state initialReconciliation,
+) (bool, error) {
+	if state.checkpoint == nil {
+		return false, nil
+	}
+	checkpointBlock := state.checkpoint.LastProcessedBlock
+	if checkpointBlock < useCase.startBlock || checkpointBlock >= state.head {
+		return false, nil
+	}
+	if state.timeline.RootAt(checkpointBlock) != state.checkpoint.LocalRoot {
+		return false, nil
+	}
+	chainRoot, err := useCase.registry.GetRegistrationRoot(ctx, checkpointBlock)
+	if err != nil {
+		return false, fmt.Errorf(
+			"get PegIn address registry root at checkpoint block %d: %w",
+			checkpointBlock,
+			err,
+		)
+	}
+	return chainRoot == state.checkpoint.LocalRoot, nil
+}
+
+func (useCase *ReplayRegisteredAddressesUseCase) rebuildFromPlan(
+	ctx context.Context,
+	state initialReconciliation,
+	plan replayPlan,
+) ([]*rootstock.PegInWatch, error) {
+	if plan.fromBlock > state.head {
+		return nil, fmt.Errorf(
+			"replay start block %d is above captured head %d",
+			plan.fromBlock,
+			state.head,
+		)
+	}
+	useCase.reportResyncStarted(plan.resyncReason)
+	if err := useCase.repository.DeleteFromBlock(ctx, plan.fromBlock); err != nil {
+		return nil, fmt.Errorf("delete PegIn watches from block %d: %w", plan.fromBlock, err)
+	}
+	pending, err := useCase.replayRange(ctx, plan.fromBlock, state.head, plan.seedRoot)
+	if err != nil {
+		return nil, err
+	}
+	if err = useCase.verifyPersistedState(ctx, state); err != nil {
+		return nil, err
+	}
+	if err = useCase.publishCheckpoint(ctx, rootstock.PegInWatchCheckpoint{
+		LocalRoot:          state.chainRootAtHead,
+		LastProcessedBlock: state.head,
+	}); err != nil {
+		return nil, err
+	}
+	return useCase.retryDiscoveredEntries(ctx, pending)
+}
+
+func (useCase *ReplayRegisteredAddressesUseCase) verifyPersistedState(
+	ctx context.Context,
+	state initialReconciliation,
+) error {
+	rebuiltEntries, err := useCase.repository.List(ctx)
+	if err != nil {
+		return fmt.Errorf("list rebuilt PegIn watches: %w", err)
+	}
+	rebuiltTimeline, err := buildLocalRootTimeline(
+		rebuiltEntries,
+		useCase.startBlock,
+		state.head,
+		useCase.hashFunction,
+	)
+	if err != nil {
+		return err
+	}
+	rebuiltRoot := rebuiltTimeline.RootAt(state.head)
+	if !rebuiltTimeline.hasBeforeStart &&
+		!rebuiltTimeline.hasAfterHead &&
+		rebuiltRoot == state.chainRootAtHead {
+		return nil
+	}
+	mismatchErr := &pegInAddressRegistryRootMismatchError{
+		blockNumber: state.head,
+		localRoot:   rebuiltRoot,
+		chainRoot:   state.chainRootAtHead,
+		source:      "persisted_replay",
+	}
+	useCase.reportRootMismatch(mismatchErr)
+	return mismatchErr
+}
+
+// RegistrationRoot is intentionally absent. A stored row cannot prove its own integrity.
+type localRegistration struct {
+	blockNumber uint64
+	logIndex    uint
+	txHash      string
+	rskAddress  string
+}
+
+type localRootPoint struct {
+	blockNumber uint64
+	root        [32]byte
+}
+
+type localRootTimeline struct {
+	points         []localRootPoint
+	hasRows        bool
+	hasBeforeStart bool
+	hasAfterHead   bool
+}
+
+func collectLocalRegistrations(
+	entries []rootstock.PegInWatch,
+	startBlock uint64,
+	head uint64,
+) ([]localRegistration, localRootTimeline) {
+	registrations := make([]localRegistration, 0, len(entries))
+	timeline := localRootTimeline{hasRows: len(entries) != 0}
+	for _, entry := range entries {
+		if entry.BlockNumber < startBlock {
+			timeline.hasBeforeStart = true
+		}
+		if entry.BlockNumber > head {
+			timeline.hasAfterHead = true
+		}
+		registrations = append(registrations, localRegistration{
+			blockNumber: entry.BlockNumber,
+			logIndex:    entry.LogIndex,
+			txHash:      entry.TxHash,
+			rskAddress:  entry.RskAddress,
+		})
+	}
+	return registrations, timeline
+}
+
+func localRegistrationBefore(first localRegistration, second localRegistration) bool {
+	if first.blockNumber != second.blockNumber {
+		return first.blockNumber < second.blockNumber
+	}
+	if first.logIndex != second.logIndex {
+		return first.logIndex < second.logIndex
+	}
+	if first.txHash != second.txHash {
+		return first.txHash < second.txHash
+	}
+	return first.rskAddress < second.rskAddress
+}
+
+func buildLocalRootTimeline(
+	entries []rootstock.PegInWatch,
+	startBlock uint64,
+	head uint64,
+	hashFunction entities.HashFunction,
+) (localRootTimeline, error) {
+	registrations, timeline := collectLocalRegistrations(entries, startBlock, head)
+	sort.Slice(registrations, func(firstIndex, secondIndex int) bool {
+		return localRegistrationBefore(registrations[firstIndex], registrations[secondIndex])
+	})
+
+	root := [32]byte{}
+	for _, registration := range registrations {
+		if registration.blockNumber < startBlock || registration.blockNumber > head {
+			continue
+		}
+		var err error
+		root, err = blockchain.FoldPegInAddressRegistryRoot(hashFunction, root, registration.rskAddress)
+		if err != nil {
+			return localRootTimeline{}, fmt.Errorf(
+				"fold stored AddressRegistered event %s/%d: %w",
+				registration.txHash,
+				registration.logIndex,
+				err,
+			)
+		}
+		point := localRootPoint{blockNumber: registration.blockNumber, root: root}
+		lastPoint := len(timeline.points) - 1
+		if lastPoint >= 0 && timeline.points[lastPoint].blockNumber == registration.blockNumber {
+			timeline.points[lastPoint] = point
+		} else {
+			timeline.points = append(timeline.points, point)
+		}
+	}
+	return timeline, nil
+}
+
+func (timeline localRootTimeline) RootAt(height uint64) [32]byte {
+	index := sort.Search(len(timeline.points), func(index int) bool {
+		return timeline.points[index].blockNumber > height
+	})
+	if index == 0 {
+		return [32]byte{}
+	}
+	return timeline.points[index-1].root
+}
+
+func (useCase *ReplayRegisteredAddressesUseCase) localMatchesChainAt(
+	ctx context.Context,
+	timeline localRootTimeline,
+	height uint64,
+) (bool, error) {
+	chainRoot, err := useCase.registry.GetRegistrationRoot(ctx, height)
+	if err != nil {
+		return false, fmt.Errorf("get PegIn address registry root at block %d: %w", height, err)
+	}
+	return timeline.RootAt(height) == chainRoot, nil
+}
+
+func (useCase *ReplayRegisteredAddressesUseCase) findFirstMismatchingBlock(
+	ctx context.Context,
+	timeline localRootTimeline,
+	startBlock uint64,
+	head uint64,
+) (uint64, error) {
+	low, high := startBlock, head
+	for low < high {
+		middle := low + (high-low)/2
+		matches, err := useCase.localMatchesChainAt(ctx, timeline, middle)
+		if err != nil {
+			return 0, err
+		}
+		if matches {
+			low = middle + 1
+		} else {
+			high = middle
+		}
+	}
+	return low, nil
+}
+
+func (useCase *ReplayRegisteredAddressesUseCase) replayRange(
+	ctx context.Context,
+	fromBlock uint64,
+	head uint64,
+	seedRoot [32]byte,
+) ([]*rootstock.PegInWatch, error) {
+	pending := []*rootstock.PegInWatch{}
+	if fromBlock > head {
+		return pending, fmt.Errorf(
+			"replay start block %d is above captured head %d",
+			fromBlock,
+			head,
+		)
+	}
+	localRoot := seedRoot
+	for fromBlock <= head {
+		toBlock := head
+		if useCase.pageSize-1 <= head-fromBlock {
+			toBlock = fromBlock + useCase.pageSize - 1
+		}
+		events, err := useCase.registry.GetAddressRegisteredEvents(ctx, fromBlock, &toBlock)
+		if err != nil {
+			return pending, fmt.Errorf(
+				"get AddressRegistered events for blocks %d-%d: %w",
+				fromBlock,
+				toBlock,
+				err,
+			)
+		}
+		localRoot, pending, err = useCase.processEvents(ctx, events, localRoot, pending)
+		if err != nil {
+			return pending, err
+		}
+		if toBlock == head {
+			break
+		}
+		fromBlock = toBlock + 1
+	}
+	return pending, nil
 }
 
 func (useCase *ReplayRegisteredAddressesUseCase) reportRootMismatch(err error) {
@@ -252,115 +536,12 @@ func (useCase *ReplayRegisteredAddressesUseCase) reportResyncStarted(reason stri
 	})
 }
 
-func (useCase *ReplayRegisteredAddressesUseCase) discardCheckpoint(ctx context.Context) error {
-	if err := useCase.repository.DeleteCheckpoint(ctx); err != nil {
-		return fmt.Errorf("delete PegIn address registry checkpoint: %w", err)
-	}
-	return nil
-}
-
-func (useCase *ReplayRegisteredAddressesUseCase) replay(
-	ctx context.Context,
-	trustedCheckpoint *rootstock.PegInWatchCheckpoint,
-	finalizedHead uint64,
-	pending []*rootstock.PegInWatch,
-) (rootstock.PegInWatchCheckpoint, []*rootstock.PegInWatch, error) {
-	fromBlock := useCase.startBlock
-	localRoot := [32]byte{}
-	checkpoint := rootstock.PegInWatchCheckpoint{
-		LocalRoot:          localRoot,
-		LastProcessedBlock: finalizedHead,
-	}
-	if trustedCheckpoint != nil {
-		checkpoint = *trustedCheckpoint
-		if trustedCheckpoint.LastProcessedBlock >= finalizedHead {
-			return *trustedCheckpoint, pending, nil
-		}
-		fromBlock = trustedCheckpoint.LastProcessedBlock + 1
-		localRoot = trustedCheckpoint.LocalRoot
-	}
-	for fromBlock <= finalizedHead {
-		toBlock := finalizedHead
-		if useCase.pageSize-1 <= finalizedHead-fromBlock {
-			toBlock = fromBlock + useCase.pageSize - 1
-		}
-		events, err := useCase.registry.GetAddressRegisteredEvents(ctx, fromBlock, &toBlock)
-		if err != nil {
-			return checkpoint, pending, fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err)
-		}
-		events = eventsWithinRange(events, fromBlock, toBlock)
-		localRoot, pending, err = useCase.processEvents(ctx, events, localRoot, pending)
-		if err != nil {
-			return checkpoint, pending, err
-		}
-		checkpoint = rootstock.PegInWatchCheckpoint{
-			LocalRoot:          localRoot,
-			LastProcessedBlock: toBlock,
-		}
-		if toBlock == finalizedHead {
-			break
-		}
-		fromBlock = toBlock + 1
-	}
-	return checkpoint, pending, nil
-}
-
 func (useCase *ReplayRegisteredAddressesUseCase) publishCheckpoint(
 	ctx context.Context,
 	checkpoint rootstock.PegInWatchCheckpoint,
 ) error {
-	if err := useCase.repository.SetCheckpoint(ctx, checkpoint); err != nil {
+	if err := useCase.checkpoints.SetCheckpoint(ctx, checkpoint); err != nil {
 		return fmt.Errorf("persist PegIn address registry checkpoint: %w", err)
-	}
-	return nil
-}
-
-func eventsWithinRange(
-	events []blockchain.AddressRegistered,
-	fromBlock uint64,
-	toBlock uint64,
-) []blockchain.AddressRegistered {
-	inRange := make([]blockchain.AddressRegistered, 0, len(events))
-	for _, event := range events {
-		if event.BlockNumber >= fromBlock && event.BlockNumber <= toBlock {
-			inRange = append(inRange, event)
-		}
-	}
-	return inRange
-}
-
-func (useCase *ReplayRegisteredAddressesUseCase) verifyReplayRoot(
-	ctx context.Context,
-	localRoot [32]byte,
-	finalizedHead uint64,
-	head uint64,
-) error {
-	verifiedRoot := localRoot
-	if finalizedHead < head {
-		fromBlock := finalizedHead + 1
-		unconfirmedEvents, err := useCase.registry.GetAddressRegisteredEvents(ctx, fromBlock, &head)
-		if err != nil {
-			return fmt.Errorf("get unconfirmed AddressRegistered events for blocks %d-%d: %w", fromBlock, head, err)
-		}
-		unconfirmedEvents = eventsWithinRange(unconfirmedEvents, fromBlock, head)
-		if len(unconfirmedEvents) != 0 {
-			verifiedRoot, err = foldRegistrationRoots(localRoot, unconfirmedEvents)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	chainRoot, err := useCase.registry.GetRegistrationRoot(ctx, head)
-	if err != nil {
-		return fmt.Errorf("get PegIn address registry root: %w", err)
-	}
-	if verifiedRoot != chainRoot {
-		return &pegInAddressRegistryRootMismatchError{
-			blockNumber: head,
-			localRoot:   verifiedRoot,
-			chainRoot:   chainRoot,
-			source:      "captured_head",
-		}
 	}
 	return nil
 }
@@ -374,17 +555,19 @@ func (useCase *ReplayRegisteredAddressesUseCase) processEvents(
 	events = orderedUniqueEvents(events)
 	for _, event := range events {
 		var err error
-		localRoot, err = blockchain.FoldPegInAddressRegistryRoot(localRoot, event.RskAddress)
+		localRoot, err = blockchain.FoldPegInAddressRegistryRoot(useCase.hashFunction, localRoot, event.RskAddress)
 		if err != nil {
 			return [32]byte{}, pending, fmt.Errorf("fold AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
 		}
 		if event.RegistrationRoot != localRoot {
-			return [32]byte{}, pending, &pegInAddressRegistryRootMismatchError{
+			mismatchErr := &pegInAddressRegistryRootMismatchError{
 				blockNumber: event.BlockNumber,
 				localRoot:   localRoot,
 				chainRoot:   event.RegistrationRoot,
 				source:      fmt.Sprintf("event_%s_%d", event.TxHash, event.LogIndex),
 			}
+			useCase.reportRootMismatch(mismatchErr)
+			return [32]byte{}, pending, mismatchErr
 		}
 		pending, err = useCase.discoverEvent(ctx, event, pending)
 		if err != nil {
@@ -418,28 +601,6 @@ func orderedUniqueEvents(events []blockchain.AddressRegistered) []blockchain.Add
 		unique = append(unique, event)
 	}
 	return unique
-}
-
-func foldRegistrationRoots(
-	localRoot [32]byte,
-	events []blockchain.AddressRegistered,
-) ([32]byte, error) {
-	for _, event := range orderedUniqueEvents(events) {
-		var err error
-		localRoot, err = blockchain.FoldPegInAddressRegistryRoot(localRoot, event.RskAddress)
-		if err != nil {
-			return [32]byte{}, fmt.Errorf("fold AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
-		}
-		if event.RegistrationRoot != localRoot {
-			return [32]byte{}, &pegInAddressRegistryRootMismatchError{
-				blockNumber: event.BlockNumber,
-				localRoot:   localRoot,
-				chainRoot:   event.RegistrationRoot,
-				source:      fmt.Sprintf("event_%s_%d", event.TxHash, event.LogIndex),
-			}
-		}
-	}
-	return localRoot, nil
 }
 
 func (useCase *ReplayRegisteredAddressesUseCase) retryDiscoveredEntries(
