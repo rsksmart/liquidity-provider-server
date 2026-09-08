@@ -110,6 +110,7 @@ func createSendRbtcTest(account *account.RskAccount) func(t *testing.T) {
 				GasUsed:           big.NewInt(21000),
 				Value:             entities.NewWei(89607151182921727),
 				GasPrice:          entities.NewWei(65164000),
+				Status:            blockchain.SuccessfulTxStatus,
 				Logs:              []blockchain.TransactionLog{},
 			}
 
