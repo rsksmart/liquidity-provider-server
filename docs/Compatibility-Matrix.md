@@ -23,6 +23,8 @@ Pre-release tags (`*-rc*`), cross-MAJOR pairs, and legacy monolithic `LBC_ADDR` 
 
 Prerequisites: Docker, Git, Node.js 24+, sibling clones of `liquidity-bridge-contract` and `flyover-lps-api-e2e`.
 
+If the compatibility matrix CLI fails (missing e2e repo, invalid matrix YAML, etc.), the runners abort with that error and do not continue with an empty smoke or pair list.
+
 From this repo:
 
 ```bash
