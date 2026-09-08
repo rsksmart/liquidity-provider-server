@@ -202,6 +202,7 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 		client.On("TransactionReceipt", test.AnyCtx, common.HexToHash(txHash)).Return(&types.Receipt{
 			GasUsed:           456,
 			CumulativeGasUsed: 123,
+			Status:            1,
 			TxHash:            common.HexToHash(txHash),
 			BlockHash:         common.HexToHash(blockHash),
 			BlockNumber:       big.NewInt(500),
@@ -231,6 +232,7 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 			TransactionHash:   txHash,
 			BlockHash:         "0x0000000000000000000000000000000000000000000000000000000000010203",
 			BlockNumber:       500,
+			Status:            1,
 			From:              "0xC67D9EE30d2119A384E02de568BE80fe785074Ba",
 			To:                parsedToAddress.String(),
 			CumulativeGasUsed: big.NewInt(123),
@@ -379,6 +381,13 @@ func TestRskjRpcServer_GetTransactionReceipt_ErrorHandling(t *testing.T) {
 	t.Run("Invalid tx hash", func(t *testing.T) {
 		receipt, err := rpc.GetTransactionReceipt(context.Background(), test.AnyString)
 		require.Error(t, err)
+		assert.Empty(t, receipt)
+	})
+	t.Run("Maps ethereum not found to receipt not found", func(t *testing.T) {
+		client.On("TransactionReceipt", test.AnyCtx, common.HexToHash(txHash)).
+			Return(nil, ethereum.NotFound).Once()
+		receipt, err := rpc.GetTransactionReceipt(context.Background(), txHash)
+		require.ErrorIs(t, err, blockchain.ErrTransactionReceiptNotFound)
 		assert.Empty(t, receipt)
 	})
 }

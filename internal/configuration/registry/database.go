@@ -17,6 +17,7 @@ type Database struct {
 	BatchPegOutRepository          rootstock.BatchPegOutRepository
 	PegInWatchRepository           rootstock.PegInWatchRepository
 	PegInWatchCheckpointRepository rootstock.PegInWatchCheckpointRepository
+	PegInClaimRepository           rootstock.PegInClaimRepository
 	Connection                     *mongo.Connection
 }
 
@@ -31,6 +32,7 @@ func NewDatabaseRegistry(connection *mongo.Connection) *Database {
 		BatchPegOutRepository:          mongo.NewBatchPegOutMongoRepository(connection),
 		PegInWatchRepository:           peginWatchRepository,
 		PegInWatchCheckpointRepository: peginWatchRepository,
+		PegInClaimRepository:           mongo.NewPegInClaimMongoRepository(connection),
 		Connection:                     connection,
 	}
 }

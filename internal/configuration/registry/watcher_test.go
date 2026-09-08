@@ -62,7 +62,7 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
 
 	return registry.NewWatcherRegistry(
-		env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, messagingRegistry,
+		env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry,
 		tickers, environment.DefaultTimeouts(),
 	)
 }
