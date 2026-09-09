@@ -7,6 +7,8 @@ followed by a reason:
 Won't fix: the nil case is unreachable here, the caller validates the pointer before the call.
 ```
 
+A thread reply binds to that comment only. Nearby findings on the same file are not declined.
+
 A suppressed finding has no thread to reply in, so it may also be declined from a top-level pull
 request comment that names the location:
 
@@ -15,10 +17,18 @@ Won't fix: path/to/file.go:96 — the nil case is unreachable, the caller valida
 before the call.
 ```
 
-- Read top-level declines from `get_comments` and match them by file path and line, allowing for line
-  drift caused by later edits.
-- If a top-level decline could match more than one finding in that file, do not guess: leave the
-  findings unchanged and say the decline could not be matched to a single location.
+Backticks around the path are ignored. After `path:line`, a dash, colon, period, comma, or a blank
+space may separate the reason:
+
+```text
+Won't fix: path/to/file.go:96 is for a separate task
+```
+
+- Read top-level declines from `get_comments` and match them by file path and line, allowing for
+  small line drift caused by later edits.
+- If a top-level decline names an exact `path:line`, decline every finding at that location.
+- If it only lands near a line and more than one finding could match, do not guess: leave the
+  findings unchanged and report the decline as unmatched.
 - Match the marker case-insensitively and tolerate a missing apostrophe, so `Won't fix:`,
   `won't fix:`, and `Wont fix:` all count.
 - Ignore the marker in comments authored by Copilot or any other bot. Honor a human decline only

@@ -2,10 +2,10 @@
 description: Reconciles prior Copilot findings and reviews only the new pull request diff on each repeat pass. Use for Copilot code review, pull request review, repeat-pass review, and when reconciling prior findings or honoring Won't fix declines.
 metadata:
     github-path: skills/code-review
-    github-pinned: 1472a270ca9da50c63660c030a29e6150b106654
-    github-ref: 1472a270ca9da50c63660c030a29e6150b106654
-    github-repo: https://github.com/rsksmart/code-review-framework
-    github-tree-sha: 55e700cf9c2c77f314fc5085ad0424119c236ce3
+    github-pinned: b7b583d6d7b3cbee347991c970d1ffebde489636
+    github-ref: b7b583d6d7b3cbee347991c970d1ffebde489636
+    github-repo: https://github.com/rsksmart/copilot-review-template
+    github-tree-sha: 47e6496c6f2b044c5890b435939867ddd312083f
 name: code-review
 ---
 # Pull request review procedure

@@ -77,7 +77,7 @@ jobs:
       - name: Dispatch framework follow-up
         env:
           GH_TOKEN: ${{ secrets.CCR_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
-          FRAMEWORK_REPO: rsksmart/code-review-framework
+          FRAMEWORK_REPO: rsksmart/copilot-review-template
         run: |
           set -euo pipefail
           gh workflow run ccr-followup.yml \
