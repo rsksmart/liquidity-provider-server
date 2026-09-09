@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -155,4 +156,58 @@ func TestAcceptQuoteUseCase_Run_SignError(t *testing.T) {
 	assert.Empty(t, result)
 	require.Error(t, err)
 	quoteRepository.AssertNotCalled(t, "InsertRetainedQuote")
+}
+
+func TestAcceptQuoteUseCase_S15_5_AcceptSpamLeavesLiquidityUnchanged(t *testing.T) {
+	quoteHashes := []string{
+		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+		"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+		"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+	}
+	quoteMock := acceptTestQuote(time.Now())
+	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
+	for _, hash := range quoteHashes {
+		q := quoteMock
+		quoteRepository.On("GetQuote", test.AnyCtx, hash).Return(&q, nil).Once()
+		quoteRepository.On("GetRetainedQuote", test.AnyCtx, hash).Return(nil, nil).Once()
+	}
+	quoteRepository.On("GetRetainedQuoteByState", test.AnyCtx, quote.PegoutStateWaitingForDepositConfirmations).
+		Return([]quote.RetainedPegoutQuote{}, nil).Twice()
+
+	pegoutContract := new(mocks.PegoutContractMock)
+	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	pegoutContract.On("GetAddress").Return("0xabcd01")
+
+	signLp := new(mocks.ProviderMock)
+	for _, hash := range quoteHashes {
+		signLp.On("SignPegoutQuote", test.AnyCtx, hash).Return(acceptPegoutQuoteHashSignature, nil).Once()
+	}
+
+	btcWallet := new(mocks.BitcoinWalletMock)
+	btcWallet.On("GetBalance").Return(entities.NewWei(10_000), nil).Twice()
+	liquidityLp := dataproviders.NewLocalLiquidityProvider(
+		nil, quoteRepository, nil, blockchain.Rpc{}, nil, btcWallet, blockchain.RskContracts{},
+	)
+
+	before, err := liquidityLp.AvailablePegoutLiquidity(context.Background())
+	require.NoError(t, err)
+
+	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, signLp)
+	for _, hash := range quoteHashes {
+		result, runErr := useCase.Run(context.Background(), hash, "")
+		require.NoError(t, runErr)
+		assert.Equal(t, acceptPegoutQuoteHashSignature, result.Signature)
+	}
+
+	after, err := liquidityLp.AvailablePegoutLiquidity(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, before, after)
+	assert.Equal(t, entities.NewWei(10_000), after)
+
+	quoteRepository.AssertNotCalled(t, "InsertRetainedQuote")
+	signLp.AssertNotCalled(t, "HasPegoutLiquidity")
+	btcWallet.AssertExpectations(t)
+	quoteRepository.AssertExpectations(t)
 }
