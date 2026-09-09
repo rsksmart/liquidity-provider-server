@@ -39,9 +39,25 @@ type IFlyoverConfigurationsPegConfiguration struct {
 	ConfirmationTiers []IFlyoverConfigurationsConfirmationTier
 }
 
+// IFlyoverConfigurationsPegOutConfiguration is an auto generated low-level Go binding around an user-defined struct.
+type IFlyoverConfigurationsPegOutConfiguration struct {
+	FixedFee          *big.Int
+	PercentageFee     *big.Int
+	MinAmount         *big.Int
+	MaxAmount         *big.Int
+	ConfirmationTiers []IFlyoverConfigurationsConfirmationTier
+	PenaltyFee        *big.Int
+	ClaimWindow       *big.Int
+	ClaimWindowBlocks *big.Int
+	CallTime          *big.Int
+	ExpireTime        *big.Int
+	ExpireBlocks      *big.Int
+	MaxMinerFee       *big.Int
+}
+
 // FlyoverConfigurationsContractMetaData contains all meta data concerning the FlyoverConfigurationsContract contract.
 var FlyoverConfigurationsContractMetaData = bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"applyChange\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"calculatePegInFee\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"fee\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegInConfiguration\",\"inputs\":[],\"outputs\":[{\"name\":\"configuration\",\"type\":\"tuple\",\"internalType\":\"structIFlyoverConfigurations.PegConfiguration\",\"components\":[{\"name\":\"fixedFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"percentageFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmationTiers\",\"type\":\"tuple[]\",\"internalType\":\"structIFlyoverConfigurations.ConfirmationTier[]\",\"components\":[{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRequiredPegInBtcConfirmations\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"queueChange\",\"inputs\":[{\"name\":\"newConfiguration\",\"type\":\"tuple\",\"internalType\":\"structIFlyoverConfigurations.PegConfiguration\",\"components\":[{\"name\":\"fixedFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"percentageFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmationTiers\",\"type\":\"tuple[]\",\"internalType\":\"structIFlyoverConfigurations.ConfirmationTier[]\",\"components\":[{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"applyChange\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"applyPegOutChange\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"calculatePegInFee\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"fee\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"calculatePegOutFee\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"fee\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegInConfiguration\",\"inputs\":[],\"outputs\":[{\"name\":\"configuration\",\"type\":\"tuple\",\"internalType\":\"structIFlyoverConfigurations.PegConfiguration\",\"components\":[{\"name\":\"fixedFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"percentageFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmationTiers\",\"type\":\"tuple[]\",\"internalType\":\"structIFlyoverConfigurations.ConfirmationTier[]\",\"components\":[{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegOutConfiguration\",\"inputs\":[],\"outputs\":[{\"name\":\"configuration\",\"type\":\"tuple\",\"internalType\":\"structIFlyoverConfigurations.PegOutConfiguration\",\"components\":[{\"name\":\"fixedFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"percentageFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmationTiers\",\"type\":\"tuple[]\",\"internalType\":\"structIFlyoverConfigurations.ConfirmationTier[]\",\"components\":[{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"claimWindow\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"claimWindowBlocks\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callTime\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"expireTime\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"expireBlocks\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"maxMinerFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRequiredPegInBtcConfirmations\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRequiredPegOutBtcConfirmations\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"queueChange\",\"inputs\":[{\"name\":\"newConfiguration\",\"type\":\"tuple\",\"internalType\":\"structIFlyoverConfigurations.PegConfiguration\",\"components\":[{\"name\":\"fixedFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"percentageFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmationTiers\",\"type\":\"tuple[]\",\"internalType\":\"structIFlyoverConfigurations.ConfirmationTier[]\",\"components\":[{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"queuePegOutChange\",\"inputs\":[{\"name\":\"newConfiguration\",\"type\":\"tuple\",\"internalType\":\"structIFlyoverConfigurations.PegOutConfiguration\",\"components\":[{\"name\":\"fixedFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"percentageFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmationTiers\",\"type\":\"tuple[]\",\"internalType\":\"structIFlyoverConfigurations.ConfirmationTier[]\",\"components\":[{\"name\":\"maxAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"confirmations\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"name\":\"penaltyFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"claimWindow\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"claimWindowBlocks\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"callTime\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"expireTime\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"expireBlocks\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"maxMinerFee\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"}]",
 	ID:  "FlyoverConfigurationsContract",
 }
 
@@ -87,6 +103,28 @@ func (flyoverConfigurationsContract *FlyoverConfigurationsContract) TryPackApply
 	return flyoverConfigurationsContract.abi.Pack("applyChange")
 }
 
+// PackApplyPegOutChange is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x7bab8805.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function applyPegOutChange() returns()
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) PackApplyPegOutChange() []byte {
+	enc, err := flyoverConfigurationsContract.abi.Pack("applyPegOutChange")
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackApplyPegOutChange is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x7bab8805.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function applyPegOutChange() returns()
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) TryPackApplyPegOutChange() ([]byte, error) {
+	return flyoverConfigurationsContract.abi.Pack("applyPegOutChange")
+}
+
 // PackCalculatePegInFee is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0x715a177c.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -115,6 +153,41 @@ func (flyoverConfigurationsContract *FlyoverConfigurationsContract) TryPackCalcu
 // Solidity: function calculatePegInFee(uint256 amount) view returns(uint256 fee)
 func (flyoverConfigurationsContract *FlyoverConfigurationsContract) UnpackCalculatePegInFee(data []byte) (*big.Int, error) {
 	out, err := flyoverConfigurationsContract.abi.Unpack("calculatePegInFee", data)
+	if err != nil {
+		return new(big.Int), err
+	}
+	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
+	return out0, nil
+}
+
+// PackCalculatePegOutFee is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x516ba0b3.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function calculatePegOutFee(uint256 amount) view returns(uint256 fee)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) PackCalculatePegOutFee(amount *big.Int) []byte {
+	enc, err := flyoverConfigurationsContract.abi.Pack("calculatePegOutFee", amount)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackCalculatePegOutFee is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x516ba0b3.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function calculatePegOutFee(uint256 amount) view returns(uint256 fee)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) TryPackCalculatePegOutFee(amount *big.Int) ([]byte, error) {
+	return flyoverConfigurationsContract.abi.Pack("calculatePegOutFee", amount)
+}
+
+// UnpackCalculatePegOutFee is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x516ba0b3.
+//
+// Solidity: function calculatePegOutFee(uint256 amount) view returns(uint256 fee)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) UnpackCalculatePegOutFee(data []byte) (*big.Int, error) {
+	out, err := flyoverConfigurationsContract.abi.Unpack("calculatePegOutFee", data)
 	if err != nil {
 		return new(big.Int), err
 	}
@@ -157,6 +230,41 @@ func (flyoverConfigurationsContract *FlyoverConfigurationsContract) UnpackGetPeg
 	return out0, nil
 }
 
+// PackGetPegOutConfiguration is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x8a8a2124.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function getPegOutConfiguration() view returns((uint256,uint256,uint256,uint256,(uint256,uint256)[],uint256,uint256,uint256,uint256,uint256,uint256,uint256) configuration)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) PackGetPegOutConfiguration() []byte {
+	enc, err := flyoverConfigurationsContract.abi.Pack("getPegOutConfiguration")
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackGetPegOutConfiguration is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x8a8a2124.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function getPegOutConfiguration() view returns((uint256,uint256,uint256,uint256,(uint256,uint256)[],uint256,uint256,uint256,uint256,uint256,uint256,uint256) configuration)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) TryPackGetPegOutConfiguration() ([]byte, error) {
+	return flyoverConfigurationsContract.abi.Pack("getPegOutConfiguration")
+}
+
+// UnpackGetPegOutConfiguration is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x8a8a2124.
+//
+// Solidity: function getPegOutConfiguration() view returns((uint256,uint256,uint256,uint256,(uint256,uint256)[],uint256,uint256,uint256,uint256,uint256,uint256,uint256) configuration)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) UnpackGetPegOutConfiguration(data []byte) (IFlyoverConfigurationsPegOutConfiguration, error) {
+	out, err := flyoverConfigurationsContract.abi.Unpack("getPegOutConfiguration", data)
+	if err != nil {
+		return *new(IFlyoverConfigurationsPegOutConfiguration), err
+	}
+	out0 := *abi.ConvertType(out[0], new(IFlyoverConfigurationsPegOutConfiguration)).(*IFlyoverConfigurationsPegOutConfiguration)
+	return out0, nil
+}
+
 // PackGetRequiredPegInBtcConfirmations is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0x7bb29dbe.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -192,6 +300,41 @@ func (flyoverConfigurationsContract *FlyoverConfigurationsContract) UnpackGetReq
 	return out0, nil
 }
 
+// PackGetRequiredPegOutBtcConfirmations is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x00565cfb.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function getRequiredPegOutBtcConfirmations(uint256 amount) view returns(uint256 confirmations)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) PackGetRequiredPegOutBtcConfirmations(amount *big.Int) []byte {
+	enc, err := flyoverConfigurationsContract.abi.Pack("getRequiredPegOutBtcConfirmations", amount)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackGetRequiredPegOutBtcConfirmations is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x00565cfb.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function getRequiredPegOutBtcConfirmations(uint256 amount) view returns(uint256 confirmations)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) TryPackGetRequiredPegOutBtcConfirmations(amount *big.Int) ([]byte, error) {
+	return flyoverConfigurationsContract.abi.Pack("getRequiredPegOutBtcConfirmations", amount)
+}
+
+// UnpackGetRequiredPegOutBtcConfirmations is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x00565cfb.
+//
+// Solidity: function getRequiredPegOutBtcConfirmations(uint256 amount) view returns(uint256 confirmations)
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) UnpackGetRequiredPegOutBtcConfirmations(data []byte) (*big.Int, error) {
+	out, err := flyoverConfigurationsContract.abi.Unpack("getRequiredPegOutBtcConfirmations", data)
+	if err != nil {
+		return new(big.Int), err
+	}
+	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
+	return out0, nil
+}
+
 // PackQueueChange is the Go binding used to pack the parameters required for calling
 // the contract method with ID 0x99173258.  This method will panic if any
 // invalid/nil inputs are passed.
@@ -212,4 +355,26 @@ func (flyoverConfigurationsContract *FlyoverConfigurationsContract) PackQueueCha
 // Solidity: function queueChange((uint256,uint256,uint256,uint256,(uint256,uint256)[]) newConfiguration) returns()
 func (flyoverConfigurationsContract *FlyoverConfigurationsContract) TryPackQueueChange(newConfiguration IFlyoverConfigurationsPegConfiguration) ([]byte, error) {
 	return flyoverConfigurationsContract.abi.Pack("queueChange", newConfiguration)
+}
+
+// PackQueuePegOutChange is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x29ae8609.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function queuePegOutChange((uint256,uint256,uint256,uint256,(uint256,uint256)[],uint256,uint256,uint256,uint256,uint256,uint256,uint256) newConfiguration) returns()
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) PackQueuePegOutChange(newConfiguration IFlyoverConfigurationsPegOutConfiguration) []byte {
+	enc, err := flyoverConfigurationsContract.abi.Pack("queuePegOutChange", newConfiguration)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackQueuePegOutChange is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x29ae8609.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function queuePegOutChange((uint256,uint256,uint256,uint256,(uint256,uint256)[],uint256,uint256,uint256,uint256,uint256,uint256,uint256) newConfiguration) returns()
+func (flyoverConfigurationsContract *FlyoverConfigurationsContract) TryPackQueuePegOutChange(newConfiguration IFlyoverConfigurationsPegOutConfiguration) ([]byte, error) {
+	return flyoverConfigurationsContract.abi.Pack("queuePegOutChange", newConfiguration)
 }

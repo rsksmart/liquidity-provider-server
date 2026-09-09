@@ -23,6 +23,7 @@ CONTRACTS=(
   "Flyover                 Flyover                        flyover"
   "IPegInAddressRegistry   PegInAddressRegistryContract   pegin_address_registry"
   "IFlyoverConfigurations  FlyoverConfigurationsContract  flyover_configurations"
+  "IPegOutEscrow           PegOutEscrowContract           pegout_escrow"
 )
 
 for entry in "${CONTRACTS[@]}"; do
