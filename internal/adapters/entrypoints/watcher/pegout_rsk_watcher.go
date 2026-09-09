@@ -114,7 +114,12 @@ func (watcher *PegoutRskDepositWatcher) Prepare(ctx context.Context) error {
 		watcher.currentBlockMutex.Unlock()
 	}
 
-	watchedQuotes, err := watcher.getWatchedPegoutQuoteUseCase.Run(ctx, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations)
+	watchedQuotes, err := watcher.getWatchedPegoutQuoteUseCase.Run(
+		ctx,
+		quote.PegoutStateWaitingForDeposit,
+		quote.PegoutStateWaitingForDepositConfirmations,
+		quote.PegoutStateClaimed,
+	)
 	if err != nil {
 		return err
 	}
@@ -136,34 +141,47 @@ func (watcher *PegoutRskDepositWatcher) Prepare(ctx context.Context) error {
 }
 
 func (watcher *PegoutRskDepositWatcher) Start() {
-	eventChannel := watcher.eventBus.Subscribe(quote.AcceptedPegoutQuoteEventId)
+	acceptedEventChannel := watcher.eventBus.Subscribe(quote.AcceptedPegoutQuoteEventId)
+	claimedEventChannel := watcher.eventBus.Subscribe(quote.ClaimedPegoutQuoteEventId)
 
 watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C():
-			watcher.currentBlockMutex.Lock()
-			watcher.quotesMutex.Lock()
-			checkContext, checkCancel := context.WithTimeout(context.Background(), watcher.depositCheckTimeout)
-			if height, err := watcher.rpc.Rsk.GetHeight(checkContext); err == nil && height > watcher.currentBlock {
-				watcher.checkDeposits(checkContext, watcher.currentBlock, height)
-				watcher.checkQuotes(checkContext, height)
-				watcher.currentBlock = height
-			} else if err != nil {
-				log.Errorf(LogPegoutRskChainHeight, err)
-			}
-			checkCancel()
-			watcher.currentBlockMutex.Unlock()
-			watcher.quotesMutex.Unlock()
-		case event := <-eventChannel:
+			watcher.onTick()
+		case event := <-acceptedEventChannel:
 			if event != nil {
 				watcher.handleAcceptedPegoutQuote(event)
+			}
+		case event := <-claimedEventChannel:
+			if event != nil {
+				watcher.handleClaimedPegoutQuote(event)
 			}
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
 			close(watcher.watcherStopChannel)
 			break watcherLoop
 		}
+	}
+}
+
+func (watcher *PegoutRskDepositWatcher) onTick() {
+	watcher.currentBlockMutex.Lock()
+	watcher.quotesMutex.Lock()
+	defer watcher.currentBlockMutex.Unlock()
+	defer watcher.quotesMutex.Unlock()
+
+	checkContext, checkCancel := context.WithTimeout(context.Background(), watcher.depositCheckTimeout)
+	defer checkCancel()
+	height, err := watcher.rpc.Rsk.GetHeight(checkContext)
+	if err != nil {
+		log.Errorf(LogPegoutRskChainHeight, err)
+		return
+	}
+	if height > watcher.currentBlock {
+		watcher.checkDeposits(checkContext, watcher.currentBlock, height)
+		watcher.checkQuotes(checkContext, height)
+		watcher.currentBlock = height
 	}
 }
 
@@ -188,6 +206,27 @@ func (watcher *PegoutRskDepositWatcher) handleAcceptedPegoutQuote(event entities
 		return
 	}
 	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(parsedEvent.Quote, parsedEvent.RetainedQuote, parsedEvent.CreationData)
+}
+
+func (watcher *PegoutRskDepositWatcher) handleClaimedPegoutQuote(event entities.Event) {
+	watcher.quotesMutex.Lock()
+	defer watcher.quotesMutex.Unlock()
+	parsedEvent, ok := event.(quote.ClaimedPegoutQuoteEvent)
+	quoteHash := parsedEvent.RetainedQuote.QuoteHash
+	if !ok {
+		log.Error(LogPegoutRskWrongEvent)
+		return
+	}
+
+	if _, alreadyHaveQuote := watcher.quotes[quoteHash]; alreadyHaveQuote {
+		log.Info(LogPegoutRskAlreadyWatched(quoteHash))
+		return
+	}
+	watcher.quotes[quoteHash] = quote.NewWatchedPegoutQuote(
+		parsedEvent.Quote,
+		parsedEvent.RetainedQuote,
+		quote.PegoutCreationDataZeroValue(),
+	)
 }
 
 func (watcher *PegoutRskDepositWatcher) checkDeposits(ctx context.Context, fromBlock, toBlock uint64) {
@@ -238,6 +277,11 @@ func (watcher *PegoutRskDepositWatcher) checkQuote(ctx context.Context, height u
 			log.Info(LogPegoutRskExpired(watchedQuote.RetainedQuote.QuoteHash, watchedQuote.PegoutQuote.ExpireTime().Unix()))
 			delete(watcher.quotes, watchedQuote.RetainedQuote.QuoteHash)
 		}
+	}
+
+	if watchedQuote.RetainedQuote.State == quote.PegoutStateClaimed {
+		watcher.sendPegout(ctx, watchedQuote)
+		return
 	}
 
 	if watchedQuote.RetainedQuote.State == quote.PegoutStateWaitingForDepositConfirmations {

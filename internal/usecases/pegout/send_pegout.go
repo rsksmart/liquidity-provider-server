@@ -47,29 +47,58 @@ func NewSendPegoutUseCase(
 }
 
 func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
-	var err error
-	var pegoutQuote *quote.PegoutQuote
-	var receipt blockchain.TransactionReceipt
-
-	if err = usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
+	if err := usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
 	}
-
-	if err = useCase.validateRetainedQuote(ctx, retainedQuote); err != nil {
+	if err := useCase.validateRetainedQuote(ctx, retainedQuote); err != nil {
 		return err
 	}
+	if useCase.isEscrowClaimPath(retainedQuote) {
+		return useCase.runEscrowClaim(ctx, retainedQuote)
+	}
+	return useCase.runLegacyDeposit(ctx, retainedQuote)
+}
 
-	if pegoutQuote, err = useCase.getQuote(ctx, retainedQuote); err != nil {
+func (useCase *SendPegoutUseCase) isEscrowClaimPath(retainedQuote quote.RetainedPegoutQuote) bool {
+	return useCase.contracts.PegOutEscrow != nil && retainedQuote.State == quote.PegoutStateClaimed
+}
+
+func (useCase *SendPegoutUseCase) runEscrowClaim(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
+	pegoutQuote, err := useCase.getEscrowQuote(ctx, retainedQuote)
+	if err != nil {
 		return err
 	}
-
-	if receipt, err = useCase.validateQuote(ctx, retainedQuote, pegoutQuote); err != nil {
+	if err = useCase.validateEscrowClaimed(ctx, retainedQuote, pegoutQuote); err != nil {
 		return err
 	}
 
 	useCase.btcWalletMutex.Lock()
 	defer useCase.btcWalletMutex.Unlock()
-	// revalidate quote after acquiring the mutex to prevent double spends
+	if err = useCase.revalidateRetainedQuote(ctx, retainedQuote); err != nil {
+		return err
+	}
+	if err = useCase.validateBalance(ctx, retainedQuote, pegoutQuote); err != nil {
+		return err
+	}
+
+	retainedQuote, err = useCase.performSendPegout(ctx, retainedQuote, pegoutQuote, blockchain.TransactionReceipt{
+		TransactionHash: retainedQuote.UserRskTxHash,
+	})
+	return useCase.processSendPegoutResult(ctx, retainedQuote, err)
+}
+
+func (useCase *SendPegoutUseCase) runLegacyDeposit(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
+	pegoutQuote, err := useCase.getQuote(ctx, retainedQuote)
+	if err != nil {
+		return err
+	}
+	receipt, err := useCase.validateQuote(ctx, retainedQuote, pegoutQuote)
+	if err != nil {
+		return err
+	}
+
+	useCase.btcWalletMutex.Lock()
+	defer useCase.btcWalletMutex.Unlock()
 	if err = useCase.revalidateRetainedQuote(ctx, retainedQuote); err != nil {
 		return err
 	}
@@ -82,8 +111,6 @@ func (useCase *SendPegoutUseCase) Run(ctx context.Context, retainedQuote quote.R
 }
 
 func (useCase *SendPegoutUseCase) processSendPegoutResult(ctx context.Context, retainedQuote quote.RetainedPegoutQuote, err error) error {
-	// if the error is not nil and the state is not SendPegoutFailed,
-	// means that an error happened before sending the tx
 	if err != nil && retainedQuote.State != quote.PegoutStateSendPegoutFailed {
 		return err
 	}
@@ -98,14 +125,53 @@ func (useCase *SendPegoutUseCase) processSendPegoutResult(ctx context.Context, r
 }
 
 func (useCase *SendPegoutUseCase) getQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) (*quote.PegoutQuote, error) {
-	var pegoutQuote *quote.PegoutQuote
-	var err error
-	if pegoutQuote, err = useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash); err != nil {
+	pegoutQuote, err := useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash)
+	if err != nil {
 		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
 	} else if pegoutQuote == nil {
 		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.QuoteNotFoundError, false)
 	}
 	return pegoutQuote, nil
+}
+
+func (useCase *SendPegoutUseCase) getEscrowQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) (*quote.PegoutQuote, error) {
+	pegoutQuote, err := useCase.contracts.PegOutEscrow.GetPegOutQuote(retainedQuote.QuoteHash)
+	if err != nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
+	}
+	if pegoutQuote.DepositAddress, err = useCase.encodeHexAddress(pegoutQuote.DepositAddress); err != nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, false)
+	}
+	if pegoutQuote.BtcRefundAddress, err = useCase.encodeHexAddress(pegoutQuote.BtcRefundAddress); err != nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, false)
+	}
+	if pegoutQuote.LpBtcAddress, err = useCase.encodeHexAddress(pegoutQuote.LpBtcAddress); err != nil {
+		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, false)
+	}
+	return &pegoutQuote, nil
+}
+
+func (useCase *SendPegoutUseCase) encodeHexAddress(hexAddress string) (string, error) {
+	addressBytes, err := hex.DecodeString(strings.TrimPrefix(hexAddress, "0x"))
+	if err != nil {
+		return "", err
+	}
+	return useCase.rpc.Btc.EncodeAddress(addressBytes)
+}
+
+func (useCase *SendPegoutUseCase) validateEscrowClaimed(
+	ctx context.Context,
+	retainedQuote quote.RetainedPegoutQuote,
+	pegoutQuote *quote.PegoutQuote,
+) error {
+	state, err := useCase.contracts.PegOutEscrow.GetPegOutState(retainedQuote.QuoteHash)
+	if err != nil {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
+	}
+	if state != blockchain.EscrowedPegOutStateClaimed {
+		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.WrongStateError, true)
+	}
+	return nil
 }
 
 func (useCase *SendPegoutUseCase) publishErrorEvent(
@@ -178,17 +244,14 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 	var err error
 	var newState quote.PegoutState
 
-	quoteHashBytes, err := hex.DecodeString(retainedQuote.QuoteHash)
+	requestHashBytes, err := hex.DecodeString(retainedQuote.QuoteHash)
 	if err != nil {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
 	}
 
-	if err = useCase.validatePegoutTransaction(retainedQuote, pegoutQuote, quoteHashBytes); err != nil {
+	if err = useCase.validatePegoutTransaction(retainedQuote, pegoutQuote, requestHashBytes); err != nil {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
-		// Check if it's a non-recoverable error:
-		// - "(non-recoverable)" marker from CreateUnfundedTransactionWithOpReturn (bad input)
-		// - "reverted with:" from parsed contract reverts
 		errorStr := err.Error()
 		isNonRecoverable := strings.Contains(errorStr, "(non-recoverable)") ||
 			strings.Contains(errorStr, "reverted with:")
@@ -196,7 +259,7 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 	}
 
 	var txResult blockchain.BitcoinTransactionResult
-	if txResult, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, quoteHashBytes); err != nil {
+	if txResult, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, requestHashBytes); err != nil {
 		newState = quote.PegoutStateSendPegoutFailed
 	} else {
 		newState = quote.PegoutStateSendPegoutSucceeded
@@ -222,23 +285,18 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 func (useCase *SendPegoutUseCase) validatePegoutTransaction(
 	retainedQuote quote.RetainedPegoutQuote,
 	pegoutQuote *quote.PegoutQuote,
-	quoteHashBytes []byte,
+	requestHashBytes []byte,
 ) error {
 	rawTx, err := useCase.btcWallet.CreateUnfundedTransactionWithOpReturn(
 		pegoutQuote.DepositAddress,
 		pegoutQuote.Value,
-		quoteHashBytes,
+		requestHashBytes,
 	)
 	if err != nil {
-		// CreateUnfundedTransactionWithOpReturn errors are typically bad input (invalid address, etc.)
-		// These are non-recoverable, so we mark them explicitly
 		return fmt.Errorf("failed to create unfunded transaction (non-recoverable): %w", err)
 	}
 
 	if err = useCase.contracts.PegOut.ValidatePegout(retainedQuote.QuoteHash, rawTx); err != nil {
-		// ValidatePegout errors are handled in pegout_contract.go to distinguish:
-		// - Contract reverts (marked with "reverted with:") → non-recoverable
-		// - RPC/network errors (marked with "error validating pegout:") → recoverable
 		return fmt.Errorf("transaction validation failed: %w", err)
 	}
 
@@ -253,11 +311,10 @@ func (useCase *SendPegoutUseCase) validateBalance(
 	var err error
 	var balance *entities.Wei
 
-	requiredBalance := new(entities.Wei)
 	if balance, err = useCase.btcWallet.GetBalance(); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, true)
 	}
-	requiredBalance = new(entities.Wei)
+	requiredBalance := new(entities.Wei)
 	requiredBalance.Add(pegoutQuote.Value, pegoutQuote.GasFee)
 	if balance.Cmp(requiredBalance) < 0 {
 		return useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, usecases.NoLiquidityError, true)
@@ -266,7 +323,9 @@ func (useCase *SendPegoutUseCase) validateBalance(
 }
 
 func (useCase *SendPegoutUseCase) validateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
-	if retainedQuote.State != quote.PegoutStateWaitingForDepositConfirmations {
+	validState := retainedQuote.State == quote.PegoutStateWaitingForDepositConfirmations ||
+		retainedQuote.State == quote.PegoutStateClaimed
+	if !validState {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
 	} else if retainedQuote.UserRskTxHash == "" {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, errors.New("user rsk tx hash not provided"), true)
@@ -274,7 +333,6 @@ func (useCase *SendPegoutUseCase) validateRetainedQuote(ctx context.Context, ret
 	return nil
 }
 
-// revalidateRetainedQuote performs the necessary checks to ensure processing the quote still safe after acquiring the wallet mutex
 func (useCase *SendPegoutUseCase) revalidateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
 	if dbQuote, err := useCase.quoteRepository.GetRetainedQuote(ctx, retainedQuote.QuoteHash); err != nil {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
