@@ -15,8 +15,8 @@ import (
 // DailyVolumeItem holds the aggregated pegin and pegout volume for a single day
 type DailyVolumeItem struct {
 	Day          string   `json:"day"`
-	PeginVolume  *big.Int `json:"pegin_volume"`
-	PegoutVolume *big.Int `json:"pegout_volume"`
+	PeginVolume  *big.Int `json:"peginVolume"`
+	PegoutVolume *big.Int `json:"pegoutVolume"`
 	PeginCount   int      `json:"peginCount"`
 	PegoutCount  int      `json:"pegoutCount"`
 }
@@ -44,7 +44,7 @@ func NewGetDailyVolumeReportUseCase(
 }
 
 func dayBucketKey(timestamp uint32) string {
-	return time.Unix(int64(timestamp), 0).UTC().Format("2006-01-02")
+	return time.Unix(int64(timestamp), 0).UTC().Format(time.DateOnly)
 }
 
 //nolint:cyclop // aggregation needs all the branches in one place
