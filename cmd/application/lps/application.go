@@ -82,7 +82,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	mutexes := environment.NewApplicationMutexes()
 
 	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, dbRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
 		env: env, timeouts: timeouts,
 		lpRegistry: lpRegistry, useCaseRegistry: useCaseRegistry,
@@ -191,6 +191,7 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 		app.watcherRegistry.PenalizationAlertWatcher,
 		app.watcherRegistry.PegoutBridgeWatcher,
 		app.watcherRegistry.BtcReleaseWatcher,
+		app.watcherRegistry.PegoutEscrowWatcher,
 		app.watcherRegistry.BitcoinPeerWatcher,
 		app.watcherRegistry.RootstockPeerWatcher,
 		app.watcherRegistry.QuoteMetricsWatcher,

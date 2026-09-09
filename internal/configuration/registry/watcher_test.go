@@ -61,7 +61,7 @@ func TestNewWatcherRegistry(t *testing.T) {
 		mutexes := environment.NewApplicationMutexes()
 		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
 
-		watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, messagingRegistry, watcher.NewApplicationTickers(), environment.DefaultTimeouts())
+		watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, messagingRegistry, dbRegistry, watcher.NewApplicationTickers(), environment.DefaultTimeouts())
 
 		require.NotNil(t, watcherRegistry)
 		value := reflect.ValueOf(watcherRegistry).Elem()

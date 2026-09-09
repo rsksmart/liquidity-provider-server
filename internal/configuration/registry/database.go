@@ -2,6 +2,7 @@ package registry
 
 import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -15,6 +16,7 @@ type Database struct {
 	PenalizedEventRepository    penalization.PenalizedEventRepository
 	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
 	BatchPegOutRepository       rootstock.BatchPegOutRepository
+	PegOutEscrowWatchRepository blockchain.PegOutEscrowWatchRepository
 	Connection                  *mongo.Connection
 }
 
@@ -26,6 +28,7 @@ func NewDatabaseRegistry(connection *mongo.Connection) *Database {
 		PenalizedEventRepository:    mongo.NewPenalizedEventRepository(connection),
 		TrustedAccountRepository:    mongo.NewTrustedAccountRepository(connection),
 		BatchPegOutRepository:       mongo.NewBatchPegOutMongoRepository(connection),
+		PegOutEscrowWatchRepository: mongo.NewPegOutEscrowWatchMongoRepository(connection),
 		Connection:                  connection,
 	}
 }
