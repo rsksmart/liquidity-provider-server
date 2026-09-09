@@ -1116,8 +1116,8 @@ func TestSendPegoutUseCase_Step8_OpReturnCarriesEscrowId(t *testing.T) {
 
 	escrowQuote := sendPegoutTestQuote
 	escrowQuote.DepositAddress = "ddeeff00112233445566778899aabbccddeeff00"
-	escrowQuote.BtcRefundAddress = "00112233445566778899aabbccddeeff00112233"
-	escrowQuote.LpBtcAddress = "aabbccddeeff00112233445566778899aabbccdd"
+	escrowQuote.BtcRefundAddress = ""
+	escrowQuote.LpBtcAddress = ""
 	encodedDest := "bcrt1qescrowdest"
 
 	btcTxHash := "0xescrowbtctx"
@@ -1135,7 +1135,7 @@ func TestSendPegoutUseCase_Step8_OpReturnCarriesEscrowId(t *testing.T) {
 	escrow.EXPECT().GetPegOutState(escrowId).Return(blockchain.EscrowedPegOutStateClaimed, nil).Once()
 
 	btcRpc := new(mocks.BtcRpcMock)
-	btcRpc.On("EncodeAddress", mock.Anything).Return(encodedDest, nil)
+	btcRpc.On("EncodeAddress", mock.Anything).Return(encodedDest, nil).Once()
 
 	quoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	quoteRepository.EXPECT().GetRetainedQuote(mock.Anything, escrowId).Return(&retained, nil).Once()

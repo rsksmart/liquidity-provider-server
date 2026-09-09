@@ -355,11 +355,15 @@ func parsePegoutQuote(pegoutQuote quote.PegoutQuote) (bindings.QuotesPegOutQuote
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing user rsk refund address: %w", err)
 	}
 
-	if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddress(pegoutQuote.BtcRefundAddress); err != nil {
-		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing user btc refund address: %w", err)
+	if pegoutQuote.BtcRefundAddress != "" {
+		if parsedQuote.BtcRefundAddress, err = bitcoin.DecodeAddress(pegoutQuote.BtcRefundAddress); err != nil {
+			return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing user btc refund address: %w", err)
+		}
 	}
-	if parsedQuote.LpBtcAddress, err = bitcoin.DecodeAddress(pegoutQuote.LpBtcAddress); err != nil {
-		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing liquidity provider btc address: %w", err)
+	if pegoutQuote.LpBtcAddress != "" {
+		if parsedQuote.LpBtcAddress, err = bitcoin.DecodeAddress(pegoutQuote.LpBtcAddress); err != nil {
+			return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing liquidity provider btc address: %w", err)
+		}
 	}
 	if parsedQuote.DepositAddress, err = bitcoin.DecodeAddress(pegoutQuote.DepositAddress); err != nil {
 		return bindings.QuotesPegOutQuote{}, fmt.Errorf("error parsing pegout deposit address: %w", err)

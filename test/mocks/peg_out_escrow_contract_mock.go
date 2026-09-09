@@ -186,64 +186,6 @@ func (_c *PegOutEscrowContractMock_GetAddress_Call) RunAndReturn(run func() stri
 	return _c
 }
 
-// GetMaxMinerFee provides a mock function with given fields: requestHash
-func (_m *PegOutEscrowContractMock) GetMaxMinerFee(requestHash string) (*entities.Wei, error) {
-	ret := _m.Called(requestHash)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetMaxMinerFee")
-	}
-
-	var r0 *entities.Wei
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*entities.Wei, error)); ok {
-		return rf(requestHash)
-	}
-	if rf, ok := ret.Get(0).(func(string) *entities.Wei); ok {
-		r0 = rf(requestHash)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*entities.Wei)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(requestHash)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// PegOutEscrowContractMock_GetMaxMinerFee_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMaxMinerFee'
-type PegOutEscrowContractMock_GetMaxMinerFee_Call struct {
-	*mock.Call
-}
-
-// GetMaxMinerFee is a helper method to define mock.On call
-//   - requestHash string
-func (_e *PegOutEscrowContractMock_Expecter) GetMaxMinerFee(requestHash interface{}) *PegOutEscrowContractMock_GetMaxMinerFee_Call {
-	return &PegOutEscrowContractMock_GetMaxMinerFee_Call{Call: _e.mock.On("GetMaxMinerFee", requestHash)}
-}
-
-func (_c *PegOutEscrowContractMock_GetMaxMinerFee_Call) Run(run func(requestHash string)) *PegOutEscrowContractMock_GetMaxMinerFee_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *PegOutEscrowContractMock_GetMaxMinerFee_Call) Return(_a0 *entities.Wei, _a1 error) *PegOutEscrowContractMock_GetMaxMinerFee_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *PegOutEscrowContractMock_GetMaxMinerFee_Call) RunAndReturn(run func(string) (*entities.Wei, error)) *PegOutEscrowContractMock_GetMaxMinerFee_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetPegOutCancelledEvents provides a mock function with given fields: ctx, fromBlock, toBlock
 func (_m *PegOutEscrowContractMock) GetPegOutCancelledEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]blockchain.PegOutCancelled, error) {
 	ret := _m.Called(ctx, fromBlock, toBlock)

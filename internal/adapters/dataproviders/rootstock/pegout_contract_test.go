@@ -239,6 +239,27 @@ func TestPegoutContractImpl_HashPegoutQuote_ParsingErrors(t *testing.T) {
 	})
 }
 
+func TestPegoutContractImpl_HashPegoutQuote_EmptyOptionalBtcAddresses(t *testing.T) {
+	hashContractMock := createBoundContractMock()
+	hashBinding := bindings.NewPegoutContract()
+	hashContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, hashContractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), hashBinding, Abis)
+	testQuote := pegoutQuote
+	testQuote.BtcRefundAddress = ""
+	testQuote.LpBtcAddress = ""
+	emptyParsed := parsedPegoutQuote
+	emptyParsed.BtcRefundAddress = []byte{}
+	emptyParsed.LpBtcAddress = []byte{}
+	hash := [32]byte{1, 2, 3}
+	hashContractMock.caller.EXPECT().CallContract(
+		mock.Anything,
+		matchCallData(hashBinding.PackHashPegOutQuote(emptyParsed)),
+		mock.Anything,
+	).Return(mustPackBytes32(t, hash), nil).Once()
+	result, err := hashContract.HashPegoutQuote(testQuote)
+	require.NoError(t, err)
+	assert.Equal(t, hex.EncodeToString(hash[:]), result)
+}
+
 func TestPegoutContractImpl_IsPegOutQuoteCompleted(t *testing.T) {
 	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"
 	parsedQuoteHash := [32]byte{0x76, 0x2d, 0x73, 0xdb, 0x7e, 0x80, 0xd8, 0x45, 0xda, 0xe5, 0xd, 0x6d, 0xdd, 0xa4, 0xd6, 0x4d, 0x59, 0xf9, 0x93, 0x52, 0xea, 0xd2, 0x8a, 0xfd, 0x51, 0x61, 0xe, 0x56, 0x74, 0xb0, 0x8c, 0xa}
