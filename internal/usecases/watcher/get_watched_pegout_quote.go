@@ -22,6 +22,7 @@ func (useCase *GetWatchedPegoutQuoteUseCase) Run(ctx context.Context, states ...
 		case
 			quote.PegoutStateWaitingForDepositConfirmations,
 			quote.PegoutStateWaitingForDeposit,
+			quote.PegoutStateClaimed,
 			quote.PegoutStateSendPegoutSucceeded,
 			quote.PegoutStateRefundPegOutSucceeded:
 			if watchedQuotes, err := useCase.getWatchedQuotes(ctx, state); err == nil {

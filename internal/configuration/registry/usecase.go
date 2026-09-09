@@ -35,6 +35,7 @@ type UseCaseRegistry struct {
 	getWatchedPegoutQuoteUseCase        *watcher.GetWatchedPegoutQuoteUseCase
 	expiredPegoutUseCase                *pegout.ExpiredPegoutQuoteUseCase
 	sendPegoutUseCase                   *pegout.SendPegoutUseCase
+	claimPegOutUseCase                  *pegout.ClaimPegOutUseCase
 	updatePegoutDepositUseCase          *watcher.UpdatePegoutQuoteDepositUseCase
 	initPegoutDepositCacheUseCase       *pegout.InitPegoutDepositCacheUseCase
 	refundPegoutUseCase                 *pegout.RefundPegoutUseCase
@@ -211,6 +212,15 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			mutexes.BtcWalletMutex(),
 			rootstock.ParseDepositEventByQuoteHash,
+		),
+		claimPegOutUseCase: pegout.NewClaimPegOutUseCase(
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			btcRegistry.PaymentWallet,
+			lpRegistry.LiquidityProvider,
+			databaseRegistry.PegoutRepository,
+			messaging.EventBus,
+			mutexes.RskWalletMutex(),
 		),
 		getUserDepositsUseCase: pegout.NewGetUserDepositsUseCase(databaseRegistry.PegoutRepository),
 		liquidityCheckUseCase: liquidity_provider.NewCheckLiquidityUseCase(

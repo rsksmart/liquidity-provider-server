@@ -8,6 +8,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,6 +18,7 @@ type PegoutEscrowWatcher struct {
 	contracts          blockchain.RskContracts
 	rpc                blockchain.Rpc
 	repository         blockchain.PegOutEscrowWatchRepository
+	claimPegOutUseCase *pegout.ClaimPegOutUseCase
 	ticker             utils.Ticker
 	watcherStopChannel chan struct{}
 	startBlock         uint64
@@ -43,6 +45,7 @@ func NewPegoutEscrowWatcher(
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
 	repository blockchain.PegOutEscrowWatchRepository,
+	claimPegOutUseCase *pegout.ClaimPegOutUseCase,
 	ticker utils.Ticker,
 	startBlock uint64,
 	pageSize uint64,
@@ -55,6 +58,7 @@ func NewPegoutEscrowWatcher(
 		contracts:          contracts,
 		rpc:                rpc,
 		repository:         repository,
+		claimPegOutUseCase: claimPegOutUseCase,
 		ticker:             ticker,
 		watcherStopChannel: make(chan struct{}, 1),
 		startBlock:         startBlock,
@@ -79,6 +83,7 @@ func (watcher *PegoutEscrowWatcher) Prepare(ctx context.Context) error {
 		return err
 	}
 	log.Info(LogPegoutEscrowStart(watcher.lastScannedBlock + 1))
+	watcher.tryClaimCandidates(ctx)
 	return nil
 }
 
@@ -124,6 +129,28 @@ func (watcher *PegoutEscrowWatcher) onTick() {
 	}
 	if err := watcher.checkRequests(); err != nil {
 		log.Errorf(LogPegoutEscrowError, err)
+		return
+	}
+	checkContext, checkCancel := context.WithTimeout(context.Background(), watcher.checkTimeout)
+	defer checkCancel()
+	watcher.tryClaimCandidates(checkContext)
+}
+
+func (watcher *PegoutEscrowWatcher) tryClaimCandidates(ctx context.Context) {
+	if watcher.claimPegOutUseCase == nil {
+		return
+	}
+	for _, candidate := range watcher.GetCandidates() {
+		claimed, err := watcher.claimPegOutUseCase.Run(ctx, candidate)
+		if err != nil {
+			log.Error(LogPegoutEscrowClaimError(candidate.RequestHash, err))
+			continue
+		}
+		if claimed {
+			if dropErr := watcher.dropCandidate(ctx, candidate.RequestHash); dropErr != nil {
+				log.Error(LogPegoutEscrowClaimError(candidate.RequestHash, dropErr))
+			}
+		}
 	}
 }
 

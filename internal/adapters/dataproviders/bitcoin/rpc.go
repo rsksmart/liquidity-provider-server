@@ -61,6 +61,10 @@ func (rpc *bitcoindRpc) DecodeAddress(address string) ([]byte, error) {
 	return DecodeAddress(address)
 }
 
+func (rpc *bitcoindRpc) EncodeAddress(addressBytes []byte) (string, error) {
+	return EncodeAddress(addressBytes, rpc.conn.NetworkParams)
+}
+
 func (rpc *bitcoindRpc) GetTransactionInfo(hash string) (blockchain.BitcoinTransactionInformation, error) {
 	// nolint:prealloc
 	// false positive

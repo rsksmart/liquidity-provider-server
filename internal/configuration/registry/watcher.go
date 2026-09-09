@@ -137,6 +137,7 @@ func NewWatcherRegistry(
 			rskRegistry.Contracts,
 			messaging.Rpc,
 			dbRegistry.PegOutEscrowWatchRepository,
+			useCaseRegistry.claimPegOutUseCase,
 			tickers.PegoutEscrowWatcherTicker,
 			0,
 			0,

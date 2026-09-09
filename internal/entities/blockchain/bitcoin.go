@@ -126,6 +126,7 @@ type BitcoinWallet interface {
 type BitcoinNetwork interface {
 	ValidateAddress(address string) error
 	DecodeAddress(address string) ([]byte, error)
+	EncodeAddress(addressBytes []byte) (string, error)
 	GetTransactionInfo(hash string) (BitcoinTransactionInformation, error)
 	GetRawTransaction(hash string) ([]byte, error)
 	GetPartialMerkleTree(hash string) ([]byte, error)

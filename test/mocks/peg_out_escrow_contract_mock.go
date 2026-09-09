@@ -82,6 +82,65 @@ func (_c *PegOutEscrowContractMock_ClaimPegOut_Call) RunAndReturn(run func(block
 	return _c
 }
 
+// EstimateClaimPegOut provides a mock function with given fields: requestHash, signature
+func (_m *PegOutEscrowContractMock) EstimateClaimPegOut(requestHash string, signature []byte) (*entities.Wei, error) {
+	ret := _m.Called(requestHash, signature)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EstimateClaimPegOut")
+	}
+
+	var r0 *entities.Wei
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []byte) (*entities.Wei, error)); ok {
+		return rf(requestHash, signature)
+	}
+	if rf, ok := ret.Get(0).(func(string, []byte) *entities.Wei); ok {
+		r0 = rf(requestHash, signature)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*entities.Wei)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []byte) error); ok {
+		r1 = rf(requestHash, signature)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegOutEscrowContractMock_EstimateClaimPegOut_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EstimateClaimPegOut'
+type PegOutEscrowContractMock_EstimateClaimPegOut_Call struct {
+	*mock.Call
+}
+
+// EstimateClaimPegOut is a helper method to define mock.On call
+//   - requestHash string
+//   - signature []byte
+func (_e *PegOutEscrowContractMock_Expecter) EstimateClaimPegOut(requestHash interface{}, signature interface{}) *PegOutEscrowContractMock_EstimateClaimPegOut_Call {
+	return &PegOutEscrowContractMock_EstimateClaimPegOut_Call{Call: _e.mock.On("EstimateClaimPegOut", requestHash, signature)}
+}
+
+func (_c *PegOutEscrowContractMock_EstimateClaimPegOut_Call) Run(run func(requestHash string, signature []byte)) *PegOutEscrowContractMock_EstimateClaimPegOut_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]byte))
+	})
+	return _c
+}
+
+func (_c *PegOutEscrowContractMock_EstimateClaimPegOut_Call) Return(_a0 *entities.Wei, _a1 error) *PegOutEscrowContractMock_EstimateClaimPegOut_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegOutEscrowContractMock_EstimateClaimPegOut_Call) RunAndReturn(run func(string, []byte) (*entities.Wei, error)) *PegOutEscrowContractMock_EstimateClaimPegOut_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAddress provides a mock function with no fields
 func (_m *PegOutEscrowContractMock) GetAddress() string {
 	ret := _m.Called()
