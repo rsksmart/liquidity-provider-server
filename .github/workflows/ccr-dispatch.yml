@@ -37,7 +37,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   dispatch:
@@ -74,14 +73,25 @@ jobs:
             echo "skip_inspect=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Create framework dispatch token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.CCR_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CCR_APP_PRIVATE_KEY }}
+          owner: rsksmart
+          repositories: copilot-review-template
+          permission-actions: write
+
       - name: Dispatch framework follow-up
         env:
-          GH_TOKEN: ${{ secrets.CCR_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           FRAMEWORK_REPO: rsksmart/copilot-review-template
         run: |
           set -euo pipefail
           gh workflow run ccr-followup.yml \
             --repo "$FRAMEWORK_REPO" \
+            --ref main \
             -f repository="${{ github.repository }}" \
             -f pr_number="${{ steps.meta.outputs.pr_number }}" \
             -f review_id="${{ steps.meta.outputs.review_id }}" \
