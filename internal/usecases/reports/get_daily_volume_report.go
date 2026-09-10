@@ -44,7 +44,7 @@ func NewGetDailyVolumeReportUseCase(
 }
 
 func dayBucketKey(timestamp uint32) string {
-	return time.Unix(int64(timestamp), 0).UTC().Format("2006-01-02")
+return time.Unix(int64(timestamp), 0).UTC().Format(time.DateOnly)
 }
 
 //nolint:cyclop // aggregation needs all the branches in one place
@@ -152,7 +152,7 @@ func (useCase *GetDailyVolumeReportUseCase) collectPegoutVolume(ctx context.Cont
 		if pair.Quote.Value == nil {
 			continue
 		}
-		day := dayBucketKey(pair.Quote.DepositDateLimit)
+day := dayBucketKey(pair.Quote.AgreementTimestamp)
 		if volumeByDay[day] == nil {
 			volumeByDay[day] = new(big.Int)
 		}
