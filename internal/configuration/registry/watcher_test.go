@@ -30,7 +30,10 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
 			BridgeAddress:                "0x0000000000000000000000000000000001000006",
 		},
-		Btc:    environment.BtcEnv{Network: "testnet"},
+		Btc: environment.BtcEnv{Network: "testnet"},
+		Pegin: environment.PeginEnv{
+			AddressRegistryWatcherPageSize: 10,
+		},
 		Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
 	}
 
@@ -43,8 +46,8 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 	rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock := new(mocks.AbstractFactoryMock)
 	walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
-	rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, env.Pegin.AddressRegistryWatcherStartBlock)
-	rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+	rskClient := newRskClientWithoutRegistryProof(t)
+	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 
 	connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))
@@ -58,7 +61,16 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 	lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
 	require.NoError(t, err)
 	mutexes := environment.NewApplicationMutexes()
-	useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	useCaseRegistry, err := registry.NewUseCaseRegistry(
+		env,
+		rskRegistry,
+		btcRegistry,
+		dbRegistry,
+		lpRegistry,
+		messagingRegistry,
+		mutexes,
+	)
+	require.NoError(t, err)
 
 	return registry.NewWatcherRegistry(
 		env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, messagingRegistry,

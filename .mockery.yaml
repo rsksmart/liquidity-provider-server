@@ -103,7 +103,6 @@ packages:
     interfaces:
       BatchPegOutRepository:
       PegInWatchRepository:
-      PegInWatchCheckpointRepository:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils:
     interfaces:
       HttpClient:

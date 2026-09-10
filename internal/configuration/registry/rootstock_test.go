@@ -1,8 +1,6 @@
 package registry_test
 
 import (
-	"context"
-	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -12,7 +10,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,17 +23,11 @@ func newRskWalletFactoryMock() (*mocks.AbstractFactoryMock, *mocks.RskSignerWall
 	return walletFactoryMock, rskWalletMock
 }
 
-// newRskClientWithGenesisRegistry expects only the code reads that prove the deployment block, so
-// any registration-root read or event replay during construction fails as an unexpected call.
-func newRskClientWithGenesisRegistry(t *testing.T, registryAddress string, deploymentBlock uint64) *rootstock.RskClient {
+// newRskClientWithoutRegistryProof returns a client whose RPC mock holds no expectations, so any
+// chain read during registry construction fails as an unexpected call.
+func newRskClientWithoutRegistryProof(t *testing.T) *rootstock.RskClient {
 	t.Helper()
-	rpc := mocks.NewRpcClientBindingMock(t)
-	address := common.HexToAddress(registryAddress)
-	rpc.On("CodeAt", mock.Anything, address, new(big.Int).SetUint64(deploymentBlock)).Return([]byte{0x60}, nil)
-	if deploymentBlock > 0 {
-		rpc.On("CodeAt", mock.Anything, address, new(big.Int).SetUint64(deploymentBlock-1)).Return([]byte{}, nil)
-	}
-	return rootstock.NewRskClient(rpc)
+	return rootstock.NewRskClient(mocks.NewRpcClientBindingMock(t))
 }
 
 // nolint:funlen
@@ -56,8 +47,8 @@ func TestNewRootstockRegistry(t *testing.T) {
 	t.Run("should create a new Rootstock registry", func(t *testing.T) {
 		env := testEnv
 		walletFactoryMock, rskWalletMock := newRskWalletFactoryMock()
-		rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, 0)
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+		rskClient := newRskClientWithoutRegistryProof(t)
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, rskRegistry)
 		require.NotEmpty(t, rskRegistry.Contracts)
@@ -77,7 +68,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.PegInAddressRegistryAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -85,7 +76,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.FlyoverConfigurationsAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -93,7 +84,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.DiscoveryAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -101,7 +92,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.PeginContractAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -109,7 +100,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.PegoutContractAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -117,7 +108,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.CollateralManagementAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -125,7 +116,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		env := testEnv
 		env.Rsk.BridgeAddress = test.AnyString
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, new(mocks.AbstractFactoryMock), environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -134,7 +125,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		walletFactoryMock := new(mocks.AbstractFactoryMock)
 		walletFactoryMock.On("RskWallet").Return(nil, assert.AnError)
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
@@ -144,21 +135,17 @@ func TestNewRootstockRegistry(t *testing.T) {
 		walletFactoryMock := new(mocks.AbstractFactoryMock)
 		walletFactoryMock.On("RskWallet").Return(new(mocks.RskSignerWalletMock), nil)
 		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
 	})
-	t.Run("should return an error when the watcher start block is not the deployment block", func(t *testing.T) {
+	t.Run("should trust the configured watcher start block without reading chain code", func(t *testing.T) {
 		env := testEnv
 		env.Pegin.AddressRegistryWatcherStartBlock = 100
-		env.Pegin.AddressRegistryWatcherPageSize = 10
-		rpc := mocks.NewRpcClientBindingMock(t)
-		address := common.HexToAddress(env.Rsk.PegInAddressRegistryAddress)
-		rpc.EXPECT().CodeAt(mock.Anything, address, big.NewInt(100)).Return(nil, nil).Once()
 		walletFactoryMock, _ := newRskWalletFactoryMock()
-		rskClient := rootstock.NewRskClient(rpc)
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
-		require.ErrorContains(t, err, "configured start block 100 is not the PegIn address registry deployment block")
-		require.Nil(t, rskRegistry)
+		rskClient := newRskClientWithoutRegistryProof(t)
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+		require.NoError(t, err)
+		require.NotNil(t, rskRegistry.Contracts.PegInAddressRegistry)
 	})
 }

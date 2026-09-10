@@ -2,7 +2,6 @@ package rootstock
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
@@ -39,72 +38,8 @@ func NewPegInAddressRegistryContractImpl(
 	}
 }
 
-func NewValidatedPegInAddressRegistryContract(
-	ctx context.Context,
-	client *RskClient,
-	address string,
-	contract *bind.BoundContract,
-	retryParams RetryParams,
-	binding *bindings.PegInAddressRegistryContract,
-	abis *FlyoverABIs,
-	deploymentBlock uint64,
-) (blockchain.PegInAddressRegistryContract, error) {
-	impl := NewPegInAddressRegistryContractImpl(client, address, contract, retryParams, binding, abis)
-	if err := impl.ValidateAtBlock(ctx, deploymentBlock); err != nil {
-		return nil, err
-	}
-	return impl, nil
-}
-
-func (registry *peginAddressRegistryContractImpl) ValidateAtBlock(
-	ctx context.Context,
-	deploymentBlock uint64,
-) error {
-	isDeploymentBlock, err := registry.IsDeploymentBlock(ctx, deploymentBlock)
-	if err != nil {
-		return fmt.Errorf("prove PegIn address registry deployment block %d: %w", deploymentBlock, err)
-	}
-	if !isDeploymentBlock {
-		return fmt.Errorf("configured start block %d is not the PegIn address registry deployment block", deploymentBlock)
-	}
-	return nil
-}
-
 func (registry *peginAddressRegistryContractImpl) GetAddress() string {
 	return registry.address
-}
-
-// IsDeploymentBlock proves the exact code transition for the configured registry address:
-// no code in the parent block and contract code in the candidate block.
-func (registry *peginAddressRegistryContractImpl) IsDeploymentBlock(
-	ctx context.Context,
-	blockNumber uint64,
-) (bool, error) {
-	var address common.Address
-	if err := ParseAddress(&address, registry.address); err != nil {
-		return false, err
-	}
-	codeAt := func(block uint64) ([]byte, error) {
-		return rskRetry(registry.retryParams.Retries, registry.retryParams.Sleep, func() ([]byte, error) {
-			return registry.client.CodeAt(ctx, address, new(big.Int).SetUint64(block))
-		})
-	}
-
-	code, err := codeAt(blockNumber)
-	if err != nil {
-		return false, fmt.Errorf("read PegIn address registry code at block %d: %w", blockNumber, err)
-	}
-	if len(code) == 0 {
-		return false, nil
-	}
-	if blockNumber == 0 {
-		return true, nil
-	}
-	parentCode, err := codeAt(blockNumber - 1)
-	if err != nil {
-		return false, fmt.Errorf("read PegIn address registry code at block %d: %w", blockNumber-1, err)
-	}
-	return len(parentCode) == 0, nil
 }
 
 func (registry *peginAddressRegistryContractImpl) GetPegInAddress(rskAddr string) (blockchain.PegInAddress, error) {

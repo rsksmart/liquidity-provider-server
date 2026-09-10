@@ -2,16 +2,12 @@ package watcher_test
 
 import (
 	"context"
-	"errors"
 	"math"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -29,16 +25,12 @@ const (
 )
 
 type memoryWatchRepository struct {
-	mu                 sync.Mutex
-	rows               []rootstock.PegInWatch
-	deletes            []uint64
-	listCalls          int
-	listErrAt          map[int]error
-	corruptListAt      int
-	firstListStarted   chan struct{}
-	releaseFirstList   chan struct{}
-	activeLists        atomic.Int64
-	maximumActiveLists atomic.Int64
+	mu            sync.Mutex
+	rows          []rootstock.PegInWatch
+	deletes       []uint64
+	listCalls     int
+	listErrAt     map[int]error
+	corruptListAt int
 }
 
 func (repository *memoryWatchRepository) Upsert(_ context.Context, watch rootstock.PegInWatch) error {
@@ -69,31 +61,15 @@ func (repository *memoryWatchRepository) Get(
 }
 
 func (repository *memoryWatchRepository) List(context.Context) ([]rootstock.PegInWatch, error) {
-	active := repository.activeLists.Add(1)
-	defer repository.activeLists.Add(-1)
-	for {
-		maximum := repository.maximumActiveLists.Load()
-		if active <= maximum || repository.maximumActiveLists.CompareAndSwap(maximum, active) {
-			break
-		}
-	}
-
 	repository.mu.Lock()
 	repository.listCalls++
 	call := repository.listCalls
-	started := repository.firstListStarted
-	release := repository.releaseFirstList
 	err := repository.listErrAt[call]
 	rows := append([]rootstock.PegInWatch(nil), repository.rows...)
 	if repository.corruptListAt == call && len(rows) != 0 {
 		rows = rows[:len(rows)-1]
 	}
 	repository.mu.Unlock()
-
-	if call == 1 && started != nil {
-		close(started)
-		<-release
-	}
 	return rows, err
 }
 
@@ -126,43 +102,19 @@ func (repository *memoryWatchRepository) DeleteFromBlock(_ context.Context, from
 type memoryCheckpointRepository struct {
 	checkpoint rootstock.PegInWatchCheckpoint
 	found      bool
-	getErr     error
-	setErr     error
 	sets       []rootstock.PegInWatchCheckpoint
-}
-
-func (repository *memoryCheckpointRepository) GetCheckpoint(
-	context.Context,
-) (*rootstock.PegInWatchCheckpoint, error) {
-	if repository.getErr != nil || !repository.found {
-		return nil, repository.getErr
-	}
-	checkpoint := repository.checkpoint
-	return &checkpoint, nil
-}
-
-func (repository *memoryCheckpointRepository) SetCheckpoint(
-	_ context.Context,
-	checkpoint rootstock.PegInWatchCheckpoint,
-) error {
-	if repository.setErr != nil {
-		return repository.setErr
-	}
-	repository.checkpoint = checkpoint
-	repository.found = true
-	repository.sets = append(repository.sets, checkpoint)
-	return nil
 }
 
 type fakeRegistry struct {
 	blockchain.PegInAddressRegistryContract
-	events     []blockchain.AddressRegistered
-	roots      map[uint64][32]byte
-	rootErrors map[uint64]error
-	fetchError error
-	rootReads  []uint64
-	eventReads [][2]uint64
-	repository *memoryWatchRepository
+	events              []blockchain.AddressRegistered
+	roots               map[uint64][32]byte
+	rootErrors          map[uint64]error
+	fetchError          error
+	rootReads           []uint64
+	eventReads          [][2]uint64
+	deleteCountsAtFetch []int
+	repository          *memoryWatchRepository
 }
 
 func (registry *fakeRegistry) GetRegistrationRoot(
@@ -186,6 +138,7 @@ func (registry *fakeRegistry) GetAddressRegisteredEvents(
 		to = *toBlock
 	}
 	registry.eventReads = append(registry.eventReads, [2]uint64{fromBlock, to})
+	registry.deleteCountsAtFetch = append(registry.deleteCountsAtFetch, len(registry.repository.deletes))
 	if registry.fetchError != nil {
 		return nil, registry.fetchError
 	}
@@ -212,21 +165,11 @@ func (rpc *fakeRootstockRPC) GetHeight(context.Context) (uint64, error) {
 	return rpc.head, rpc.err
 }
 
-type fakeEventBus struct {
-	entities.EventBus
-	events []entities.Event
-}
-
-func (eventBus *fakeEventBus) Publish(event entities.Event) {
-	eventBus.events = append(eventBus.events, event)
-}
-
 type replayScenario struct {
 	repository  *memoryWatchRepository
 	checkpoints *memoryCheckpointRepository
 	registry    *fakeRegistry
 	rpc         *fakeRootstockRPC
-	eventBus    *fakeEventBus
 	useCase     *watcher.ReplayRegisteredAddressesUseCase
 }
 
@@ -240,24 +183,57 @@ func newReplayScenario(t *testing.T, head uint64) *replayScenario {
 		repository: repository,
 	}
 	rpc := &fakeRootstockRPC{head: head}
-	eventBus := &fakeEventBus{}
 	scenario := &replayScenario{
 		repository:  repository,
 		checkpoints: checkpoints,
 		registry:    registry,
 		rpc:         rpc,
-		eventBus:    eventBus,
 	}
-	scenario.useCase = watcher.NewReplayRegisteredAddressesUseCase(
+	var err error
+	scenario.useCase, err = watcher.NewReplayRegisteredAddressesUseCase(
 		repository,
-		checkpoints,
 		registry,
 		rpc,
-		eventBus,
-		nil,
 		crypto.Keccak256,
+		100,
+		10,
 	)
+	require.NoError(t, err)
 	return scenario
+}
+
+func (scenario *replayScenario) run(
+	ctx context.Context,
+	startBlock uint64,
+	pageSize uint64,
+) (watcher.ReplayResult, error) {
+	useCase := scenario.useCase
+	if startBlock != 100 || pageSize != 10 {
+		var err error
+		useCase, err = watcher.NewReplayRegisteredAddressesUseCase(
+			scenario.repository,
+			scenario.registry,
+			scenario.rpc,
+			crypto.Keccak256,
+			startBlock,
+			pageSize,
+		)
+		if err != nil {
+			return watcher.ReplayResult{}, err
+		}
+	}
+	var checkpoint *rootstock.PegInWatchCheckpoint
+	if scenario.checkpoints.found {
+		checkpointCopy := scenario.checkpoints.checkpoint
+		checkpoint = &checkpointCopy
+	}
+	result, err := useCase.Run(ctx, checkpoint)
+	if err == nil && result.Checkpoint != nil {
+		scenario.checkpoints.checkpoint = *result.Checkpoint
+		scenario.checkpoints.found = true
+		scenario.checkpoints.sets = append(scenario.checkpoints.sets, *result.Checkpoint)
+	}
+	return result, err
 }
 
 func watchRow(block uint64, logIndex uint, txHash string, address string) rootstock.PegInWatch {
@@ -332,24 +308,46 @@ func TestNewReplayRegisteredAddressesUseCase(t *testing.T) {
 	require.NotNil(t, newReplayScenario(t, 0).useCase)
 }
 
-func TestReplayRegisteredAddressesUseCase_Run_RejectsZeroPageSizeWithWrappedError(t *testing.T) {
-	scenario := newReplayScenario(t, 100)
+func TestNewReplayRegisteredAddressesUseCase_RejectsZeroPageSize(t *testing.T) {
+	useCase, err := watcher.NewReplayRegisteredAddressesUseCase(
+		nil,
+		nil,
+		nil,
+		crypto.Keccak256,
+		100,
+		0,
+	)
 
-	pending, err := scenario.useCase.Run(context.Background(), 100, 0)
+	require.ErrorContains(t, err, "replay page size must be greater than zero")
+	assert.Nil(t, useCase)
+}
 
-	require.Error(t, err)
-	require.ErrorContains(t, err, string(usecases.ReplayRegisteredAddressesId))
-	assert.Nil(t, pending)
-	assert.Empty(t, scenario.registry.rootReads)
+func TestReplayRegisteredAddressesUseCase_RunReturnsPerRunCheckpoint(t *testing.T) {
+	useCase, err := watcher.NewReplayRegisteredAddressesUseCase(
+		nil,
+		nil,
+		&fakeRootstockRPC{head: 99},
+		crypto.Keccak256,
+		100,
+		10,
+	)
+	require.NoError(t, err)
+
+	result, err := useCase.Run(context.Background(), nil)
+
+	require.NoError(t, err)
+	assert.Nil(t, result.Checkpoint)
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_StopsBeforeStateReadsWhenHeadIsBelowStart(t *testing.T) {
 	scenario := newReplayScenario(t, 99)
 
-	pending, err := scenario.useCase.Run(context.Background(), 100, 10)
+	result, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
-	assert.Empty(t, pending)
+	assert.Empty(t, result.Reason)
+	assert.Nil(t, result.Checkpoint)
+	assert.Nil(t, result.Mismatch)
 	assert.Equal(t, 0, scenario.repository.listCalls)
 	assert.Empty(t, scenario.registry.rootReads)
 }
@@ -358,7 +356,7 @@ func TestReplayRegisteredAddressesUseCase_Run_WrapsHeadErrorWithoutMutation(t *t
 	scenario := newReplayScenario(t, 100)
 	scenario.rpc.err = assert.AnError
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.ErrorIs(t, err, assert.AnError)
 	require.ErrorContains(t, err, string(usecases.ReplayRegisteredAddressesId))
@@ -386,9 +384,11 @@ func TestReplayRegisteredAddressesUseCase_Run_HealthyTimelineIgnoresStoredRootsA
 	)
 	scenario.registry.roots[104] = rootAt(t, expectedOrder, 104)
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	result, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
+	assert.Empty(t, result.Reason)
+	assert.Nil(t, result.Mismatch)
 	assert.Equal(t, []uint64{104}, scenario.registry.rootReads)
 	assert.Empty(t, scenario.registry.eventReads)
 	assert.Empty(t, scenario.repository.deletes)
@@ -399,13 +399,13 @@ func TestReplayRegisteredAddressesUseCase_Run_HealthyTimelineIgnoresStoredRootsA
 func TestReplayRegisteredAddressesUseCase_Run_EmptyDatabaseWithZeroRootCheckpointsWithoutLogs(t *testing.T) {
 	scenario := newReplayScenario(t, 100)
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, scenario.registry.eventReads)
 	assert.Empty(t, scenario.repository.deletes)
 	assert.Equal(t, []rootstock.PegInWatchCheckpoint{{
-		LastProcessedBlock: 100,
+		VerifiedThroughBlock: 100,
 	}}, scenario.checkpoints.sets)
 }
 
@@ -415,16 +415,16 @@ func TestReplayRegisteredAddressesUseCase_Run_HealthyStaleCheckpointAdvances(t *
 	configureChain(t, scenario, events)
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(100, 0, "a", addressA)}
 	scenario.checkpoints.checkpoint = rootstock.PegInWatchCheckpoint{
-		LocalRoot:          rootAt(t, events, 100),
-		LastProcessedBlock: 100,
+		LocalRoot:            rootAt(t, events, 100),
+		VerifiedThroughBlock: 100,
 	}
 	scenario.checkpoints.found = true
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, scenario.repository.deletes)
-	assert.Equal(t, uint64(104), scenario.checkpoints.checkpoint.LastProcessedBlock)
+	assert.Equal(t, uint64(104), scenario.checkpoints.checkpoint.VerifiedThroughBlock)
 	assert.Empty(t, scenario.registry.eventReads)
 }
 
@@ -439,21 +439,19 @@ func TestReplayRegisteredAddressesUseCase_Run_TrustedCheckpointReplaysOnlyFollow
 	configureChain(t, scenario, events)
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(100, 0, "a", addressA)}
 	scenario.checkpoints.checkpoint = rootstock.PegInWatchCheckpoint{
-		LocalRoot:          rootAt(t, events, 100),
-		LastProcessedBlock: 100,
+		LocalRoot:            rootAt(t, events, 100),
+		VerifiedThroughBlock: 100,
 	}
 	scenario.checkpoints.found = true
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	result, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
+	assert.Equal(t, blockchain.PegInAddressRegistryRecoveryCatchUp, result.Reason)
+	assert.Nil(t, result.Mismatch)
 	assert.Equal(t, []uint64{101}, scenario.repository.deletes)
 	assert.Equal(t, [][2]uint64{{101, 104}}, scenario.registry.eventReads)
 	assert.Equal(t, []uint64{104, 100}, scenario.registry.rootReads)
-	require.Len(t, scenario.eventBus.events, 1)
-	resync, ok := scenario.eventBus.events[0].(blockchain.PegInAddressRegistryResyncStartedEvent)
-	require.True(t, ok)
-	assert.Equal(t, "catch_up", resync.Reason)
 	for _, entry := range logHook.AllEntries() {
 		assert.NotEqual(t, "PegIn address registry root mismatch", entry.Message)
 	}
@@ -464,20 +462,34 @@ func TestReplayRegisteredAddressesUseCase_Run_EmptyRowsCatchUpFromTrustedZeroRoo
 	events := chainEvents(t, watchRow(104, 0, "a", addressA))
 	configureChain(t, scenario, events)
 	scenario.checkpoints.checkpoint = rootstock.PegInWatchCheckpoint{
-		LastProcessedBlock: 100,
+		VerifiedThroughBlock: 100,
 	}
 	scenario.checkpoints.found = true
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	assert.Equal(t, []uint64{101}, scenario.repository.deletes)
 	assert.Equal(t, [][2]uint64{{101, 104}}, scenario.registry.eventReads)
 	assert.Equal(t, []uint64{104, 100}, scenario.registry.rootReads)
-	require.Len(t, scenario.eventBus.events, 1)
-	resync, ok := scenario.eventBus.events[0].(blockchain.PegInAddressRegistryResyncStartedEvent)
-	require.True(t, ok)
-	assert.Equal(t, "catch_up", resync.Reason)
+}
+
+func TestReplayRegisteredAddressesUseCase_Run_CatchUpPersistsDiscoveredWithoutImporting(t *testing.T) {
+	scenario := newReplayScenario(t, 104)
+	events := chainEvents(t, watchRow(104, 0, "a", addressA))
+	configureChain(t, scenario, events)
+	scenario.checkpoints.checkpoint = rootstock.PegInWatchCheckpoint{
+		VerifiedThroughBlock: 100,
+	}
+	scenario.checkpoints.found = true
+
+	_, err := scenario.run(context.Background(), 100, 10)
+
+	require.NoError(t, err)
+	require.Len(t, scenario.repository.rows, 1)
+	assert.Equal(t, rootstock.PegInWatchDiscovered, scenario.repository.rows[0].State)
+	assert.Equal(t, 2, scenario.repository.listCalls,
+		"Replay must only list for initial and persisted-state verification; import belongs to Discover")
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_TrustedCatchUpReportsEventRootMismatch(t *testing.T) {
@@ -489,20 +501,15 @@ func TestReplayRegisteredAddressesUseCase_Run_TrustedCatchUpReportsEventRootMism
 	configureChain(t, scenario, events)
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(100, 0, "a", addressA)}
 	scenario.checkpoints.checkpoint = rootstock.PegInWatchCheckpoint{
-		LocalRoot:          rootAt(t, events, 100),
-		LastProcessedBlock: 100,
+		LocalRoot:            rootAt(t, events, 100),
+		VerifiedThroughBlock: 100,
 	}
 	scenario.checkpoints.found = true
 	scenario.registry.events[1].RegistrationRoot = [32]byte{9}
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.Error(t, err)
-	require.Len(t, scenario.eventBus.events, 2)
-	resync, ok := scenario.eventBus.events[0].(blockchain.PegInAddressRegistryResyncStartedEvent)
-	require.True(t, ok)
-	assert.Equal(t, "catch_up", resync.Reason)
-	assert.IsType(t, blockchain.PegInAddressRegistryRootMismatchEvent{}, scenario.eventBus.events[1])
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_RootAtBetweenEventsFindsHeadBoundary(t *testing.T) {
@@ -518,7 +525,7 @@ func TestReplayRegisteredAddressesUseCase_Run_RootAtBetweenEventsFindsHeadBounda
 		watchRow(102, 0, "b", addressB),
 	}
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	assert.Equal(t, []uint64{104}, scenario.repository.deletes)
@@ -588,10 +595,18 @@ func TestReplayRegisteredAddressesUseCase_Run_FindsMismatchBoundaries(t *testing
 			events := chainEvents(t, testCase.chainRows...)
 			configureChain(t, scenario, events)
 			scenario.repository.rows = append([]rootstock.PegInWatch(nil), testCase.localRows...)
+			localRootAtHead := rootAt(t, chainEvents(t, testCase.localRows...), testCase.head)
 
-			_, err := scenario.useCase.Run(context.Background(), testCase.startBlock, 10)
+			result, err := scenario.run(context.Background(), testCase.startBlock, 10)
 
 			require.NoError(t, err)
+			assert.Equal(t, blockchain.PegInAddressRegistryRecoveryRootMismatch, result.Reason)
+			assert.Equal(t, &watcher.ReplayRootMismatch{
+				BlockNumber: testCase.head,
+				LocalRoot:   localRootAtHead,
+				ChainRoot:   scenario.registry.roots[testCase.head],
+				Source:      "captured_head",
+			}, result.Mismatch)
 			assert.Equal(t, []uint64{testCase.wantDelete}, scenario.repository.deletes)
 		})
 	}
@@ -611,7 +626,7 @@ func TestReplayRegisteredAddressesUseCase_Run_NonMonotoneSearchReturnsFalseBound
 	scenario.registry.roots[102] = localRoot
 	scenario.registry.roots[103] = localRoot
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	require.Equal(t, []uint64{104}, scenario.repository.deletes)
@@ -619,11 +634,6 @@ func TestReplayRegisteredAddressesUseCase_Run_NonMonotoneSearchReturnsFalseBound
 	assert.NotEqual(t, localRoot, scenario.registry.roots[104])
 	assert.Equal(t, []uint64{104, 102, 103}, scenario.registry.rootReads)
 	assert.Equal(t, [][2]uint64{{104, 104}}, scenario.registry.eventReads)
-	require.Len(t, scenario.eventBus.events, 2)
-	assert.IsType(t, blockchain.PegInAddressRegistryRootMismatchEvent{}, scenario.eventBus.events[0])
-	resync, ok := scenario.eventBus.events[1].(blockchain.PegInAddressRegistryResyncStartedEvent)
-	require.True(t, ok)
-	assert.Equal(t, "root_mismatch", resync.Reason)
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_BoundsSearchRootReadsAndFetchesLogsAfterSearch(t *testing.T) {
@@ -635,7 +645,7 @@ func TestReplayRegisteredAddressesUseCase_Run_BoundsSearchRootReadsAndFetchesLog
 	configureChain(t, scenario, events)
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(100, 0, "a", addressA)}
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	searchReads := len(scenario.registry.rootReads) - 1
@@ -650,7 +660,7 @@ func TestReplayRegisteredAddressesUseCase_Run_SearchReadErrorDoesNotMutateOrFetc
 	scenario.registry.roots[104] = [32]byte{9}
 	scenario.registry.rootErrors[102] = assert.AnError
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.ErrorIs(t, err, assert.AnError)
 	assert.Empty(t, scenario.repository.deletes)
@@ -663,17 +673,12 @@ func TestReplayRegisteredAddressesUseCase_Run_FirstStartFindsFirstRegistrationBo
 	events := chainEvents(t, watchRow(102, 0, "a", addressA))
 	configureChain(t, scenario, events)
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 2)
+	_, err := scenario.run(context.Background(), 100, 2)
 
 	require.NoError(t, err)
 	assert.Equal(t, []uint64{102}, scenario.repository.deletes)
 	assert.Equal(t, [][2]uint64{{102, 103}, {104, 104}}, scenario.registry.eventReads)
 	assert.Equal(t, scenario.registry.roots[104], scenario.checkpoints.checkpoint.LocalRoot)
-	require.Len(t, scenario.eventBus.events, 2)
-	assert.IsType(t, blockchain.PegInAddressRegistryRootMismatchEvent{}, scenario.eventBus.events[0])
-	resync, ok := scenario.eventBus.events[1].(blockchain.PegInAddressRegistryResyncStartedEvent)
-	require.True(t, ok)
-	assert.Equal(t, "root_mismatch", resync.Reason)
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_EmptyDatabaseSkipsIdleDeploymentRange(t *testing.T) {
@@ -681,7 +686,7 @@ func TestReplayRegisteredAddressesUseCase_Run_EmptyDatabaseSkipsIdleDeploymentRa
 	events := chainEvents(t, watchRow(9_000, 0, "a", addressA))
 	configureChain(t, scenario, events)
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 1_000)
+	_, err := scenario.run(context.Background(), 100, 1_000)
 
 	require.NoError(t, err)
 	assert.Equal(t, []uint64{9_000}, scenario.repository.deletes)
@@ -726,7 +731,7 @@ func TestReplayRegisteredAddressesUseCase_Run_RepairsProjectionDifferences(t *te
 			configureChain(t, scenario, events)
 			scenario.repository.rows = append([]rootstock.PegInWatch(nil), testCase.localRows...)
 
-			_, err := scenario.useCase.Run(context.Background(), 100, 10)
+			_, err := scenario.run(context.Background(), 100, 10)
 
 			require.NoError(t, err)
 			assert.Equal(t, scenario.registry.roots[104], scenario.checkpoints.checkpoint.LocalRoot)
@@ -748,7 +753,7 @@ func TestReplayRegisteredAddressesUseCase_Run_PreservesHeightShiftThatKeepsSeque
 		watchRow(101, 0, "x", addressB),
 	}
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	assert.Equal(t, []uint64{104}, scenario.repository.deletes)
@@ -765,7 +770,7 @@ func TestReplayRegisteredAddressesUseCase_Run_MultipleEventsInBlockUseLogOrder(t
 	configureChain(t, scenario, events)
 	scenario.registry.events = []blockchain.AddressRegistered{events[1], events[0]}
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	assert.Equal(t, scenario.registry.roots[100], scenario.checkpoints.checkpoint.LocalRoot)
@@ -773,8 +778,8 @@ func TestReplayRegisteredAddressesUseCase_Run_MultipleEventsInBlockUseLogOrder(t
 
 func TestReplayRegisteredAddressesUseCase_Run_DoesNotTrustChangedOrFutureCheckpoint(t *testing.T) {
 	for _, checkpoint := range []rootstock.PegInWatchCheckpoint{
-		{LocalRoot: [32]byte{7}, LastProcessedBlock: 100},
-		{LastProcessedBlock: 105},
+		{LocalRoot: [32]byte{7}, VerifiedThroughBlock: 100},
+		{VerifiedThroughBlock: 105},
 	} {
 		scenario := newReplayScenario(t, 104)
 		events := chainEvents(t,
@@ -786,15 +791,10 @@ func TestReplayRegisteredAddressesUseCase_Run_DoesNotTrustChangedOrFutureCheckpo
 		scenario.checkpoints.checkpoint = checkpoint
 		scenario.checkpoints.found = true
 
-		_, err := scenario.useCase.Run(context.Background(), 100, 10)
+		_, err := scenario.run(context.Background(), 100, 10)
 
 		require.NoError(t, err)
 		assert.Equal(t, []uint64{104}, scenario.repository.deletes)
-		require.Len(t, scenario.eventBus.events, 2)
-		assert.IsType(t, blockchain.PegInAddressRegistryRootMismatchEvent{}, scenario.eventBus.events[0])
-		resync, ok := scenario.eventBus.events[1].(blockchain.PegInAddressRegistryResyncStartedEvent)
-		require.True(t, ok)
-		assert.Equal(t, "root_mismatch", resync.Reason)
 	}
 }
 
@@ -810,12 +810,12 @@ func TestReplayRegisteredAddressesUseCase_Run_DoesNotCatchUpFromCheckpointAtCapt
 	configureChain(t, scenario, events)
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(100, 0, "a", addressA)}
 	scenario.checkpoints.checkpoint = rootstock.PegInWatchCheckpoint{
-		LocalRoot:          rootAt(t, events, 100),
-		LastProcessedBlock: 104,
+		LocalRoot:            rootAt(t, events, 100),
+		VerifiedThroughBlock: 104,
 	}
 	scenario.checkpoints.found = true
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	assert.Equal(t, []uint64{104}, scenario.repository.deletes)
@@ -833,14 +833,14 @@ func TestReplayRegisteredAddressesUseCase_Run_ReconcilesHighestRepresentableHead
 	scenario.repository.rows = append([]rootstock.PegInWatch(nil), rows...)
 	scenario.registry.roots[math.MaxUint64] = rootAt(t, chainEvents(t, rows...), math.MaxUint64)
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.NoError(t, err)
 	assert.Empty(t, scenario.repository.deletes, "no row can be above the highest block")
 	assert.Empty(t, scenario.registry.eventReads)
 	assert.Equal(t, []rootstock.PegInWatchCheckpoint{{
-		LocalRoot:          scenario.registry.roots[math.MaxUint64],
-		LastProcessedBlock: math.MaxUint64,
+		LocalRoot:            scenario.registry.roots[math.MaxUint64],
+		VerifiedThroughBlock: math.MaxUint64,
 	}}, scenario.checkpoints.sets)
 }
 
@@ -848,10 +848,10 @@ func TestReplayRegisteredAddressesUseCase_Run_RowBelowStartFailsWithoutMutation(
 	scenario := newReplayScenario(t, 104)
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(99, 0, "a", addressA)}
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
-	require.Error(t, err)
-	assert.Empty(t, scenario.registry.rootReads)
+	require.ErrorContains(t, err, "PegIn watch exists below configured start block 100")
+	assert.Equal(t, []uint64{104}, scenario.registry.rootReads)
 	assert.Empty(t, scenario.repository.deletes)
 	assert.Empty(t, scenario.checkpoints.sets)
 }
@@ -860,14 +860,13 @@ func TestReplayRegisteredAddressesUseCase_Run_RowAboveHeadFailsWithoutMutation(t
 	scenario := newReplayScenario(t, 104)
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(105, 0, "a", addressA)}
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.ErrorContains(t, err, "PegIn watch exists above current head 104")
 	assert.Equal(t, []uint64{104}, scenario.registry.rootReads)
 	assert.Empty(t, scenario.repository.deletes)
 	require.Len(t, scenario.repository.rows, 1)
 	assert.Empty(t, scenario.checkpoints.sets)
-	assert.Empty(t, scenario.eventBus.events)
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_RowAboveHeadSurvivesRootReadError(t *testing.T) {
@@ -875,27 +874,92 @@ func TestReplayRegisteredAddressesUseCase_Run_RowAboveHeadSurvivesRootReadError(
 	scenario.repository.rows = []rootstock.PegInWatch{watchRow(105, 0, "a", addressA)}
 	scenario.registry.rootErrors[104] = assert.AnError
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.ErrorIs(t, err, assert.AnError)
 	assert.Empty(t, scenario.repository.deletes)
 	require.Len(t, scenario.repository.rows, 1)
 }
 
-func TestReplayRegisteredAddressesUseCase_Run_FetchFailureAfterDeleteKeepsCheckpoint(t *testing.T) {
+func TestReplayRegisteredAddressesUseCase_Run_FetchFailureDoesNotDeleteSuffix(t *testing.T) {
 	scenario := newReplayScenario(t, 104)
 	scenario.registry.roots[104] = [32]byte{9}
 	scenario.registry.fetchError = assert.AnError
-	original := rootstock.PegInWatchCheckpoint{LocalRoot: [32]byte{3}, LastProcessedBlock: 99}
+	original := rootstock.PegInWatchCheckpoint{LocalRoot: [32]byte{3}, VerifiedThroughBlock: 99}
 	scenario.checkpoints.checkpoint = original
 	scenario.checkpoints.found = true
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.ErrorIs(t, err, assert.AnError)
-	assert.Equal(t, []uint64{104}, scenario.repository.deletes)
+	assert.Empty(t, scenario.repository.deletes)
 	assert.Equal(t, original, scenario.checkpoints.checkpoint)
 	assert.Empty(t, scenario.checkpoints.sets)
+}
+
+func TestReplayRegisteredAddressesUseCase_Run_FoldFailureDoesNotDeleteSuffix(t *testing.T) {
+	scenario := newReplayScenario(t, 104)
+	scenario.registry.roots[104] = [32]byte{9}
+	scenario.registry.events = []blockchain.AddressRegistered{{
+		BlockNumber: 104,
+		LogIndex:    0,
+		TxHash:      "bad-address",
+		RskAddress:  "not-an-address",
+	}}
+
+	_, err := scenario.run(context.Background(), 100, 10)
+
+	require.ErrorContains(t, err, "fold AddressRegistered event bad-address/0")
+	assert.Empty(t, scenario.repository.deletes)
+}
+
+func TestReplayRegisteredAddressesUseCase_Run_EventMismatchDoesNotDeleteOrLog(t *testing.T) {
+	logHook := logtest.NewGlobal()
+	defer logHook.Reset()
+	scenario := newReplayScenario(t, 104)
+	events := chainEvents(t, watchRow(104, 0, "bad-root", addressA))
+	configureChain(t, scenario, events)
+	scenario.registry.events[0].RegistrationRoot = [32]byte{9}
+
+	result, err := scenario.run(context.Background(), 100, 10)
+
+	require.ErrorContains(t, err, "event_bad-root_0")
+	assert.Empty(t, result.Reason)
+	assert.Nil(t, result.Checkpoint)
+	assert.Nil(t, result.Mismatch)
+	assert.Empty(t, scenario.repository.deletes)
+	for _, entry := range logHook.AllEntries() {
+		assert.NotEqual(t, "PegIn address registry root mismatch", entry.Message)
+	}
+}
+
+func TestReplayRegisteredAddressesUseCase_Run_DeletesOnlyAfterFetchingAndFoldingSuffix(t *testing.T) {
+	scenario := newReplayScenario(t, 104)
+	events := chainEvents(t, watchRow(104, 0, "a", addressA))
+	configureChain(t, scenario, events)
+	deleteCountsAtFold := make([]int, 0)
+	hashFunction := func(data ...[]byte) []byte {
+		deleteCountsAtFold = append(deleteCountsAtFold, len(scenario.repository.deletes))
+		return crypto.Keccak256(data...)
+	}
+	var err error
+	scenario.useCase, err = watcher.NewReplayRegisteredAddressesUseCase(
+		scenario.repository,
+		scenario.registry,
+		scenario.rpc,
+		hashFunction,
+		100,
+		10,
+	)
+	require.NoError(t, err)
+
+	_, err = scenario.run(context.Background(), 100, 10)
+
+	require.NoError(t, err)
+	assert.Equal(t, []int{0}, scenario.registry.deleteCountsAtFetch)
+	require.NotEmpty(t, deleteCountsAtFold)
+	assert.Zero(t, deleteCountsAtFold[0], "the event must be folded before suffix deletion")
+	assert.Equal(t, []uint64{104}, scenario.repository.deletes)
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_FinalPersistedMismatchDoesNotCheckpointOrRetry(t *testing.T) {
@@ -904,54 +968,10 @@ func TestReplayRegisteredAddressesUseCase_Run_FinalPersistedMismatchDoesNotCheck
 	configureChain(t, scenario, events)
 	scenario.repository.corruptListAt = 2
 
-	_, err := scenario.useCase.Run(context.Background(), 100, 10)
+	_, err := scenario.run(context.Background(), 100, 10)
 
 	require.Error(t, err)
 	assert.Equal(t, []uint64{104}, scenario.repository.deletes)
 	assert.Empty(t, scenario.checkpoints.sets)
 	assert.Equal(t, 2, scenario.repository.listCalls)
-}
-
-func TestReplayRegisteredAddressesUseCase_Run_SerializesConcurrentRuns(t *testing.T) {
-	scenario := newReplayScenario(t, 0)
-	scenario.repository.firstListStarted = make(chan struct{})
-	scenario.repository.releaseFirstList = make(chan struct{})
-
-	firstResult := make(chan error, 1)
-	go func() {
-		_, err := scenario.useCase.Run(context.Background(), 0, 1)
-		firstResult <- err
-	}()
-	select {
-	case <-scenario.repository.firstListStarted:
-	case <-time.After(time.Second):
-		require.FailNow(t, "first run did not reach repository list")
-	}
-
-	secondResult := make(chan error, 1)
-	go func() {
-		_, err := scenario.useCase.Run(context.Background(), 0, 1)
-		secondResult <- err
-	}()
-	assert.Never(t, func() bool {
-		return scenario.repository.activeLists.Load() > 1
-	}, 50*time.Millisecond, time.Millisecond)
-
-	close(scenario.repository.releaseFirstList)
-	require.NoError(t, <-firstResult)
-	require.NoError(t, <-secondResult)
-	assert.Equal(t, int64(1), scenario.repository.maximumActiveLists.Load())
-}
-
-func TestReplayRegisteredAddressesUseCase_Run_DoesNotPublishIncrementalCheckpoint(t *testing.T) {
-	scenario := newReplayScenario(t, 104)
-	events := chainEvents(t, watchRow(100, 0, "a", addressA))
-	configureChain(t, scenario, events)
-	scenario.checkpoints.setErr = errors.New("checkpoint failed")
-
-	_, err := scenario.useCase.Run(context.Background(), 100, 2)
-
-	require.ErrorIs(t, err, scenario.checkpoints.setErr)
-	assert.Empty(t, scenario.checkpoints.sets)
-	assert.Len(t, scenario.registry.eventReads, 3)
 }
