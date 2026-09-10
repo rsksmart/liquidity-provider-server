@@ -10,19 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-const (
-	PegInWatchCollection                     = "peginWatch"
-	peginAddressRegistryCheckpointDocumentID = "checkpoint"
-)
+const PegInWatchCollection = "peginWatch"
 
 type peginWatchMongoRepository struct {
 	conn *Connection
-}
-
-type peginAddressRegistryCheckpointDocument struct {
-	Id                 string    `bson:"_id"`
-	LocalRoot          *[32]byte `bson:"local_root,omitempty"`
-	LastProcessedBlock *uint64   `bson:"last_processed_block,omitempty"`
 }
 
 func NewPegInWatchMongoRepository(conn *Connection) *peginWatchMongoRepository {
@@ -123,57 +114,6 @@ func (repo *peginWatchMongoRepository) DeleteFromBlock(ctx context.Context, from
 		"block_number": bson.M{"$gte": fromBlock},
 	})
 	return err
-}
-
-func (repo *peginWatchMongoRepository) GetCheckpoint(
-	ctx context.Context,
-) (*rootstock.PegInWatchCheckpoint, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-
-	var checkpointDocument peginAddressRegistryCheckpointDocument
-	err := repo.conn.Collection(PegInWatchCollection).
-		FindOne(dbCtx, bson.M{"_id": peginAddressRegistryCheckpointDocumentID}).
-		Decode(&checkpointDocument)
-	if errors.Is(err, mongoDb.ErrNoDocuments) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	if checkpointDocument.LocalRoot == nil ||
-		checkpointDocument.LastProcessedBlock == nil {
-		return nil, nil
-	}
-	return &rootstock.PegInWatchCheckpoint{
-		LocalRoot:          *checkpointDocument.LocalRoot,
-		LastProcessedBlock: *checkpointDocument.LastProcessedBlock,
-	}, nil
-}
-
-func (repo *peginWatchMongoRepository) SetCheckpoint(
-	ctx context.Context,
-	checkpoint rootstock.PegInWatchCheckpoint,
-) error {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-
-	result, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
-		dbCtx,
-		bson.M{"_id": peginAddressRegistryCheckpointDocumentID},
-		bson.M{"$set": bson.M{
-			"local_root":           checkpoint.LocalRoot,
-			"last_processed_block": checkpoint.LastProcessedBlock,
-		}},
-		options.UpdateOne().SetUpsert(true),
-	)
-	if err != nil {
-		return err
-	}
-	if result == nil || result.MatchedCount+result.UpsertedCount != 1 {
-		return errors.New("pegin address registry checkpoint was not persisted")
-	}
-	return nil
 }
 
 func rskAddressIdentity(rskAddress string) bson.M {

@@ -40,8 +40,8 @@ func TestNewLiquidityProvider(t *testing.T) {
 	walletMock := new(mocks.RskSignerWalletMock)
 	walletMock.EXPECT().Address().Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock.On("RskWallet").Return(walletMock, nil)
-	rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, 0)
-	rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+	rskClient := newRskClientWithoutRegistryProof(t)
+	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 
 	connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))
@@ -86,8 +86,8 @@ func TestNewLiquidityProvider_ColdWalletError(t *testing.T) {
 	walletMock := new(mocks.RskSignerWalletMock)
 	walletMock.EXPECT().Address().Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock.On("RskWallet").Return(walletMock, nil)
-	rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, 0)
-	rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+	rskClient := newRskClientWithoutRegistryProof(t)
+	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 
 	connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))

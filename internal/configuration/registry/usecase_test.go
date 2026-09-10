@@ -30,7 +30,10 @@ func useCaseRegistryEnvironment() environment.Environment {
 			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
 			BridgeAddress:                "0x0000000000000000000000000000000001000006",
 		},
-		Btc:    environment.BtcEnv{Network: "testnet"},
+		Btc: environment.BtcEnv{Network: "testnet"},
+		Pegin: environment.PeginEnv{
+			AddressRegistryWatcherPageSize: 10,
+		},
 		Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
 	}
 }
@@ -43,14 +46,13 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
 		conn := mongo.NewConnection(client, time.Duration(1))
 		dbRegistry := registry.NewDatabaseRegistry(conn)
-		assert.Same(t, dbRegistry.PegInWatchRepository, dbRegistry.PegInWatchCheckpointRepository)
 
 		walletFactoryMock := new(mocks.AbstractFactoryMock)
 		rskWalletMock := new(mocks.RskSignerWalletMock)
 		rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
 		walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
-		rskClient := newRskClientWithGenesisRegistry(t, env.Rsk.PegInAddressRegistryAddress, 0)
-		rskRegistry, err := registry.NewRootstockRegistry(context.Background(), env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+		rskClient := newRskClientWithoutRegistryProof(t)
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 
 		connection := bitcoin.NewConnection(&chaincfg.TestNet3Params, new(mocks.ClientAdapterMock))
@@ -64,7 +66,16 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
 		require.NoError(t, err)
 		mutexes := environment.NewApplicationMutexes()
-		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+		useCaseRegistry, err := registry.NewUseCaseRegistry(
+			env,
+			rskRegistry,
+			btcRegistry,
+			dbRegistry,
+			lpRegistry,
+			messagingRegistry,
+			mutexes,
+		)
+		require.NoError(t, err)
 		require.NotNil(t, useCaseRegistry)
 		value := reflect.ValueOf(useCaseRegistry).Elem()
 		for i := 0; i < value.NumField(); i++ {
@@ -86,5 +97,6 @@ func TestNewUseCaseRegistry(t *testing.T) {
 			result := reflect.ValueOf(useCaseRegistry).MethodByName(method.Name).Call([]reflect.Value{})
 			assert.False(t, result[0].IsNil(), "Method %s of use case registry returned nil", method.Name)
 		}
+
 	})
 }

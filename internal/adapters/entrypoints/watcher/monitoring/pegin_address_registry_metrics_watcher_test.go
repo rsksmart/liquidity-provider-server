@@ -48,6 +48,39 @@ func TestPegInAddressRegistryMetricsWatcher_UpdatesIntegrityCounters(t *testing.
 	eventBus.AssertExpectations(t)
 }
 
+func TestPegInAddressRegistryMetricsWatcher_DoesNotSpinOnClosedChannel(t *testing.T) {
+	appMetrics := monitoring.NewMetrics(prometheus.NewRegistry())
+	mismatchEvents := make(chan entities.Event)
+	resyncEvents := make(chan entities.Event, 1)
+	close(mismatchEvents)
+	eventBus := &mocks.EventBusMock{}
+	eventBus.On("Subscribe", blockchain.PegInAddressRegistryRootMismatchEventId).
+		Return((<-chan entities.Event)(mismatchEvents)).
+		Once()
+	eventBus.On("Subscribe", blockchain.PegInAddressRegistryResyncStartedEventId).
+		Return((<-chan entities.Event)(resyncEvents)).
+		Once()
+	metricsWatcher := monitoring.NewPegInAddressRegistryMetricsWatcher(appMetrics, eventBus)
+	require.NoError(t, metricsWatcher.Prepare(context.Background()))
+	go metricsWatcher.Start()
+
+	assert.Never(t, func() bool {
+		return counterValue(appMetrics.PegInAddressRegistryRootMismatchMetric) > 0
+	}, 100*time.Millisecond, 5*time.Millisecond)
+
+	resyncEvents <- blockchain.PegInAddressRegistryResyncStartedEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryResyncStartedEventId),
+	}
+	assert.Eventually(t, func() bool {
+		return counterValue(appMetrics.PegInAddressRegistryResyncMetric) == 1
+	}, time.Second, time.Millisecond)
+
+	closeDone := make(chan bool, 1)
+	metricsWatcher.Shutdown(closeDone)
+	<-closeDone
+	eventBus.AssertExpectations(t)
+}
+
 func TestPegInAddressRegistryMetricsWatcher_RequiresEventBus(t *testing.T) {
 	appMetrics := monitoring.NewMetrics(prometheus.NewRegistry())
 	metricsWatcher := monitoring.NewPegInAddressRegistryMetricsWatcher(appMetrics, nil)

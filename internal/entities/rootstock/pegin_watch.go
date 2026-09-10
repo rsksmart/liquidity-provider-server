@@ -95,8 +95,8 @@ func (watch *PegInWatch) RecordError(err error) bool {
 }
 
 type PegInWatchCheckpoint struct {
-	LocalRoot          [32]byte `json:"localRoot" bson:"local_root"`
-	LastProcessedBlock uint64   `json:"lastProcessedBlock" bson:"last_processed_block"`
+	LocalRoot            [32]byte
+	VerifiedThroughBlock uint64
 }
 
 type PegInWatchRepository interface {
@@ -105,11 +105,6 @@ type PegInWatchRepository interface {
 	List(ctx context.Context) ([]PegInWatch, error)
 	Update(ctx context.Context, watch PegInWatch) error
 	DeleteFromBlock(ctx context.Context, fromBlock uint64) error
-}
-
-type PegInWatchCheckpointRepository interface {
-	GetCheckpoint(ctx context.Context) (*PegInWatchCheckpoint, error)
-	SetCheckpoint(ctx context.Context, checkpoint PegInWatchCheckpoint) error
 }
 
 type PegInWatches []*PegInWatch
