@@ -211,8 +211,8 @@ func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.Registerer
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerBelowThreshold
 		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerCheckErrors
 		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerAlerts
-		mock.AnythingOfType("*prometheus.counter"),    // PegInAddressRegistryRootMismatchMetric
-		mock.AnythingOfType("*prometheus.counter"),    // PegInAddressRegistryResyncMetric
+		mock.Anything, // PegInAddressRegistryRootMismatchMetric
+		mock.Anything, // PegInAddressRegistryResyncMetric
 	).Return()
 
 	metrics := monitoring.NewMetrics(registerer)

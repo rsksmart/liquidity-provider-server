@@ -23,6 +23,13 @@ const (
 	PegInAddressRegistryResyncStartedEventId entities.EventId = "PegInAddressRegistryResyncStarted"
 )
 
+type PegInAddressRegistryRecoveryReason string
+
+const (
+	PegInAddressRegistryRecoveryCatchUp      PegInAddressRegistryRecoveryReason = "catch_up"
+	PegInAddressRegistryRecoveryRootMismatch PegInAddressRegistryRecoveryReason = "root_mismatch"
+)
+
 func IsSupportedPegInEncoding(encoding PegInAddressRegistryEncoding) bool {
 	return rootstock.IsSupportedPegInEncoding(encoding)
 }
