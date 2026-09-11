@@ -13,28 +13,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetWatchedRegisteredAddressesUseCase_Run(t *testing.T) {
+func TestGetPendingRegisteredAddressImportsUseCase_Run_FiltersDiscoveredWatches(t *testing.T) {
 	repository := mocks.NewPegInWatchRepositoryMock(t)
 	watches := []rootstock.PegInWatch{
 		{RskAddress: "0xa", State: rootstock.PegInWatchImported},
 		{RskAddress: "0xb", State: rootstock.PegInWatchDiscovered},
+		{RskAddress: "0xc", State: rootstock.PegInWatchUnsupportedEncoding},
+		{RskAddress: "0xd", State: rootstock.PegInWatchDiscovered},
 	}
 	repository.EXPECT().List(test.AnyCtx).Return(watches, nil).Once()
 
-	useCase := watcher.NewGetWatchedRegisteredAddressesUseCase(repository)
+	useCase := watcher.NewGetPendingRegisteredAddressImportsUseCase(repository)
 	got, err := useCase.Run(context.Background())
 
 	require.NoError(t, err)
-	assert.Equal(t, watches, got)
+	assert.Equal(t, []rootstock.PegInWatch{watches[1], watches[3]}, got)
 }
 
-func TestGetWatchedRegisteredAddressesUseCase_Run_WrapsError(t *testing.T) {
+func TestGetPendingRegisteredAddressImportsUseCase_Run_WrapsError(t *testing.T) {
 	repository := mocks.NewPegInWatchRepositoryMock(t)
 	repository.EXPECT().List(test.AnyCtx).Return(nil, assert.AnError).Once()
 
-	useCase := watcher.NewGetWatchedRegisteredAddressesUseCase(repository)
+	useCase := watcher.NewGetPendingRegisteredAddressImportsUseCase(repository)
 	_, err := useCase.Run(context.Background())
 
 	require.Error(t, err)
-	assert.ErrorContains(t, err, string(usecases.GetWatchedRegisteredAddressesId))
+	assert.ErrorContains(t, err, string(usecases.GetPendingRegisteredAddressImportsId))
 }

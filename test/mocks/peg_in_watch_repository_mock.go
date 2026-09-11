@@ -81,69 +81,6 @@ func (_c *PegInWatchRepositoryMock_Get_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// GetCursor provides a mock function with given fields: ctx
-func (_m *PegInWatchRepositoryMock) GetCursor(ctx context.Context) (uint64, bool, error) {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetCursor")
-	}
-
-	var r0 uint64
-	var r1 bool
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context) (uint64, bool, error)); ok {
-		return rf(ctx)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context) uint64); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Get(0).(uint64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context) bool); ok {
-		r1 = rf(ctx)
-	} else {
-		r1 = ret.Get(1).(bool)
-	}
-
-	if rf, ok := ret.Get(2).(func(context.Context) error); ok {
-		r2 = rf(ctx)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
-// PegInWatchRepositoryMock_GetCursor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCursor'
-type PegInWatchRepositoryMock_GetCursor_Call struct {
-	*mock.Call
-}
-
-// GetCursor is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *PegInWatchRepositoryMock_Expecter) GetCursor(ctx interface{}) *PegInWatchRepositoryMock_GetCursor_Call {
-	return &PegInWatchRepositoryMock_GetCursor_Call{Call: _e.mock.On("GetCursor", ctx)}
-}
-
-func (_c *PegInWatchRepositoryMock_GetCursor_Call) Run(run func(ctx context.Context)) *PegInWatchRepositoryMock_GetCursor_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *PegInWatchRepositoryMock_GetCursor_Call) Return(lastScannedBlock uint64, found bool, err error) *PegInWatchRepositoryMock_GetCursor_Call {
-	_c.Call.Return(lastScannedBlock, found, err)
-	return _c
-}
-
-func (_c *PegInWatchRepositoryMock_GetCursor_Call) RunAndReturn(run func(context.Context) (uint64, bool, error)) *PegInWatchRepositoryMock_GetCursor_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // List provides a mock function with given fields: ctx
 func (_m *PegInWatchRepositoryMock) List(ctx context.Context) ([]rootstock.PegInWatch, error) {
 	ret := _m.Called(ctx)
@@ -202,17 +139,17 @@ func (_c *PegInWatchRepositoryMock_List_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// SetCursor provides a mock function with given fields: ctx, lastScannedBlock
-func (_m *PegInWatchRepositoryMock) SetCursor(ctx context.Context, lastScannedBlock uint64) error {
-	ret := _m.Called(ctx, lastScannedBlock)
+// ReplaceFromBlock provides a mock function with given fields: ctx, fromBlock, watches
+func (_m *PegInWatchRepositoryMock) ReplaceFromBlock(ctx context.Context, fromBlock uint64, watches []rootstock.PegInWatch) error {
+	ret := _m.Called(ctx, fromBlock, watches)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetCursor")
+		panic("no return value specified for ReplaceFromBlock")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, uint64) error); ok {
-		r0 = rf(ctx, lastScannedBlock)
+	if rf, ok := ret.Get(0).(func(context.Context, uint64, []rootstock.PegInWatch) error); ok {
+		r0 = rf(ctx, fromBlock, watches)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -220,31 +157,32 @@ func (_m *PegInWatchRepositoryMock) SetCursor(ctx context.Context, lastScannedBl
 	return r0
 }
 
-// PegInWatchRepositoryMock_SetCursor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCursor'
-type PegInWatchRepositoryMock_SetCursor_Call struct {
+// PegInWatchRepositoryMock_ReplaceFromBlock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceFromBlock'
+type PegInWatchRepositoryMock_ReplaceFromBlock_Call struct {
 	*mock.Call
 }
 
-// SetCursor is a helper method to define mock.On call
+// ReplaceFromBlock is a helper method to define mock.On call
 //   - ctx context.Context
-//   - lastScannedBlock uint64
-func (_e *PegInWatchRepositoryMock_Expecter) SetCursor(ctx interface{}, lastScannedBlock interface{}) *PegInWatchRepositoryMock_SetCursor_Call {
-	return &PegInWatchRepositoryMock_SetCursor_Call{Call: _e.mock.On("SetCursor", ctx, lastScannedBlock)}
+//   - fromBlock uint64
+//   - watches []rootstock.PegInWatch
+func (_e *PegInWatchRepositoryMock_Expecter) ReplaceFromBlock(ctx interface{}, fromBlock interface{}, watches interface{}) *PegInWatchRepositoryMock_ReplaceFromBlock_Call {
+	return &PegInWatchRepositoryMock_ReplaceFromBlock_Call{Call: _e.mock.On("ReplaceFromBlock", ctx, fromBlock, watches)}
 }
 
-func (_c *PegInWatchRepositoryMock_SetCursor_Call) Run(run func(ctx context.Context, lastScannedBlock uint64)) *PegInWatchRepositoryMock_SetCursor_Call {
+func (_c *PegInWatchRepositoryMock_ReplaceFromBlock_Call) Run(run func(ctx context.Context, fromBlock uint64, watches []rootstock.PegInWatch)) *PegInWatchRepositoryMock_ReplaceFromBlock_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint64))
+		run(args[0].(context.Context), args[1].(uint64), args[2].([]rootstock.PegInWatch))
 	})
 	return _c
 }
 
-func (_c *PegInWatchRepositoryMock_SetCursor_Call) Return(_a0 error) *PegInWatchRepositoryMock_SetCursor_Call {
+func (_c *PegInWatchRepositoryMock_ReplaceFromBlock_Call) Return(_a0 error) *PegInWatchRepositoryMock_ReplaceFromBlock_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *PegInWatchRepositoryMock_SetCursor_Call) RunAndReturn(run func(context.Context, uint64) error) *PegInWatchRepositoryMock_SetCursor_Call {
+func (_c *PegInWatchRepositoryMock_ReplaceFromBlock_Call) RunAndReturn(run func(context.Context, uint64, []rootstock.PegInWatch) error) *PegInWatchRepositoryMock_ReplaceFromBlock_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -1,18 +1,22 @@
 package watcher_test
 
 import (
-	"errors"
-	"fmt"
+	"context"
 	"math/big"
-	"strings"
+	"sort"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	watcherAdapter "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+	"github.com/ethereum/go-ethereum/crypto"
+	entrypoint "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	usecase "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test/datasets"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
@@ -20,495 +24,1134 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type pegInAddressRegistryWatcherFixture struct {
-	t          *testing.T
-	repository *mocks.PegInWatchRepositoryMock
-	registry   *mocks.PegInAddressRegistryContractMock
-	rskRpc     *mocks.RootstockRpcServerMock
-	btcNetwork *mocks.BtcRpcMock
-	wallet     *mocks.BitcoinWalletMock
-	ticker     *sessionTicker
-	watcher    *watcherAdapter.PegInWatcher
+const (
+	watcherAddressA = "0x00000000000000000000000000000000000000a1"
+	watcherAddressB = "0x00000000000000000000000000000000000000b2"
+	// watcherStartBlock is the configured lower scan bound shared by every fixture.
+	watcherStartBlock = uint64(100)
+)
+
+type memoryPegInWatchRepository struct {
+	mu                  sync.Mutex
+	rows                []rootstock.PegInWatch
+	updateErr           error
+	updateErrorObserved chan struct{}
 }
 
-//nolint:unparam // Fixed start/finality values make each scenario's cursor arithmetic explicit at the call site.
-func newPegInWatcherFixture(
-	t *testing.T,
-	startBlock uint64,
-	pageSize uint64,
-	finalityDepth uint64,
-) *pegInAddressRegistryWatcherFixture {
-	t.Helper()
-	fixture := &pegInAddressRegistryWatcherFixture{
-		t:          t,
-		repository: mocks.NewPegInWatchRepositoryMock(t),
-		registry:   mocks.NewPegInAddressRegistryContractMock(t),
-		rskRpc:     mocks.NewRootstockRpcServerMock(t),
-		btcNetwork: &mocks.BtcRpcMock{},
-		wallet:     mocks.NewBitcoinWalletMock(t),
-		ticker:     newSessionTicker(),
+func (repository *memoryPegInWatchRepository) Upsert(
+	_ context.Context,
+	watch rootstock.PegInWatch,
+) error {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	for index := range repository.rows {
+		if repository.rows[index].RskAddress == watch.RskAddress {
+			return nil
+		}
 	}
-	t.Cleanup(func() { fixture.btcNetwork.AssertExpectations(t) })
-	useCases := watcherAdapter.NewPegInWatcherUseCases(
-		watcher.NewGetWatchedRegisteredAddressesUseCase(fixture.repository),
-		watcher.NewGetRegistryWatchCursorUseCase(fixture.repository),
-		watcher.NewSetRegistryWatchCursorUseCase(fixture.repository),
-		watcher.NewDiscoverRegisteredAddressUseCase(fixture.repository, fixture.registry, fixture.wallet),
-		watcher.NewMarkRegisteredAddressImportedUseCase(fixture.repository),
-		watcher.NewRecordRegisteredAddressWatchErrorUseCase(fixture.repository),
-	)
-	fixture.watcher = watcherAdapter.NewPegInWatcher(
-		useCases,
-		fixture.registry,
-		fixture.rskRpc,
-		fixture.btcNetwork,
-		fixture.wallet,
-		fixture.ticker,
-		startBlock,
-		pageSize,
-		finalityDepth,
-	)
+	repository.rows = append(repository.rows, watch)
+	return nil
+}
+
+func (repository *memoryPegInWatchRepository) Get(
+	_ context.Context,
+	rskAddress string,
+) (*rootstock.PegInWatch, error) {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	for index := range repository.rows {
+		if repository.rows[index].RskAddress == rskAddress {
+			watch := repository.rows[index]
+			return &watch, nil
+		}
+	}
+	return nil, nil
+}
+
+func (repository *memoryPegInWatchRepository) List(context.Context) ([]rootstock.PegInWatch, error) {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	rows := append([]rootstock.PegInWatch(nil), repository.rows...)
+	sort.Slice(rows, func(first, second int) bool {
+		if rows[first].BlockNumber == rows[second].BlockNumber {
+			return rows[first].LogIndex < rows[second].LogIndex
+		}
+		return rows[first].BlockNumber < rows[second].BlockNumber
+	})
+	return rows, nil
+}
+
+func (repository *memoryPegInWatchRepository) Update(
+	_ context.Context,
+	watch rootstock.PegInWatch,
+) error {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	if repository.updateErr != nil {
+		select {
+		case repository.updateErrorObserved <- struct{}{}:
+		default:
+		}
+		return repository.updateErr
+	}
+	for index := range repository.rows {
+		if repository.rows[index].RskAddress == watch.RskAddress {
+			repository.rows[index] = watch
+			return nil
+		}
+	}
+	return nil
+}
+
+func (repository *memoryPegInWatchRepository) ReplaceFromBlock(
+	_ context.Context,
+	fromBlock uint64,
+	watches []rootstock.PegInWatch,
+) error {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	kept := repository.rows[:0]
+	for _, watch := range repository.rows {
+		if watch.BlockNumber < fromBlock {
+			kept = append(kept, watch)
+		}
+	}
+	repository.rows = append(kept, watches...)
+	return nil
+}
+
+func (repository *memoryPegInWatchRepository) seed(watches ...rootstock.PegInWatch) {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	repository.rows = append(repository.rows, watches...)
+}
+
+func (repository *memoryPegInWatchRepository) setUpdateError(err error) {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	repository.updateErr = err
+}
+
+func (repository *memoryPegInWatchRepository) state(rskAddress string) rootstock.PegInWatchState {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	for _, watch := range repository.rows {
+		if watch.RskAddress == rskAddress {
+			return watch.State
+		}
+	}
+	return ""
+}
+
+func (repository *memoryPegInWatchRepository) rowsSnapshot(t *testing.T) []rootstock.PegInWatch {
+	t.Helper()
+	rows, err := repository.List(context.Background())
+	require.NoError(t, err)
+	return rows
+}
+
+func (repository *memoryPegInWatchRepository) clear() {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+	repository.rows = nil
+}
+
+type watcherChainState struct {
+	mu              sync.RWMutex
+	head            uint64
+	heightErr       error
+	roots           map[uint64][32]byte
+	events          []blockchain.AddressRegistered
+	requested       [][2]uint64
+	omit            map[string]int
+	heightHook      func(uint64)
+	rootReadStarted chan struct{}
+	releaseRootRead chan struct{}
+	heightReads     atomic.Int64
+	rootReads       atomic.Int64
+	activeRootReads atomic.Int64
+	maxRootReads    atomic.Int64
+}
+
+func (state *watcherChainState) height(context.Context) (uint64, error) {
+	state.heightReads.Add(1)
+	state.mu.RLock()
+	head, err, hook := state.head, state.heightErr, state.heightHook
+	state.mu.RUnlock()
+	if hook != nil {
+		hook(head)
+	}
+	return head, err
+}
+
+func (state *watcherChainState) root(
+	_ context.Context,
+	blockNumber uint64,
+) ([32]byte, error) {
+	state.mu.RLock()
+	root := state.roots[blockNumber]
+	started, release := state.rootReadStarted, state.releaseRootRead
+	state.mu.RUnlock()
+
+	call := state.rootReads.Add(1)
+	active := state.activeRootReads.Add(1)
+	for {
+		maximum := state.maxRootReads.Load()
+		if active <= maximum || state.maxRootReads.CompareAndSwap(maximum, active) {
+			break
+		}
+	}
+	defer state.activeRootReads.Add(-1)
+	if call == 1 && started != nil {
+		close(started)
+		<-release
+	}
+	return root, nil
+}
+
+func (state *watcherChainState) registeredEvents(
+	_ context.Context,
+	fromBlock uint64,
+	toBlock *uint64,
+) ([]blockchain.AddressRegistered, error) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	to := state.head
+	if toBlock != nil {
+		to = *toBlock
+	}
+	state.requested = append(state.requested, [2]uint64{fromBlock, to})
+	result := make([]blockchain.AddressRegistered, 0)
+	for _, event := range state.events {
+		if event.BlockNumber >= fromBlock && event.BlockNumber <= to {
+			identity := event.TxHash + "/" + strconv.FormatUint(uint64(event.LogIndex), 10)
+			if state.omit[identity] > 0 {
+				state.omit[identity]--
+				continue
+			}
+			result = append(result, event)
+		}
+	}
+	return result, nil
+}
+
+func (state *watcherChainState) set(
+	head uint64,
+	roots map[uint64][32]byte,
+	events []blockchain.AddressRegistered,
+) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	state.head = head
+	state.heightErr = nil
+	state.roots = roots
+	state.events = events
+}
+
+func (state *watcherChainState) setHeightHook(hook func(uint64)) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	state.heightHook = hook
+}
+
+func (state *watcherChainState) blockFirstRootRead() (<-chan struct{}, chan<- struct{}) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	state.rootReadStarted = make(chan struct{})
+	state.releaseRootRead = make(chan struct{})
+	return state.rootReadStarted, state.releaseRootRead
+}
+
+func (state *watcherChainState) omitNext(event blockchain.AddressRegistered) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if state.omit == nil {
+		state.omit = make(map[string]int)
+	}
+	state.omit[event.TxHash+"/"+strconv.FormatUint(uint64(event.LogIndex), 10)]++
+}
+
+func (state *watcherChainState) requestedRanges() [][2]uint64 {
+	state.mu.RLock()
+	defer state.mu.RUnlock()
+	return append([][2]uint64(nil), state.requested...)
+}
+
+func (state *watcherChainState) clearRequestedRanges() {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	state.requested = nil
+}
+
+func (state *watcherChainState) setHeightError(err error) {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	state.heightErr = err
+}
+
+type pegInWatcherFixture struct {
+	target            *entrypoint.PegInWatcher
+	repository        *memoryPegInWatchRepository
+	chain             *watcherChainState
+	registry          *mocks.PegInAddressRegistryContractMock
+	rskRpc            *mocks.RootstockRpcServerMock
+	btcNetwork        *mocks.BtcRpcMock
+	wallet            *mocks.BitcoinWalletMock
+	eventBus          *mocks.EventBusMock
+	events            *eventRecorder
+	ticker            *mocks.TickerMock
+	tickerStarted     chan struct{}
+	tickerStopped     chan struct{}
+	tickerStartedOnce sync.Once
+	tickerStoppedOnce sync.Once
+	ticks             chan time.Time
+	reorgs            chan entities.Event
+	startBlock        uint64
+	pageSize          uint64
+}
+
+type eventRecorder struct {
+	mu     sync.Mutex
+	events []entities.Event
+}
+
+func (recorder *eventRecorder) record(event entities.Event) {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	recorder.events = append(recorder.events, event)
+}
+
+func (recorder *eventRecorder) snapshot() []entities.Event {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	return append([]entities.Event(nil), recorder.events...)
+}
+
+func newPegInWatcherFixture(t *testing.T, withEventBus bool) *pegInWatcherFixture {
+	return newPegInWatcherFixtureWithPaging(t, withEventBus, 10)
+}
+
+func newPegInWatcherFixtureWithPaging(
+	t *testing.T,
+	withEventBus bool,
+	pageSize uint64,
+) *pegInWatcherFixture {
+	t.Helper()
+	repository := &memoryPegInWatchRepository{updateErrorObserved: make(chan struct{}, 1)}
+	chain := &watcherChainState{roots: make(map[uint64][32]byte)}
+	registry := mocks.NewPegInAddressRegistryContractMock(t)
+	rskRpc := mocks.NewRootstockRpcServerMock(t)
+	btcNetwork := &mocks.BtcRpcMock{}
+	wallet := mocks.NewBitcoinWalletMock(t)
+	ticker := mocks.NewTickerMock(t)
+	rskRpc.EXPECT().GetHeight(mock.Anything).RunAndReturn(chain.height).Maybe()
+	registry.EXPECT().
+		GetRegistrationRoot(mock.Anything, mock.Anything).
+		RunAndReturn(chain.root).
+		Maybe()
+	registry.EXPECT().
+		GetAddressRegisteredEvents(mock.Anything, mock.Anything, mock.Anything).
+		RunAndReturn(chain.registeredEvents).
+		Maybe()
+
+	var eventBus *mocks.EventBusMock
+	var bus entities.EventBus
+	events := &eventRecorder{}
+	if withEventBus {
+		eventBus = &mocks.EventBusMock{}
+		eventBus.On("Publish", mock.Anything).
+			Run(func(args mock.Arguments) {
+				event, ok := args.Get(0).(entities.Event)
+				if !ok {
+					t.Errorf("published value has type %T, expected entities.Event", args.Get(0))
+					return
+				}
+				events.record(event)
+			}).
+			Return().
+			Maybe()
+		bus = eventBus
+	}
+	fixture := &pegInWatcherFixture{
+		repository:    repository,
+		chain:         chain,
+		registry:      registry,
+		rskRpc:        rskRpc,
+		btcNetwork:    btcNetwork,
+		wallet:        wallet,
+		eventBus:      eventBus,
+		events:        events,
+		ticker:        ticker,
+		tickerStarted: make(chan struct{}),
+		tickerStopped: make(chan struct{}),
+		ticks:         make(chan time.Time, 1),
+		reorgs:        make(chan entities.Event, 10),
+		startBlock:    watcherStartBlock,
+		pageSize:      pageSize,
+	}
+	fixture.resetTarget(t, bus)
 	return fixture
 }
 
-func (fixture *pegInAddressRegistryWatcherFixture) expectBoundedRescan() {
-	fixture.t.Helper()
-	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
-	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
-		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
+func (fixture *pegInWatcherFixture) resetTarget(t *testing.T, bus entities.EventBus) {
+	t.Helper()
+	replay, err := usecase.NewReplayRegisteredAddressesUseCase(
+		fixture.repository,
+		fixture.registry,
+		fixture.rskRpc,
+		crypto.Keccak256,
+		fixture.startBlock,
+		fixture.pageSize,
+	)
+	require.NoError(t, err)
+	fixture.target = entrypoint.NewPegInWatcher(
+		replay,
+		usecase.NewDiscoverRegisteredAddressUseCase(fixture.repository, fixture.registry, fixture.wallet),
+		usecase.NewGetPendingRegisteredAddressImportsUseCase(fixture.repository),
+		usecase.NewFinalizeRegisteredAddressImportUseCase(fixture.repository),
+		fixture.btcNetwork,
+		fixture.wallet,
+		bus,
+		fixture.ticker,
+	)
+}
+
+func (fixture *pegInWatcherFixture) start(t *testing.T) {
+	t.Helper()
+	fixture.ticker.EXPECT().
+		C().
+		Run(func() {
+			fixture.tickerStartedOnce.Do(func() {
+				close(fixture.tickerStarted)
+			})
+		}).
+		Return(fixture.ticks).
+		Maybe()
+	fixture.ticker.EXPECT().
+		Stop().
+		Run(func() {
+			fixture.tickerStoppedOnce.Do(func() {
+				close(fixture.tickerStopped)
+			})
+		}).
+		Return().
 		Once()
+	if fixture.eventBus != nil {
+		fixture.eventBus.
+			On("Subscribe", blockchain.NodeReorgCheckEventId).
+			Return((<-chan entities.Event)(fixture.reorgs)).
+			Once()
+	}
+	go fixture.target.Start()
 }
 
-func (fixture *pegInAddressRegistryWatcherFixture) expectCursorAdvance(toBlock uint64) {
-	fixture.t.Helper()
-	fixture.repository.On("SetCursor", mock.Anything, toBlock).Return(nil).Once()
+func (fixture *pegInWatcherFixture) stop(t *testing.T) {
+	t.Helper()
+	closed := make(chan bool, 1)
+	fixture.target.Shutdown(closed)
+	<-closed
+	select {
+	case <-fixture.tickerStopped:
+	case <-time.After(time.Second):
+		t.Fatal("ticker did not stop")
+	}
 }
 
-// runScan is one boot, one tick, one shutdown. The session returns from the tick when the scan has
-// finished, so a scenario does not have to nominate a repository call as the end of the poll.
-func (fixture *pegInAddressRegistryWatcherFixture) runScan() {
-	fixture.t.Helper()
-	session := startWatcherSession(fixture.t, fixture.watcher, fixture.ticker)
-	session.poll()
-	session.stop()
+func (fixture *pegInWatcherFixture) tick() {
+	fixture.ticks <- time.Now()
 }
 
-// depositAddress pairs a real base58 address with the payload the registry returns for it, so a
-// scenario can assert that the scanner imports the address rather than the bytes. The address is a
-// known-good constant taken from the shared dataset, not something this file re-derives.
-type depositAddress struct {
-	payload []byte
-	address string
+func (fixture *pegInWatcherFixture) setChain(
+	head uint64,
+	events ...blockchain.AddressRegistered,
+) {
+	ordered := append([]blockchain.AddressRegistered(nil), events...)
+	sort.Slice(ordered, func(first, second int) bool {
+		if ordered[first].BlockNumber == ordered[second].BlockNumber {
+			return ordered[first].LogIndex < ordered[second].LogIndex
+		}
+		return ordered[first].BlockNumber < ordered[second].BlockNumber
+	})
+	roots := make(map[uint64][32]byte)
+	var root [32]byte
+	eventIndex := 0
+	for block := fixture.startBlock; block <= head; block++ {
+		for eventIndex < len(ordered) && ordered[eventIndex].BlockNumber == block {
+			root = ordered[eventIndex].RegistrationRoot
+			eventIndex++
+		}
+		roots[block] = root
+		if block == ^uint64(0) {
+			break
+		}
+	}
+	fixture.chain.set(head, roots, ordered)
 }
 
-// depositAddressFixture builds the registry's return value for one of the dataset addresses:
-// version ++ hash ++ four-byte double-SHA256 checksum, exactly as getPegInAddress emits it.
-func depositAddressFixture(index int) depositAddress {
+func (fixture *pegInWatcherFixture) expectSupportedImport(
+	t *testing.T,
+	event blockchain.AddressRegistered,
+	addressIndex int,
+) {
+	t.Helper()
 	const checksumSize = 4
-	decoded := datasets.Base58Addresses[index]
+	decoded := datasets.Base58Addresses[addressIndex]
 	payload := make([]byte, 0, len(decoded.Expected)+checksumSize)
 	payload = append(payload, decoded.Expected...)
 	payload = append(payload, chainhash.DoubleHashB(decoded.Expected)[:checksumSize]...)
-	return depositAddress{payload: payload, address: decoded.Address}
+	fixture.registry.EXPECT().
+		GetPegInAddress(event.RskAddress).
+		Return(blockchain.PegInAddress{
+			Payload: payload, Encoding: blockchain.PegInAddressRegistryEncodingBase58,
+		}, nil).
+		Once()
+	fixture.wallet.EXPECT().ImportAddress(decoded.Address).Return(nil).Once()
 }
 
-func discoveredWatchEntry(event blockchain.AddressRegistered) rootstock.PegInWatch {
-	return rootstock.PegInWatch{
-		TxHash:      event.TxHash,
-		LogIndex:    event.LogIndex,
-		BlockNumber: event.BlockNumber,
-		RskAddress:  event.RskAddress,
-		State:       rootstock.PegInWatchDiscovered,
+func watcherRoot(t *testing.T, previous [32]byte, rskAddress string) [32]byte {
+	t.Helper()
+	root, err := blockchain.FoldPegInAddressRegistryRoot(crypto.Keccak256, previous, rskAddress)
+	require.NoError(t, err)
+	return root
+}
+
+func watcherEvent(
+	t *testing.T,
+	blockNumber uint64,
+	logIndex uint,
+	rskAddress string,
+	previousRoot [32]byte,
+) blockchain.AddressRegistered {
+	t.Helper()
+	return blockchain.AddressRegistered{
+		TxHash:           rskAddress,
+		LogIndex:         logIndex,
+		BlockNumber:      blockNumber,
+		RskAddress:       rskAddress,
+		RegistrationRoot: watcherRoot(t, previousRoot, rskAddress),
 	}
 }
 
-func TestPegInWatcher_PrepareResumesWithOverlap(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 3, 2)
-	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{{
-		TxHash: "persisted",
-		State:  rootstock.PegInWatchImported,
-	}}, nil).Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(105), true, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(112), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(104), uint64Pointer(108)).
-		Return([]blockchain.AddressRegistered{}, nil).Once()
-	fixture.expectCursorAdvance(108)
-
-	fixture.runScan()
+func watcherDepositPayload() ([]byte, string) {
+	const checksumSize = 4
+	decoded := datasets.Base58Addresses[0]
+	payload := make([]byte, 0, len(decoded.Expected)+checksumSize)
+	payload = append(payload, decoded.Expected...)
+	payload = append(payload, chainhash.DoubleHashB(decoded.Expected)[:checksumSize]...)
+	return payload, decoded.Address
 }
 
-//nolint:funlen // One scenario records the complete persist/import/cursor ordering across three events.
-func TestPegInWatcher_SortsEventsAndClampsToFinalizedHead(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 20, 2)
-	events := []blockchain.AddressRegistered{
-		{TxHash: "third", RskAddress: "third-rsk", BlockNumber: 102, LogIndex: 5},
-		{TxHash: "first", RskAddress: "first-rsk", BlockNumber: 101, LogIndex: 9},
-		{TxHash: "second", RskAddress: "second-rsk", BlockNumber: 102, LogIndex: 1},
-	}
-	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{}, nil).Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(0), false, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(105), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(103)).
-		Return(events, nil).Once()
-
-	var operations []string
-	var operationsMutex sync.Mutex
-	fixture.repository.On("Upsert", mock.Anything, mock.Anything).
-		Run(func(arguments mock.Arguments) {
-			entry, ok := arguments.Get(1).(rootstock.PegInWatch)
-			require.True(t, ok)
-			operationsMutex.Lock()
-			operations = append(operations, fmt.Sprintf("upsert:%d/%d/%s", entry.BlockNumber, entry.LogIndex, entry.TxHash))
-			operationsMutex.Unlock()
-		}).
-		Return(nil).
-		Times(3)
-	for index, event := range events {
-		deposit := depositAddressFixture(index)
-		persisted := discoveredWatchEntry(event)
-		fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(nil, nil).Once()
-		fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
-		fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).
-			Return(blockchain.PegInAddress{
-				Payload:  deposit.payload,
-				Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-			}, nil).
-			Once()
-		var importErr error
-		if event.TxHash == "second" {
-			importErr = errors.New("address already imported")
+func countCallsSince(calls []mock.Call, first int, method string, matches func(mock.Arguments) bool) int {
+	count := 0
+	for _, call := range calls[first:] {
+		if call.Method == method && (matches == nil || matches(call.Arguments)) {
+			count++
 		}
-		fixture.wallet.EXPECT().ImportAddress(deposit.address).
-			Run(func(string) {
-				operationsMutex.Lock()
-				operations = append(operations, "import:"+event.TxHash)
-				operationsMutex.Unlock()
-			}).
-			Return(importErr).
-			Once()
-		fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-			return entry.TxHash == event.TxHash &&
-				entry.BtcAddress == deposit.address &&
-				entry.Encoding == uint8(blockchain.PegInAddressRegistryEncodingBase58) &&
-				entry.State == rootstock.PegInWatchImported
-		})).Run(func(mock.Arguments) {
-			operationsMutex.Lock()
-			operations = append(operations, "update:"+event.TxHash)
-			operationsMutex.Unlock()
-		}).Return(nil).Once()
 	}
-	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
-	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
-		Run(func(int64) {
-			operationsMutex.Lock()
-			operations = append(operations, "rescan")
-			operationsMutex.Unlock()
-		}).
-		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
-		Once()
-	fixture.repository.On("SetCursor", mock.Anything, uint64(103)).
-		Run(func(mock.Arguments) {
-			operationsMutex.Lock()
-			operations = append(operations, "cursor")
-			operationsMutex.Unlock()
-		}).
-		Return(nil).
-		Once()
-	fixture.runScan()
-
-	operationsMutex.Lock()
-	assert.Equal(t, []string{
-		"upsert:101/9/first", "import:first",
-		"upsert:102/1/second", "import:second",
-		"upsert:102/5/third", "import:third",
-		"rescan",
-		"update:first", "update:second", "update:third",
-		"cursor",
-	}, operations)
-	operationsMutex.Unlock()
+	return count
 }
 
-func TestPegInWatcher_SkipsUnsupportedEncodingsAndContinues(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	events := []blockchain.AddressRegistered{
-		{TxHash: "bech32", RskAddress: "bech32-rsk", BlockNumber: 100, LogIndex: 1},
-		{TxHash: "bech32m", RskAddress: "bech32m-rsk", BlockNumber: 100, LogIndex: 2},
-		{TxHash: "base58", RskAddress: "base58-rsk", BlockNumber: 100, LogIndex: 3},
-	}
-	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{}, nil).Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(0), false, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
-		Return(events, nil).Once()
-	fixture.repository.EXPECT().Upsert(mock.Anything, mock.Anything).Return(nil).Times(3)
-
-	encodings := []blockchain.PegInAddressRegistryEncoding{
-		blockchain.PegInAddressRegistryEncodingBech32,
-		blockchain.PegInAddressRegistryEncodingBech32M,
-		blockchain.PegInAddressRegistryEncodingBase58,
-	}
-	for index, event := range events {
-		deposit := depositAddressFixture(index)
-		persisted := discoveredWatchEntry(event)
-		fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(nil, nil).Once()
-		fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
-		fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).
-			Return(blockchain.PegInAddress{
-				Payload:  deposit.payload,
-				Encoding: encodings[index],
-			}, nil).
-			Once()
-		expectedState := rootstock.PegInWatchUnsupportedEncoding
-		// An encoding the scanner cannot render must leave BtcAddress empty rather than storing the
-		// raw payload, which is not a valid address in any encoding.
-		expectedAddress := ""
-		if encodings[index] == blockchain.PegInAddressRegistryEncodingBase58 {
-			expectedState = rootstock.PegInWatchImported
-			expectedAddress = deposit.address
-			fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
-			fixture.expectBoundedRescan()
-		}
-		fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-			return entry.TxHash == event.TxHash &&
-				entry.State == expectedState &&
-				entry.BtcAddress == expectedAddress
-		})).Return(nil).Once()
-	}
-	fixture.expectCursorAdvance(100)
-
-	fixture.runScan()
+func publishedEvents(recorder *eventRecorder) []entities.Event {
+	return recorder.snapshot()
 }
 
-func TestPegInWatcher_DoesNotReimportPersistedEntry(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	event := blockchain.AddressRegistered{
-		TxHash: "duplicate", RskAddress: "duplicate-rsk", BlockNumber: 100, LogIndex: 1,
-	}
-	persisted := rootstock.PegInWatch{
-		TxHash: "duplicate", LogIndex: 1, State: rootstock.PegInWatchImported,
-	}
+func TestPegInWatcher_PrepareReplaysWithoutStoredCheckpoint(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, false)
+	fixture.chain.set(100, map[uint64][32]byte{100: {}}, nil)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
 
-	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{persisted}, nil).Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(99), true, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
-		Return([]blockchain.AddressRegistered{event}, nil).Once()
-	fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
-	fixture.expectCursorAdvance(100)
+	event := watcherEvent(t, 101, 1, watcherAddressA, [32]byte{})
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
+		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
+		Once()
+	firstCall := len(fixture.registry.Calls)
+	fixture.chain.set(102, map[uint64][32]byte{
+		100: {},
+		101: event.RegistrationRoot,
+		102: event.RegistrationRoot,
+	}, []blockchain.AddressRegistered{event})
 
-	fixture.runScan()
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	assert.Equal(t, 1, countCallsSince(fixture.registry.Calls, firstCall, "GetRegistrationRoot",
+		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(101) }))
 }
 
-func TestPegInWatcher_RecordsEntryErrorAndContinues(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	broken := blockchain.AddressRegistered{
-		TxHash: "broken", RskAddress: "broken-rsk", BlockNumber: 100, LogIndex: 1,
-	}
-	valid := blockchain.AddressRegistered{
-		TxHash: "valid", RskAddress: "valid-rsk", BlockNumber: 100, LogIndex: 2,
-	}
-	fixture.repository.EXPECT().List(mock.Anything).Return(nil, nil).Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(0), false, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
-		Return([]blockchain.AddressRegistered{broken, valid}, nil).
-		Once()
-	fixture.repository.EXPECT().Upsert(mock.Anything, mock.Anything).Return(nil).Twice()
+func TestPegInWatcher_NextScanUsesSuccessfulReplayCheckpoint(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, false)
+	fixture.chain.set(100, map[uint64][32]byte{100: {}}, nil)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
 
-	brokenEntry := discoveredWatchEntry(broken)
-	fixture.repository.EXPECT().Get(mock.Anything, broken.RskAddress).
-		Return(nil, nil).
+	event := watcherEvent(t, 101, 1, watcherAddressA, [32]byte{})
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
+		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	fixture.repository.EXPECT().Get(mock.Anything, broken.RskAddress).
-		Return(&brokenEntry, nil).
+	rootReadsBefore := fixture.chain.rootReads.Load()
+	fixture.chain.clearRequestedRanges()
+	fixture.chain.set(102, map[uint64][32]byte{
+		100: {},
+		101: event.RegistrationRoot,
+		102: event.RegistrationRoot,
+	}, []blockchain.AddressRegistered{event})
+	fixture.start(t)
+	defer fixture.stop(t)
+
+	fixture.tick()
+
+	assert.Eventually(t, func() bool {
+		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchUnsupportedEncoding
+	}, time.Second, 10*time.Millisecond)
+	assert.Equal(t, int64(2), fixture.chain.rootReads.Load()-rootReadsBefore)
+	assert.Equal(t, [][2]uint64{{101, 102}}, fixture.chain.requestedRanges())
+}
+
+func TestPegInWatcher_PendingRowsAreDiscoveredRescannedOnceAndFinalized(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, false)
+	fixture.chain.set(99, nil, nil)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	first := watcherEvent(t, 100, 1, watcherAddressA, [32]byte{})
+	second := watcherEvent(t, 100, 2, watcherAddressB, first.RegistrationRoot)
+	fixture.repository.seed(
+		rootstock.NewPegInWatch(first.TxHash, first.LogIndex, first.BlockNumber, first.RskAddress, "", first.RegistrationRoot),
+		rootstock.NewPegInWatch(second.TxHash, second.LogIndex, second.BlockNumber, second.RskAddress, "", second.RegistrationRoot),
+	)
+	fixture.chain.set(100, map[uint64][32]byte{100: second.RegistrationRoot}, nil)
+	payload, btcAddress := watcherDepositPayload()
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
+		Return(blockchain.PegInAddress{
+			Payload: payload, Encoding: blockchain.PegInAddressRegistryEncodingBase58,
+		}, nil).
 		Once()
-	fixture.registry.EXPECT().GetPegInAddress(broken.RskAddress).
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressB).
+		Return(blockchain.PegInAddress{
+			Payload: payload, Encoding: blockchain.PegInAddressRegistryEncodingBase58,
+		}, nil).
+		Once()
+	fixture.wallet.EXPECT().ImportAddress(btcAddress).Return(nil).Twice()
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(500), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(400)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
+	fixture.start(t)
+	defer fixture.stop(t)
+
+	fixture.tick()
+
+	assert.Eventually(t, func() bool {
+		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchImported &&
+			fixture.repository.state(watcherAddressB) == rootstock.PegInWatchImported
+	}, time.Second, 10*time.Millisecond)
+}
+
+func TestPegInWatcher_ReplayErrorSkipsDiscoverAndKeepsCheckpoint(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, false)
+	fixture.chain.set(100, map[uint64][32]byte{100: {}}, nil)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+	fixture.start(t)
+	defer fixture.stop(t)
+
+	heightReadsBefore := fixture.chain.heightReads.Load()
+	fixture.chain.setHeightError(assert.AnError)
+	fixture.tick()
+	assert.Eventually(t, func() bool {
+		return fixture.chain.heightReads.Load() == heightReadsBefore+1
+	}, time.Second, 10*time.Millisecond)
+	assert.Empty(t, fixture.repository.rowsSnapshot(t))
+
+	event := watcherEvent(t, 101, 1, watcherAddressA, [32]byte{})
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
+		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
+		Once()
+	rootReadsBefore := fixture.chain.rootReads.Load()
+	fixture.chain.clearRequestedRanges()
+	fixture.chain.set(102, map[uint64][32]byte{
+		100: {},
+		101: event.RegistrationRoot,
+		102: event.RegistrationRoot,
+	}, []blockchain.AddressRegistered{event})
+	fixture.tick()
+
+	assert.Eventually(t, func() bool {
+		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchUnsupportedEncoding
+	}, time.Second, 10*time.Millisecond)
+	assert.Equal(t, int64(2), fixture.chain.rootReads.Load()-rootReadsBefore)
+	assert.Equal(t, [][2]uint64{{101, 102}}, fixture.chain.requestedRanges())
+}
+
+func TestPegInWatcher_DiscoverErrorKeepsSuccessfulReplayCheckpoint(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, false)
+	fixture.chain.set(100, map[uint64][32]byte{100: {}}, nil)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+	fixture.start(t)
+	defer fixture.stop(t)
+
+	first := watcherEvent(t, 101, 1, watcherAddressA, [32]byte{})
+	fixture.chain.set(101, map[uint64][32]byte{
+		100: {},
+		101: first.RegistrationRoot,
+	}, []blockchain.AddressRegistered{first})
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
 		Return(blockchain.PegInAddress{}, assert.AnError).
 		Once()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-		return entry.TxHash == broken.TxHash &&
-			entry.State == rootstock.PegInWatchDiscovered &&
-			entry.LastError != ""
-	})).Return(nil).Once()
+	fixture.repository.setUpdateError(assert.AnError)
+	fixture.tick()
+	select {
+	case <-fixture.repository.updateErrorObserved:
+	case <-time.After(time.Second):
+		t.Fatal("repository update error was not observed")
+	}
 
-	validEntry := discoveredWatchEntry(valid)
-	fixture.repository.EXPECT().Get(mock.Anything, valid.RskAddress).
-		Return(nil, nil).
+	fixture.repository.setUpdateError(nil)
+	second := watcherEvent(t, 102, 2, watcherAddressB, first.RegistrationRoot)
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
+		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	fixture.repository.EXPECT().Get(mock.Anything, valid.RskAddress).
-		Return(&validEntry, nil).
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressB).
+		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	validDeposit := depositAddressFixture(0)
-	fixture.registry.EXPECT().GetPegInAddress(valid.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload:  validDeposit.payload,
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.wallet.EXPECT().ImportAddress(validDeposit.address).Return(nil).Once()
-	fixture.expectBoundedRescan()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-		return entry.TxHash == valid.TxHash &&
-			entry.State == rootstock.PegInWatchImported &&
-			entry.LastError == ""
-	})).Return(nil).Once()
-	fixture.expectCursorAdvance(100)
+	rootReadsBefore := fixture.chain.rootReads.Load()
+	fixture.chain.clearRequestedRanges()
+	fixture.chain.set(103, map[uint64][32]byte{
+		100: {},
+		101: first.RegistrationRoot,
+		102: second.RegistrationRoot,
+		103: second.RegistrationRoot,
+	}, []blockchain.AddressRegistered{first, second})
+	fixture.tick()
 
-	fixture.runScan()
+	assert.Eventually(t, func() bool {
+		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchUnsupportedEncoding &&
+			fixture.repository.state(watcherAddressB) == rootstock.PegInWatchUnsupportedEncoding
+	}, time.Second, 10*time.Millisecond)
+	assert.Equal(t, int64(2), fixture.chain.rootReads.Load()-rootReadsBefore)
+	assert.Equal(t, [][2]uint64{{102, 103}}, fixture.chain.requestedRanges())
 }
 
-func TestPegInWatcher_RetriesPersistedDiscoveredEntryOutsideOverlap(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	entry := rootstock.PegInWatch{
-		TxHash:      "retry-registration",
-		LogIndex:    1,
-		BlockNumber: 90,
-		RskAddress:  "retry-rsk",
-		State:       rootstock.PegInWatchDiscovered,
-		LastError:   "previous transient failure",
-	}
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{entry}, nil).
+func TestPegInWatcher_PublishesMismatchAndResyncOnlyForSuccessfulRootMismatch(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, true)
+	event := watcherEvent(t, 100, 1, watcherAddressA, [32]byte{})
+	fixture.chain.set(100, map[uint64][32]byte{100: event.RegistrationRoot}, []blockchain.AddressRegistered{event})
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
+		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(105), true, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(104), uint64Pointer(106)).
-		Return(nil, nil).
-		Once()
-	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
-	deposit := depositAddressFixture(0)
-	fixture.registry.EXPECT().GetPegInAddress(entry.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload:  deposit.payload,
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
-	fixture.expectBoundedRescan()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
-		return updated.TxHash == entry.TxHash &&
-			updated.BtcAddress == deposit.address &&
-			updated.State == rootstock.PegInWatchImported &&
-			updated.LastError == ""
-	})).Return(nil).Once()
-	fixture.expectCursorAdvance(106)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
 
-	fixture.runScan()
+	events := publishedEvents(fixture.events)
+	require.Len(t, events, 2)
+	mismatch, ok := events[0].(blockchain.PegInAddressRegistryRootMismatchEvent)
+	require.True(t, ok)
+	assert.Equal(t, uint64(100), mismatch.BlockNumber)
+	assert.Equal(t, [32]byte{}, mismatch.LocalRoot)
+	assert.Equal(t, event.RegistrationRoot, mismatch.ChainRoot)
+	resync, ok := events[1].(blockchain.PegInAddressRegistryResyncStartedEvent)
+	require.True(t, ok)
+	assert.Equal(t, string(blockchain.PegInAddressRegistryRecoveryRootMismatch), resync.Reason)
 }
 
-// An entry that keeps failing the same way every tick must not rewrite the same error to Mongo,
-// which only holds if the persisted error survives the successful steps that precede the failure.
-func TestPegInWatcher_SuppressesRepeatedIdenticalEntryErrors(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	entry := rootstock.PegInWatch{
-		TxHash:      "stuck",
-		LogIndex:    1,
-		BlockNumber: 90,
-		RskAddress:  "stuck-rsk",
-		State:       rootstock.PegInWatchDiscovered,
-		LastError:   fmt.Sprintf("import PegIn address for event stuck/1: %v", assert.AnError),
-	}
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{entry}, nil).
-		Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(105), true, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(104), uint64Pointer(106)).
-		Return(nil, nil).
-		Once()
-	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
-	deposit := depositAddressFixture(0)
-	fixture.registry.EXPECT().GetPegInAddress(entry.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload:  deposit.payload,
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(assert.AnError).Once()
-	fixture.expectCursorAdvance(106)
+func TestPegInWatcher_PublishesOnlyResyncForSuccessfulCatchUp(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, true)
+	fixture.chain.set(100, map[uint64][32]byte{100: {}}, nil)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
 
-	fixture.runScan()
+	event := watcherEvent(t, 101, 1, watcherAddressA, [32]byte{})
+	fixture.chain.set(101, map[uint64][32]byte{
+		100: {},
+		101: event.RegistrationRoot,
+	}, []blockchain.AddressRegistered{event})
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
+		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
+		Once()
+	fixture.start(t)
+	defer fixture.stop(t)
 
-	fixture.repository.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	fixture.tick()
+
+	assert.Eventually(t, func() bool {
+		return len(publishedEvents(fixture.events)) == 1
+	}, time.Second, 10*time.Millisecond)
+	events := publishedEvents(fixture.events)
+	require.Len(t, events, 1)
+	resync, ok := events[0].(blockchain.PegInAddressRegistryResyncStartedEvent)
+	require.True(t, ok)
+	assert.Equal(t, string(blockchain.PegInAddressRegistryRecoveryCatchUp), resync.Reason)
 }
 
-func TestPegInWatcher_LeavesDiscoveredWhenRescanFails(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	event := blockchain.AddressRegistered{
-		TxHash: "needs-rescan", RskAddress: "needs-rescan-rsk", BlockNumber: 100, LogIndex: 1,
+func TestPegInWatcher_PublishesNothingOnReplayError(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, true)
+	fixture.chain.setHeightError(assert.AnError)
+
+	err := fixture.target.Prepare(context.Background())
+
+	require.ErrorIs(t, err, assert.AnError)
+	fixture.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
+}
+
+func TestPegInWatcher_SerializesOverlappingScans(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, false)
+	fixture.setChain(100)
+	firstRootReadStarted, releaseFirstRootRead := fixture.chain.blockFirstRootRead()
+
+	firstResult := make(chan error, 1)
+	go func() {
+		firstResult <- fixture.target.Prepare(context.Background())
+	}()
+	select {
+	case <-firstRootReadStarted:
+	case <-time.After(time.Second):
+		require.FailNow(t, "first replay did not reach the root read")
 	}
-	fixture.repository.EXPECT().List(mock.Anything).Return(nil, nil).Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(0), false, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(102), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(100), uint64Pointer(100)).
-		Return([]blockchain.AddressRegistered{event}, nil).Once()
-	fixture.repository.EXPECT().Upsert(mock.Anything, mock.Anything).Return(nil).Once()
-	persisted := discoveredWatchEntry(event)
-	fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(nil, nil).Once()
-	fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
-	deposit := depositAddressFixture(0)
-	fixture.registry.EXPECT().GetPegInAddress(event.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload:  deposit.payload,
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
+
+	secondResult := make(chan error, 1)
+	go func() {
+		secondResult <- fixture.target.Prepare(context.Background())
+	}()
+	assert.Never(t, func() bool {
+		return fixture.chain.rootReads.Load() > 1
+	}, 50*time.Millisecond, time.Millisecond, "a second replay entered while the first was active")
+
+	close(releaseFirstRootRead)
+	require.NoError(t, <-firstResult)
+	require.NoError(t, <-secondResult)
+	assert.Equal(t, int64(2), fixture.chain.rootReads.Load())
+	assert.Equal(t, int64(1), fixture.chain.maxRootReads.Load())
+}
+
+// A node that delivers the same log twice, or delivers it a poll later than it should have, must
+// not produce a second entry, a second import, or a state regression.
+func TestPegInWatcher_AbsorbsDuplicateAndLateEventDelivery(t *testing.T) {
+	fixture := newPegInWatcherFixtureWithPaging(t, false, 3)
+	fixture.setChain(106)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+	fixture.chain.clearRequestedRanges()
+
+	late := watcherEvent(t, 102, 1, watcherAddressA, [32]byte{})
+	repeated := watcherEvent(t, 105, 2, watcherAddressB, late.RegistrationRoot)
+	fixture.expectSupportedImport(t, late, 0)
+	fixture.expectSupportedImport(t, repeated, 1)
 	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
-	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).Return(blockchain.BitcoinRescanResult{}, assert.AnError).Once()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
-		return entry.TxHash == event.TxHash &&
-			entry.State == rootstock.PegInWatchDiscovered &&
-			entry.LastError != ""
-	})).Return(nil).Once()
-	fixture.expectCursorAdvance(100)
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
+	fixture.setChain(110, late, late, repeated)
 
-	fixture.runScan()
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	rows := fixture.repository.rowsSnapshot(t)
+	require.Len(t, rows, 2)
+	assert.Equal(t, late.TxHash, rows[0].TxHash)
+	assert.Equal(t, repeated.TxHash, rows[1].TxHash)
+	assert.Equal(t, rootstock.PegInWatchImported, rows[0].State)
+	assert.Equal(t, rootstock.PegInWatchImported, rows[1].State)
+	assert.Equal(t, [][2]uint64{{102, 104}, {105, 107}, {108, 110}}, fixture.chain.requestedRanges())
 }
 
-// The registry returns a payload rather than an address, so a payload that cannot be encoded must
-// park the entry with the reason instead of importing something a node would reject.
-func TestPegInWatcher_RecordsUnencodablePayload(t *testing.T) {
-	fixture := newPegInWatcherFixture(t, 100, 1, 2)
-	entry := rootstock.PegInWatch{
-		TxHash:      "truncated-payload",
-		LogIndex:    1,
-		BlockNumber: 90,
-		RskAddress:  "truncated-rsk",
-		State:       rootstock.PegInWatchDiscovered,
+func TestPegInWatcher_ImportsThroughCapturedHead(t *testing.T) {
+	fixture := newPegInWatcherFixtureWithPaging(t, false, 2)
+	atHead := watcherEvent(t, 103, 0, watcherAddressA, [32]byte{})
+	afterHead := watcherEvent(t, 104, 0, watcherAddressB, atHead.RegistrationRoot)
+	fixture.setChain(103, atHead)
+	fixture.chain.setHeightHook(func(uint64) {
+		fixture.setChain(104, atHead, afterHead)
+	})
+	fixture.expectSupportedImport(t, atHead, 0)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
+
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	rows := fixture.repository.rowsSnapshot(t)
+	require.Len(t, rows, 1)
+	assert.Equal(t, atHead.RskAddress, rows[0].RskAddress)
+	assert.Equal(t, [][2]uint64{{103, 103}}, fixture.chain.requestedRanges())
+}
+
+func TestPegInWatcher_TimerAndReorgUseSameReplayPath(t *testing.T) {
+	fixture := newPegInWatcherFixtureWithPaging(t, true, 2)
+	event := watcherEvent(t, 103, 0, watcherAddressA, [32]byte{})
+	fixture.setChain(103, event)
+	fixture.registry.EXPECT().
+		GetPegInAddress(watcherAddressA).
+		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
+		Times(3)
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+	fixture.repository.clear()
+	fixture.chain.clearRequestedRanges()
+	fixture.start(t)
+	defer fixture.stop(t)
+
+	fixture.tick()
+	assert.Eventually(t, func() bool {
+		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchUnsupportedEncoding
+	}, time.Second, time.Millisecond)
+	timerRanges := fixture.chain.requestedRanges()
+	require.NotEmpty(t, timerRanges)
+
+	fixture.repository.clear()
+	fixture.chain.clearRequestedRanges()
+	fixture.reorgs <- blockchain.NodeReorgCheckEvent{
+		BaseEvent:    entities.NewBaseEvent(blockchain.NodeReorgCheckEventId),
+		NodeType:     entities.NodeTypeRootstock,
+		CurrentDepth: 1,
 	}
-	fixture.repository.EXPECT().List(mock.Anything).
-		Return([]rootstock.PegInWatch{entry}, nil).
+	assert.Eventually(t, func() bool {
+		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchUnsupportedEncoding
+	}, time.Second, time.Millisecond)
+	assert.Equal(t, timerRanges, fixture.chain.requestedRanges())
+}
+
+func TestPegInWatcher_IgnoresInvalidReorgSignalsAndClosedSubscription(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, true)
+	fixture.start(t)
+	defer fixture.stop(t)
+	select {
+	case <-fixture.tickerStarted:
+	case <-time.After(time.Second):
+		t.Fatal("ticker did not start")
+	}
+
+	fixture.reorgs <- entities.NewBaseEvent(blockchain.NodeReorgCheckEventId)
+	fixture.reorgs <- blockchain.NodeReorgCheckEvent{
+		BaseEvent:    entities.NewBaseEvent(blockchain.NodeReorgCheckEventId),
+		NodeType:     entities.NodeTypeBitcoin,
+		CurrentDepth: 1,
+	}
+	fixture.reorgs <- blockchain.NodeReorgCheckEvent{
+		BaseEvent:    entities.NewBaseEvent(blockchain.NodeReorgCheckEventId),
+		NodeType:     entities.NodeTypeRootstock,
+		CurrentDepth: 0,
+	}
+	close(fixture.reorgs)
+
+	assert.Never(t, func() bool {
+		return fixture.chain.heightReads.Load() > 0
+	}, 50*time.Millisecond, time.Millisecond)
+}
+
+func TestPegInWatcher_RescanFailureLeavesEntryPending(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, false)
+	event := watcherEvent(t, 100, 0, watcherAddressA, [32]byte{})
+	fixture.setChain(100, event)
+	fixture.expectSupportedImport(t, event, 0)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, assert.AnError).
 		Once()
-	fixture.repository.EXPECT().GetCursor(mock.Anything).Return(uint64(105), true, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(104), uint64Pointer(106)).
-		Return(nil, nil).
+
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	rows := fixture.repository.rowsSnapshot(t)
+	require.Len(t, rows, 1)
+	assert.Equal(t, rootstock.PegInWatchDiscovered, rows[0].State)
+	assert.Contains(t, rows[0].LastError, "rescan PegIn addresses")
+}
+
+func TestFirstBootBackfillsRegistrationsAndContinuesIncrementally(t *testing.T) {
+	fixture := newPegInWatcherFixtureWithPaging(t, false, 2)
+	first := watcherEvent(t, 100, 0, watcherAddressA, [32]byte{})
+	second := watcherEvent(t, 101, 0, watcherAddressB, first.RegistrationRoot)
+	fixture.setChain(103, first, second)
+	fixture.expectSupportedImport(t, first, 0)
+	fixture.expectSupportedImport(t, second, 1)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
 		Once()
-	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
-	truncated := depositAddressFixture(0).payload[:20]
-	fixture.registry.EXPECT().GetPegInAddress(entry.RskAddress).
+
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	rows := fixture.repository.rowsSnapshot(t)
+	require.Len(t, rows, 2)
+	assert.Equal(t, rootstock.PegInWatchImported, rows[0].State)
+	assert.Equal(t, rootstock.PegInWatchImported, rows[1].State)
+	require.NotEmpty(t, fixture.chain.requestedRanges())
+	assert.Equal(t, uint64(100), fixture.chain.requestedRanges()[0][0])
+
+	fixture.chain.clearRequestedRanges()
+	third := watcherEvent(t, 103, 1, "0x00000000000000000000000000000000000000c3", second.RegistrationRoot)
+	fixture.setChain(104, first, second, third)
+	fixture.expectSupportedImport(t, third, 2)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
+
+	fixture.start(t)
+	defer fixture.stop(t)
+	fixture.tick()
+	assert.Eventually(t, func() bool {
+		return fixture.repository.state(third.RskAddress) == rootstock.PegInWatchImported
+	}, time.Second, time.Millisecond)
+	require.NotEmpty(t, fixture.chain.requestedRanges())
+	assert.Equal(t, uint64(104), fixture.chain.requestedRanges()[0][1])
+}
+
+func TestFirstBootSkipsIdleDeploymentRange(t *testing.T) {
+	fixture := newPegInWatcherFixtureWithPaging(t, false, 2)
+	first := watcherEvent(t, 102, 0, watcherAddressA, [32]byte{})
+	fixture.setChain(103, first)
+	fixture.expectSupportedImport(t, first, 0)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
+
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	require.Len(t, fixture.repository.rowsSnapshot(t), 1)
+	assert.Equal(t, [][2]uint64{{102, 103}}, fixture.chain.requestedRanges())
+}
+
+// A restart has no durable watcher checkpoint. It must derive the matching boundary from rows,
+// replay the missing suffix, and finish pending imports through the public Prepare API.
+func TestRestartConvergesFromRowsWithNilCheckpoint(t *testing.T) {
+	tests := []struct {
+		name       string
+		firstState rootstock.PegInWatchState
+	}{
+		{name: "after the first entry was persisted", firstState: rootstock.PegInWatchDiscovered},
+		{name: "after the first entry was imported", firstState: rootstock.PegInWatchImported},
+	}
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			fixture := newPegInWatcherFixtureWithPaging(t, false, 2)
+			first := watcherEvent(t, 100, 0, watcherAddressA, [32]byte{})
+			second := watcherEvent(t, 101, 0, watcherAddressB, first.RegistrationRoot)
+			fixture.setChain(103, first, second)
+			firstRow := rootstock.NewPegInWatch(
+				first.TxHash,
+				first.LogIndex,
+				first.BlockNumber,
+				first.RskAddress,
+				"",
+				first.RegistrationRoot,
+			)
+			firstRow.State = testCase.firstState
+			if testCase.firstState == rootstock.PegInWatchImported {
+				firstRow.BtcAddress = datasets.Base58Addresses[0].Address
+			} else {
+				fixture.expectSupportedImport(t, first, 0)
+			}
+			fixture.repository.seed(firstRow)
+			fixture.expectSupportedImport(t, second, 1)
+			fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+			fixture.wallet.EXPECT().
+				RescanBlockchain(int64(100)).
+				Return(blockchain.BitcoinRescanResult{}, nil).
+				Once()
+			fixture.resetTarget(t, nil)
+
+			require.NoError(t, fixture.target.Prepare(context.Background()))
+
+			rows := fixture.repository.rowsSnapshot(t)
+			require.Len(t, rows, 2)
+			assert.Equal(t, rootstock.PegInWatchImported, rows[0].State)
+			assert.Equal(t, rootstock.PegInWatchImported, rows[1].State)
+			require.NotEmpty(t, fixture.chain.requestedRanges())
+			assert.Equal(t, uint64(101), fixture.chain.requestedRanges()[0][0],
+				"the persisted row must establish the matching replay boundary")
+		})
+	}
+}
+
+func TestMissedEventSignalsMismatchAndRepairsCompleteWatchSet(t *testing.T) {
+	fixture := newPegInWatcherFixtureWithPaging(t, true, 2)
+	first := watcherEvent(t, 100, 0, watcherAddressA, [32]byte{})
+	fixture.setChain(101, first)
+	fixture.expectSupportedImport(t, first, 0)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	skipped := watcherEvent(t, 101, 0, watcherAddressB, first.RegistrationRoot)
+	last := watcherEvent(t, 102, 0, "0x00000000000000000000000000000000000000c3", skipped.RegistrationRoot)
+	fixture.setChain(103, first, skipped, last)
+	fixture.chain.omitNext(skipped)
+	publishedBeforeFailure := len(publishedEvents(fixture.events))
+
+	require.Error(t, fixture.target.Prepare(context.Background()))
+	assert.Len(t, publishedEvents(fixture.events), publishedBeforeFailure,
+		"Replay must not publish when rebuild validation fails")
+
+	fixture.expectSupportedImport(t, skipped, 1)
+	fixture.expectSupportedImport(t, last, 2)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+
+	rows := fixture.repository.rowsSnapshot(t)
+	require.Len(t, rows, 3)
+	for _, row := range rows {
+		assert.Equal(t, rootstock.PegInWatchImported, row.State)
+	}
+	assert.Len(t, publishedEvents(fixture.events), publishedBeforeFailure+2,
+		"the watcher must publish mismatch and resync only after a successful rebuild")
+}
+
+func TestSilentEventStreamHealthCheckSignalsMismatchAndReplays(t *testing.T) {
+	fixture := newPegInWatcherFixtureWithPaging(t, true, 2)
+	first := watcherEvent(t, 100, 0, watcherAddressA, [32]byte{})
+	fixture.setChain(101, first)
+	fixture.expectSupportedImport(t, first, 0)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
+	require.NoError(t, fixture.target.Prepare(context.Background()))
+	publishedBeforeHealthCheck := len(publishedEvents(fixture.events))
+
+	silentlyOmitted := watcherEvent(t, 100, 1, watcherAddressB, first.RegistrationRoot)
+	fixture.setChain(101, first, silentlyOmitted)
+	fixture.registry.EXPECT().
+		GetPegInAddress(first.RskAddress).
 		Return(blockchain.PegInAddress{
-			Payload:  truncated,
+			Payload: func() []byte {
+				payload, _ := watcherDepositPayload()
+				return payload
+			}(),
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Once()
-	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
-		return updated.TxHash == entry.TxHash &&
-			updated.State == rootstock.PegInWatchDiscovered &&
-			updated.BtcAddress == "" &&
-			strings.Contains(updated.LastError, "encode PegIn address for event truncated-payload/1")
-	})).Return(nil).Once()
-	fixture.expectCursorAdvance(106)
+	fixture.wallet.EXPECT().ImportAddress(datasets.Base58Addresses[0].Address).Return(nil).Once()
+	fixture.expectSupportedImport(t, silentlyOmitted, 1)
+	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.wallet.EXPECT().
+		RescanBlockchain(int64(100)).
+		Return(blockchain.BitcoinRescanResult{}, nil).
+		Once()
 
-	fixture.runScan()
+	require.NoError(t, fixture.target.Prepare(context.Background()))
 
-	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
-	fixture.wallet.AssertNotCalled(t, "RescanBlockchain", mock.Anything)
-}
-
-func uint64Pointer(expected uint64) interface{} {
-	return mock.MatchedBy(func(actual *uint64) bool {
-		return actual != nil && *actual == expected
-	})
+	rows := fixture.repository.rowsSnapshot(t)
+	require.Len(t, rows, 2)
+	assert.Equal(t, rootstock.PegInWatchImported, rows[0].State)
+	assert.Equal(t, rootstock.PegInWatchImported, rows[1].State)
+	assert.Len(t, publishedEvents(fixture.events), publishedBeforeHealthCheck+2)
 }

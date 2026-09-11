@@ -81,7 +81,10 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	}
 	mutexes := environment.NewApplicationMutexes()
 
-	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	useCaseRegistry, err := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	if err != nil {
+		log.Fatal("Error creating use case registry:", err)
+	}
 	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
 		env: env, timeouts: timeouts,
@@ -182,10 +185,11 @@ func (app *Application) addRunningService(service entities.Closeable) {
 
 func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher, error) {
 	var err error
-	watchers := app.enabledWatchers()
-
 	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
 	defer cancel()
+
+	watchers := app.enabledWatchers()
+
 	for _, w := range watchers {
 		if err = w.Prepare(prepareCtx); err != nil {
 			return nil, err
@@ -216,6 +220,7 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 		app.watcherRegistry.BitcoinReorgWatcher,
 		app.watcherRegistry.RootstockReorgWatcher,
 		app.watcherRegistry.ReorgMetricsWatcher,
+		app.watcherRegistry.PegInAddressRegistryMetricsWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {

@@ -94,11 +94,28 @@ func (watch *PegInWatch) RecordError(err error) bool {
 	return true
 }
 
+type PegInWatchCheckpoint struct {
+	LocalRoot            [32]byte
+	VerifiedThroughBlock uint64
+}
+
 type PegInWatchRepository interface {
 	Upsert(ctx context.Context, watch PegInWatch) error
 	Get(ctx context.Context, rskAddress string) (*PegInWatch, error)
 	List(ctx context.Context) ([]PegInWatch, error)
 	Update(ctx context.Context, watch PegInWatch) error
-	GetCursor(ctx context.Context) (lastScannedBlock uint64, found bool, err error)
-	SetCursor(ctx context.Context, lastScannedBlock uint64) error
+	// ReplaceFromBlock atomically makes the suffix from fromBlock equal to watches.
+	// If it returns an error, the existing suffix is unchanged.
+	ReplaceFromBlock(ctx context.Context, fromBlock uint64, watches []PegInWatch) error
+}
+
+type PegInWatches []*PegInWatch
+
+func (entries PegInWatches) Contains(rskAddress string) bool {
+	for _, entry := range entries {
+		if entry != nil && entry.RskAddress == rskAddress {
+			return true
+		}
+	}
+	return false
 }

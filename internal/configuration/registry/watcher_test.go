@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
@@ -31,7 +30,10 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
 			BridgeAddress:                "0x0000000000000000000000000000000001000006",
 		},
-		Btc:    environment.BtcEnv{Network: "testnet"},
+		Btc: environment.BtcEnv{Network: "testnet"},
+		Pegin: environment.PeginEnv{
+			AddressRegistryWatcherPageSize: 10,
+		},
 		Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
 	}
 
@@ -44,7 +46,7 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 	rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock := new(mocks.AbstractFactoryMock)
 	walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
-	rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
+	rskClient := newRskClientWithoutRegistryProof(t)
 	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 
@@ -59,7 +61,16 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 	lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
 	require.NoError(t, err)
 	mutexes := environment.NewApplicationMutexes()
-	useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	useCaseRegistry, err := registry.NewUseCaseRegistry(
+		env,
+		rskRegistry,
+		btcRegistry,
+		dbRegistry,
+		lpRegistry,
+		messagingRegistry,
+		mutexes,
+	)
+	require.NoError(t, err)
 
 	return registry.NewWatcherRegistry(
 		env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, messagingRegistry,
