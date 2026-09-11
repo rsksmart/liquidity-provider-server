@@ -28,6 +28,7 @@ type memoryWatchRepository struct {
 	mu            sync.Mutex
 	rows          []rootstock.PegInWatch
 	deletes       []uint64
+	replaceErr    error
 	listCalls     int
 	listErrAt     map[int]error
 	corruptListAt int
@@ -85,17 +86,24 @@ func (repository *memoryWatchRepository) Update(_ context.Context, watch rootsto
 	return nil
 }
 
-func (repository *memoryWatchRepository) DeleteFromBlock(_ context.Context, fromBlock uint64) error {
+func (repository *memoryWatchRepository) ReplaceFromBlock(
+	_ context.Context,
+	fromBlock uint64,
+	watches []rootstock.PegInWatch,
+) error {
 	repository.mu.Lock()
 	defer repository.mu.Unlock()
 	repository.deletes = append(repository.deletes, fromBlock)
+	if repository.replaceErr != nil {
+		return repository.replaceErr
+	}
 	kept := repository.rows[:0]
 	for _, row := range repository.rows {
 		if row.BlockNumber < fromBlock {
 			kept = append(kept, row)
 		}
 	}
-	repository.rows = kept
+	repository.rows = append(kept, watches...)
 	return nil
 }
 
@@ -894,6 +902,33 @@ func TestReplayRegisteredAddressesUseCase_Run_FetchFailureDoesNotDeleteSuffix(t 
 	require.ErrorIs(t, err, assert.AnError)
 	assert.Empty(t, scenario.repository.deletes)
 	assert.Equal(t, original, scenario.checkpoints.checkpoint)
+	assert.Empty(t, scenario.checkpoints.sets)
+}
+
+func TestReplayRegisteredAddressesUseCase_Run_ReplaceFailureKeepsEntireSeedSuffix(t *testing.T) {
+	scenario := newReplayScenario(t, 104)
+	events := chainEvents(t,
+		watchRow(100, 0, "canonical-prefix", addressA),
+		watchRow(104, 0, "canonical-suffix", addressB),
+	)
+	configureChain(t, scenario, events)
+	seedRows := []rootstock.PegInWatch{
+		watchRow(100, 0, "canonical-prefix", addressA),
+		watchRow(103, 0, "stale-suffix", addressC),
+	}
+	scenario.repository.rows = append([]rootstock.PegInWatch(nil), seedRows...)
+	scenario.repository.replaceErr = assert.AnError
+	scenario.checkpoints.checkpoint = rootstock.PegInWatchCheckpoint{
+		LocalRoot:            rootAt(t, events, 100),
+		VerifiedThroughBlock: 100,
+	}
+	scenario.checkpoints.found = true
+
+	_, err := scenario.run(context.Background(), 100, 10)
+
+	require.ErrorIs(t, err, assert.AnError)
+	assert.Equal(t, []uint64{101}, scenario.repository.deletes)
+	assert.Equal(t, seedRows, scenario.repository.rows)
 	assert.Empty(t, scenario.checkpoints.sets)
 }
 

@@ -6,11 +6,11 @@ Use this runbook when the PegIn address registry watcher reports a root mismatch
 
 The watcher folds the current MongoDB `rsk_address` values in chain order. It compares the result with the registry root at the same Rootstock block.
 
-If the roots differ, the watcher finds a block boundary where the stored prefix is valid. It fetches and validates the canonical `AddressRegistered` event suffix in memory. It deletes the invalid suffix from the `peginWatch` collection only after that validation succeeds. It then stores the replayed events, reads the stored rows again, and verifies the new root. The watcher keeps its verified checkpoint in memory only.
+If the roots differ, the watcher finds a block boundary where the stored prefix is valid. It fetches and validates the canonical `AddressRegistered` event suffix in memory. After validation succeeds, it atomically replaces the stored suffix in one MongoDB transaction. The transaction deletes rows at or above the boundary and inserts the replayed events. If either operation fails, MongoDB aborts the transaction and keeps the prior suffix. The watcher then reads the stored rows again and verifies the new root. The watcher keeps its verified checkpoint in memory only.
 
 A Rootstock reorg starts the same recovery operation early. It does not use a separate recovery path.
 
-An RPC error stops the operation before suffix deletion. An event-fetch error leaves the stored suffix unchanged. The watcher does not delete data based on an RPC timeout or an unavailable historical state.
+An RPC error stops the operation before suffix replacement. An event-fetch or validation error leaves the stored suffix unchanged. A MongoDB replacement error also leaves the prior suffix unchanged. The watcher does not change data based on an RPC timeout or unavailable historical state.
 
 ### Scan sequence
 
