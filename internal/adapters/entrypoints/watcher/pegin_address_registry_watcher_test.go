@@ -32,9 +32,10 @@ const (
 )
 
 type memoryPegInWatchRepository struct {
-	mu        sync.Mutex
-	rows      []rootstock.PegInWatch
-	updateErr error
+	mu                  sync.Mutex
+	rows                []rootstock.PegInWatch
+	updateErr           error
+	updateErrorObserved chan struct{}
 }
 
 func (repository *memoryPegInWatchRepository) Upsert(
@@ -87,6 +88,10 @@ func (repository *memoryPegInWatchRepository) Update(
 	repository.mu.Lock()
 	defer repository.mu.Unlock()
 	if repository.updateErr != nil {
+		select {
+		case repository.updateErrorObserved <- struct{}{}:
+		default:
+		}
 		return repository.updateErr
 	}
 	for index := range repository.rows {
@@ -162,12 +167,14 @@ type watcherChainState struct {
 	heightHook      func(uint64)
 	rootReadStarted chan struct{}
 	releaseRootRead chan struct{}
+	heightReads     atomic.Int64
 	rootReads       atomic.Int64
 	activeRootReads atomic.Int64
 	maxRootReads    atomic.Int64
 }
 
 func (state *watcherChainState) height(context.Context) (uint64, error) {
+	state.heightReads.Add(1)
 	state.mu.RLock()
 	head, err, hook := state.head, state.heightErr, state.heightHook
 	state.mu.RUnlock()
@@ -283,19 +290,41 @@ func (state *watcherChainState) setHeightError(err error) {
 }
 
 type pegInWatcherFixture struct {
-	target     *entrypoint.PegInWatcher
-	repository *memoryPegInWatchRepository
-	chain      *watcherChainState
-	registry   *mocks.PegInAddressRegistryContractMock
-	rskRpc     *mocks.RootstockRpcServerMock
-	btcNetwork *mocks.BtcRpcMock
-	wallet     *mocks.BitcoinWalletMock
-	eventBus   *mocks.EventBusMock
-	ticker     *mocks.TickerMock
-	ticks      chan time.Time
-	reorgs     chan entities.Event
-	startBlock uint64
-	pageSize   uint64
+	target            *entrypoint.PegInWatcher
+	repository        *memoryPegInWatchRepository
+	chain             *watcherChainState
+	registry          *mocks.PegInAddressRegistryContractMock
+	rskRpc            *mocks.RootstockRpcServerMock
+	btcNetwork        *mocks.BtcRpcMock
+	wallet            *mocks.BitcoinWalletMock
+	eventBus          *mocks.EventBusMock
+	events            *eventRecorder
+	ticker            *mocks.TickerMock
+	tickerStarted     chan struct{}
+	tickerStopped     chan struct{}
+	tickerStartedOnce sync.Once
+	tickerStoppedOnce sync.Once
+	ticks             chan time.Time
+	reorgs            chan entities.Event
+	startBlock        uint64
+	pageSize          uint64
+}
+
+type eventRecorder struct {
+	mu     sync.Mutex
+	events []entities.Event
+}
+
+func (recorder *eventRecorder) record(event entities.Event) {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	recorder.events = append(recorder.events, event)
+}
+
+func (recorder *eventRecorder) snapshot() []entities.Event {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	return append([]entities.Event(nil), recorder.events...)
 }
 
 func newPegInWatcherFixture(t *testing.T, withEventBus bool) *pegInWatcherFixture {
@@ -308,7 +337,7 @@ func newPegInWatcherFixtureWithPaging(
 	pageSize uint64,
 ) *pegInWatcherFixture {
 	t.Helper()
-	repository := &memoryPegInWatchRepository{}
+	repository := &memoryPegInWatchRepository{updateErrorObserved: make(chan struct{}, 1)}
 	chain := &watcherChainState{roots: make(map[uint64][32]byte)}
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
 	rskRpc := mocks.NewRootstockRpcServerMock(t)
@@ -327,23 +356,38 @@ func newPegInWatcherFixtureWithPaging(
 
 	var eventBus *mocks.EventBusMock
 	var bus entities.EventBus
+	events := &eventRecorder{}
 	if withEventBus {
 		eventBus = &mocks.EventBusMock{}
+		eventBus.On("Publish", mock.Anything).
+			Run(func(args mock.Arguments) {
+				event, ok := args.Get(0).(entities.Event)
+				if !ok {
+					t.Errorf("published value has type %T, expected entities.Event", args.Get(0))
+					return
+				}
+				events.record(event)
+			}).
+			Return().
+			Maybe()
 		bus = eventBus
 	}
 	fixture := &pegInWatcherFixture{
-		repository: repository,
-		chain:      chain,
-		registry:   registry,
-		rskRpc:     rskRpc,
-		btcNetwork: btcNetwork,
-		wallet:     wallet,
-		eventBus:   eventBus,
-		ticker:     ticker,
-		ticks:      make(chan time.Time, 1),
-		reorgs:     make(chan entities.Event, 10),
-		startBlock: watcherStartBlock,
-		pageSize:   pageSize,
+		repository:    repository,
+		chain:         chain,
+		registry:      registry,
+		rskRpc:        rskRpc,
+		btcNetwork:    btcNetwork,
+		wallet:        wallet,
+		eventBus:      eventBus,
+		events:        events,
+		ticker:        ticker,
+		tickerStarted: make(chan struct{}),
+		tickerStopped: make(chan struct{}),
+		ticks:         make(chan time.Time, 1),
+		reorgs:        make(chan entities.Event, 10),
+		startBlock:    watcherStartBlock,
+		pageSize:      pageSize,
 	}
 	fixture.resetTarget(t, bus)
 	return fixture
@@ -374,8 +418,24 @@ func (fixture *pegInWatcherFixture) resetTarget(t *testing.T, bus entities.Event
 
 func (fixture *pegInWatcherFixture) start(t *testing.T) {
 	t.Helper()
-	fixture.ticker.EXPECT().C().Return(fixture.ticks).Maybe()
-	fixture.ticker.EXPECT().Stop().Return().Once()
+	fixture.ticker.EXPECT().
+		C().
+		Run(func() {
+			fixture.tickerStartedOnce.Do(func() {
+				close(fixture.tickerStarted)
+			})
+		}).
+		Return(fixture.ticks).
+		Maybe()
+	fixture.ticker.EXPECT().
+		Stop().
+		Run(func() {
+			fixture.tickerStoppedOnce.Do(func() {
+				close(fixture.tickerStopped)
+			})
+		}).
+		Return().
+		Once()
 	if fixture.eventBus != nil {
 		fixture.eventBus.
 			On("Subscribe", blockchain.NodeReorgCheckEventId).
@@ -390,14 +450,11 @@ func (fixture *pegInWatcherFixture) stop(t *testing.T) {
 	closed := make(chan bool, 1)
 	fixture.target.Shutdown(closed)
 	<-closed
-	assert.Eventually(
-		t,
-		func() bool {
-			return countCallsSince(fixture.ticker.Calls, 0, "Stop", nil) == 1
-		},
-		time.Second,
-		10*time.Millisecond,
-	)
+	select {
+	case <-fixture.tickerStopped:
+	case <-time.After(time.Second):
+		t.Fatal("ticker did not stop")
+	}
 }
 
 func (fixture *pegInWatcherFixture) tick() {
@@ -494,18 +551,8 @@ func countCallsSince(calls []mock.Call, first int, method string, matches func(m
 	return count
 }
 
-func publishedEvents(t *testing.T, bus *mocks.EventBusMock) []entities.Event {
-	t.Helper()
-	result := make([]entities.Event, 0)
-	for _, call := range bus.Calls {
-		if call.Method != "Publish" {
-			continue
-		}
-		event, ok := call.Arguments.Get(0).(entities.Event)
-		require.True(t, ok)
-		result = append(result, event)
-	}
-	return result
+func publishedEvents(recorder *eventRecorder) []entities.Event {
+	return recorder.snapshot()
 }
 
 func TestPegInWatcher_PrepareReplaysWithoutStoredCheckpoint(t *testing.T) {
@@ -541,7 +588,8 @@ func TestPegInWatcher_NextScanUsesSuccessfulReplayCheckpoint(t *testing.T) {
 		GetPegInAddress(watcherAddressA).
 		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	firstCall := len(fixture.registry.Calls)
+	rootReadsBefore := fixture.chain.rootReads.Load()
+	fixture.chain.clearRequestedRanges()
 	fixture.chain.set(102, map[uint64][32]byte{
 		100: {},
 		101: event.RegistrationRoot,
@@ -555,12 +603,8 @@ func TestPegInWatcher_NextScanUsesSuccessfulReplayCheckpoint(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchUnsupportedEncoding
 	}, time.Second, 10*time.Millisecond)
-	assert.Equal(t, 1, countCallsSince(fixture.registry.Calls, firstCall, "GetRegistrationRoot",
-		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(100) }))
-	assert.Zero(t, countCallsSince(fixture.registry.Calls, firstCall, "GetRegistrationRoot",
-		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(101) }))
-	assert.Equal(t, 1, countCallsSince(fixture.registry.Calls, firstCall, "GetAddressRegisteredEvents",
-		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(101) }))
+	assert.Equal(t, int64(2), fixture.chain.rootReads.Load()-rootReadsBefore)
+	assert.Equal(t, [][2]uint64{{101, 102}}, fixture.chain.requestedRanges())
 }
 
 func TestPegInWatcher_PendingRowsAreDiscoveredRescannedOnceAndFinalized(t *testing.T) {
@@ -603,9 +647,6 @@ func TestPegInWatcher_PendingRowsAreDiscoveredRescannedOnceAndFinalized(t *testi
 		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchImported &&
 			fixture.repository.state(watcherAddressB) == rootstock.PegInWatchImported
 	}, time.Second, 10*time.Millisecond)
-	fixture.registry.AssertNumberOfCalls(t, "GetPegInAddress", 2)
-	fixture.wallet.AssertNumberOfCalls(t, "ImportAddress", 2)
-	fixture.wallet.AssertNumberOfCalls(t, "RescanBlockchain", 1)
 }
 
 func TestPegInWatcher_ReplayErrorSkipsDiscoverAndKeepsCheckpoint(t *testing.T) {
@@ -615,20 +656,21 @@ func TestPegInWatcher_ReplayErrorSkipsDiscoverAndKeepsCheckpoint(t *testing.T) {
 	fixture.start(t)
 	defer fixture.stop(t)
 
-	rpcCalls := len(fixture.rskRpc.Calls)
+	heightReadsBefore := fixture.chain.heightReads.Load()
 	fixture.chain.setHeightError(assert.AnError)
 	fixture.tick()
 	assert.Eventually(t, func() bool {
-		return countCallsSince(fixture.rskRpc.Calls, rpcCalls, "GetHeight", nil) == 1
+		return fixture.chain.heightReads.Load() == heightReadsBefore+1
 	}, time.Second, 10*time.Millisecond)
-	fixture.registry.AssertNotCalled(t, "GetPegInAddress", mock.Anything)
+	assert.Empty(t, fixture.repository.rowsSnapshot(t))
 
 	event := watcherEvent(t, 101, 1, watcherAddressA, [32]byte{})
 	fixture.registry.EXPECT().
 		GetPegInAddress(watcherAddressA).
 		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	firstCall := len(fixture.registry.Calls)
+	rootReadsBefore := fixture.chain.rootReads.Load()
+	fixture.chain.clearRequestedRanges()
 	fixture.chain.set(102, map[uint64][32]byte{
 		100: {},
 		101: event.RegistrationRoot,
@@ -639,10 +681,8 @@ func TestPegInWatcher_ReplayErrorSkipsDiscoverAndKeepsCheckpoint(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchUnsupportedEncoding
 	}, time.Second, 10*time.Millisecond)
-	assert.Equal(t, 1, countCallsSince(fixture.registry.Calls, firstCall, "GetRegistrationRoot",
-		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(100) }))
-	assert.Zero(t, countCallsSince(fixture.registry.Calls, firstCall, "GetRegistrationRoot",
-		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(101) }))
+	assert.Equal(t, int64(2), fixture.chain.rootReads.Load()-rootReadsBefore)
+	assert.Equal(t, [][2]uint64{{101, 102}}, fixture.chain.requestedRanges())
 }
 
 func TestPegInWatcher_DiscoverErrorKeepsSuccessfulReplayCheckpoint(t *testing.T) {
@@ -663,9 +703,11 @@ func TestPegInWatcher_DiscoverErrorKeepsSuccessfulReplayCheckpoint(t *testing.T)
 		Once()
 	fixture.repository.setUpdateError(assert.AnError)
 	fixture.tick()
-	assert.Eventually(t, func() bool {
-		return countCallsSince(fixture.registry.Calls, 0, "GetPegInAddress", nil) == 1
-	}, time.Second, 10*time.Millisecond)
+	select {
+	case <-fixture.repository.updateErrorObserved:
+	case <-time.After(time.Second):
+		t.Fatal("repository update error was not observed")
+	}
 
 	fixture.repository.setUpdateError(nil)
 	second := watcherEvent(t, 102, 2, watcherAddressB, first.RegistrationRoot)
@@ -677,7 +719,8 @@ func TestPegInWatcher_DiscoverErrorKeepsSuccessfulReplayCheckpoint(t *testing.T)
 		GetPegInAddress(watcherAddressB).
 		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	firstCall := len(fixture.registry.Calls)
+	rootReadsBefore := fixture.chain.rootReads.Load()
+	fixture.chain.clearRequestedRanges()
 	fixture.chain.set(103, map[uint64][32]byte{
 		100: {},
 		101: first.RegistrationRoot,
@@ -690,12 +733,8 @@ func TestPegInWatcher_DiscoverErrorKeepsSuccessfulReplayCheckpoint(t *testing.T)
 		return fixture.repository.state(watcherAddressA) == rootstock.PegInWatchUnsupportedEncoding &&
 			fixture.repository.state(watcherAddressB) == rootstock.PegInWatchUnsupportedEncoding
 	}, time.Second, 10*time.Millisecond)
-	assert.Equal(t, 1, countCallsSince(fixture.registry.Calls, firstCall, "GetRegistrationRoot",
-		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(101) }))
-	assert.Zero(t, countCallsSince(fixture.registry.Calls, firstCall, "GetRegistrationRoot",
-		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(102) }))
-	assert.Equal(t, 1, countCallsSince(fixture.registry.Calls, firstCall, "GetAddressRegisteredEvents",
-		func(arguments mock.Arguments) bool { return arguments.Get(1) == uint64(102) }))
+	assert.Equal(t, int64(2), fixture.chain.rootReads.Load()-rootReadsBefore)
+	assert.Equal(t, [][2]uint64{{102, 103}}, fixture.chain.requestedRanges())
 }
 
 func TestPegInWatcher_PublishesMismatchAndResyncOnlyForSuccessfulRootMismatch(t *testing.T) {
@@ -706,11 +745,9 @@ func TestPegInWatcher_PublishesMismatchAndResyncOnlyForSuccessfulRootMismatch(t 
 		GetPegInAddress(watcherAddressA).
 		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	fixture.eventBus.On("Publish", mock.Anything).Return().Twice()
-
 	require.NoError(t, fixture.target.Prepare(context.Background()))
 
-	events := publishedEvents(t, fixture.eventBus)
+	events := publishedEvents(fixture.events)
 	require.Len(t, events, 2)
 	mismatch, ok := events[0].(blockchain.PegInAddressRegistryRootMismatchEvent)
 	require.True(t, ok)
@@ -736,16 +773,15 @@ func TestPegInWatcher_PublishesOnlyResyncForSuccessfulCatchUp(t *testing.T) {
 		GetPegInAddress(watcherAddressA).
 		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Once()
-	fixture.eventBus.On("Publish", mock.Anything).Return().Once()
 	fixture.start(t)
 	defer fixture.stop(t)
 
 	fixture.tick()
 
 	assert.Eventually(t, func() bool {
-		return len(publishedEvents(t, fixture.eventBus)) == 1
+		return len(publishedEvents(fixture.events)) == 1
 	}, time.Second, 10*time.Millisecond)
-	events := publishedEvents(t, fixture.eventBus)
+	events := publishedEvents(fixture.events)
 	require.Len(t, events, 1)
 	resync, ok := events[0].(blockchain.PegInAddressRegistryResyncStartedEvent)
 	require.True(t, ok)
@@ -854,8 +890,6 @@ func TestPegInWatcher_TimerAndReorgUseSameReplayPath(t *testing.T) {
 		GetPegInAddress(watcherAddressA).
 		Return(blockchain.PegInAddress{Encoding: blockchain.PegInAddressRegistryEncodingBech32}, nil).
 		Times(3)
-	fixture.eventBus.On("Publish", mock.Anything).Return().Times(6)
-
 	require.NoError(t, fixture.target.Prepare(context.Background()))
 	fixture.repository.clear()
 	fixture.chain.clearRequestedRanges()
@@ -886,9 +920,11 @@ func TestPegInWatcher_IgnoresInvalidReorgSignalsAndClosedSubscription(t *testing
 	fixture := newPegInWatcherFixture(t, true)
 	fixture.start(t)
 	defer fixture.stop(t)
-	assert.Eventually(t, func() bool {
-		return countCallsSince(fixture.ticker.Calls, 0, "C", nil) > 0
-	}, time.Second, time.Millisecond)
+	select {
+	case <-fixture.tickerStarted:
+	case <-time.After(time.Second):
+		t.Fatal("ticker did not start")
+	}
 
 	fixture.reorgs <- entities.NewBaseEvent(blockchain.NodeReorgCheckEventId)
 	fixture.reorgs <- blockchain.NodeReorgCheckEvent{
@@ -904,7 +940,7 @@ func TestPegInWatcher_IgnoresInvalidReorgSignalsAndClosedSubscription(t *testing
 	close(fixture.reorgs)
 
 	assert.Never(t, func() bool {
-		return countCallsSince(fixture.rskRpc.Calls, 0, "GetHeight", nil) > 0
+		return fixture.chain.heightReads.Load() > 0
 	}, 50*time.Millisecond, time.Millisecond)
 }
 
@@ -1040,7 +1076,6 @@ func TestRestartConvergesFromRowsWithNilCheckpoint(t *testing.T) {
 
 func TestMissedEventSignalsMismatchAndRepairsCompleteWatchSet(t *testing.T) {
 	fixture := newPegInWatcherFixtureWithPaging(t, true, 2)
-	fixture.eventBus.On("Publish", mock.Anything).Return().Maybe()
 	first := watcherEvent(t, 100, 0, watcherAddressA, [32]byte{})
 	fixture.setChain(101, first)
 	fixture.expectSupportedImport(t, first, 0)
@@ -1055,10 +1090,10 @@ func TestMissedEventSignalsMismatchAndRepairsCompleteWatchSet(t *testing.T) {
 	last := watcherEvent(t, 102, 0, "0x00000000000000000000000000000000000000c3", skipped.RegistrationRoot)
 	fixture.setChain(103, first, skipped, last)
 	fixture.chain.omitNext(skipped)
-	publishedBeforeFailure := len(publishedEvents(t, fixture.eventBus))
+	publishedBeforeFailure := len(publishedEvents(fixture.events))
 
 	require.Error(t, fixture.target.Prepare(context.Background()))
-	assert.Len(t, publishedEvents(t, fixture.eventBus), publishedBeforeFailure,
+	assert.Len(t, publishedEvents(fixture.events), publishedBeforeFailure,
 		"Replay must not publish when rebuild validation fails")
 
 	fixture.expectSupportedImport(t, skipped, 1)
@@ -1075,13 +1110,12 @@ func TestMissedEventSignalsMismatchAndRepairsCompleteWatchSet(t *testing.T) {
 	for _, row := range rows {
 		assert.Equal(t, rootstock.PegInWatchImported, row.State)
 	}
-	assert.Len(t, publishedEvents(t, fixture.eventBus), publishedBeforeFailure+2,
+	assert.Len(t, publishedEvents(fixture.events), publishedBeforeFailure+2,
 		"the watcher must publish mismatch and resync only after a successful rebuild")
 }
 
 func TestSilentEventStreamHealthCheckSignalsMismatchAndReplays(t *testing.T) {
 	fixture := newPegInWatcherFixtureWithPaging(t, true, 2)
-	fixture.eventBus.On("Publish", mock.Anything).Return().Maybe()
 	first := watcherEvent(t, 100, 0, watcherAddressA, [32]byte{})
 	fixture.setChain(101, first)
 	fixture.expectSupportedImport(t, first, 0)
@@ -1091,7 +1125,7 @@ func TestSilentEventStreamHealthCheckSignalsMismatchAndReplays(t *testing.T) {
 		Return(blockchain.BitcoinRescanResult{}, nil).
 		Once()
 	require.NoError(t, fixture.target.Prepare(context.Background()))
-	publishedBeforeHealthCheck := len(publishedEvents(t, fixture.eventBus))
+	publishedBeforeHealthCheck := len(publishedEvents(fixture.events))
 
 	silentlyOmitted := watcherEvent(t, 100, 1, watcherAddressB, first.RegistrationRoot)
 	fixture.setChain(101, first, silentlyOmitted)
@@ -1119,5 +1153,5 @@ func TestSilentEventStreamHealthCheckSignalsMismatchAndReplays(t *testing.T) {
 	require.Len(t, rows, 2)
 	assert.Equal(t, rootstock.PegInWatchImported, rows[0].State)
 	assert.Equal(t, rootstock.PegInWatchImported, rows[1].State)
-	assert.Len(t, publishedEvents(t, fixture.eventBus), publishedBeforeHealthCheck+2)
+	assert.Len(t, publishedEvents(fixture.events), publishedBeforeHealthCheck+2)
 }
