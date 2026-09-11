@@ -105,13 +105,39 @@ func (repo *peginWatchMongoRepository) Update(
 	return nil
 }
 
-func (repo *peginWatchMongoRepository) DeleteFromBlock(ctx context.Context, fromBlock uint64) error {
+func (repo *peginWatchMongoRepository) ReplaceFromBlock(
+	ctx context.Context,
+	fromBlock uint64,
+	watches []rootstock.PegInWatch,
+) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	_, err := repo.conn.Collection(PegInWatchCollection).DeleteMany(dbCtx, bson.M{
-		"rsk_address":  bson.M{"$exists": true},
-		"block_number": bson.M{"$gte": fromBlock},
+	session, err := repo.conn.client.StartSession()
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(dbCtx)
+
+	_, err = session.WithTransaction(dbCtx, func(sessionCtx context.Context) (any, error) {
+		collection := repo.conn.Collection(PegInWatchCollection)
+		if _, deleteErr := collection.DeleteMany(sessionCtx, bson.M{
+			"rsk_address":  bson.M{"$exists": true},
+			"block_number": bson.M{"$gte": fromBlock},
+		}); deleteErr != nil {
+			return nil, deleteErr
+		}
+		for _, watch := range watches {
+			if _, updateErr := collection.UpdateOne(
+				sessionCtx,
+				rskAddressIdentity(watch.RskAddress),
+				bson.M{"$setOnInsert": watch},
+				options.UpdateOne().SetUpsert(true),
+			); updateErr != nil {
+				return nil, updateErr
+			}
+		}
+		return nil, nil
 	})
 	return err
 }
