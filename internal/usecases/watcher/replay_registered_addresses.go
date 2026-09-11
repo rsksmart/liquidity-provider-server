@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -258,11 +259,9 @@ func (useCase *ReplayRegisteredAddressesUseCase) rebuildFromPlan(
 	if err != nil {
 		return ReplayResult{}, err
 	}
-	if err = useCase.repository.DeleteFromBlock(ctx, plan.fromBlock); err != nil {
-		return ReplayResult{}, fmt.Errorf("delete PegIn watches from block %d: %w", plan.fromBlock, err)
-	}
-	if err = useCase.loadReplayEvents(ctx, events); err != nil {
-		return ReplayResult{}, err
+	watches := useCase.replayWatches(events)
+	if err = useCase.repository.ReplaceFromBlock(ctx, plan.fromBlock, watches); err != nil {
+		return ReplayResult{}, fmt.Errorf("replace PegIn watches from block %d: %w", plan.fromBlock, err)
 	}
 	if err = useCase.verifyPersistedState(ctx, state); err != nil {
 		return ReplayResult{}, err
@@ -370,21 +369,25 @@ func (useCase *ReplayRegisteredAddressesUseCase) fetchAndValidateReplayEvents(
 	return events, nil
 }
 
-func (useCase *ReplayRegisteredAddressesUseCase) loadReplayEvents(
-	ctx context.Context,
+func (useCase *ReplayRegisteredAddressesUseCase) replayWatches(
 	events []blockchain.AddressRegistered,
-) error {
+) []rootstock.PegInWatch {
+	watches := make([]rootstock.PegInWatch, 0, len(events))
 	for _, event := range events {
-		if _, err := loadOrCreateWatchEntry(
-			ctx,
-			useCase.repository,
-			event,
-			usecases.ReplayRegisteredAddressesId,
-		); err != nil {
-			return err
-		}
+		now := time.Now().UTC()
+		watches = append(watches, rootstock.PegInWatch{
+			TxHash:           event.TxHash,
+			LogIndex:         event.LogIndex,
+			BlockNumber:      event.BlockNumber,
+			RskAddress:       event.RskAddress,
+			Registrant:       event.Registrant,
+			RegistrationRoot: event.RegistrationRoot,
+			State:            rootstock.PegInWatchDiscovered,
+			CreatedAt:        now,
+			UpdatedAt:        now,
+		})
 	}
-	return nil
+	return watches
 }
 
 type registryEventIdentity struct {

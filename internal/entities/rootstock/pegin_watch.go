@@ -104,7 +104,9 @@ type PegInWatchRepository interface {
 	Get(ctx context.Context, rskAddress string) (*PegInWatch, error)
 	List(ctx context.Context) ([]PegInWatch, error)
 	Update(ctx context.Context, watch PegInWatch) error
-	DeleteFromBlock(ctx context.Context, fromBlock uint64) error
+	// ReplaceFromBlock atomically makes the suffix from fromBlock equal to watches.
+	// If it returns an error, the existing suffix is unchanged.
+	ReplaceFromBlock(ctx context.Context, fromBlock uint64, watches []PegInWatch) error
 }
 
 type PegInWatches []*PegInWatch

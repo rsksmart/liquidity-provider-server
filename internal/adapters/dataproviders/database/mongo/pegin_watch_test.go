@@ -7,6 +7,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -167,19 +168,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 		collection.AssertExpectations(t)
 	})
 
-	t.Run("deletes watch rows from the requested block without matching the checkpoint", func(t *testing.T) {
-		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
-		filter := bson.M{
-			"rsk_address":  bson.M{"$exists": true},
-			"block_number": bson.M{"$gte": uint64(101)},
-		}
-		collection.EXPECT().DeleteMany(mock.Anything, filter).
-			Return(&mongoDb.DeleteResult{DeletedCount: 2}, nil).Once()
-
-		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
-		require.NoError(t, repo.DeleteFromBlock(context.Background(), 101))
-		collection.AssertExpectations(t)
-	})
+	t.Run("replaces a suffix", testPegInWatchMongoRepositoryReplaceFromBlock)
 
 	t.Run("updates and reads a document in unsupported encoding state", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
@@ -200,6 +189,93 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 	})
 }
 
+type sessionContextKey struct{}
+
+func testPegInWatchMongoRepositoryReplaceFromBlock(t *testing.T) {
+	t.Run("replaces the suffix in one transaction", testReplaceFromBlockTransaction)
+	t.Run("returns an insert error so the transaction can roll back", testReplaceFromBlockRollback)
+}
+
+func testReplaceFromBlockTransaction(t *testing.T) {
+	filter := bson.M{
+		"rsk_address":  bson.M{"$exists": true},
+		"block_number": bson.M{"$gte": uint64(101)},
+	}
+	replacement := rootstock.PegInWatch{
+		BlockNumber: 101,
+		RskAddress:  "0xreplacement",
+	}
+	client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+	session := &mocks.SessionBindingMock{}
+	sessionContext := context.WithValue(context.Background(), sessionContextKey{}, "session")
+	client.On("StartSession").Return(session, nil).Once()
+	session.On("EndSession", mock.Anything).Return().Once()
+	session.On("WithTransaction", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			fn, ok := args.Get(1).(func(context.Context) (any, error))
+			require.True(t, ok)
+			result, callbackErr := fn(sessionContext)
+			require.NoError(t, callbackErr)
+			assert.Nil(t, result)
+		}).
+		Return(nil, nil).Once()
+	collection.EXPECT().DeleteMany(sessionContext, filter).
+		Return(&mongoDb.DeleteResult{DeletedCount: 2}, nil).Once()
+	collection.EXPECT().UpdateOne(
+		sessionContext,
+		rskAddressIdentity(replacement.RskAddress),
+		bson.M{"$setOnInsert": replacement},
+		withUpdateUpsert(),
+	).Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
+
+	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+	require.NoError(t, repo.ReplaceFromBlock(context.Background(), 101, []rootstock.PegInWatch{replacement}))
+	collection.AssertExpectations(t)
+	client.AssertExpectations(t)
+	session.AssertExpectations(t)
+}
+
+func testReplaceFromBlockRollback(t *testing.T) {
+	filter := bson.M{
+		"rsk_address":  bson.M{"$exists": true},
+		"block_number": bson.M{"$gte": uint64(101)},
+	}
+	replacement := rootstock.PegInWatch{
+		BlockNumber: 101,
+		RskAddress:  "0xreplacement",
+	}
+	client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+	session := &mocks.SessionBindingMock{}
+	client.On("StartSession").Return(session, nil).Once()
+	session.On("EndSession", mock.Anything).Return().Once()
+	session.On("WithTransaction", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			fn, ok := args.Get(1).(func(context.Context) (any, error))
+			require.True(t, ok)
+			result, callbackErr := fn(context.Background())
+			require.ErrorIs(t, callbackErr, assert.AnError)
+			assert.Nil(t, result)
+		}).
+		Return(nil, assert.AnError).Once()
+	collection.EXPECT().DeleteMany(mock.Anything, filter).
+		Return(&mongoDb.DeleteResult{DeletedCount: 2}, nil).Once()
+	collection.EXPECT().UpdateOne(
+		mock.Anything,
+		rskAddressIdentity(replacement.RskAddress),
+		bson.M{"$setOnInsert": replacement},
+		withUpdateUpsert(),
+	).Return(nil, assert.AnError).Once()
+
+	repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+	require.ErrorIs(t,
+		repo.ReplaceFromBlock(context.Background(), 101, []rootstock.PegInWatch{replacement}),
+		assert.AnError,
+	)
+	collection.AssertExpectations(t)
+	client.AssertExpectations(t)
+	session.AssertExpectations(t)
+}
+
 func withUpdateUpsert() interface{} {
 	return mock.MatchedBy(func(opt options.Lister[options.UpdateOneOptions]) bool {
 		resolved := &options.UpdateOneOptions{}
@@ -210,4 +286,8 @@ func withUpdateUpsert() interface{} {
 		}
 		return resolved.Upsert != nil && *resolved.Upsert
 	})
+}
+
+func rskAddressIdentity(rskAddress string) bson.M {
+	return bson.M{"rsk_address": rskAddress}
 }

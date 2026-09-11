@@ -98,9 +98,10 @@ func (repository *memoryPegInWatchRepository) Update(
 	return nil
 }
 
-func (repository *memoryPegInWatchRepository) DeleteFromBlock(
+func (repository *memoryPegInWatchRepository) ReplaceFromBlock(
 	_ context.Context,
 	fromBlock uint64,
+	watches []rootstock.PegInWatch,
 ) error {
 	repository.mu.Lock()
 	defer repository.mu.Unlock()
@@ -110,7 +111,7 @@ func (repository *memoryPegInWatchRepository) DeleteFromBlock(
 			kept = append(kept, watch)
 		}
 	}
-	repository.rows = kept
+	repository.rows = append(kept, watches...)
 	return nil
 }
 
