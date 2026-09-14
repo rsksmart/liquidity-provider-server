@@ -68,9 +68,9 @@ func (watcher *PegInWatcher) Start() {
 		case event, open := <-reorgEvents:
 			if !open {
 				reorgEvents = nil
-				continue
+			} else {
+				watcher.resyncAfterReorg(event)
 			}
-			watcher.resyncAfterReorg(event)
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
 			close(watcher.watcherStopChannel)
