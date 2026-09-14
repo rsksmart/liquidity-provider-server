@@ -24,7 +24,9 @@ import (
 
 const (
 	// registerPeginGasLimit Fixed gas limit for registerPegin function, should change only if the function does
-	registerPeginGasLimit = 2500000
+	registerPeginGasLimit      = 2500000
+	requestPegInErrorPrefix    = "request pegin error"
+	requestPegInRevertedPrefix = "requestPegIn reverted"
 )
 
 type peginContractImpl struct {
@@ -209,7 +211,7 @@ func (peginContract *peginContractImpl) RegisterPegin(params blockchain.Register
 	if dataErr != nil {
 		return blockchain.TransactionReceipt{}, dataErr
 	}
-	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{}, callData)
+	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{From: peginContract.signer.Address()}, callData)
 	parsedRevert, err := ParseRevertReason(peginContract.abis.PegIn, revert)
 	if err != nil && parsedRevert == nil {
 		return blockchain.TransactionReceipt{}, fmt.Errorf("error parsing registerPegIn result: %w", err)
@@ -273,7 +275,7 @@ func (peginContract *peginContractImpl) Withdraw(amount *entities.Wei) error {
 	if dataErr != nil {
 		return dataErr
 	}
-	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{}, callData)
+	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{From: peginContract.signer.Address()}, callData)
 	parsedRevert, err := ParseRevertReason(peginContract.abis.Flyover, revert)
 	if err != nil && parsedRevert == nil {
 		return fmt.Errorf("error parsing withdraw result: %w", err)
@@ -385,11 +387,11 @@ func (peginContract *peginContractImpl) RequestPegIn(params blockchain.RequestPe
 	if err != nil {
 		return blockchain.RequestPegInResult{}, err
 	}
-	callData, dataErr := peginContract.packRequestPegIn(prepared.rskAddress, params)
+	callData, dataErr := peginContract.packRequestPegIn(params)
 	if dataErr != nil {
 		return blockchain.RequestPegInResult{}, dataErr
 	}
-	if err = peginContract.preflightRequestPegIn(callData); err != nil {
+	if err = peginContract.dryRunRequestPegIn(callData, prepared.value); err != nil {
 		return blockchain.RequestPegInResult{}, err
 	}
 	return peginContract.submitRequestPegIn(callData, prepared.value)
@@ -400,7 +402,7 @@ func (peginContract *peginContractImpl) EstimateRequestPegInGas(params blockchai
 	if err != nil {
 		return 0, err
 	}
-	callData, dataErr := peginContract.packRequestPegIn(prepared.rskAddress, params)
+	callData, dataErr := peginContract.packRequestPegIn(params)
 	if dataErr != nil {
 		return 0, dataErr
 	}
@@ -412,18 +414,15 @@ func (peginContract *peginContractImpl) EstimateRequestPegInGas(params blockchai
 }
 
 func (peginContract *peginContractImpl) IdentifyRequestPegIn(params blockchain.RequestPegInParams) error {
-	var parsedAddress common.Address
-	if err := ParseAddress(&parsedAddress, params.RskAddress); err != nil {
+	prepared, err := peginContract.prepareRequestPegIn(params)
+	if err != nil {
 		return err
 	}
-	if err := rejectWitnessSerialized(params.BitcoinRawTx); err != nil {
-		return err
-	}
-	callData, dataErr := peginContract.packRequestPegIn(parsedAddress, params)
+	callData, dataErr := peginContract.packRequestPegIn(params)
 	if dataErr != nil {
 		return dataErr
 	}
-	return peginContract.preflightRequestPegIn(callData)
+	return peginContract.dryRunRequestPegIn(callData, prepared.value)
 }
 
 func (peginContract *peginContractImpl) UnpackPegInRequested(
@@ -456,8 +455,7 @@ func transactionLogToGeth(eventLog blockchain.TransactionLog) *geth.Log {
 }
 
 type preparedRequestPegIn struct {
-	rskAddress common.Address
-	value      *entities.Wei
+	value *entities.Wei
 }
 
 func (peginContract *peginContractImpl) prepareRequestPegIn(params blockchain.RequestPegInParams) (preparedRequestPegIn, error) {
@@ -472,10 +470,14 @@ func (peginContract *peginContractImpl) prepareRequestPegIn(params blockchain.Re
 	if err != nil {
 		return preparedRequestPegIn{}, err
 	}
-	return preparedRequestPegIn{rskAddress: parsedAddress, value: value}, nil
+	return preparedRequestPegIn{value: value}, nil
 }
 
-func (peginContract *peginContractImpl) packRequestPegIn(rskAddress common.Address, params blockchain.RequestPegInParams) ([]byte, error) {
+func (peginContract *peginContractImpl) packRequestPegIn(params blockchain.RequestPegInParams) ([]byte, error) {
+	var rskAddress common.Address
+	if err := ParseAddress(&rskAddress, params.RskAddress); err != nil {
+		return nil, err
+	}
 	return peginContract.commitFirst.TryPackRequestPegIn(
 		rskAddress,
 		params.BitcoinRawTx,
@@ -486,18 +488,22 @@ func (peginContract *peginContractImpl) packRequestPegIn(rskAddress common.Addre
 	)
 }
 
+func (peginContract *peginContractImpl) requestPegInCallMsg(callData []byte, value *entities.Wei) ethereum.CallMsg {
+	to := common.HexToAddress(peginContract.address)
+	return ethereum.CallMsg{
+		From:  peginContract.signer.Address(),
+		To:    &to,
+		Data:  callData,
+		Value: value.AsBigInt(),
+	}
+}
+
 func paddedRequestPegInGas(estimated uint64) uint64 {
 	return estimated * 12 / 10
 }
 
 func (peginContract *peginContractImpl) estimateRequestPegInGas(callData []byte, value *entities.Wei) (uint64, error) {
-	to := common.HexToAddress(peginContract.address)
-	return peginContract.client.EstimateGas(context.Background(), ethereum.CallMsg{
-		From:  peginContract.signer.Address(),
-		To:    &to,
-		Data:  callData,
-		Value: value.AsBigInt(),
-	})
+	return peginContract.client.EstimateGas(context.Background(), peginContract.requestPegInCallMsg(callData, value))
 }
 
 func (peginContract *peginContractImpl) submitRequestPegIn(callData []byte, value *entities.Wei) (blockchain.RequestPegInResult, error) {
@@ -518,17 +524,17 @@ func (peginContract *peginContractImpl) submitRequestPegIn(callData []byte, valu
 		return tx, txErr
 	})
 	if err != nil {
-		return blockchain.RequestPegInResult{}, fmt.Errorf("request pegin error: %w", err)
+		return blockchain.RequestPegInResult{}, fmt.Errorf("%s: %w", requestPegInErrorPrefix, err)
 	}
 	if receipt == nil {
-		return blockchain.RequestPegInResult{}, errors.New("request pegin error: incomplete receipt")
+		return blockchain.RequestPegInResult{}, fmt.Errorf("%s: incomplete receipt", requestPegInErrorPrefix)
 	}
 	transactionReceipt, err := ParseReceipt(tx, receipt)
 	if err != nil {
 		return blockchain.RequestPegInResult{}, err
 	}
 	if receipt.Status == 0 {
-		return blockchain.RequestPegInResult{Receipt: transactionReceipt}, fmt.Errorf("request pegin error: transaction reverted (%s)", receipt.TxHash.String())
+		return blockchain.RequestPegInResult{Receipt: transactionReceipt}, fmt.Errorf("%s: transaction reverted (%s)", requestPegInErrorPrefix, receipt.TxHash.String())
 	}
 	event, err := unpackPegInRequested(peginContract.commitFirst, receipt)
 	if err != nil {
@@ -537,8 +543,12 @@ func (peginContract *peginContractImpl) submitRequestPegIn(callData []byte, valu
 	return blockchain.RequestPegInResult{Receipt: transactionReceipt, Event: event}, nil
 }
 
-func (peginContract *peginContractImpl) preflightRequestPegIn(callData []byte) error {
-	_, revert := peginContract.contract.CallRaw(&bind.CallOpts{}, callData)
+func (peginContract *peginContractImpl) dryRunRequestPegIn(callData []byte, value *entities.Wei) error {
+	_, revert := peginContract.client.CallContract(
+		context.Background(),
+		peginContract.requestPegInCallMsg(callData, value),
+		nil,
+	)
 	if revert == nil {
 		return nil
 	}
@@ -547,16 +557,16 @@ func (peginContract *peginContractImpl) preflightRequestPegIn(callData []byte) e
 		return fmt.Errorf("error parsing requestPegIn result: %w", err)
 	}
 	if len(raw) < 4 {
-		return fmt.Errorf("requestPegIn reverted: %w", ErrShortRevertData)
+		return fmt.Errorf("%s: %w", requestPegInRevertedPrefix, ErrShortRevertData)
 	}
 	unpacked, err := peginContract.commitFirst.UnpackError(raw)
 	if err != nil {
-		return fmt.Errorf("requestPegIn reverted: %w", err)
+		return fmt.Errorf("%s: %w", requestPegInRevertedPrefix, err)
 	}
 	if mapped := mapUnpackedRequestPegInError(unpacked); mapped != nil {
 		return mapped
 	}
-	return fmt.Errorf("requestPegIn reverted: %T", unpacked)
+	return fmt.Errorf("%s: %T", requestPegInRevertedPrefix, unpacked)
 }
 
 func mapUnpackedRequestPegInError(unpacked any) error {
@@ -603,24 +613,20 @@ func unpackPegInRequested(commitFirst *commitfirst.PeginCommitFirstContract, rec
 	}
 	eventID := parsed.Events["PegInRequested"].ID
 	for _, eventLog := range receipt.Logs {
-		if eventLog == nil || len(eventLog.Topics) == 0 {
-			continue
+		if eventLog != nil && len(eventLog.Topics) > 0 && eventLog.Topics[0] == eventID {
+			unpacked, unpackErr := commitFirst.UnpackPegInRequestedEvent(eventLog)
+			if unpackErr != nil {
+				return blockchain.PegInRequestedEvent{}, unpackErr
+			}
+			return blockchain.PegInRequestedEvent{
+				PegInId:     unpacked.PegInId,
+				Claimer:     unpacked.Claimer.Hex(),
+				RskAddress:  unpacked.RskAddr.Hex(),
+				Amount:      entities.NewBigWei(unpacked.Amount),
+				NetToUser:   entities.NewBigWei(unpacked.NetToUser),
+				CallSuccess: unpacked.CallSuccess,
+			}, nil
 		}
-		if eventLog.Topics[0] != eventID {
-			continue
-		}
-		unpacked, unpackErr := commitFirst.UnpackPegInRequestedEvent(eventLog)
-		if unpackErr != nil {
-			return blockchain.PegInRequestedEvent{}, unpackErr
-		}
-		return blockchain.PegInRequestedEvent{
-			PegInId:     unpacked.PegInId,
-			Claimer:     unpacked.Claimer.Hex(),
-			RskAddress:  unpacked.RskAddr.Hex(),
-			Amount:      entities.NewBigWei(unpacked.Amount),
-			NetToUser:   entities.NewBigWei(unpacked.NetToUser),
-			CallSuccess: unpacked.CallSuccess,
-		}, nil
 	}
-	return blockchain.PegInRequestedEvent{}, errors.New("request pegin error: PegInRequested event not found")
+	return blockchain.PegInRequestedEvent{}, fmt.Errorf("%s: PegInRequested event not found", requestPegInErrorPrefix)
 }
