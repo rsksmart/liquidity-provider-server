@@ -94,9 +94,26 @@ func prepareTxMocks(
 	contractMock.transactor.EXPECT().EstimateGas(mock.Anything, mock.Anything).Return(uint64(1), nil).Maybe()
 }
 
+// matchCallData matches the call data of a non-payable call. It ignores From and
+// Value, so it must not be used for payable calls.
 func matchCallData(expected []byte) any {
 	return mock.MatchedBy(func(msg ethereum.CallMsg) bool {
 		return bytes.Equal(msg.Data, expected)
+	})
+}
+
+// matchRequestPegInCall matches the dry-run message of a payable call. A nil
+// value means the message must carry no value at all, which is not the same as
+// a message that carries zero.
+func matchRequestPegInCall(expectedData []byte, from common.Address, value *big.Int) any {
+	return mock.MatchedBy(func(msg ethereum.CallMsg) bool {
+		if !bytes.Equal(msg.Data, expectedData) || msg.From != from {
+			return false
+		}
+		if value == nil {
+			return msg.Value == nil
+		}
+		return msg.Value != nil && value.Cmp(msg.Value) == 0
 	})
 }
 

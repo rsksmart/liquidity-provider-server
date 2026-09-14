@@ -137,43 +137,29 @@ func AwaitTxWithCtx(client RpcClientBinding, miningTimeout time.Duration, logNam
 }
 
 func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
-	const (
-		errorSelectorSize = 4
-		errorTemplate     = "no data to recover in error: %w"
-	)
+	const errorSelectorSize = 4
 	if err == nil {
 		return nil, nil
 	}
 
-	var dataError rpc.DataError
-	if !errors.As(err, &dataError) {
-		return nil, fmt.Errorf(errorTemplate, err)
-	}
-	revertData, ok := dataError.ErrorData().(string)
-	if !ok {
-		return nil, fmt.Errorf(errorTemplate, dataError)
-	}
-	revertDataBytes, err := hexutil.Decode(revertData)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding data: %w", err)
+	decoded, extractErr := revertDataBytes(err)
+	if extractErr != nil {
+		return nil, extractErr
 	}
 
-	if reason, unpackErr := abi.UnpackRevert(revertDataBytes); unpackErr == nil {
+	if reason, unpackErr := abi.UnpackRevert(decoded); unpackErr == nil {
 		return nil, fmt.Errorf("found generic error: %s", reason)
 	}
 
-	if len(revertDataBytes) < errorSelectorSize {
-		return nil, fmt.Errorf("%w: %w", ErrShortRevertData, dataError)
+	if len(decoded) < errorSelectorSize {
+		return nil, fmt.Errorf("%w: %w", ErrShortRevertData, err)
 	}
 
 	var selectorBytes [errorSelectorSize]byte
-	var parsedError *abi.Error
-	if len(revertDataBytes) < errorSelectorSize {
-		return nil, fmt.Errorf("%w: %d bytes", ErrShortRevertData, len(revertDataBytes))
-	}
-	copy(selectorBytes[:], revertDataBytes[:errorSelectorSize])
-	if parsedError, err = contractAbi.ErrorByID(selectorBytes); err != nil {
-		return nil, fmt.Errorf("error decoding data using ABI: %w", err)
+	copy(selectorBytes[:], decoded[:errorSelectorSize])
+	parsedError, parseErr := contractAbi.ErrorByID(selectorBytes)
+	if parseErr != nil {
+		return nil, fmt.Errorf("error decoding data using ABI: %w", parseErr)
 	}
 	return parsedError, nil
 }
