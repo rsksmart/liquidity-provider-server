@@ -351,7 +351,7 @@ func (useCase *ReplayRegisteredAddressesUseCase) fetchAndValidateReplayEvents(
 		}
 		fromBlock = toBlock + 1
 	}
-	events = orderedUniqueEvents(events)
+	events = useCase.orderedUniqueEvents(events)
 	for _, event := range events {
 		var err error
 		localRoot, err = blockchain.FoldPegInAddressRegistryRoot(useCase.hashFunction, localRoot, event.RskAddress)
@@ -411,7 +411,9 @@ type registryEventIdentity struct {
 	logIndex uint
 }
 
-func orderedUniqueEvents(events []blockchain.AddressRegistered) []blockchain.AddressRegistered {
+func (useCase *ReplayRegisteredAddressesUseCase) orderedUniqueEvents(
+	events []blockchain.AddressRegistered,
+) []blockchain.AddressRegistered {
 	ordered := append([]blockchain.AddressRegistered(nil), events...)
 	sort.Slice(ordered, func(firstIndex, secondIndex int) bool {
 		if ordered[firstIndex].BlockNumber == ordered[secondIndex].BlockNumber {
