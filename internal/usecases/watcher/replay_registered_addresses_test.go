@@ -6,6 +6,7 @@ import (
 	"sort"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -463,6 +464,51 @@ func TestReplayRegisteredAddressesUseCase_Run_TrustedCheckpointReplaysOnlyFollow
 	for _, entry := range logHook.AllEntries() {
 		assert.NotEqual(t, "PegIn address registry root mismatch", entry.Message)
 	}
+}
+
+func TestReplayRegisteredAddressesUseCase_Run_PreservesSuffixMetadataDuringRootRepair(t *testing.T) {
+	scenario := newReplayScenario(t, 104)
+	events := chainEvents(t,
+		watchRow(100, 0, "canonical-a", addressA),
+		watchRow(103, 0, "canonical-c", addressC),
+		watchRow(104, 0, "canonical-b", addressB),
+	)
+	events[2].Registrant = "canonical-registrant"
+	configureChain(t, scenario, events)
+
+	createdAt := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+	updatedAt := createdAt.Add(time.Hour)
+	lastSeenAt := updatedAt.Add(time.Hour)
+	existingSuffix := watchRow(102, 7, "stale-b", addressB)
+	existingSuffix.Encoding = uint8(rootstock.PegInAddressRegistryEncodingBech32M)
+	existingSuffix.BtcAddress = "2Npreserved"
+	existingSuffix.LastSeenAt = &lastSeenAt
+	existingSuffix.LastError = "preserved diagnostic"
+	existingSuffix.CreatedAt = createdAt
+	existingSuffix.UpdatedAt = updatedAt
+	scenario.repository.rows = []rootstock.PegInWatch{
+		watchRow(100, 0, "canonical-a", addressA),
+		existingSuffix,
+	}
+
+	_, err := scenario.run(context.Background(), 100, 10)
+
+	require.NoError(t, err)
+	require.Len(t, scenario.repository.rows, 3)
+	replayedSuffix := scenario.repository.rows[2]
+	assert.Equal(t, events[2].TxHash, replayedSuffix.TxHash)
+	assert.Equal(t, events[2].LogIndex, replayedSuffix.LogIndex)
+	assert.Equal(t, events[2].BlockNumber, replayedSuffix.BlockNumber)
+	assert.Equal(t, events[2].RskAddress, replayedSuffix.RskAddress)
+	assert.Equal(t, events[2].Registrant, replayedSuffix.Registrant)
+	assert.Equal(t, events[2].RegistrationRoot, replayedSuffix.RegistrationRoot)
+	assert.Equal(t, existingSuffix.Encoding, replayedSuffix.Encoding)
+	assert.Equal(t, existingSuffix.BtcAddress, replayedSuffix.BtcAddress)
+	assert.Equal(t, existingSuffix.State, replayedSuffix.State)
+	assert.Equal(t, existingSuffix.LastSeenAt, replayedSuffix.LastSeenAt)
+	assert.Equal(t, existingSuffix.LastError, replayedSuffix.LastError)
+	assert.Equal(t, existingSuffix.CreatedAt, replayedSuffix.CreatedAt)
+	assert.Equal(t, existingSuffix.UpdatedAt, replayedSuffix.UpdatedAt)
 }
 
 func TestReplayRegisteredAddressesUseCase_Run_EmptyRowsCatchUpFromTrustedZeroRootCheckpoint(t *testing.T) {
