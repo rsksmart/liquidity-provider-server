@@ -53,12 +53,6 @@ func (params RefundPegoutParams) String() string {
 	)
 }
 
-const (
-	PauseLevelNone uint8 = 0
-	PauseLevelSoft uint8 = 1
-	PauseLevelHard uint8 = 2
-)
-
 type RequestPegInParams struct {
 	RskAddress         string
 	BitcoinRawTx       []byte
