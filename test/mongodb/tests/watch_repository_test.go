@@ -65,6 +65,49 @@ func TestWatchSetKeepsOneDocumentPerRskAddressAgainstMongo(t *testing.T) {
 	assert.Equal(t, event.TxHash, stored.TxHash)
 }
 
+func TestWatchReplaceFromBlockKeepsEarlierRowsAgainstMongo(t *testing.T) {
+	ctx := context.Background()
+	collection := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInWatchCollection)
+	repository := mongoAdapter.NewPegInWatchMongoRepository(conn)
+	suffix := time.Now().UnixNano()
+	watches := []rootstock.PegInWatch{
+		{RskAddress: fmt.Sprintf("0xfly2515-before-%d", suffix), BlockNumber: 100},
+		{RskAddress: fmt.Sprintf("0xfly2515-at-%d", suffix), BlockNumber: 101},
+		{RskAddress: fmt.Sprintf("0xfly2515-after-%d", suffix), BlockNumber: 102},
+	}
+	replacement := rootstock.PegInWatch{
+		RskAddress:  fmt.Sprintf("0xfly2515-replacement-%d", suffix),
+		BlockNumber: 103,
+	}
+	t.Cleanup(func() {
+		addresses := []string{
+			watches[0].RskAddress,
+			watches[1].RskAddress,
+			watches[2].RskAddress,
+			replacement.RskAddress,
+		}
+		_, err := collection.DeleteMany(ctx, bson.M{"rsk_address": bson.M{"$in": addresses}})
+		assert.NoError(t, err)
+	})
+
+	for _, watch := range watches {
+		require.NoError(t, repository.Upsert(ctx, watch))
+	}
+	require.NoError(t, repository.ReplaceFromBlock(ctx, 101, []rootstock.PegInWatch{replacement}))
+
+	before, err := repository.Get(ctx, watches[0].RskAddress)
+	require.NoError(t, err)
+	assert.NotNil(t, before)
+	for _, deleted := range watches[1:] {
+		stored, getErr := repository.Get(ctx, deleted.RskAddress)
+		require.NoError(t, getErr)
+		assert.Nil(t, stored)
+	}
+	storedReplacement, err := repository.Get(ctx, replacement.RskAddress)
+	require.NoError(t, err)
+	assert.Equal(t, &replacement, storedReplacement)
+}
+
 func assertRskAddressIndexIsUnique(t *testing.T, ctx context.Context, collection *mongoDriver.Collection) {
 	t.Helper()
 	cursor, err := collection.Indexes().List(ctx)

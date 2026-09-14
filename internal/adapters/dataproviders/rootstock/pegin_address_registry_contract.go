@@ -2,6 +2,7 @@ package rootstock
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
@@ -26,7 +27,7 @@ func NewPegInAddressRegistryContractImpl(
 	retryParams RetryParams,
 	binding *bindings.PegInAddressRegistryContract,
 	abis *FlyoverABIs,
-) blockchain.PegInAddressRegistryContract {
+) *peginAddressRegistryContractImpl {
 	return &peginAddressRegistryContractImpl{
 		client:      client.client,
 		address:     address,
@@ -128,8 +129,14 @@ func (registry *peginAddressRegistryContractImpl) GetRegistration(rskAddr string
 	}, nil
 }
 
-func (registry *peginAddressRegistryContractImpl) GetRegistrationRoot() ([32]byte, error) {
-	opts := &bind.CallOpts{}
+func (registry *peginAddressRegistryContractImpl) GetRegistrationRoot(
+	ctx context.Context,
+	blockNumber uint64,
+) ([32]byte, error) {
+	opts := &bind.CallOpts{
+		Context:     ctx,
+		BlockNumber: new(big.Int).SetUint64(blockNumber),
+	}
 	return rskRetry(registry.retryParams.Retries, registry.retryParams.Sleep,
 		func() ([32]byte, error) {
 			callData, dataErr := registry.binding.TryPackGetRegistrationRoot()

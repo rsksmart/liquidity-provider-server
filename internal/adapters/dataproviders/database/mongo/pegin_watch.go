@@ -10,21 +10,13 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-const (
-	PegInWatchCollection = "peginWatch"
-	peginWatchCursorId   = "scanCursor"
-)
+const PegInWatchCollection = "peginWatch"
 
 type peginWatchMongoRepository struct {
 	conn *Connection
 }
 
-type peginWatchCursor struct {
-	Id               string `bson:"_id"`
-	LastScannedBlock uint64 `bson:"last_scanned_block"`
-}
-
-func NewPegInWatchMongoRepository(conn *Connection) rootstock.PegInWatchRepository {
+func NewPegInWatchMongoRepository(conn *Connection) *peginWatchMongoRepository {
 	return &peginWatchMongoRepository{conn: conn}
 }
 
@@ -113,38 +105,40 @@ func (repo *peginWatchMongoRepository) Update(
 	return nil
 }
 
-func (repo *peginWatchMongoRepository) GetCursor(
+func (repo *peginWatchMongoRepository) ReplaceFromBlock(
 	ctx context.Context,
-) (uint64, bool, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-
-	var cursor peginWatchCursor
-	err := repo.conn.Collection(PegInWatchCollection).
-		FindOne(dbCtx, bson.M{"_id": peginWatchCursorId}).
-		Decode(&cursor)
-	if errors.Is(err, mongoDb.ErrNoDocuments) {
-		return 0, false, nil
-	}
-	if err != nil {
-		return 0, false, err
-	}
-	return cursor.LastScannedBlock, true, nil
-}
-
-func (repo *peginWatchMongoRepository) SetCursor(
-	ctx context.Context,
-	lastScannedBlock uint64,
+	fromBlock uint64,
+	watches []rootstock.PegInWatch,
 ) error {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
-	_, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
-		dbCtx,
-		bson.M{"_id": peginWatchCursorId},
-		bson.M{"$set": bson.M{"last_scanned_block": lastScannedBlock}},
-		options.UpdateOne().SetUpsert(true),
-	)
+	session, err := repo.conn.client.StartSession()
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(dbCtx)
+
+	_, err = session.WithTransaction(dbCtx, func(sessionCtx context.Context) (any, error) {
+		collection := repo.conn.Collection(PegInWatchCollection)
+		if _, deleteErr := collection.DeleteMany(sessionCtx, bson.M{
+			"rsk_address":  bson.M{"$exists": true},
+			"block_number": bson.M{"$gte": fromBlock},
+		}); deleteErr != nil {
+			return nil, deleteErr
+		}
+		for _, watch := range watches {
+			if _, updateErr := collection.UpdateOne(
+				sessionCtx,
+				rskAddressIdentity(watch.RskAddress),
+				bson.M{"$setOnInsert": watch},
+				options.UpdateOne().SetUpsert(true),
+			); updateErr != nil {
+				return nil, updateErr
+			}
+		}
+		return nil, nil
+	})
 	return err
 }
 

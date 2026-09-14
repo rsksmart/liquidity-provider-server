@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -41,7 +40,7 @@ func TestNewLiquidityProvider(t *testing.T) {
 	walletMock := new(mocks.RskSignerWalletMock)
 	walletMock.EXPECT().Address().Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock.On("RskWallet").Return(walletMock, nil)
-	rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
+	rskClient := newRskClientWithoutRegistryProof(t)
 	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 
@@ -87,7 +86,7 @@ func TestNewLiquidityProvider_ColdWalletError(t *testing.T) {
 	walletMock := new(mocks.RskSignerWalletMock)
 	walletMock.EXPECT().Address().Return(common.HexToAddress(test.AnyRskAddress))
 	walletFactoryMock.On("RskWallet").Return(walletMock, nil)
-	rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
+	rskClient := newRskClientWithoutRegistryProof(t)
 	rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 	require.NoError(t, err)
 

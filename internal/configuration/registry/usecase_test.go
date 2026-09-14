@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	registryInterface "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/registry"
@@ -20,21 +19,28 @@ import (
 	"time"
 )
 
+func useCaseRegistryEnvironment() environment.Environment {
+	return environment.Environment{
+		Rsk: environment.RskEnv{
+			DiscoveryAddress:             "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
+			CollateralManagementAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
+			PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
+			PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
+			PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
+			FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
+			BridgeAddress:                "0x0000000000000000000000000000000001000006",
+		},
+		Btc: environment.BtcEnv{Network: "testnet"},
+		Pegin: environment.PeginEnv{
+			AddressRegistryWatcherPageSize: 10,
+		},
+		Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
+	}
+}
+
 func TestNewUseCaseRegistry(t *testing.T) {
 	t.Run("Use case registry constructor should initialize every use case", func(t *testing.T) {
-		env := environment.Environment{
-			Rsk: environment.RskEnv{
-				DiscoveryAddress:             "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA8",
-				CollateralManagementAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA7",
-				PeginContractAddress:         "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA6",
-				PegoutContractAddress:        "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA5",
-				PegInAddressRegistryAddress:  "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA4",
-				FlyoverConfigurationsAddress: "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA3",
-				BridgeAddress:                "0x0000000000000000000000000000000001000006",
-			},
-			Btc:    environment.BtcEnv{Network: "testnet"},
-			Pegout: environment.PegoutEnv{RebalanceStrategy: "ALL_AT_ONCE"},
-		}
+		env := useCaseRegistryEnvironment()
 
 		client := &mocks.DbClientBindingMock{}
 		client.On("Database", mongo.DbName).Return(&mocks.DbBindingMock{})
@@ -45,7 +51,7 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		rskWalletMock := new(mocks.RskSignerWalletMock)
 		rskWalletMock.On("Address").Return(common.HexToAddress(test.AnyRskAddress))
 		walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
-		rskClient := rootstock.NewRskClient(new(mocks.RpcClientBindingMock))
+		rskClient := newRskClientWithoutRegistryProof(t)
 		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 
@@ -60,7 +66,16 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
 		require.NoError(t, err)
 		mutexes := environment.NewApplicationMutexes()
-		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+		useCaseRegistry, err := registry.NewUseCaseRegistry(
+			env,
+			rskRegistry,
+			btcRegistry,
+			dbRegistry,
+			lpRegistry,
+			messagingRegistry,
+			mutexes,
+		)
+		require.NoError(t, err)
 		require.NotNil(t, useCaseRegistry)
 		value := reflect.ValueOf(useCaseRegistry).Elem()
 		for i := 0; i < value.NumField(); i++ {
@@ -69,6 +84,12 @@ func TestNewUseCaseRegistry(t *testing.T) {
 			}
 		}
 
+		replayHashFunction := reflect.ValueOf(useCaseRegistry.ReplayRegisteredAddressesUseCase()).
+			Elem().
+			FieldByName("hashFunction")
+		require.True(t, replayHashFunction.IsValid(), "replay use case must keep a hashFunction field")
+		assert.False(t, replayHashFunction.IsNil(), "replay use case must be wired with a hash function")
+
 		// ensure that all methods of the UseCaseRegistry interface return a non-nil value
 		registryInterfaceType := reflect.TypeOf((*registryInterface.UseCaseRegistry)(nil)).Elem()
 		for i := 0; i < registryInterfaceType.NumMethod(); i++ {
@@ -76,5 +97,6 @@ func TestNewUseCaseRegistry(t *testing.T) {
 			result := reflect.ValueOf(useCaseRegistry).MethodByName(method.Name).Call([]reflect.Value{})
 			assert.False(t, result[0].IsNil(), "Method %s of use case registry returned nil", method.Name)
 		}
+
 	})
 }

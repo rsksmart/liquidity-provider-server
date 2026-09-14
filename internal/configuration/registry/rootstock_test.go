@@ -1,6 +1,8 @@
 package registry_test
 
 import (
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -9,7 +11,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // newRskWalletFactoryMock returns a wallet factory mock wired to a signer wallet mock that
@@ -20,6 +21,13 @@ func newRskWalletFactoryMock() (*mocks.AbstractFactoryMock, *mocks.RskSignerWall
 	walletFactoryMock := new(mocks.AbstractFactoryMock)
 	walletFactoryMock.On("RskWallet").Return(rskWalletMock, nil)
 	return walletFactoryMock, rskWalletMock
+}
+
+// newRskClientWithoutRegistryProof returns a client whose RPC mock holds no expectations, so any
+// chain read during registry construction fails as an unexpected call.
+func newRskClientWithoutRegistryProof(t *testing.T) *rootstock.RskClient {
+	t.Helper()
+	return rootstock.NewRskClient(mocks.NewRpcClientBindingMock(t))
 }
 
 // nolint:funlen
@@ -39,8 +47,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 	t.Run("should create a new Rootstock registry", func(t *testing.T) {
 		env := testEnv
 		walletFactoryMock, rskWalletMock := newRskWalletFactoryMock()
-		rskConnBinding := new(mocks.RpcClientBindingMock)
-		rskClient := rootstock.NewRskClient(rskConnBinding)
+		rskClient := newRskClientWithoutRegistryProof(t)
 		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.NoError(t, err)
 		require.NotNil(t, rskRegistry)
@@ -131,5 +138,14 @@ func TestNewRootstockRegistry(t *testing.T) {
 		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
 		require.Error(t, err)
 		require.Nil(t, rskRegistry)
+	})
+	t.Run("should trust the configured watcher start block without reading chain code", func(t *testing.T) {
+		env := testEnv
+		env.Pegin.AddressRegistryWatcherStartBlock = 100
+		walletFactoryMock, _ := newRskWalletFactoryMock()
+		rskClient := newRskClientWithoutRegistryProof(t)
+		rskRegistry, err := registry.NewRootstockRegistry(env, rskClient, walletFactoryMock, environment.DefaultTimeouts())
+		require.NoError(t, err)
+		require.NotNil(t, rskRegistry.Contracts.PegInAddressRegistry)
 	})
 }
