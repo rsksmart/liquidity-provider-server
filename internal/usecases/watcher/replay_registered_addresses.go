@@ -423,11 +423,10 @@ func orderedUniqueEvents(events []blockchain.AddressRegistered) []blockchain.Add
 	seen := make(map[registryEventIdentity]struct{}, len(ordered))
 	for _, event := range ordered {
 		identity := registryEventIdentity{txHash: event.TxHash, logIndex: event.LogIndex}
-		if _, duplicate := seen[identity]; duplicate {
-			continue
+		if _, duplicate := seen[identity]; !duplicate {
+			seen[identity] = struct{}{}
+			unique = append(unique, event)
 		}
-		seen[identity] = struct{}{}
-		unique = append(unique, event)
 	}
 	return unique
 }

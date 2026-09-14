@@ -56,16 +56,16 @@ func (watcher *PegInAddressRegistryMetricsWatcher) Start() {
 				// A nil channel disables this case, so the loop cannot spin on a closed subscription.
 				mismatchEvents = nil
 				log.Warn("PegIn address registry root mismatch event channel closed")
-				continue
+			} else {
+				watcher.appMetrics.IncrementPegInAddressRegistryRootMismatch()
 			}
-			watcher.appMetrics.IncrementPegInAddressRegistryRootMismatch()
 		case _, ok := <-resyncEvents:
 			if !ok {
 				resyncEvents = nil
 				log.Warn("PegIn address registry resync event channel closed")
-				continue
+			} else {
+				watcher.appMetrics.IncrementPegInAddressRegistryResync()
 			}
-			watcher.appMetrics.IncrementPegInAddressRegistryResync()
 		case <-watcher.closeChannel:
 			close(watcher.closeChannel)
 			log.Debug("PegIn address registry metrics watcher shutdown completed")
