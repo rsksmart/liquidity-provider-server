@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -138,6 +137,7 @@ func (useCase *ReplayRegisteredAddressesUseCase) runReplay(
 type initialReconciliation struct {
 	head            uint64
 	checkpoint      *rootstock.PegInWatchCheckpoint
+	entries         []rootstock.PegInWatch
 	timeline        localRootTimeline
 	localRootAtHead [32]byte
 	chainRootAtHead [32]byte
@@ -167,6 +167,7 @@ func (useCase *ReplayRegisteredAddressesUseCase) loadInitialState(
 	return initialReconciliation{
 		head:            head,
 		checkpoint:      verifiedCheckpoint,
+		entries:         entries,
 		timeline:        timeline,
 		localRootAtHead: timeline.RootAt(head),
 		chainRootAtHead: chainRootAtHead,
@@ -259,7 +260,7 @@ func (useCase *ReplayRegisteredAddressesUseCase) rebuildFromPlan(
 	if err != nil {
 		return ReplayResult{}, err
 	}
-	watches := useCase.replayWatches(events)
+	watches := useCase.replayWatches(events, state.entries, plan.fromBlock)
 	if err = useCase.repository.ReplaceFromBlock(ctx, plan.fromBlock, watches); err != nil {
 		return ReplayResult{}, fmt.Errorf("replace PegIn watches from block %d: %w", plan.fromBlock, err)
 	}
@@ -371,21 +372,36 @@ func (useCase *ReplayRegisteredAddressesUseCase) fetchAndValidateReplayEvents(
 
 func (useCase *ReplayRegisteredAddressesUseCase) replayWatches(
 	events []blockchain.AddressRegistered,
+	existingWatches []rootstock.PegInWatch,
+	fromBlock uint64,
 ) []rootstock.PegInWatch {
+	existingSuffixByAddress := make(map[string]rootstock.PegInWatch)
+	for _, watch := range existingWatches {
+		if watch.BlockNumber >= fromBlock {
+			existingSuffixByAddress[watch.RskAddress] = watch
+		}
+	}
 	watches := make([]rootstock.PegInWatch, 0, len(events))
 	for _, event := range events {
-		now := time.Now().UTC()
-		watches = append(watches, rootstock.PegInWatch{
-			TxHash:           event.TxHash,
-			LogIndex:         event.LogIndex,
-			BlockNumber:      event.BlockNumber,
-			RskAddress:       event.RskAddress,
-			Registrant:       event.Registrant,
-			RegistrationRoot: event.RegistrationRoot,
-			State:            rootstock.PegInWatchDiscovered,
-			CreatedAt:        now,
-			UpdatedAt:        now,
-		})
+		watch, found := existingSuffixByAddress[event.RskAddress]
+		if !found {
+			watch = rootstock.NewPegInWatch(
+				event.TxHash,
+				event.LogIndex,
+				event.BlockNumber,
+				event.RskAddress,
+				event.Registrant,
+				event.RegistrationRoot,
+			)
+		} else {
+			watch.TxHash = event.TxHash
+			watch.LogIndex = event.LogIndex
+			watch.BlockNumber = event.BlockNumber
+			watch.RskAddress = event.RskAddress
+			watch.Registrant = event.Registrant
+			watch.RegistrationRoot = event.RegistrationRoot
+		}
+		watches = append(watches, watch)
 	}
 	return watches
 }

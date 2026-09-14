@@ -1129,17 +1129,6 @@ func TestSilentEventStreamHealthCheckSignalsMismatchAndReplays(t *testing.T) {
 
 	silentlyOmitted := watcherEvent(t, 100, 1, watcherAddressB, first.RegistrationRoot)
 	fixture.setChain(101, first, silentlyOmitted)
-	fixture.registry.EXPECT().
-		GetPegInAddress(first.RskAddress).
-		Return(blockchain.PegInAddress{
-			Payload: func() []byte {
-				payload, _ := watcherDepositPayload()
-				return payload
-			}(),
-			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
-		}, nil).
-		Once()
-	fixture.wallet.EXPECT().ImportAddress(datasets.Base58Addresses[0].Address).Return(nil).Once()
 	fixture.expectSupportedImport(t, silentlyOmitted, 1)
 	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
 	fixture.wallet.EXPECT().
