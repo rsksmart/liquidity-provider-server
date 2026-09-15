@@ -2,6 +2,7 @@ package rootstock_test
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"math/big"
 	"testing"
@@ -43,7 +44,23 @@ func (r RskRpcError) ErrorData() interface{} {
 	return r.data
 }
 
-var parsedAddress = common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
+// testSignerKeyHex is a well-known development key. It exists only to produce
+// signatures inside these tests and must never hold value on any network.
+const testSignerKeyHex = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
+// testSignerKey returns the key the signer mock signs with. Each call returns a
+// new value, so no test can change the key another test uses.
+func testSignerKey() *ecdsa.PrivateKey {
+	key, err := crypto.HexToECDSA(testSignerKeyHex)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+// parsedAddress is the address of testSignerKey. The receipt parser recovers the
+// sender from the signature, so the signer mock address must match the key.
+var parsedAddress = crypto.PubkeyToAddress(testSignerKey().PublicKey)
 
 type boundContractMock struct {
 	contract   *bind.BoundContract
@@ -77,10 +94,7 @@ func prepareTxMocks(
 	}
 	mockClient.On("TransactionReceipt", mock.Anything, mock.Anything).Return(receipt, nil).Once()
 	signerMock.On("Address").Return(parsedAddress)
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
+	key := testSignerKey()
 	signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(_ common.Address, transaction *geth.Transaction) (*geth.Transaction, error) {
 		chainID := transaction.ChainId()
 		var signer geth.Signer = geth.HomesteadSigner{}
@@ -102,12 +116,15 @@ func matchCallData(expected []byte) any {
 	})
 }
 
-// matchRequestPegInCall matches the dry-run message of a payable call. A nil
-// value means the message must carry no value at all, which is not the same as
-// a message that carries zero.
-func matchRequestPegInCall(expectedData []byte, from common.Address, value *big.Int) any {
+// matchRequestPegInCall matches the data, sender, recipient, and value of a
+// payable dry-run message. A nil value means the message must carry no value at
+// all, which is not the same as a message that carries zero.
+func matchRequestPegInCall(expectedData []byte, from, to common.Address, value *big.Int) any {
 	return mock.MatchedBy(func(msg ethereum.CallMsg) bool {
-		if !bytes.Equal(msg.Data, expectedData) || msg.From != from {
+		if !bytes.Equal(msg.Data, expectedData) ||
+			msg.From != from ||
+			msg.To == nil ||
+			*msg.To != to {
 			return false
 		}
 		if value == nil {

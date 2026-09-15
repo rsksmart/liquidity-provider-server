@@ -136,30 +136,73 @@ func AwaitTxWithCtx(client RpcClientBinding, miningTimeout time.Duration, logNam
 	return receipt, nil
 }
 
-func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
-	const errorSelectorSize = 4
+const revertSelectorSize = 4
+
+// RevertKind selects how a caller must decode a revert payload.
+type RevertKind int
+
+const (
+	// RevertNone means the call did not revert.
+	RevertNone RevertKind = iota
+	// RevertGeneric means the contract reverted with a reason string
+	// produced by abi.UnpackRevert, including Solidity panic reasons.
+	RevertGeneric
+	// RevertCustom means the payload starts with a custom error selector.
+	RevertCustom
+)
+
+// RevertPayload separates generic Solidity failures from contract-specific
+// failures that need generated ABI decoding.
+type RevertPayload struct {
+	Kind RevertKind
+	// Message holds the reason string when Kind is RevertGeneric.
+	Message string
+	// Data holds the selector and the encoded arguments when Kind is RevertCustom.
+	Data []byte
+}
+
+// ParseRevert extracts and classifies the revert payload of a failed call. It
+// returns ErrShortRevertData when the payload is too short to hold a selector.
+// Callers decode a RevertCustom payload with the decoder they need: an ABI
+// lookup for the error name, or a generated UnpackError for the typed error.
+func ParseRevert(err error) (RevertPayload, error) {
 	if err == nil {
-		return nil, nil
+		return RevertPayload{Kind: RevertNone}, nil
 	}
 
 	decoded, extractErr := revertDataBytes(err)
 	if extractErr != nil {
-		return nil, extractErr
+		return RevertPayload{}, extractErr
 	}
 
-	if reason, unpackErr := abi.UnpackRevert(decoded); unpackErr == nil {
-		return nil, fmt.Errorf("found generic error: %s", reason)
+	if message, unpackErr := abi.UnpackRevert(decoded); unpackErr == nil {
+		return RevertPayload{Kind: RevertGeneric, Message: message}, nil
 	}
 
-	if len(decoded) < errorSelectorSize {
-		return nil, fmt.Errorf("%w: %w", ErrShortRevertData, err)
+	if len(decoded) < revertSelectorSize {
+		return RevertPayload{}, fmt.Errorf("%w: %w", ErrShortRevertData, err)
 	}
 
-	var selectorBytes [errorSelectorSize]byte
-	copy(selectorBytes[:], decoded[:errorSelectorSize])
-	parsedError, parseErr := contractAbi.ErrorByID(selectorBytes)
+	return RevertPayload{Kind: RevertCustom, Data: decoded}, nil
+}
+
+func ParseRevertReason(contractAbi *abi.ABI, err error) (*abi.Error, error) {
+	payload, parseErr := ParseRevert(err)
 	if parseErr != nil {
-		return nil, fmt.Errorf("error decoding data using ABI: %w", parseErr)
+		return nil, parseErr
+	}
+	if payload.Kind == RevertNone {
+		return nil, nil
+	}
+	if payload.Kind == RevertGeneric {
+		return nil, fmt.Errorf("found generic error: %s", payload.Message)
+	}
+
+	var selectorBytes [revertSelectorSize]byte
+	copy(selectorBytes[:], payload.Data[:revertSelectorSize])
+	parsedError, abiErr := contractAbi.ErrorByID(selectorBytes)
+	if abiErr != nil {
+		return nil, fmt.Errorf("error decoding data using ABI: %w", abiErr)
 	}
 	return parsedError, nil
 }
