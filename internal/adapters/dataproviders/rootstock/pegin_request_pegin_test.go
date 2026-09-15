@@ -60,12 +60,25 @@ func stubEstimateRequestPegInGas(mockClient *mocks.RpcClientBindingMock) {
 	mockClient.On("EstimateGas", mock.Anything, mock.Anything).Return(requestPegInEstimatedGas, nil).Once()
 }
 
+// stubRequestPegInSigner prepares the signing and code checks a broadcast needs,
+// without stubbing the receipt lookup. Use it when the test drives the receipt
+// wait itself.
+func stubRequestPegInSigner(h requestPegInHarness) {
+	h.signerMock.On("Address").Return(parsedAddress)
+	key := testSignerKey()
+	h.signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(_ common.Address, transaction *geth.Transaction) (*geth.Transaction, error) {
+		return geth.SignTx(transaction, geth.HomesteadSigner{}, key)
+	}).Once()
+	h.contractMock.transactor.EXPECT().PendingCodeAt(mock.Anything, mock.Anything).Return([]byte{1}, nil).Maybe()
+	h.contractMock.caller.EXPECT().CodeAt(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1}, nil).Maybe()
+}
+
 func stubRequestPegInDryRun(h requestPegInHarness, expectedData []byte, value *big.Int, revert error) *ethereum.CallMsg {
 	captured := new(ethereum.CallMsg)
 	h.signerMock.On("Address").Return(parsedAddress).Maybe()
 	h.mockClient.EXPECT().CallContract(
 		mock.Anything,
-		matchRequestPegInCall(expectedData, parsedAddress, value),
+		matchRequestPegInCall(expectedData, parsedAddress, common.HexToAddress(test.AnyRskAddress), value),
 		mock.Anything,
 	).RunAndReturn(func(_ context.Context, msg ethereum.CallMsg, _ *big.Int) ([]byte, error) {
 		*captured = msg
@@ -85,7 +98,13 @@ func guardRejectedRequestPegIn(h requestPegInHarness) {
 
 func assertPayableDryRun(t *testing.T, h requestPegInHarness, expectedData []byte, value *big.Int) {
 	t.Helper()
-	h.mockClient.AssertCalled(t, "CallContract", mock.Anything, matchRequestPegInCall(expectedData, parsedAddress, value), mock.Anything)
+	h.mockClient.AssertCalled(
+		t,
+		"CallContract",
+		mock.Anything,
+		matchRequestPegInCall(expectedData, parsedAddress, common.HexToAddress(test.AnyRskAddress), value),
+		mock.Anything,
+	)
 	h.contractMock.caller.AssertNotCalled(t, "CallContract", mock.Anything, mock.Anything, mock.Anything)
 }
 
@@ -107,23 +126,23 @@ func assertRequestPegInNotEstimated(t *testing.T, h requestPegInHarness) {
 	h.mockClient.AssertNotCalled(t, "EstimateGas", mock.Anything, mock.Anything)
 }
 
-func assertPegInRequestedEvent(
-	t *testing.T,
-	pegInID [32]byte,
-	claimer common.Address,
-	rskAddress common.Address,
-	amount *entities.Wei,
-	netToUser *entities.Wei,
-	callSuccess bool,
-	event blockchain.PegInRequestedEvent,
-) {
+type pegInRequestedFixture struct {
+	pegInID     [32]byte
+	claimer     common.Address
+	rskAddress  common.Address
+	amount      *entities.Wei
+	netToUser   *entities.Wei
+	callSuccess bool
+}
+
+func assertPegInRequestedEvent(t *testing.T, fixture pegInRequestedFixture, event blockchain.PegInRequestedEvent) {
 	t.Helper()
-	assert.Equal(t, pegInID, event.PegInId)
-	assert.Equal(t, claimer.Hex(), event.Claimer)
-	assert.Equal(t, rskAddress.Hex(), event.RskAddress)
-	assert.Equal(t, amount, event.Amount)
-	assert.Equal(t, netToUser, event.NetToUser)
-	assert.Equal(t, callSuccess, event.CallSuccess)
+	assert.Equal(t, fixture.pegInID, event.PegInId)
+	assert.Equal(t, fixture.claimer.Hex(), event.Claimer)
+	assert.Equal(t, fixture.rskAddress.Hex(), event.RskAddress)
+	assert.Equal(t, fixture.amount, event.Amount)
+	assert.Equal(t, fixture.netToUser, event.NetToUser)
+	assert.Equal(t, fixture.callSuccess, event.CallSuccess)
 }
 
 type requestPegInHarness struct {
@@ -155,7 +174,7 @@ func newRequestPegInContract(
 	t.Helper()
 	return rootstock.NewPeginContractImpl(
 		rootstock.NewRskClient(mockClient),
-		test.AnyAddress,
+		test.AnyRskAddress,
 		contractMock.contract,
 		signerMock,
 		rootstock.RetryParams{},
@@ -182,33 +201,39 @@ func revertHexFromErrorID(t *testing.T, id common.Hash, tail []byte) string {
 	return "0x" + hex.EncodeToString(append(id.Bytes()[:4], tail...))
 }
 
-func mustPegInRequestedLog(t *testing.T, pegInId [32]byte, claimer, rskAddr common.Address, amount, net *big.Int) *geth.Log {
-	t.Helper()
-	return mustPegInRequestedLogWithCallSuccess(t, pegInId, claimer, rskAddr, amount, net, true)
-}
-
-func mustPegInRequestedLogWithCallSuccess(
-	t *testing.T,
-	pegInId [32]byte,
-	claimer, rskAddr common.Address,
-	amount, net *big.Int,
-	callSuccess bool,
-) *geth.Log {
+func mustPegInRequestedLog(t *testing.T, fixture pegInRequestedFixture) *geth.Log {
 	t.Helper()
 	parsed, err := commitfirst.PeginCommitFirstContractMetaData.ParseABI()
 	require.NoError(t, err)
 	event := parsed.Events["PegInRequested"]
-	data, err := event.Inputs.NonIndexed().Pack(amount, net, callSuccess)
+	data, err := event.Inputs.NonIndexed().Pack(
+		fixture.amount.AsBigInt(),
+		fixture.netToUser.AsBigInt(),
+		fixture.callSuccess,
+	)
 	require.NoError(t, err)
 	return &geth.Log{
 		Address: common.HexToAddress(test.AnyRskAddress),
 		Topics: []common.Hash{
 			event.ID,
-			common.BytesToHash(pegInId[:]),
-			common.BytesToHash(claimer.Bytes()),
-			common.BytesToHash(rskAddr.Bytes()),
+			common.BytesToHash(fixture.pegInID[:]),
+			common.BytesToHash(fixture.claimer.Bytes()),
+			common.BytesToHash(fixture.rskAddress.Bytes()),
 		},
 		Data: data,
+	}
+}
+
+func transactionLogFromGeth(eventLog *geth.Log) blockchain.TransactionLog {
+	topics := make([][32]byte, len(eventLog.Topics))
+	for i, topic := range eventLog.Topics {
+		topics[i] = topic
+	}
+	return blockchain.TransactionLog{
+		Address: eventLog.Address.Hex(),
+		Topics:  topics,
+		Data:    eventLog.Data,
+		Removed: eventLog.Removed,
 	}
 }
 
@@ -219,8 +244,15 @@ func TestPeginContractImpl_RequestPegIn_PackingMatchesPinnedABI(t *testing.T) {
 	fee := entities.SatoshiToWei(100)
 	expectedValue := new(entities.Wei).Sub(amount, fee)
 	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
-	pegInId := [32]byte{0xab}
-	eventLog := mustPegInRequestedLog(t, pegInId, parsedAddress, parsedAddress, amount.AsBigInt(), expectedValue.AsBigInt())
+	fixture := pegInRequestedFixture{
+		pegInID:     [32]byte{0xab},
+		claimer:     parsedAddress,
+		rskAddress:  parsedAddress,
+		amount:      amount,
+		netToUser:   expectedValue,
+		callSuccess: true,
+	}
+	eventLog := mustPegInRequestedLog(t, fixture)
 	gasLimit := paddedRequestPegInGas()
 
 	h.contractMock.transactor.EXPECT().SendTransaction(
@@ -235,7 +267,7 @@ func TestPeginContractImpl_RequestPegIn_PackingMatchesPinnedABI(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expectedValue, result.Receipt.Value)
 	assert.True(t, strings.HasPrefix(hex.EncodeToString(expectedData), "a355e935"))
-	assertPegInRequestedEvent(t, pegInId, parsedAddress, parsedAddress, amount, expectedValue, true, result.Event)
+	assertPegInRequestedEvent(t, fixture, result.Event)
 	assertPayableDryRun(t, h, expectedData, expectedValue.AsBigInt())
 	h.contractMock.transactor.AssertExpectations(t)
 	h.mockClient.AssertCalled(t, "EstimateGas", mock.Anything, mock.Anything)
@@ -257,7 +289,15 @@ func TestPeginContractImpl_RequestPegIn_FirstOutputValueNotSum(t *testing.T) {
 	fee := entities.SatoshiToWei(100)
 	expectedValue := new(entities.Wei).Sub(first, fee)
 	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
-	eventLog := mustPegInRequestedLog(t, [32]byte{0x01}, parsedAddress, parsedAddress, first.AsBigInt(), expectedValue.AsBigInt())
+	fixture := pegInRequestedFixture{
+		pegInID:     [32]byte{0x01},
+		claimer:     parsedAddress,
+		rskAddress:  parsedAddress,
+		amount:      first,
+		netToUser:   expectedValue,
+		callSuccess: true,
+	}
+	eventLog := mustPegInRequestedLog(t, fixture)
 	gasLimit := paddedRequestPegInGas()
 
 	h.contractMock.transactor.EXPECT().SendTransaction(
@@ -272,7 +312,7 @@ func TestPeginContractImpl_RequestPegIn_FirstOutputValueNotSum(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expectedValue, result.Receipt.Value)
 	assert.NotEqual(t, new(entities.Wei).Sub(sum, fee), result.Receipt.Value)
-	assertPegInRequestedEvent(t, [32]byte{0x01}, parsedAddress, parsedAddress, first, expectedValue, true, result.Event)
+	assertPegInRequestedEvent(t, fixture, result.Event)
 	assertPayableDryRun(t, h, expectedData, expectedValue.AsBigInt())
 }
 
@@ -283,7 +323,15 @@ func TestPeginContractImpl_RequestPegIn_SatToWeiBoundary(t *testing.T) {
 	h := newRequestPegInHarness(t)
 	fee := entities.NewWei(0)
 	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
-	eventLog := mustPegInRequestedLog(t, [32]byte{0x02}, parsedAddress, parsedAddress, oneSat.AsBigInt(), oneSat.AsBigInt())
+	fixture := pegInRequestedFixture{
+		pegInID:     [32]byte{0x02},
+		claimer:     parsedAddress,
+		rskAddress:  parsedAddress,
+		amount:      oneSat,
+		netToUser:   oneSat,
+		callSuccess: true,
+	}
+	eventLog := mustPegInRequestedLog(t, fixture)
 	gasLimit := paddedRequestPegInGas()
 
 	h.contractMock.transactor.EXPECT().SendTransaction(
@@ -297,7 +345,7 @@ func TestPeginContractImpl_RequestPegIn_SatToWeiBoundary(t *testing.T) {
 	result, err := h.pegin.RequestPegIn(sampleRequestPegInParams(oneSat, fee))
 	require.NoError(t, err)
 	assert.Equal(t, oneSat, result.Receipt.Value)
-	assertPegInRequestedEvent(t, [32]byte{0x02}, parsedAddress, parsedAddress, oneSat, oneSat, true, result.Event)
+	assertPegInRequestedEvent(t, fixture, result.Event)
 	assertPayableDryRun(t, h, expectedData, oneSat.AsBigInt())
 }
 
@@ -344,7 +392,15 @@ func TestPeginContractImpl_RequestPegIn_DoesNotCheckPause(t *testing.T) {
 	amount := entities.SatoshiToWei(500)
 	fee := entities.NewWei(0)
 	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
-	eventLog := mustPegInRequestedLog(t, [32]byte{0x03}, parsedAddress, parsedAddress, amount.AsBigInt(), amount.AsBigInt())
+	fixture := pegInRequestedFixture{
+		pegInID:     [32]byte{0x03},
+		claimer:     parsedAddress,
+		rskAddress:  parsedAddress,
+		amount:      amount,
+		netToUser:   amount,
+		callSuccess: true,
+	}
+	eventLog := mustPegInRequestedLog(t, fixture)
 	gasLimit := paddedRequestPegInGas()
 
 	h.contractMock.transactor.EXPECT().SendTransaction(
@@ -358,9 +414,38 @@ func TestPeginContractImpl_RequestPegIn_DoesNotCheckPause(t *testing.T) {
 	result, err := h.pegin.RequestPegIn(sampleRequestPegInParams(amount, fee))
 	require.NoError(t, err)
 	assert.NotEmpty(t, result.Receipt.TransactionHash)
-	assertPegInRequestedEvent(t, [32]byte{0x03}, parsedAddress, parsedAddress, amount, amount, true, result.Event)
+	assertPegInRequestedEvent(t, fixture, result.Event)
 	assertPayableDryRun(t, h, expectedData, amount.AsBigInt())
 	h.contractMock.transactor.AssertExpectations(t)
+}
+
+// ParseReceipt recovers the sender from the signature, not TransactOpts.From.
+// This test prevents the signer mock from claiming an address its key does not own.
+func TestPeginContractImpl_RequestPegIn_ReceiptSenderMatchesSigner(t *testing.T) {
+	h := newRequestPegInHarness(t)
+	amount := entities.SatoshiToWei(1000)
+	fee := entities.NewWei(0)
+	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
+	eventLog := mustPegInRequestedLog(t, pegInRequestedFixture{
+		pegInID:     [32]byte{0x06},
+		claimer:     parsedAddress,
+		rskAddress:  parsedAddress,
+		amount:      amount,
+		netToUser:   amount,
+		callSuccess: true,
+	})
+
+	h.contractMock.transactor.EXPECT().SendTransaction(
+		mock.Anything,
+		matchTransaction(h.contractMock.transactor, common.HexToAddress(test.AnyRskAddress), paddedRequestPegInGas(), amount.AsBigInt(), expectedData),
+	).Return(nil).Once()
+	prepareTxMocks(&h.contractMock, h.mockClient, h.signerMock, true, eventLog)
+	stubEstimateRequestPegInGas(h.mockClient)
+	stubRequestPegInDryRun(h, expectedData, amount.AsBigInt(), nil)
+
+	result, err := h.pegin.RequestPegIn(sampleRequestPegInParams(amount, fee))
+	require.NoError(t, err)
+	assert.Equal(t, parsedAddress.Hex(), result.Receipt.From)
 }
 
 func TestPeginContractImpl_RequestPegIn_PreflightAlreadyProcessed(t *testing.T) {
@@ -436,7 +521,15 @@ func TestPeginContractImpl_RequestPegIn_PreflightDoesNotInventRaceLoss(t *testin
 	errorTestHex := "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000047465737400000000000000000000000000000000000000000000000000000000"
 
 	t.Run("generic Error(string) revert", func(t *testing.T) {
-		assertPreflightJunkRevert(t, NewRskRpcError("execution reverted", errorTestHex), "requestPegIn reverted")
+		// The reason string must reach the caller. "Unknown error" would hide why the call reverted.
+		assertPreflightJunkRevert(t, NewRskRpcError("execution reverted", errorTestHex), "requestPegIn reverted: test")
+	})
+	t.Run("Panic(uint256) revert", func(t *testing.T) {
+		// Panic payloads must stay on the generic path. UnpackError would hide the mapped panic reason.
+		const panicHex = "0x4e487b710000000000000000000000000000000000000000000000000000000000000011"
+		wantMessage, unpackErr := abi.UnpackRevert(common.FromHex(panicHex))
+		require.NoError(t, unpackErr)
+		assertPreflightJunkRevert(t, NewRskRpcError("execution reverted", panicHex), "requestPegIn reverted: "+wantMessage)
 	})
 	t.Run("non-DataError", func(t *testing.T) {
 		assertPreflightJunkRevert(t, assert.AnError, "error parsing requestPegIn result")
@@ -593,6 +686,35 @@ func TestPeginContractImpl_RequestPegIn_SendError(t *testing.T) {
 	assertPayableDryRun(t, h, expectedData, amount.AsBigInt())
 }
 
+// A receipt wait failure does not cancel a broadcast transaction. Returning its
+// hash lets the caller recover the result instead of broadcasting a duplicate.
+func TestPeginContractImpl_RequestPegIn_KeepsHashWhenReceiptWaitFails(t *testing.T) {
+	h := newRequestPegInHarness(t)
+	amount := entities.SatoshiToWei(1000)
+	fee := entities.NewWei(0)
+	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
+
+	var sent *geth.Transaction
+	h.contractMock.transactor.EXPECT().SendTransaction(
+		mock.Anything,
+		matchTransaction(h.contractMock.transactor, common.HexToAddress(test.AnyRskAddress), paddedRequestPegInGas(), amount.AsBigInt(), expectedData),
+	).RunAndReturn(func(_ context.Context, tx *geth.Transaction) error {
+		sent = tx
+		return nil
+	}).Once()
+	stubRequestPegInSigner(h)
+	h.mockClient.EXPECT().TransactionReceipt(mock.Anything, mock.Anything).Return(nil, assert.AnError).Maybe()
+	stubEstimateRequestPegInGas(h.mockClient)
+	stubRequestPegInDryRun(h, expectedData, amount.AsBigInt(), nil)
+
+	result, err := h.pegin.RequestPegIn(sampleRequestPegInParams(amount, fee))
+	require.ErrorContains(t, err, "request pegin error")
+	require.NotNil(t, sent)
+	assert.Equal(t, sent.Hash().String(), result.Receipt.TransactionHash)
+	assert.Equal(t, blockchain.PegInRequestedEvent{}, result.Event)
+	h.contractMock.transactor.AssertNumberOfCalls(t, "SendTransaction", 1)
+}
+
 func TestPeginContractImpl_RequestPegIn_EstimateGasFailure(t *testing.T) {
 	h := newRequestPegInHarness(t)
 	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
@@ -619,7 +741,7 @@ func TestPeginContractImpl_EstimateRequestPegInGas(t *testing.T) {
 	assertRequestPegInNotSent(t, h)
 }
 
-func TestPeginContractImpl_IdentifyRequestPegIn_RejectsWithoutSending(t *testing.T) {
+func TestPeginContractImpl_SimulateRequestPegIn_RejectsWithoutSending(t *testing.T) {
 	cases := []struct {
 		name   string
 		mutate func(*blockchain.RequestPegInParams)
@@ -648,7 +770,7 @@ func TestPeginContractImpl_IdentifyRequestPegIn_RejectsWithoutSending(t *testing
 			tc.mutate(&params)
 			guardRejectedRequestPegIn(h)
 
-			err := h.pegin.IdentifyRequestPegIn(params)
+			err := h.pegin.SimulateRequestPegIn(params)
 			require.ErrorIs(t, err, tc.want)
 			assertNoDryRun(t, h)
 			assertRequestPegInNotSent(t, h)
@@ -657,11 +779,11 @@ func TestPeginContractImpl_IdentifyRequestPegIn_RejectsWithoutSending(t *testing
 	}
 }
 
-// TestPeginContractImpl_IdentifyRequestPegIn_RejectsIncorrectFronting states that
-// the identify path must apply the same fronting rule as RequestPegIn. A dry run
+// TestPeginContractImpl_SimulateRequestPegIn_RejectsIncorrectFronting states that
+// the simulation must apply the same fronting rule as RequestPegIn. A dry run
 // with a value the provider cannot front tells the caller nothing useful, so the
 // call must be rejected before the dry run.
-func TestPeginContractImpl_IdentifyRequestPegIn_RejectsIncorrectFronting(t *testing.T) {
+func TestPeginContractImpl_SimulateRequestPegIn_RejectsIncorrectFronting(t *testing.T) {
 	cases := []struct {
 		name   string
 		amount *entities.Wei
@@ -676,7 +798,7 @@ func TestPeginContractImpl_IdentifyRequestPegIn_RejectsIncorrectFronting(t *test
 			h := newRequestPegInHarness(t)
 			guardRejectedRequestPegIn(h)
 
-			err := h.pegin.IdentifyRequestPegIn(sampleRequestPegInParams(tc.amount, tc.fee))
+			err := h.pegin.SimulateRequestPegIn(sampleRequestPegInParams(tc.amount, tc.fee))
 			require.ErrorIs(t, err, blockchain.ErrIncorrectFronting)
 			assertNoDryRun(t, h)
 			assertRequestPegInNotSent(t, h)
@@ -685,40 +807,47 @@ func TestPeginContractImpl_IdentifyRequestPegIn_RejectsIncorrectFronting(t *test
 	}
 }
 
-func TestPeginContractImpl_IdentifyRequestPegIn_DoesNotSend(t *testing.T) {
+func TestPeginContractImpl_SimulateRequestPegIn_DoesNotSend(t *testing.T) {
 	h := newRequestPegInHarness(t)
 	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
 	amount := entities.SatoshiToWei(1000)
 
 	stubRequestPegInDryRun(h, expectedData, amount.AsBigInt(), nil)
 
-	err := h.pegin.IdentifyRequestPegIn(sampleRequestPegInParams(amount, entities.NewWei(0)))
+	err := h.pegin.SimulateRequestPegIn(sampleRequestPegInParams(amount, entities.NewWei(0)))
 	require.NoError(t, err)
 	assertPayableDryRun(t, h, expectedData, amount.AsBigInt())
 	assertRequestPegInNotSent(t, h)
 	h.mockClient.AssertNotCalled(t, "TransactionReceipt", mock.Anything, mock.Anything)
 }
 
-// TestPeginContractImpl_IdentifyRequestPegIn_DryRunMatchesRequestPegIn states that
-// identify must dry-run the exact message RequestPegIn would send. If the two
-// differ in From or Value, identify can accept a request that RequestPegIn later
-// reverts on, or reject one that would succeed.
-func TestPeginContractImpl_IdentifyRequestPegIn_DryRunMatchesRequestPegIn(t *testing.T) {
+// TestPeginContractImpl_SimulateRequestPegIn_DryRunMatchesRequestPegIn states that
+// the simulation must dry-run the exact message RequestPegIn would send. If the
+// two differ in From, To, or Value, the simulation can accept a request that RequestPegIn
+// later reverts on, or reject one that would succeed.
+func TestPeginContractImpl_SimulateRequestPegIn_DryRunMatchesRequestPegIn(t *testing.T) {
 	amount := entities.SatoshiToWei(1000)
 	fee := entities.SatoshiToWei(100)
 	expectedValue := new(entities.Wei).Sub(amount, fee)
 	expectedData := packPinnedRequestPegIn(t, parsedAddress, strippedRawTx, requestBlockHash, requestPath, requestHashes)
 	params := sampleRequestPegInParams(amount, fee)
 
-	identify := newRequestPegInHarness(t)
-	identifyCall := stubRequestPegInDryRun(identify, expectedData, expectedValue.AsBigInt(), nil)
+	simulate := newRequestPegInHarness(t)
+	simulateCall := stubRequestPegInDryRun(simulate, expectedData, expectedValue.AsBigInt(), nil)
 
-	require.NoError(t, identify.pegin.IdentifyRequestPegIn(params))
-	assertPayableDryRun(t, identify, expectedData, expectedValue.AsBigInt())
-	assertRequestPegInNotSent(t, identify)
+	require.NoError(t, simulate.pegin.SimulateRequestPegIn(params))
+	assertPayableDryRun(t, simulate, expectedData, expectedValue.AsBigInt())
+	assertRequestPegInNotSent(t, simulate)
 
 	request := newRequestPegInHarness(t)
-	eventLog := mustPegInRequestedLog(t, [32]byte{0x05}, parsedAddress, parsedAddress, amount.AsBigInt(), expectedValue.AsBigInt())
+	eventLog := mustPegInRequestedLog(t, pegInRequestedFixture{
+		pegInID:     [32]byte{0x05},
+		claimer:     parsedAddress,
+		rskAddress:  parsedAddress,
+		amount:      amount,
+		netToUser:   expectedValue,
+		callSuccess: true,
+	})
 	request.contractMock.transactor.EXPECT().SendTransaction(
 		mock.Anything,
 		matchTransaction(request.contractMock.transactor, common.HexToAddress(test.AnyRskAddress), paddedRequestPegInGas(), expectedValue.AsBigInt(), expectedData),
@@ -731,12 +860,16 @@ func TestPeginContractImpl_IdentifyRequestPegIn_DryRunMatchesRequestPegIn(t *tes
 	require.NoError(t, err)
 	assertPayableDryRun(t, request, expectedData, expectedValue.AsBigInt())
 
-	assert.Equal(t, requestCall.From, identifyCall.From)
-	require.NotNil(t, identifyCall.Value)
+	assert.Equal(t, requestCall.From, simulateCall.From)
+	require.NotNil(t, simulateCall.To)
+	require.NotNil(t, requestCall.To)
+	assert.Equal(t, common.HexToAddress(test.AnyRskAddress), *simulateCall.To)
+	assert.Equal(t, *requestCall.To, *simulateCall.To)
+	require.NotNil(t, simulateCall.Value)
 	require.NotNil(t, requestCall.Value)
-	assert.Equal(t, 0, requestCall.Value.Cmp(identifyCall.Value))
-	assert.Equal(t, expectedValue.AsBigInt(), identifyCall.Value)
-	assert.Equal(t, parsedAddress, identifyCall.From)
+	assert.Equal(t, 0, requestCall.Value.Cmp(simulateCall.Value))
+	assert.Equal(t, expectedValue.AsBigInt(), simulateCall.Value)
+	assert.Equal(t, parsedAddress, simulateCall.From)
 }
 
 func TestPeginContractImpl_UnpackPegInRequested(t *testing.T) {
@@ -755,24 +888,188 @@ func TestPeginContractImpl_UnpackPegInRequested(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newRequestPegInHarness(t)
-			eventLog := mustPegInRequestedLogWithCallSuccess(t, tc.pegInID, claimer, rskAddress, amount.AsBigInt(), netToUser.AsBigInt(), tc.callSuccess)
-			topics := make([][32]byte, len(eventLog.Topics))
-			for i, topic := range eventLog.Topics {
-				topics[i] = topic
+			fixture := pegInRequestedFixture{
+				pegInID:     tc.pegInID,
+				claimer:     claimer,
+				rskAddress:  rskAddress,
+				amount:      amount,
+				netToUser:   netToUser,
+				callSuccess: tc.callSuccess,
 			}
+			eventLog := mustPegInRequestedLog(t, fixture)
 
 			event, err := h.pegin.UnpackPegInRequested(blockchain.TransactionReceipt{
 				Status: blockchain.SuccessfulTxStatus,
-				Logs: []blockchain.TransactionLog{{
-					Address: eventLog.Address.Hex(),
-					Topics:  topics,
-					Data:    eventLog.Data,
-				}},
+				Logs:   []blockchain.TransactionLog{transactionLogFromGeth(eventLog)},
 			})
 			require.NoError(t, err)
-			assertPegInRequestedEvent(t, tc.pegInID, claimer, rskAddress, amount, netToUser, tc.callSuccess, event)
+			assertPegInRequestedEvent(t, fixture, event)
 			assertRequestPegInNotSent(t, h)
 			assertNoDryRun(t, h)
 		})
 	}
+}
+
+func TestPeginContractImpl_UnpackPegInRequested_SkipsForeignLog(t *testing.T) {
+	h := newRequestPegInHarness(t)
+	claimer := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	rskAddress := common.HexToAddress("0x00000000000000000000000000000000000000bb")
+	amount := entities.SatoshiToWei(1000)
+	netToUser := entities.SatoshiToWei(900)
+	foreign := mustPegInRequestedLog(t, pegInRequestedFixture{
+		pegInID:     [32]byte{0x11},
+		claimer:     claimer,
+		rskAddress:  rskAddress,
+		amount:      amount,
+		netToUser:   netToUser,
+		callSuccess: true,
+	})
+	foreign.Address = common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	real := pegInRequestedFixture{
+		pegInID:     [32]byte{0x22},
+		claimer:     claimer,
+		rskAddress:  rskAddress,
+		amount:      amount,
+		netToUser:   netToUser,
+		callSuccess: false,
+	}
+
+	event, err := h.pegin.UnpackPegInRequested(blockchain.TransactionReceipt{
+		Logs: []blockchain.TransactionLog{
+			transactionLogFromGeth(foreign),
+			transactionLogFromGeth(mustPegInRequestedLog(t, real)),
+		},
+	})
+
+	require.NoError(t, err)
+	assertPegInRequestedEvent(t, real, event)
+}
+
+func TestPeginContractImpl_UnpackPegInRequested_RejectsForeignLog(t *testing.T) {
+	h := newRequestPegInHarness(t)
+	foreign := mustPegInRequestedLog(t, pegInRequestedFixture{
+		pegInID:     [32]byte{0x11},
+		claimer:     common.HexToAddress("0x00000000000000000000000000000000000000aa"),
+		rskAddress:  common.HexToAddress("0x00000000000000000000000000000000000000bb"),
+		amount:      entities.NewWei(1000),
+		netToUser:   entities.NewWei(900),
+		callSuccess: true,
+	})
+	foreign.Address = common.HexToAddress("0x00000000000000000000000000000000000000aa")
+
+	_, err := h.pegin.UnpackPegInRequested(blockchain.TransactionReceipt{
+		Logs: []blockchain.TransactionLog{transactionLogFromGeth(foreign)},
+	})
+
+	require.ErrorContains(t, err, "request pegin error: PegInRequested event not found")
+}
+
+func TestPeginContractImpl_UnpackPegInRequested_RejectsEmptyData(t *testing.T) {
+	h := newRequestPegInHarness(t)
+	empty := mustPegInRequestedLog(t, pegInRequestedFixture{
+		pegInID:     [32]byte{0x11},
+		claimer:     common.HexToAddress("0x00000000000000000000000000000000000000aa"),
+		rskAddress:  common.HexToAddress("0x00000000000000000000000000000000000000bb"),
+		amount:      entities.NewWei(1000),
+		netToUser:   entities.NewWei(900),
+		callSuccess: true,
+	})
+	empty.Data = nil
+
+	_, err := h.pegin.UnpackPegInRequested(blockchain.TransactionReceipt{
+		Logs: []blockchain.TransactionLog{transactionLogFromGeth(empty)},
+	})
+
+	require.ErrorContains(t, err, "request pegin error: PegInRequested event not found")
+}
+
+func TestPeginContractImpl_UnpackPegInRequested_SkipsEmptyDataBeforeValidEvent(t *testing.T) {
+	h := newRequestPegInHarness(t)
+	claimer := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	rskAddress := common.HexToAddress("0x00000000000000000000000000000000000000bb")
+	amount := entities.SatoshiToWei(1000)
+	netToUser := entities.SatoshiToWei(900)
+	empty := mustPegInRequestedLog(t, pegInRequestedFixture{
+		pegInID:     [32]byte{0x11},
+		claimer:     claimer,
+		rskAddress:  rskAddress,
+		amount:      amount,
+		netToUser:   netToUser,
+		callSuccess: true,
+	})
+	empty.Data = nil
+	valid := pegInRequestedFixture{
+		pegInID:     [32]byte{0x22},
+		claimer:     claimer,
+		rskAddress:  rskAddress,
+		amount:      amount,
+		netToUser:   netToUser,
+		callSuccess: false,
+	}
+
+	event, err := h.pegin.UnpackPegInRequested(blockchain.TransactionReceipt{
+		Logs: []blockchain.TransactionLog{
+			transactionLogFromGeth(empty),
+			transactionLogFromGeth(mustPegInRequestedLog(t, valid)),
+		},
+	})
+
+	require.NoError(t, err)
+	assertPegInRequestedEvent(t, valid, event)
+}
+
+func TestPeginContractImpl_UnpackPegInRequested_SkipsRemovedLog(t *testing.T) {
+	h := newRequestPegInHarness(t)
+	claimer := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	rskAddress := common.HexToAddress("0x00000000000000000000000000000000000000bb")
+	amount := entities.SatoshiToWei(1000)
+	netToUser := entities.SatoshiToWei(900)
+	removed := mustPegInRequestedLog(t, pegInRequestedFixture{
+		pegInID:     [32]byte{0x11},
+		claimer:     claimer,
+		rskAddress:  rskAddress,
+		amount:      amount,
+		netToUser:   netToUser,
+		callSuccess: true,
+	})
+	removed.Removed = true
+	live := pegInRequestedFixture{
+		pegInID:     [32]byte{0x22},
+		claimer:     claimer,
+		rskAddress:  rskAddress,
+		amount:      amount,
+		netToUser:   netToUser,
+		callSuccess: true,
+	}
+
+	event, err := h.pegin.UnpackPegInRequested(blockchain.TransactionReceipt{
+		Logs: []blockchain.TransactionLog{
+			transactionLogFromGeth(removed),
+			transactionLogFromGeth(mustPegInRequestedLog(t, live)),
+		},
+	})
+
+	require.NoError(t, err)
+	assertPegInRequestedEvent(t, live, event)
+}
+
+func TestPeginContractImpl_UnpackPegInRequested_AcceptsMixedCaseAddress(t *testing.T) {
+	h := newRequestPegInHarness(t)
+	fixture := pegInRequestedFixture{
+		pegInID:     [32]byte{0x11},
+		claimer:     common.HexToAddress("0x00000000000000000000000000000000000000aa"),
+		rskAddress:  common.HexToAddress("0x00000000000000000000000000000000000000bb"),
+		amount:      entities.SatoshiToWei(1000),
+		netToUser:   entities.SatoshiToWei(900),
+		callSuccess: true,
+	}
+	eventLog := transactionLogFromGeth(mustPegInRequestedLog(t, fixture))
+	eventLog.Address = strings.ToLower(test.AnyRskAddress)
+
+	event, err := h.pegin.UnpackPegInRequested(blockchain.TransactionReceipt{
+		Logs: []blockchain.TransactionLog{eventLog},
+	})
+
+	require.NoError(t, err)
+	assertPegInRequestedEvent(t, fixture, event)
 }

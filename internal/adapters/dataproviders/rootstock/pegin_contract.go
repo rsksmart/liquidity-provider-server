@@ -27,6 +27,10 @@ const (
 	registerPeginGasLimit      = 2500000
 	requestPegInErrorPrefix    = "request pegin error"
 	requestPegInRevertedPrefix = "requestPegIn reverted"
+	// requestPegIn reserves two extra parts of gas for every ten parts estimated:
+	// the transaction gas limit is 100% of the estimate plus a 20% buffer.
+	requestPegInGasEstimateParts = 10
+	requestPegInGasBufferParts   = 2
 )
 
 type peginContractImpl struct {
@@ -413,7 +417,7 @@ func (peginContract *peginContractImpl) EstimateRequestPegInGas(params blockchai
 	return paddedRequestPegInGas(estimated), nil
 }
 
-func (peginContract *peginContractImpl) IdentifyRequestPegIn(params blockchain.RequestPegInParams) error {
+func (peginContract *peginContractImpl) SimulateRequestPegIn(params blockchain.RequestPegInParams) error {
 	prepared, err := peginContract.prepareRequestPegIn(params)
 	if err != nil {
 		return err
@@ -433,7 +437,11 @@ func (peginContract *peginContractImpl) UnpackPegInRequested(
 		copied := eventLog
 		logs = append(logs, transactionLogToGeth(copied))
 	}
-	return unpackPegInRequested(peginContract.commitFirst, &geth.Receipt{Logs: logs})
+	return unpackPegInRequested(
+		peginContract.commitFirst,
+		common.HexToAddress(peginContract.address),
+		&geth.Receipt{Logs: logs},
+	)
 }
 
 func transactionLogToGeth(eventLog blockchain.TransactionLog) *geth.Log {
@@ -499,7 +507,8 @@ func (peginContract *peginContractImpl) requestPegInCallMsg(callData []byte, val
 }
 
 func paddedRequestPegInGas(estimated uint64) uint64 {
-	return estimated * 12 / 10
+	return estimated * (requestPegInGasEstimateParts + requestPegInGasBufferParts) /
+		requestPegInGasEstimateParts
 }
 
 func (peginContract *peginContractImpl) estimateRequestPegInGas(callData []byte, value *entities.Wei) (uint64, error) {
@@ -524,7 +533,9 @@ func (peginContract *peginContractImpl) submitRequestPegIn(callData []byte, valu
 		return tx, txErr
 	})
 	if err != nil {
-		return blockchain.RequestPegInResult{}, fmt.Errorf("%s: %w", requestPegInErrorPrefix, err)
+		// If broadcast succeeded, preserve the hash so the caller can find the
+		// transaction after receipt polling fails.
+		return requestPegInResultForHash(tx), fmt.Errorf("%s: %w", requestPegInErrorPrefix, err)
 	}
 	if receipt == nil {
 		return blockchain.RequestPegInResult{}, fmt.Errorf("%s: incomplete receipt", requestPegInErrorPrefix)
@@ -536,11 +547,26 @@ func (peginContract *peginContractImpl) submitRequestPegIn(callData []byte, valu
 	if receipt.Status == 0 {
 		return blockchain.RequestPegInResult{Receipt: transactionReceipt}, fmt.Errorf("%s: transaction reverted (%s)", requestPegInErrorPrefix, receipt.TxHash.String())
 	}
-	event, err := unpackPegInRequested(peginContract.commitFirst, receipt)
+	event, err := unpackPegInRequested(
+		peginContract.commitFirst,
+		common.HexToAddress(peginContract.address),
+		receipt,
+	)
 	if err != nil {
 		return blockchain.RequestPegInResult{Receipt: transactionReceipt}, err
 	}
 	return blockchain.RequestPegInResult{Receipt: transactionReceipt, Event: event}, nil
+}
+
+// requestPegInResultForHash returns a result that carries only the transaction
+// hash. The hash is empty when the transaction was never built or broadcast.
+func requestPegInResultForHash(tx *geth.Transaction) blockchain.RequestPegInResult {
+	if tx == nil {
+		return blockchain.RequestPegInResult{}
+	}
+	return blockchain.RequestPegInResult{
+		Receipt: blockchain.TransactionReceipt{TransactionHash: tx.Hash().String()},
+	}
 }
 
 func (peginContract *peginContractImpl) dryRunRequestPegIn(callData []byte, value *entities.Wei) error {
@@ -549,17 +575,20 @@ func (peginContract *peginContractImpl) dryRunRequestPegIn(callData []byte, valu
 		peginContract.requestPegInCallMsg(callData, value),
 		nil,
 	)
-	if revert == nil {
-		return nil
+	payload, err := ParseRevert(revert)
+	if errors.Is(err, ErrShortRevertData) {
+		return fmt.Errorf("%s: %w", requestPegInRevertedPrefix, err)
 	}
-	raw, err := revertDataBytes(revert)
 	if err != nil {
 		return fmt.Errorf("error parsing requestPegIn result: %w", err)
 	}
-	if len(raw) < 4 {
-		return fmt.Errorf("%s: %w", requestPegInRevertedPrefix, ErrShortRevertData)
+	if payload.Kind == RevertNone {
+		return nil
 	}
-	unpacked, err := peginContract.commitFirst.UnpackError(raw)
+	if payload.Kind == RevertGeneric {
+		return fmt.Errorf("%s: %s", requestPegInRevertedPrefix, payload.Message)
+	}
+	unpacked, err := peginContract.commitFirst.UnpackError(payload.Data)
 	if err != nil {
 		return fmt.Errorf("%s: %w", requestPegInRevertedPrefix, err)
 	}
@@ -606,14 +635,23 @@ func requestPegInValue(amount, fee *entities.Wei) (*entities.Wei, error) {
 	return new(entities.Wei).Sub(amount, fee), nil
 }
 
-func unpackPegInRequested(commitFirst *commitfirst.PeginCommitFirstContract, receipt *geth.Receipt) (blockchain.PegInRequestedEvent, error) {
+func unpackPegInRequested(
+	commitFirst *commitfirst.PeginCommitFirstContract,
+	contract common.Address,
+	receipt *geth.Receipt,
+) (blockchain.PegInRequestedEvent, error) {
 	parsed, err := commitfirst.PeginCommitFirstContractMetaData.ParseABI()
 	if err != nil {
 		return blockchain.PegInRequestedEvent{}, err
 	}
 	eventID := parsed.Events["PegInRequested"].ID
 	for _, eventLog := range receipt.Logs {
-		if eventLog != nil && len(eventLog.Topics) > 0 && eventLog.Topics[0] == eventID {
+		if eventLog != nil &&
+			!eventLog.Removed &&
+			eventLog.Address == contract &&
+			len(eventLog.Topics) > 0 &&
+			eventLog.Topics[0] == eventID &&
+			len(eventLog.Data) > 0 {
 			unpacked, unpackErr := commitFirst.UnpackPegInRequestedEvent(eventLog)
 			if unpackErr != nil {
 				return blockchain.PegInRequestedEvent{}, unpackErr
