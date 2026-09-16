@@ -3,6 +3,7 @@ package rootstock_test
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
@@ -231,6 +232,66 @@ func TestParseRevertReason(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		assert.Equal(t, "NotEnoughConfirmations", result.Name)
+	})
+}
+
+func TestParseRevert(t *testing.T) {
+	t.Run("nil error returns RevertNone", func(t *testing.T) {
+		payload, err := rootstock.ParseRevert(nil)
+		require.NoError(t, err)
+		assert.Equal(t, rootstock.RevertNone, payload.Kind)
+		assert.Empty(t, payload.Message)
+		assert.Empty(t, payload.Data)
+	})
+	t.Run("non-DataError returns no data error", func(t *testing.T) {
+		payload, err := rootstock.ParseRevert(assert.AnError)
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Contains(t, err.Error(), "no data to recover in error")
+		assert.Zero(t, payload)
+	})
+	t.Run("DataError with non-string ErrorData returns no data error", func(t *testing.T) {
+		e := rskRpcErrorWithIntData{message: "revert", data: 42}
+		payload, err := rootstock.ParseRevert(e)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no data to recover in error")
+		assert.Zero(t, payload)
+	})
+	t.Run("DataError with invalid hex returns decoding error", func(t *testing.T) {
+		payload, err := rootstock.ParseRevert(NewRskRpcError("revert", "0xZZ"))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding data")
+		assert.Zero(t, payload)
+	})
+	t.Run("DataError with generic Error(string) revert returns RevertGeneric", func(t *testing.T) {
+		e := NewRskRpcError("revert", "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000047465737400000000000000000000000000000000000000000000000000000000")
+		payload, err := rootstock.ParseRevert(e)
+		require.NoError(t, err)
+		assert.Equal(t, rootstock.RevertGeneric, payload.Kind)
+		assert.Equal(t, "test", payload.Message)
+		assert.Empty(t, payload.Data)
+	})
+	t.Run("DataError with Panic(uint256) revert returns RevertGeneric", func(t *testing.T) {
+		const panicHex = "0x4e487b710000000000000000000000000000000000000000000000000000000000000011"
+		wantMessage, unpackErr := abi.UnpackRevert(common.FromHex(panicHex))
+		require.NoError(t, unpackErr)
+		payload, err := rootstock.ParseRevert(NewRskRpcError("execution reverted", panicHex))
+		require.NoError(t, err)
+		assert.Equal(t, rootstock.RevertGeneric, payload.Kind)
+		assert.Equal(t, wantMessage, payload.Message)
+		assert.Empty(t, payload.Data)
+	})
+	t.Run("DataError with data shorter than selector returns ErrShortRevertData", func(t *testing.T) {
+		payload, err := rootstock.ParseRevert(NewRskRpcError("execution reverted", "0xaabbcc"))
+		require.ErrorIs(t, err, rootstock.ErrShortRevertData)
+		assert.Zero(t, payload)
+	})
+	t.Run("DataError with custom error selector returns RevertCustom", func(t *testing.T) {
+		const revertData = "0xd2506f8c00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000002"
+		payload, err := rootstock.ParseRevert(NewRskRpcError("transaction reverted", revertData))
+		require.NoError(t, err)
+		assert.Equal(t, rootstock.RevertCustom, payload.Kind)
+		assert.Empty(t, payload.Message)
+		assert.Equal(t, common.FromHex(revertData), payload.Data)
 	})
 }
 
