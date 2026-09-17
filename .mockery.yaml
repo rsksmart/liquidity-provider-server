@@ -104,6 +104,7 @@ packages:
     interfaces:
       BatchPegOutRepository:
       PegInWatchRepository:
+      PegInClaimRepository:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/utils:
     interfaces:
       HttpClient:
@@ -126,6 +127,8 @@ packages:
       NodeReorgCheckUseCase:
       UpdateBtcReleaseUseCase:
       NodePeerCheckUseCase:
+      PegInClaimRunner:
+      PegInClaimSettler:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
     interfaces:
       GetAssetReportUseCase:

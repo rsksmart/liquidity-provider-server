@@ -79,3 +79,13 @@ func (m *ProviderMock) GetSigner() entities.Signer {
 	args := m.Called()
 	return args.Get(0).(entities.Signer)
 }
+
+func NewProviderMock(t interface {
+	mock.TestingT
+	Cleanup(func())
+}) *ProviderMock {
+	provider := &ProviderMock{}
+	provider.Mock.Test(t)
+	t.Cleanup(func() { provider.AssertExpectations(t) })
+	return provider
+}
