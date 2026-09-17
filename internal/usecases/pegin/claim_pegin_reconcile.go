@@ -79,11 +79,11 @@ func (useCase *ClaimPegInUseCase) identifyFailed(ctx context.Context, claim root
 	if err != nil {
 		return useCase.wrap(err)
 	}
-	identifyErr := useCase.contracts.PegIn.IdentifyRequestPegIn(params)
-	if identifyErr == nil {
+	simulateErr := useCase.contracts.PegIn.SimulateRequestPegIn(params)
+	if simulateErr == nil {
 		return useCase.failRetryable(ctx, claim, errors.New("status-0 receipt; preflight no longer reverts; not resubmitting"))
 	}
-	return useCase.classifySubmitError(ctx, claim, identifyErr)
+	return useCase.classifySubmitError(ctx, claim, simulateErr)
 }
 
 func logUnrecoverableClaimReceipt(claim rootstock.PegInClaim) {
