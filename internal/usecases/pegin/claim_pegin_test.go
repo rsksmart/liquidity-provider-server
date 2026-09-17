@@ -512,7 +512,7 @@ func TestClaimPegInUseCase_StatusZeroIdentifiesViaPreflightNotReceiptData(t *tes
 	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
 	harness.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(harness.block, nil).Once()
 	harness.btc.On("BuildMerkleBranch", claimDepositTxID).Return(harness.merkle, nil).Once()
-	harness.pegin.On("IdentifyRequestPegIn", mock.Anything).Return(blockchain.ErrPegInAlreadyProcessed).Once()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(blockchain.ErrPegInAlreadyProcessed).Once()
 
 	err := harness.useCase.ReconcileSubmitting(context.Background())
 	require.NoError(t, err)
@@ -891,7 +891,7 @@ func TestClaimPegInUseCase_StatusZeroIdentifyNilDoesNotResubmit(t *testing.T) {
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.expectBuildParams()
-	harness.pegin.On("IdentifyRequestPegIn", mock.Anything).Return(nil).Once()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 
 	err := harness.useCase.ReconcileSubmitting(context.Background())
 	require.Error(t, err)
@@ -912,7 +912,7 @@ func TestClaimPegInUseCase_StatusZeroIdentifyLookupErrors(t *testing.T) {
 
 		err := harness.useCase.ReconcileSubmitting(context.Background())
 		require.Error(t, err)
-		harness.pegin.AssertNotCalled(t, "IdentifyRequestPegIn", mock.Anything)
+		harness.pegin.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 	})
 	t.Run("fee oracle", func(t *testing.T) {
@@ -927,7 +927,7 @@ func TestClaimPegInUseCase_StatusZeroIdentifyLookupErrors(t *testing.T) {
 
 		err := harness.useCase.ReconcileSubmitting(context.Background())
 		require.Error(t, err)
-		harness.pegin.AssertNotCalled(t, "IdentifyRequestPegIn", mock.Anything)
+		harness.pegin.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything)
 	})
 }
 
