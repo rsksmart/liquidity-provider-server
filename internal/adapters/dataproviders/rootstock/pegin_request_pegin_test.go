@@ -31,7 +31,6 @@ const requestPegInEstimatedGas = uint64(1000)
 
 var (
 	strippedRawTx    = []byte{0x01, 0x00, 0x00, 0x00, 0x01, 0xff, 0xaa, 0xbb}
-	witnessRawTx     = []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0xaa, 0xbb}
 	requestBlockHash = [32]byte{0x11}
 	requestPath      = big.NewInt(1)
 	requestHashes    = [][32]byte{{0x22}}
@@ -349,20 +348,6 @@ func TestPeginContractImpl_RequestPegIn_SatToWeiBoundary(t *testing.T) {
 	assertPayableDryRun(t, h, expectedData, oneSat.AsBigInt())
 }
 
-func TestPeginContractImpl_RequestPegIn_RejectsWitnessSerializedTx(t *testing.T) {
-	h := newRequestPegInHarness(t)
-	params := sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0))
-	params.BitcoinRawTx = witnessRawTx
-	guardRejectedRequestPegIn(h)
-
-	result, err := h.pegin.RequestPegIn(params)
-	require.ErrorIs(t, err, blockchain.ErrWitnessSerializedTxNotAccepted)
-	assert.Empty(t, result.Receipt.TransactionHash)
-	assertNoDryRun(t, h)
-	assertRequestPegInNotSent(t, h)
-	assertRequestPegInNotEstimated(t, h)
-}
-
 func TestPeginContractImpl_RequestPegIn_StatusZeroDoesNotClassifyRaceLoss(t *testing.T) {
 	h := newRequestPegInHarness(t)
 	amount := entities.SatoshiToWei(1000)
@@ -611,20 +596,6 @@ func TestPeginContractImpl_RequestPegIn_MatchingTopicUnpackError(t *testing.T) {
 	assertPayableDryRun(t, h, expectedData, amount.AsBigInt())
 }
 
-func TestPeginContractImpl_RequestPegIn_RejectsShortRawTx(t *testing.T) {
-	h := newRequestPegInHarness(t)
-	params := sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0))
-	params.BitcoinRawTx = []byte{1, 0, 0, 0, 1}
-	guardRejectedRequestPegIn(h)
-
-	result, err := h.pegin.RequestPegIn(params)
-	require.ErrorIs(t, err, blockchain.ErrWitnessSerializedTxNotAccepted)
-	assert.Empty(t, result.Receipt.TransactionHash)
-	assertNoDryRun(t, h)
-	assertRequestPegInNotSent(t, h)
-	assertRequestPegInNotEstimated(t, h)
-}
-
 func TestPeginContractImpl_RequestPegIn_NilAmountOrFee(t *testing.T) {
 	t.Run("nil amount", func(t *testing.T) {
 		h := newRequestPegInHarness(t)
@@ -751,16 +722,6 @@ func TestPeginContractImpl_SimulateRequestPegIn_RejectsWithoutSending(t *testing
 			name:   "invalid address",
 			mutate: func(params *blockchain.RequestPegInParams) { params.RskAddress = "not-an-address" },
 			want:   blockchain.InvalidAddressError,
-		},
-		{
-			name:   "short raw tx",
-			mutate: func(params *blockchain.RequestPegInParams) { params.BitcoinRawTx = []byte{1, 0, 0, 0, 1} },
-			want:   blockchain.ErrWitnessSerializedTxNotAccepted,
-		},
-		{
-			name:   "witness serialized tx",
-			mutate: func(params *blockchain.RequestPegInParams) { params.BitcoinRawTx = witnessRawTx },
-			want:   blockchain.ErrWitnessSerializedTxNotAccepted,
 		},
 	}
 	for _, tc := range cases {

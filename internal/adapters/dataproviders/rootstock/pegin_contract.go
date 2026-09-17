@@ -471,9 +471,6 @@ func (peginContract *peginContractImpl) prepareRequestPegIn(params blockchain.Re
 	if err := ParseAddress(&parsedAddress, params.RskAddress); err != nil {
 		return preparedRequestPegIn{}, err
 	}
-	if err := rejectWitnessSerialized(params.BitcoinRawTx); err != nil {
-		return preparedRequestPegIn{}, err
-	}
 	value, err := requestPegInValue(params.Amount, params.Fee)
 	if err != nil {
 		return preparedRequestPegIn{}, err
@@ -613,16 +610,6 @@ func mapUnpackedRequestPegInError(unpacked any) error {
 	default:
 		return nil
 	}
-}
-
-func rejectWitnessSerialized(rawTx []byte) error {
-	if len(rawTx) < 6 {
-		return blockchain.ErrWitnessSerializedTxNotAccepted
-	}
-	if rawTx[4] == 0x00 && rawTx[5] == 0x01 {
-		return blockchain.ErrWitnessSerializedTxNotAccepted
-	}
-	return nil
 }
 
 func requestPegInValue(amount, fee *entities.Wei) (*entities.Wei, error) {

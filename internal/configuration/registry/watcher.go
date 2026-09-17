@@ -56,6 +56,8 @@ func NewWatcherRegistry(
 		PegInAddressRegistryWatcher: peginWatcher,
 		PegInClaimWatcher: watcher.NewPegInClaimWatcher(
 			useCaseRegistry.claimPegInUseCase,
+			useCaseRegistry.settlePegInClaimUseCase,
+			dbRegistry.PegInClaimRepository,
 			dbRegistry.PegInWatchRepository,
 			btcRegistry.MonitoringWallet,
 			tickers.PegInClaimWatcherTicker,

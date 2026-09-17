@@ -392,6 +392,48 @@ func TestRskjRpcServer_GetTransactionReceipt_ErrorHandling(t *testing.T) {
 	})
 }
 
+func TestRskjRpcServer_GetTransactionReceipt_StatusZeroIsTxFailedError(t *testing.T) {
+	client := &mocks.RpcClientBindingMock{}
+	rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
+	const (
+		v int64 = 0x62
+		r       = "73e409ecab98206d4f2afbf6953739ed30002bda88760e2a211e23334766b467"
+		s       = "3a020211dfe07777d3d6373771fc848e0a777b2647ee8c4df5c1e44b22e13b39"
+	)
+	client.On("TransactionReceipt", test.AnyCtx, common.HexToHash(txHash)).Return(&types.Receipt{
+		GasUsed:           456,
+		CumulativeGasUsed: 123,
+		Status:            0,
+		TxHash:            common.HexToHash(txHash),
+		BlockHash:         common.HexToHash(blockHash),
+		BlockNumber:       big.NewInt(500),
+	}, nil).Once()
+	parsedToAddress := common.HexToAddress("0x462d7082F3671a3be160638Be3F8c23cA354f48a")
+	rAsBigInt := new(big.Int)
+	rAsBigInt.SetString(r, 16)
+	sAsBigInt := new(big.Int)
+	sAsBigInt.SetString(s, 16)
+	data, err := hex.DecodeString("5a68669900000000000000000000000000000000000000000000000002dda2a7ea1e40000000000000000000000000000000000000000000000000000000000066223d930000000000000000000000009d4b2c05818a0086e641437fcb64ab6098c7bbec")
+	require.NoError(t, err)
+	client.On("TransactionByHash", test.AnyCtx, common.HexToHash(txHash)).
+		Return(types.NewTx(&types.LegacyTx{
+			Nonce:    741514,
+			GasPrice: big.NewInt(65826581),
+			Gas:      200000,
+			To:       &parsedToAddress,
+			Value:    big.NewInt(0),
+			Data:     data,
+			V:        big.NewInt(v),
+			R:        rAsBigInt,
+			S:        sAsBigInt,
+		}), false, nil).Once()
+	receipt, err := rpc.GetTransactionReceipt(context.Background(), txHash)
+	require.ErrorIs(t, err, blockchain.TxFailedError)
+	assert.Equal(t, txHash, receipt.TransactionHash)
+	assert.Equal(t, uint64(500), receipt.BlockNumber)
+	client.AssertExpectations(t)
+}
+
 func TestRskjRpcServer_GetBlockByHash(t *testing.T) {
 	client := &mocks.RpcClientBindingMock{}
 	var now int64 = 1714471719922

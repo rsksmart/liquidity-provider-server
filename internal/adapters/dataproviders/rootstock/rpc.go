@@ -108,10 +108,10 @@ func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string
 		func() (*types.Receipt, error) {
 			return rpc.client.TransactionReceipt(ctx, common.HexToHash(hash))
 		})
+	if errors.Is(err, ethereum.NotFound) {
+		return blockchain.TransactionReceipt{}, blockchain.ErrTransactionReceiptNotFound
+	}
 	if err != nil {
-		if errors.Is(err, ethereum.NotFound) {
-			return blockchain.TransactionReceipt{}, blockchain.ErrTransactionReceiptNotFound
-		}
 		return blockchain.TransactionReceipt{}, err
 	}
 
@@ -123,7 +123,14 @@ func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string
 	if err != nil {
 		return blockchain.TransactionReceipt{}, err
 	}
-	return ParseReceipt(tx, receipt)
+	parsed, err := ParseReceipt(tx, receipt)
+	if err != nil {
+		return blockchain.TransactionReceipt{}, err
+	}
+	if receipt.Status == 0 {
+		return parsed, blockchain.TxFailedError
+	}
+	return parsed, nil
 }
 
 func (rpc *rskjRpcServer) isNewAccount(ctx context.Context, address common.Address) (bool, error) {
