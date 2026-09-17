@@ -101,3 +101,13 @@ func (m *BtcRpcMock) GetConnectionCount() (int64, error) {
 	args := m.Called()
 	return args.Get(0).(int64), args.Error(1)
 }
+
+func NewBtcRpcMock(t interface {
+	mock.TestingT
+	Cleanup(func())
+}) *BtcRpcMock {
+	rpcMock := &BtcRpcMock{}
+	rpcMock.Mock.Test(t)
+	t.Cleanup(func() { rpcMock.AssertExpectations(t) })
+	return rpcMock
+}

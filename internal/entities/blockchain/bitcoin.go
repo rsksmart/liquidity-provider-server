@@ -60,6 +60,16 @@ const (
 	BitcoinRegtestP2TRZeroAddress   = "bcrt1pqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqm3usuw"
 )
 
+func RejectWitnessSerializedTx(rawTx []byte) error {
+	if len(rawTx) < 6 {
+		return ErrWitnessSerializedTxNotAccepted
+	}
+	if rawTx[4] == 0x00 && rawTx[5] == 0x01 {
+		return ErrWitnessSerializedTxNotAccepted
+	}
+	return nil
+}
+
 // IsSupportedBtcAddress checks if flyover protocol supports the given address
 func IsSupportedBtcAddress(address string) bool {
 	return IsTestnetBtcAddress(address) || IsMainnetBtcAddress(address) || IsRegtestBtcAddress(address)
@@ -179,7 +189,9 @@ func (tx *BitcoinTransactionInformation) AmountToAddress(address string) *entiti
 		return entities.NewWei(0)
 	}
 	for _, utxo := range utxos {
-		total.Add(total, utxo)
+		if utxo != nil {
+			total.Add(total, utxo)
+		}
 	}
 	return total
 }
@@ -196,7 +208,7 @@ func (tx *BitcoinTransactionInformation) UTXOsToAddress(address string) []*entit
 // This matches LBC _readPegInAmount (first matching output), not AmountToAddress which sums.
 func (tx *BitcoinTransactionInformation) FirstOutputToAddress(address string) *entities.Wei {
 	utxos := tx.UTXOsToAddress(address)
-	if len(utxos) == 0 {
+	if len(utxos) == 0 || utxos[0] == nil {
 		return entities.NewWei(0)
 	}
 	return utxos[0]
