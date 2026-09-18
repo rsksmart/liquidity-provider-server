@@ -11,7 +11,7 @@ import (
 var (
 	ErrPegInClaimAlreadyExists = errors.New("pegin claim already exists")
 	ErrPegInClaimNotFound      = errors.New("pegin claim not found")
-	// ErrIncorrectFronting is the same sentinel as blockchain.ErrIncorrectFronting.
+	// Owned here so payable-value and the adapter share ErrorIs. blockchain aliases this var.
 	ErrIncorrectFronting = errors.New("incorrect fronting")
 )
 
@@ -31,8 +31,7 @@ type PegInClaim struct {
 	BtcAddress  string          `json:"btcAddress" bson:"btc_address"`
 	State       PegInClaimState `json:"state" bson:"state"`
 	TxHash      string          `json:"txHash" bson:"tx_hash"`
-	// PegInID records the contract event identifier. It is empty when settlement
-	// uses a successful receipt without a decodable event.
+	// Empty when a successful receipt has no PegInRequested event to unpack.
 	PegInID     string        `json:"pegInId" bson:"peg_in_id"`
 	ReservedWei *entities.Wei `json:"reservedWei" bson:"reserved_wei"`
 	CreatedAt   time.Time     `json:"createdAt" bson:"created_at"`
@@ -46,7 +45,6 @@ type PegInClaimRepository interface {
 	ListByStates(ctx context.Context, states ...PegInClaimState) ([]PegInClaim, error)
 }
 
-// CalculatePegInClaimPayableValue returns amount - fee without mutating either input.
 func CalculatePegInClaimPayableValue(amount, fee *entities.Wei) (*entities.Wei, error) {
 	if amount == nil || fee == nil {
 		return nil, ErrIncorrectFronting

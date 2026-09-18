@@ -168,7 +168,7 @@ func (useCase *ClaimPegInUseCase) ensureSpendable(
 	if err != nil {
 		return nil, useCase.unavailable(err)
 	}
-	wallet, err := useCase.rpc.Rsk.GetBalance(ctx, useCase.account.RskAddress())
+	walletBalance, err := useCase.rpc.Rsk.GetBalance(ctx, useCase.account.RskAddress())
 	if err != nil {
 		return nil, useCase.unavailable(err)
 	}
@@ -179,7 +179,7 @@ func (useCase *ClaimPegInUseCase) ensureSpendable(
 	}
 	required := new(entities.Wei).Add(payable, gasCost)
 	required.Add(required, inFlight)
-	if wallet.Cmp(required) < 0 {
+	if walletBalance.Cmp(required) < 0 {
 		return nil, useCase.releaseReserve(ctx, existing)
 	}
 	return payable, nil
@@ -238,18 +238,11 @@ func (useCase *ClaimPegInUseCase) persistTxHash(
 ) error {
 	claim.TxHash = txHash
 	claim.UpdatedAt = time.Now().UTC()
-	// RequestPegIn waits with a detached context, so the caller can be canceled
-	// after broadcast but before this critical write. Detach caller cancellation
-	// and let the repository's DatabaseInteraction timeout bound TxHash persistence.
+	// RequestPegIn already waited on awaitTx with a detached context, so the
+	// caller deadline can expire after broadcast. Bound this write with the
+	// repository timeout instead of that deadline.
 	persistCtx := context.WithoutCancel(ctx)
-	var persistErr error
-	for range 3 {
-		persistErr = useCase.claims.Update(persistCtx, *claim)
-		if persistErr == nil {
-			break
-		}
-	}
-	return persistErr
+	return useCase.claims.Update(persistCtx, *claim)
 }
 
 func (useCase *ClaimPegInUseCase) buildRequestParams(
@@ -322,8 +315,7 @@ func (useCase *ClaimPegInUseCase) finalizeSuccess(
 	return nil
 }
 
-// inFlightReserved sums ReservedWei on other candidate and submitting rows,
-// excluding the current (rskAddress, depositTxID).
+// Other in-flight reserves only. Spendable adds this deposit's payable separately.
 func (useCase *ClaimPegInUseCase) inFlightReserved(
 	ctx context.Context,
 	rskAddress string,
@@ -354,7 +346,7 @@ func (useCase *ClaimPegInUseCase) releaseReserve(ctx context.Context, existing *
 	if err != nil {
 		return useCase.unavailable(err)
 	}
-	if !reservableClaim(current) {
+	if !useCase.reservableClaim(current) {
 		return nil
 	}
 	current.ReservedWei = entities.NewWei(0)
@@ -362,7 +354,7 @@ func (useCase *ClaimPegInUseCase) releaseReserve(ctx context.Context, existing *
 	return useCase.unavailable(useCase.claims.Update(ctx, *current))
 }
 
-func reservableClaim(current *rootstock.PegInClaim) bool {
+func (useCase *ClaimPegInUseCase) reservableClaim(current *rootstock.PegInClaim) bool {
 	return current != nil &&
 		!current.IsTerminal() &&
 		current.State != rootstock.PegInClaimSubmitting &&
