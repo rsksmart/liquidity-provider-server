@@ -132,10 +132,7 @@ func (useCase *SettlePegInClaimUseCase) identifyFailed(ctx context.Context, clai
 	if simulateErr == nil {
 		return useCase.failRetryable(ctx, claim)
 	}
-	if errors.Is(simulateErr, blockchain.ErrPegInAlreadyProcessed) {
-		return useCase.classifySubmitError(ctx, claim, simulateErr)
-	}
-	return useCase.unavailable(simulateErr)
+	return useCase.classifySubmitError(ctx, claim, simulateErr)
 }
 
 func (useCase *SettlePegInClaimUseCase) classifySubmitError(
@@ -143,20 +140,29 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 	claim rootstock.PegInClaim,
 	submitErr error,
 ) error {
-	claim.ReservedWei = entities.NewWei(0)
-	claim.UpdatedAt = time.Now().UTC()
 	if errors.Is(submitErr, blockchain.ErrPegInAlreadyProcessed) {
 		claim.State = rootstock.PegInClaimRaceLost
+		claim.ReservedWei = entities.NewWei(0)
+		claim.UpdatedAt = time.Now().UTC()
 		if err := useCase.claims.Update(ctx, claim); err != nil {
 			return useCase.unavailable(err)
 		}
 		return nil
 	}
-	claim.State = rootstock.PegInClaimRetryableFailure
-	if err := useCase.claims.Update(ctx, claim); err != nil {
-		return useCase.unavailable(errors.Join(submitErr, err))
+	if errors.Is(submitErr, blockchain.ErrAddressNotRegistered) ||
+		errors.Is(submitErr, blockchain.ErrDepositOutputNotFound) ||
+		errors.Is(submitErr, blockchain.ErrInsufficientConfirmations) ||
+		errors.Is(submitErr, blockchain.ErrIncorrectFronting) {
+		claim.State = rootstock.PegInClaimRetryableFailure
+		claim.TxHash = ""
+		claim.ReservedWei = entities.NewWei(0)
+		claim.UpdatedAt = time.Now().UTC()
+		if err := useCase.claims.Update(ctx, claim); err != nil {
+			return useCase.unavailable(errors.Join(submitErr, err))
+		}
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, submitErr)
 	}
-	return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, submitErr)
+	return useCase.unavailable(submitErr)
 }
 
 func (useCase *SettlePegInClaimUseCase) failRetryable(
