@@ -223,6 +223,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	err := harness.useCase.Run(context.Background(), submittingClaim())
 	require.ErrorIs(t, err, pegin.ErrStatus0ReceiptStillCallable)
 	assert.Equal(t, rootstock.PegInClaimRetryableFailure, repo.stored().State)
+	assert.Empty(t, repo.stored().TxHash)
 	assert.Equal(t, "0", repo.stored().ReservedWei.String())
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
