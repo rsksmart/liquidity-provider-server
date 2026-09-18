@@ -96,6 +96,8 @@ type UseCaseRegistry struct {
 	getPendingRegisteredAddressImportsUseCase *watcher.GetPendingRegisteredAddressImportsUseCase
 	replayRegisteredAddressesUseCase          *watcher.ReplayRegisteredAddressesUseCase
 	finalizeRegisteredAddressImportUseCase    *watcher.FinalizeRegisteredAddressImportUseCase
+	claimPegInUseCase                         *pegin.ClaimPegInUseCase
+	settlePegInClaimUseCase                   *pegin.SettlePegInClaimUseCase
 }
 
 // NewUseCaseRegistry
@@ -189,7 +191,20 @@ func NewUseCaseRegistry(
 		getPendingRegisteredAddressImportsUseCase: getPendingRegisteredAddressImportsUseCase,
 		replayRegisteredAddressesUseCase:          replayRegisteredAddressesUseCase,
 		finalizeRegisteredAddressImportUseCase:    finalizeRegisteredAddressImportUseCase,
-		expiredPeginQuoteUseCase:                  pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
+		claimPegInUseCase: pegin.NewClaimPegInUseCase(
+			databaseRegistry.PegInClaimRepository,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			lpRegistry.LiquidityProvider,
+			mutexes.RskWalletMutex(),
+			env.Rsk.FillWithDefaults().MaxReorgDepth,
+		),
+		settlePegInClaimUseCase: pegin.NewSettlePegInClaimUseCase(
+			databaseRegistry.PegInClaimRepository,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+		),
+		expiredPeginQuoteUseCase: pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
