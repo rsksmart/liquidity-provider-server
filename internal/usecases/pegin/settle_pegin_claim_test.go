@@ -316,6 +316,39 @@ func TestSettlePegInClaimUseCase_ZeroBlockNumberStaysSubmitting(t *testing.T) {
 	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
+func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t *testing.T) {
+	cases := []error{
+		blockchain.ErrAddressNotRegistered,
+		blockchain.ErrDepositOutputNotFound,
+		blockchain.ErrInsufficientConfirmations,
+		blockchain.ErrIncorrectFronting,
+	}
+	for _, simulateErr := range cases {
+		t.Run(simulateErr.Error(), func(t *testing.T) {
+			repo := newMemoryClaimRepo(submittingClaim())
+			harness := newSettleHarness(t, repo)
+			receipt := successReceipt()
+			harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
+				Return(receipt, blockchain.TxFailedError).Once()
+			harness.rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(receipt.BlockNumber)).
+				Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
+			harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
+			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+			harness.expectBuildParams()
+			harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(simulateErr).Once()
+
+			err := harness.useCase.Run(context.Background(), submittingClaim())
+			require.ErrorIs(t, err, simulateErr)
+			require.NotErrorIs(t, err, usecases.InfrastructureUnavailableError)
+			stored := repo.stored()
+			assert.Equal(t, rootstock.PegInClaimRetryableFailure, stored.State)
+			assert.Empty(t, stored.TxHash)
+			assert.Equal(t, "0", stored.ReservedWei.String())
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		})
+	}
+}
+
 func TestSettlePegInClaimUseCase_SimulateRpcErrorStaysSubmitting(t *testing.T) {
 	claims := mocks.NewPegInClaimRepositoryMock(t)
 	harness := newSettleHarness(t, claims)
