@@ -15,7 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ErrStatus0ReceiptStillCallable = errors.New("status-0 receipt; preflight no longer reverts; not resubmitting")
+var ErrStatus0ReceiptStillCallable = errors.New("status-0 receipt; preflight no longer reverts")
 
 type SettlePegInClaimUseCase struct {
 	claims    rootstock.PegInClaimRepository
@@ -164,6 +164,7 @@ func (useCase *SettlePegInClaimUseCase) failRetryable(
 	claim rootstock.PegInClaim,
 ) error {
 	claim.State = rootstock.PegInClaimRetryableFailure
+	claim.TxHash = ""
 	claim.ReservedWei = entities.NewWei(0)
 	claim.UpdatedAt = time.Now().UTC()
 	if err := useCase.claims.Update(ctx, claim); err != nil {

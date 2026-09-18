@@ -1060,12 +1060,12 @@ func TestClaimPegInUseCase_UpdateAfterHashDoesNotClaim(t *testing.T) {
 		Event: blockchain.PegInRequestedEvent{PegInId: [32]byte{7}, RskAddress: test.AnyRskAddress},
 	}, nil).Once()
 	expectMarkerUpdate(claims)
-	claims.On("Update", mock.Anything, mock.Anything).Return(assert.AnError).Times(3)
+	claims.On("Update", mock.Anything, mock.Anything).Return(assert.AnError).Once()
 
 	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
 	harness.rsk.AssertNotCalled(t, "GetHeight", mock.Anything)
-	claims.AssertNumberOfCalls(t, "Update", 4)
+	claims.AssertNumberOfCalls(t, "Update", 2)
 }
 
 func TestClaimPegInUseCase_RaceLostUpdateErrorDoesNotClaim(t *testing.T) {
@@ -1363,61 +1363,6 @@ func TestClaimPegInUseCase_HashPersistUsesDetachedContext(t *testing.T) {
 	require.False(t, persistCanceled)
 }
 
-func TestClaimPegInUseCase_HashPersistRetriesThenFails(t *testing.T) {
-	cases := []struct {
-		name          string
-		failTimes     int
-		wantErr       bool
-		wantUpdates   int
-		wantGetHeight bool
-	}{
-		{name: "success on attempt 1", failTimes: 0, wantUpdates: 3, wantGetHeight: true},
-		{name: "success on attempt 2", failTimes: 1, wantUpdates: 4, wantGetHeight: true},
-		{name: "success on attempt 3", failTimes: 2, wantUpdates: 5, wantGetHeight: true},
-		{name: "failure after exactly three attempts", failTimes: 3, wantErr: true, wantUpdates: 4},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			claims := mocks.NewPegInClaimRepositoryMock(t)
-			harness := newClaimHarness(t, claims)
-			harness.expectPassingGates(entities.NewWei(0))
-			claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
-				Return((*rootstock.PegInClaim)(nil), nil)
-			claims.On("ListByStates", mock.Anything, rootstock.PegInClaimCandidate, rootstock.PegInClaimSubmitting).
-				Return([]rootstock.PegInClaim{}, nil).Once()
-			claims.On("Insert", mock.Anything, mock.Anything).Return(nil).Once()
-			expectMarkerUpdate(claims)
-			harness.pegin.On("RequestPegIn", mock.Anything).
-				Return(winningRequestResult([32]byte{2}), nil).Once()
-
-			hashPersist := mock.MatchedBy(func(claim rootstock.PegInClaim) bool {
-				return claim.TxHash == claimRskTxHash &&
-					claim.State == rootstock.PegInClaimSubmitting &&
-					claim.PegInID == ""
-			})
-			for i := 0; i < tc.failTimes; i++ {
-				claims.On("Update", mock.Anything, hashPersist).Return(assert.AnError).Once()
-			}
-			if !tc.wantErr {
-				claims.On("Update", mock.Anything, hashPersist).Return(nil).Once()
-				claims.On("Update", mock.Anything, mock.Anything).Return(nil).Once()
-				harness.rsk.On("GetHeight", mock.Anything).Return(uint64(102), nil).Once()
-			}
-
-			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
-			if tc.wantErr {
-				require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
-				require.ErrorIs(t, err, assert.AnError)
-				harness.rsk.AssertNotCalled(t, "GetHeight", mock.Anything)
-			} else {
-				require.NoError(t, err)
-			}
-			claims.AssertNumberOfCalls(t, "Update", tc.wantUpdates)
-			harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
-		})
-	}
-}
-
 func TestClaimPegInUseCase_HashPersistJoinsOriginalSubmitCause(t *testing.T) {
 	claims := mocks.NewPegInClaimRepositoryMock(t)
 	harness := newClaimHarness(t, claims)
@@ -1435,14 +1380,14 @@ func TestClaimPegInUseCase_HashPersistJoinsOriginalSubmitCause(t *testing.T) {
 			},
 			blockchain.ErrAddressNotRegistered,
 		).Once()
-	claims.On("Update", mock.Anything, mock.Anything).Return(assert.AnError).Times(3)
+	claims.On("Update", mock.Anything, mock.Anything).Return(assert.AnError).Once()
 
 	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 	require.ErrorIs(t, err, assert.AnError)
 	require.ErrorIs(t, err, blockchain.ErrAddressNotRegistered)
 	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
 	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
-	claims.AssertNumberOfCalls(t, "Update", 4)
+	claims.AssertNumberOfCalls(t, "Update", 2)
 }
 
 func TestClaimPegInUseCase_SubmittingEmptyHashDoesNotSubmit(t *testing.T) {
@@ -1463,6 +1408,25 @@ func TestClaimPegInUseCase_CandidateEmptyHashRetriesSubmit(t *testing.T) {
 	harness := newClaimHarness(t, repo)
 	harness.expectPassingGates(entities.NewWei(0))
 	harness.pegin.On("RequestPegIn", mock.Anything).Return(winningRequestResult([32]byte{0x11}), nil).Once()
+	harness.rsk.On("GetHeight", mock.Anything).Return(uint64(102), nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	stored := repo.stored()
+	assert.Equal(t, rootstock.PegInClaimClaimed, stored.State)
+	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+}
+
+func TestClaimPegInUseCase_RetryableFailureEmptyHashRetriesSubmit(t *testing.T) {
+	created := submittingClaim()
+	created.State = rootstock.PegInClaimRetryableFailure
+	created.TxHash = ""
+	created.ReservedWei = entities.NewWei(0)
+	repo := newMemoryClaimRepo(created)
+	harness := newClaimHarness(t, repo)
+	harness.expectPassingGates(entities.NewWei(0))
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(winningRequestResult([32]byte{0x13}), nil).Once()
 	harness.rsk.On("GetHeight", mock.Anything).Return(uint64(102), nil).Once()
 
 	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
