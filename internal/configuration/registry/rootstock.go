@@ -13,6 +13,7 @@ import (
 	peginBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	peginAddressRegistryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_address_registry"
 	pegoutBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
+	pegoutEscrowBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout_escrow"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -32,6 +33,7 @@ type rskContractBindings struct {
 	discovery             *discoveryBinding.FlyoverDiscovery
 	peginAddressRegistry  *peginAddressRegistryBinding.PegInAddressRegistryContract
 	flyoverConfigurations *flyoverConfigurationsBinding.FlyoverConfigurationsContract
+	pegoutEscrow          *pegoutEscrowBinding.PegOutEscrowContract
 }
 
 type rskBoundContracts struct {
@@ -42,6 +44,7 @@ type rskBoundContracts struct {
 	discovery             *bind.BoundContract
 	peginAddressRegistry  *bind.BoundContract
 	flyoverConfigurations *bind.BoundContract
+	pegoutEscrow          *bind.BoundContract
 }
 
 // nolint:funlen
@@ -140,6 +143,15 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				contractBindings.flyoverConfigurations,
 				abis,
 			),
+			PegOutEscrow: optionalPegOutEscrow(
+				env,
+				client,
+				boundContracts,
+				wallet,
+				timeouts,
+				contractBindings,
+				abis,
+			),
 		},
 		Wallet: wallet,
 		Client: client,
@@ -190,6 +202,10 @@ func createBoundContracts(
 	bridge := bindings.bridge.Instance(client.Rpc(), bridgeAddress)
 	peginAddressRegistry := bindings.peginAddressRegistry.Instance(client.Rpc(), peginAddressRegistryAddress)
 	flyoverConfigurations := bindings.flyoverConfigurations.Instance(client.Rpc(), flyoverConfigurationsAddress)
+	pegoutEscrow, err := bindOptionalPegOutEscrow(env.Rsk.PegOutEscrowAddress, bindings.pegoutEscrow, client)
+	if err != nil {
+		return rskBoundContracts{}, err
+	}
 
 	return rskBoundContracts{
 		bridge:                bridge,
@@ -199,6 +215,7 @@ func createBoundContracts(
 		discovery:             discovery,
 		peginAddressRegistry:  peginAddressRegistry,
 		flyoverConfigurations: flyoverConfigurations,
+		pegoutEscrow:          pegoutEscrow,
 	}, nil
 }
 
@@ -211,5 +228,45 @@ func createContractBindings() rskContractBindings {
 		discovery:             discoveryBinding.NewFlyoverDiscovery(),
 		peginAddressRegistry:  peginAddressRegistryBinding.NewPegInAddressRegistryContract(),
 		flyoverConfigurations: flyoverConfigurationsBinding.NewFlyoverConfigurationsContract(),
+		pegoutEscrow:          pegoutEscrowBinding.NewPegOutEscrowContract(),
 	}
+}
+
+func bindOptionalPegOutEscrow(
+	address string,
+	binding *pegoutEscrowBinding.PegOutEscrowContract,
+	client *rootstock.RskClient,
+) (*bind.BoundContract, error) {
+	if address == "" {
+		return nil, nil
+	}
+	var parsed common.Address
+	if err := rootstock.ParseAddress(&parsed, address); err != nil {
+		return nil, err
+	}
+	return binding.Instance(client.Rpc(), parsed), nil
+}
+
+func optionalPegOutEscrow(
+	env environment.Environment,
+	client *rootstock.RskClient,
+	bound rskBoundContracts,
+	wallet rootstock.RskSignerWallet,
+	timeouts environment.ApplicationTimeouts,
+	bindings rskContractBindings,
+	abis *rootstock.FlyoverABIs,
+) blockchain.PegOutEscrowContract {
+	if env.Rsk.PegOutEscrowAddress == "" {
+		return nil
+	}
+	return rootstock.NewPegOutEscrowContractImpl(
+		client,
+		env.Rsk.PegOutEscrowAddress,
+		bound.pegoutEscrow,
+		wallet,
+		rootstock.DefaultRetryParams,
+		timeouts.MiningWait.Seconds(),
+		bindings.pegoutEscrow,
+		abis,
+	)
 }

@@ -270,33 +270,12 @@ func (pegoutContract *pegoutContractImpl) RefundPegout(txConfig blockchain.Trans
 }
 
 func (pegoutContract *pegoutContractImpl) GetDepositEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]quote.PegoutDeposit, error) {
-	var lbcEvent *bindings.PegoutContractPegOutDeposit
-	result := make([]quote.PegoutDeposit, 0)
-
-	iterator, err := bind.FilterEvents(
-		pegoutContract.contract,
-		&bind.FilterOpts{
-			Start:   fromBlock,
-			End:     toBlock,
-			Context: ctx,
-		},
-		pegoutContract.binding.UnpackPegOutDepositEvent,
-	)
-
-	defer func() {
-		if iterator == nil {
-			return
-		}
-		if iteratorError := iterator.Close(); iteratorError != nil {
-			log.Error("Error closing PegOutDeposit event iterator: ", iteratorError)
-		}
-	}()
-	if err != nil || iterator == nil {
+	events, err := filterBoundEvents(ctx, pegoutContract.contract, fromBlock, toBlock, pegoutContract.binding.UnpackPegOutDepositEvent, "PegOutDeposit")
+	if err != nil {
 		return nil, err
 	}
-
-	for iterator.Next() {
-		lbcEvent = iterator.Value()
+	result := make([]quote.PegoutDeposit, 0, len(events))
+	for _, lbcEvent := range events {
 		result = append(result, quote.PegoutDeposit{
 			TxHash:      lbcEvent.Raw.TxHash.String(),
 			QuoteHash:   hex.EncodeToString(lbcEvent.QuoteHash[:]),
@@ -306,10 +285,6 @@ func (pegoutContract *pegoutContractImpl) GetDepositEvents(ctx context.Context, 
 			From:        lbcEvent.Sender.String(),
 		})
 	}
-	if err = iterator.Error(); err != nil {
-		return nil, err
-	}
-
 	return result, nil
 }
 

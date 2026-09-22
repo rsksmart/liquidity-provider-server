@@ -4,6 +4,7 @@ package mocks
 
 import (
 	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
+	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -78,6 +79,64 @@ func (_c *FlyoverConfigurationsContractMock_CalculatePegInFee_Call) RunAndReturn
 	return _c
 }
 
+// CalculatePegOutFee provides a mock function with given fields: amount
+func (_m *FlyoverConfigurationsContractMock) CalculatePegOutFee(amount *entities.Wei) (*entities.Wei, error) {
+	ret := _m.Called(amount)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CalculatePegOutFee")
+	}
+
+	var r0 *entities.Wei
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*entities.Wei) (*entities.Wei, error)); ok {
+		return rf(amount)
+	}
+	if rf, ok := ret.Get(0).(func(*entities.Wei) *entities.Wei); ok {
+		r0 = rf(amount)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*entities.Wei)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*entities.Wei) error); ok {
+		r1 = rf(amount)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FlyoverConfigurationsContractMock_CalculatePegOutFee_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CalculatePegOutFee'
+type FlyoverConfigurationsContractMock_CalculatePegOutFee_Call struct {
+	*mock.Call
+}
+
+// CalculatePegOutFee is a helper method to define mock.On call
+//   - amount *entities.Wei
+func (_e *FlyoverConfigurationsContractMock_Expecter) CalculatePegOutFee(amount interface{}) *FlyoverConfigurationsContractMock_CalculatePegOutFee_Call {
+	return &FlyoverConfigurationsContractMock_CalculatePegOutFee_Call{Call: _e.mock.On("CalculatePegOutFee", amount)}
+}
+
+func (_c *FlyoverConfigurationsContractMock_CalculatePegOutFee_Call) Run(run func(amount *entities.Wei)) *FlyoverConfigurationsContractMock_CalculatePegOutFee_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*entities.Wei))
+	})
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_CalculatePegOutFee_Call) Return(_a0 *entities.Wei, _a1 error) *FlyoverConfigurationsContractMock_CalculatePegOutFee_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_CalculatePegOutFee_Call) RunAndReturn(run func(*entities.Wei) (*entities.Wei, error)) *FlyoverConfigurationsContractMock_CalculatePegOutFee_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAddress provides a mock function with no fields
 func (_m *FlyoverConfigurationsContractMock) GetAddress() string {
 	ret := _m.Called()
@@ -119,6 +178,61 @@ func (_c *FlyoverConfigurationsContractMock_GetAddress_Call) Return(_a0 string) 
 }
 
 func (_c *FlyoverConfigurationsContractMock_GetAddress_Call) RunAndReturn(run func() string) *FlyoverConfigurationsContractMock_GetAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPegOutConfiguration provides a mock function with no fields
+func (_m *FlyoverConfigurationsContractMock) GetPegOutConfiguration() (blockchain.PegOutConfiguration, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPegOutConfiguration")
+	}
+
+	var r0 blockchain.PegOutConfiguration
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (blockchain.PegOutConfiguration, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() blockchain.PegOutConfiguration); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(blockchain.PegOutConfiguration)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPegOutConfiguration'
+type FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call struct {
+	*mock.Call
+}
+
+// GetPegOutConfiguration is a helper method to define mock.On call
+func (_e *FlyoverConfigurationsContractMock_Expecter) GetPegOutConfiguration() *FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call {
+	return &FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call{Call: _e.mock.On("GetPegOutConfiguration")}
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call) Run(run func()) *FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call) Return(_a0 blockchain.PegOutConfiguration, _a1 error) *FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call) RunAndReturn(run func() (blockchain.PegOutConfiguration, error)) *FlyoverConfigurationsContractMock_GetPegOutConfiguration_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -175,6 +289,62 @@ func (_c *FlyoverConfigurationsContractMock_GetRequiredPegInBtcConfirmations_Cal
 }
 
 func (_c *FlyoverConfigurationsContractMock_GetRequiredPegInBtcConfirmations_Call) RunAndReturn(run func(*entities.Wei) (uint64, error)) *FlyoverConfigurationsContractMock_GetRequiredPegInBtcConfirmations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRequiredPegOutBtcConfirmations provides a mock function with given fields: amount
+func (_m *FlyoverConfigurationsContractMock) GetRequiredPegOutBtcConfirmations(amount *entities.Wei) (uint64, error) {
+	ret := _m.Called(amount)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRequiredPegOutBtcConfirmations")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*entities.Wei) (uint64, error)); ok {
+		return rf(amount)
+	}
+	if rf, ok := ret.Get(0).(func(*entities.Wei) uint64); ok {
+		r0 = rf(amount)
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func(*entities.Wei) error); ok {
+		r1 = rf(amount)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRequiredPegOutBtcConfirmations'
+type FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call struct {
+	*mock.Call
+}
+
+// GetRequiredPegOutBtcConfirmations is a helper method to define mock.On call
+//   - amount *entities.Wei
+func (_e *FlyoverConfigurationsContractMock_Expecter) GetRequiredPegOutBtcConfirmations(amount interface{}) *FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call {
+	return &FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call{Call: _e.mock.On("GetRequiredPegOutBtcConfirmations", amount)}
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call) Run(run func(amount *entities.Wei)) *FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*entities.Wei))
+	})
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call) Return(_a0 uint64, _a1 error) *FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call) RunAndReturn(run func(*entities.Wei) (uint64, error)) *FlyoverConfigurationsContractMock_GetRequiredPegOutBtcConfirmations_Call {
 	_c.Call.Return(run)
 	return _c
 }
