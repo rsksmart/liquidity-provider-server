@@ -55,3 +55,10 @@ func IsLockUnspentAlreadyUnlocked(err error) bool {
 	return IsRPCCode(err, btcjson.ErrRPCInvalidParameter) &&
 		strings.Contains(strings.ToLower(err.Error()), "expected unspent output")
 }
+
+func IsAddressAlreadyImported(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "already imported")
+}
