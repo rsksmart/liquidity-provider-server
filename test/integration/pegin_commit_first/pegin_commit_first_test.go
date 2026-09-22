@@ -51,9 +51,9 @@ func (s *CommitFirstSuite) SetupSuite() {
 	s.rsk.WaitBridgeBtcAtLeast(t, s.btc.Height(t))
 }
 
-func (s *CommitFirstSuite) mineUntilBridgeSeesTip(blocks int64) {
+func (s *CommitFirstSuite) mineUntilBridgeSeesTip() {
 	t := s.T()
-	s.btc.Mine(t, blocks)
+	s.btc.Mine(t, 1)
 	s.rsk.WaitBridgeBtcAtLeast(t, s.btc.Height(t))
 }
 
@@ -164,7 +164,7 @@ func (s *CommitFirstSuite) TestFirstDepositRegisterImportClaim() {
 	root := s.rsk.GetRegistrationRoot(t, head-regtest.FinalityDepth)
 	require.NotEqual(t, [32]byte{}, root)
 
-	s.mineUntilBridgeSeesTip(1)
+	s.mineUntilBridgeSeesTip()
 	s.waitClaimSuccess(deposit)
 
 	s.user = deposit.user
@@ -212,14 +212,14 @@ func (s *CommitFirstSuite) TestBelowConfirmationsThenClaim() {
 	s.mongo.WaitNoPaidClaim(t, deposit.user, deposit.depositTxID)
 	require.Zero(t, deposit.before.Cmp(s.rsk.Balance(t, deposit.user)))
 
-	s.mineUntilBridgeSeesTip(1)
+	s.mineUntilBridgeSeesTip()
 	s.waitClaimSuccess(deposit)
 }
 
 func (s *CommitFirstSuite) TestRaceLostCompetingClaimer() {
 	t := s.T()
 	deposit := s.importAtOneConfirmation()
-	s.mineUntilBridgeSeesTip(1)
+	s.mineUntilBridgeSeesTip()
 	s.rsk.RequestPegInAsCompetitor(t, deposit.user, s.btc.Rpc, deposit.depositTxID, deposit.net)
 	s.rsk.WaitBalanceIncreasedBy(t, deposit.user, deposit.before, deposit.net)
 	paid := s.rsk.Balance(t, deposit.user)
@@ -235,7 +235,7 @@ func (s *CommitFirstSuite) TestInsufficientLiquidityThenFund() {
 		s.rsk.FundLPS(t, entities.EtherToWei(1).AsBigInt())
 	})
 
-	s.mineUntilBridgeSeesTip(1)
+	s.mineUntilBridgeSeesTip()
 	s.mongo.WaitNoPaidClaim(t, deposit.user, deposit.depositTxID)
 	require.Zero(t, deposit.before.Cmp(s.rsk.Balance(t, deposit.user)))
 
@@ -248,7 +248,7 @@ func (s *CommitFirstSuite) TestSubmittingEmptyTxHashDoesNotResubmit() {
 	deposit := s.importAtOneConfirmation()
 	logBefore := regtest.LPSLogLen(t)
 	s.mongo.InsertSubmittingEmptyTxHash(t, deposit.user, deposit.depositTxID, deposit.btcAddr)
-	s.mineUntilBridgeSeesTip(1)
+	s.mineUntilBridgeSeesTip()
 	s.rsk.WaitBalanceUnchanged(t, deposit.user, deposit.before)
 	claim := s.mongo.GetClaim(t, deposit.user, deposit.depositTxID)
 	require.NotNil(t, claim)
@@ -263,7 +263,7 @@ func (s *CommitFirstSuite) TestBelowFlyoverMinDoesNotClaim() {
 	btcAddr := s.rsk.GetPegInAddress(t, user)
 	amount := entities.SatoshiToWei(100_000)
 	min := s.rsk.MinAmount(t)
-	require.True(t, amount.Cmp(min) < 0, "fixture 0.001 BTC must sit below on-chain minAmount %s", min.AsBigInt())
+	require.Negative(t, amount.Cmp(min), "fixture 0.001 BTC must sit below on-chain minAmount %s", min.AsBigInt())
 	before := s.rsk.Balance(t, user)
 	params, err := s.btc.Env.GetNetworkParams()
 	require.NoError(t, err)
@@ -279,7 +279,7 @@ func (s *CommitFirstSuite) TestBelowFlyoverMinDoesNotClaim() {
 	s.rsk.Advance(t, regtest.FinalityDepth)
 	watch := s.mongo.WaitWatchImported(t, user)
 	require.Equal(t, btcAddr, watch.BtcAddress)
-	s.mineUntilBridgeSeesTip(1)
+	s.mineUntilBridgeSeesTip()
 	s.mongo.WaitNoPaidClaim(t, user, depositTxID)
 	require.Zero(t, before.Cmp(s.rsk.Balance(t, user)))
 	require.Nil(t, s.mongo.GetClaim(t, user, depositTxID))
@@ -292,7 +292,7 @@ func (s *CommitFirstSuite) TestHardPauseDoesNotClaim() {
 	t.Cleanup(func() {
 		s.rsk.SetPauseLevel(t, blockchain.PauseLevelNone, "")
 	})
-	s.mineUntilBridgeSeesTip(1)
+	s.mineUntilBridgeSeesTip()
 	s.mongo.WaitNoPaidClaim(t, deposit.user, deposit.depositTxID)
 	require.Zero(t, deposit.before.Cmp(s.rsk.Balance(t, deposit.user)))
 	s.rsk.SetPauseLevel(t, blockchain.PauseLevelNone, "")
