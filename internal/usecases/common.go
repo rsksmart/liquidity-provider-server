@@ -49,6 +49,8 @@ const (
 	GetPendingRegisteredAddressImportsId UseCaseId = "GetPendingRegisteredAddressImports"
 	ReplayRegisteredAddressesId          UseCaseId = "ReplayRegisteredAddresses"
 	FinalizeRegisteredAddressImportId    UseCaseId = "FinalizeRegisteredAddressImport"
+	ClaimPegInId                         UseCaseId = "ClaimPegIn"
+	SettlePegInClaimId                   UseCaseId = "SettlePegInClaim"
 	ExpiredPeginQuoteId                  UseCaseId = "ExpiredPeginQuote"
 	ExpiredPegoutQuoteId                 UseCaseId = "ExpiredPegoutQuote"
 	UpdatePegoutDepositId                UseCaseId = "UpdatePegoutDeposit"
@@ -93,6 +95,7 @@ const (
 
 var (
 	NonRecoverableError                 = errors.New("non recoverable")
+	InfrastructureUnavailableError      = errors.New("infrastructure unavailable")
 	TxBelowMinimumError                 = errors.New("requested amount should be greater than bridge's min transaction value")
 	RskAddressNotSupportedError         = errors.New("rsk address not supported")
 	QuoteNotFoundError                  = errors.New("quote not found")

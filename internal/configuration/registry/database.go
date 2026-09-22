@@ -16,6 +16,7 @@ type Database struct {
 	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
 	BatchPegOutRepository       rootstock.BatchPegOutRepository
 	PegInWatchRepository        rootstock.PegInWatchRepository
+	PegInClaimRepository        rootstock.PegInClaimRepository
 	Connection                  *mongo.Connection
 }
 
@@ -29,6 +30,7 @@ func NewDatabaseRegistry(connection *mongo.Connection) *Database {
 		TrustedAccountRepository:    mongo.NewTrustedAccountRepository(connection),
 		BatchPegOutRepository:       mongo.NewBatchPegOutMongoRepository(connection),
 		PegInWatchRepository:        peginWatchRepository,
+		PegInClaimRepository:        mongo.NewPegInClaimMongoRepository(connection),
 		Connection:                  connection,
 	}
 }

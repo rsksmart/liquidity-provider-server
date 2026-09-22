@@ -187,3 +187,15 @@ func TestPegInClaimMongoRepository_ListByStates(t *testing.T) {
 		collection.AssertExpectations(t)
 	})
 }
+
+func TestPegInClaimMongoRepository_ListByStatesEmptyFilter(t *testing.T) {
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().Find(mock.Anything, bson.M{}).
+		Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.ListByStates(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, result)
+	collection.AssertExpectations(t)
+}

@@ -274,3 +274,28 @@ func LogPeginBtcCallForUserError(quoteHash string, err error) string {
 func LogPeginBtcUpdateExpiredError(quoteHash string, err error) string {
 	return fmt.Sprintf(LogPeginBtcPrefix+"Error updating expired quote (%s): %v", quoteHash, err)
 }
+
+const (
+	LogPegInClaimShutdown  = "PegInClaimWatcher shut down"
+	LogPegInClaimListError = "PegInClaimWatcher: error listing imported addresses: %v"
+)
+
+func LogPegInClaimWalletError(btcAddress string, err error) string {
+	return fmt.Sprintf("PegInClaimWatcher: error reading wallet history for %s: %v", btcAddress, err)
+}
+
+func LogPegInClaimRunError(rskAddress, depositTxID string, err error) string {
+	return fmt.Sprintf("PegInClaimWatcher: error claiming deposit %s for %s: %v", depositTxID, rskAddress, err)
+}
+
+func LogPegInClaimSettleListError(err error) string {
+	return fmt.Sprintf("PegInClaimWatcher: error listing submitting claims: %v", err)
+}
+
+func LogPegInClaimSettleAborted(rskAddress, depositTxID string, err error) string {
+	return fmt.Sprintf("PegInClaimWatcher: aborted settlement pass at %s/%s: %v", rskAddress, depositTxID, err)
+}
+
+func LogPegInClaimSettleError(rskAddress, depositTxID string, err error) string {
+	return fmt.Sprintf("PegInClaimWatcher: error settling claim %s/%s: %v", rskAddress, depositTxID, err)
+}
