@@ -85,11 +85,30 @@ func (wallet *WatchOnlyWallet) ImportAddress(address string) error {
 	return wallet.conn.client.ImportAddressRescan(address, "", false)
 }
 
+func (wallet *WatchOnlyWallet) RescanBlockchain(fromHeight int64) (blockchain.BitcoinRescanResult, error) {
+	fromHeight = max(fromHeight, 0)
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return blockchain.BitcoinRescanResult{}, err
+	}
+	result, err := wallet.conn.client.RescanBlockchain(fromHeight)
+	if err != nil {
+		return blockchain.BitcoinRescanResult{}, err
+	}
+	return blockchain.BitcoinRescanResult{StartHeight: result.StartHeight, StopHeight: result.StopHeight}, nil
+}
+
 func (wallet *WatchOnlyWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return nil, err
 	}
 	return getTransactionsToAddress(address, wallet.conn.NetworkParams, wallet.conn.client)
+}
+
+func (wallet *WatchOnlyWallet) GetTransaction(hash string) (blockchain.BitcoinTransactionInformation, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return blockchain.BitcoinTransactionInformation{}, err
+	}
+	return getWalletTransaction(hash, wallet.conn.client)
 }
 
 func (wallet *WatchOnlyWallet) Address() string {
