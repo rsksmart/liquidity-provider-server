@@ -174,6 +174,7 @@ func (registry *peginAddressRegistryContractImpl) GetAddressRegisteredEvents(ctx
 			RegistrationRoot: lbcEvent.RegistrationRoot,
 			TxHash:           lbcEvent.Raw.TxHash.String(),
 			BlockNumber:      lbcEvent.Raw.BlockNumber,
+			LogIndex:         lbcEvent.Raw.Index,
 		})
 	}
 	if err = iterator.Error(); err != nil {

@@ -258,6 +258,18 @@ func TestPegInAddressRegistryContractImpl_GetAddressRegisteredEvents(t *testing.
 		{
 			TxHash:      common.Hash{7},
 			BlockNumber: 10,
+			Index:       3,
+			Topics: []common.Hash{
+				eventID,
+				common.BytesToHash(rskAddr.Bytes()),
+				common.BytesToHash(registrant.Bytes()),
+			},
+			Data: root[:],
+		},
+		{
+			TxHash:      common.Hash{8},
+			BlockNumber: 10,
+			Index:       9,
 			Topics: []common.Hash{
 				eventID,
 				common.BytesToHash(rskAddr.Bytes()),
@@ -280,6 +292,15 @@ func TestPegInAddressRegistryContractImpl_GetAddressRegisteredEvents(t *testing.
 				RegistrationRoot: root,
 				TxHash:           common.Hash{7}.String(),
 				BlockNumber:      10,
+				LogIndex:         3,
+			},
+			{
+				RskAddress:       rskAddr.String(),
+				Registrant:       registrant.String(),
+				RegistrationRoot: root,
+				TxHash:           common.Hash{8}.String(),
+				BlockNumber:      10,
+				LogIndex:         9,
 			},
 		}, result)
 		contractMock.filterer.AssertExpectations(t)
