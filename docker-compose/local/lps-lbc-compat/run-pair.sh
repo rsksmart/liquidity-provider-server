@@ -261,15 +261,34 @@ MATRIX_CLI=(npx --yes tsx "${E2E_REPO}/scripts/compat-matrix-cli.ts")
 
 matrix_cli() {
   (
-    cd "$E2E_REPO"
+    cd "$E2E_REPO" || exit 1
     "${MATRIX_CLI[@]}" "$@"
   )
-  return 0
+}
+
+# Capture CLI stdout; exit with a clear error if the CLI fails.
+require_matrix_cli() {
+  local output=""
+  local rc=0
+  set +e
+  output="$(matrix_cli "$@")"
+  rc=$?
+  set -e
+  if [[ $rc -ne 0 ]]; then
+    echo "ERROR: compatibility matrix CLI failed: $*" >&2
+    exit 1
+  fi
+  printf '%s\n' "$output"
 }
 
 resolve_smoke_settings() {
   if [[ "$SMOKE_TESTS_EXPLICIT" != "true" ]]; then
-    SMOKE_TESTS="$(matrix_cli smoke-tests)"
+    SMOKE_TESTS="$(require_matrix_cli smoke-tests)"
+  fi
+  SMOKE_TESTS="$(printf '%s' "$SMOKE_TESTS" | tr -d '[:space:]')"
+  if [[ -z "$SMOKE_TESTS" ]]; then
+    echo "ERROR: no smoke tests returned by compatibility matrix CLI (or --smoke-tests was empty)" >&2
+    exit 1
   fi
 }
 
@@ -546,13 +565,17 @@ start_lps_stack() {
 smoke_file_for_id() {
   local smoke_id="$1"
   local files_tsv
-  files_tsv="$(matrix_cli smoke-files)"
+  files_tsv="$(require_matrix_cli smoke-files)"
   local ids
-  ids="$(matrix_cli smoke-tests)"
+  ids="$(require_matrix_cli smoke-tests)"
   local -a id_arr=()
   local -a file_arr=()
+  local line
   IFS=',' read -r -a id_arr <<<"$ids"
-  mapfile -t file_arr <<<"$files_tsv"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" ]] && continue
+    file_arr+=("$line")
+  done <<<"$files_tsv"
   local i
   for i in "${!id_arr[@]}"; do
     if [[ "${id_arr[$i]}" == "$smoke_id" ]]; then
@@ -580,8 +603,17 @@ run_e2e_smokes() {
     npm ci
   fi
 
+  if [[ -z "$SMOKE_TESTS" ]]; then
+    echo "ERROR: no smoke tests to run (empty smoke list)" >&2
+    exit 1
+  fi
+
   IFS=',' read -r -a case_ids <<<"$SMOKE_TESTS"
   SMOKE_TOTAL=${#case_ids[@]}
+  if [[ $SMOKE_TOTAL -eq 0 ]]; then
+    echo "ERROR: no smoke tests to run (empty smoke list)" >&2
+    exit 1
+  fi
   SMOKE_PASSED=0
   SMOKE_FAILED=0
 
@@ -610,7 +642,7 @@ run_e2e_smokes() {
   echo "COMPAT_SMOKE_SUMMARY passed=${SMOKE_PASSED} failed=${SMOKE_FAILED} total=${SMOKE_TOTAL}"
 
   local status
-  status="$(matrix_cli smoke-status "$SMOKE_PASSED" "$SMOKE_TOTAL")"
+  status="$(require_matrix_cli smoke-status "$SMOKE_PASSED" "$SMOKE_TOTAL")"
   case "$status" in
     pass) return 0 ;;
     partial) return 2 ;;
@@ -655,7 +687,7 @@ main() {
   set -e
 
   local smoke_status
-  smoke_status="$(matrix_cli smoke-status "$SMOKE_PASSED" "$SMOKE_TOTAL")"
+  smoke_status="$(require_matrix_cli smoke-status "$SMOKE_PASSED" "$SMOKE_TOTAL")"
   echo ""
   case "$smoke_status" in
     pass)
