@@ -9,6 +9,7 @@ type ApplicationTickers struct {
 	PeginDepositWatcherTicker      utils.Ticker
 	PenalizationCheckTicker        utils.Ticker
 	PegoutDepositWatcherTicker     utils.Ticker
+	PegoutEscrowWatcherTicker      utils.Ticker
 	PegoutBtcTransferWatcherTicker utils.Ticker
 	PegoutBridgeWatcherTicker      utils.Ticker
 	BitcoinEclipseCheckTicker      utils.Ticker
@@ -30,6 +31,7 @@ func NewApplicationTickers() *ApplicationTickers {
 		PeginDepositWatcherTicker:      utils.NewTickerWrapper(peginDepositWatcherInterval),
 		PenalizationCheckTicker:        utils.NewTickerWrapper(penalizationCheckInterval),
 		PegoutDepositWatcherTicker:     utils.NewTickerWrapper(pegoutDepositWatcherInterval),
+		PegoutEscrowWatcherTicker:      utils.NewTickerWrapper(pegoutEscrowWatcherInterval),
 		PegoutBtcTransferWatcherTicker: utils.NewTickerWrapper(pegoutBtcTransferWatcherInterval),
 		PegoutBridgeWatcherTicker:      utils.NewTickerWrapper(pegoutBridgeWatcherInterval),
 		BitcoinEclipseCheckTicker:      utils.NewTickerWrapper(bitcoinEclipseCheckInterval),
