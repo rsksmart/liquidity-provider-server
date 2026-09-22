@@ -32,6 +32,7 @@ func setUpEnv(t *testing.T) {
 		"ECLIPSE_ALERT_COOLDOWN_SECONDS":       "60",
 		"ECLIPSE_CHECK_ENABLED":                "true",
 		"BTC_RELEASE_WATCHER_START_BLOCK":      "1",
+		"PEGOUT_ESCROW_WATCHER_START_BLOCK":    "1",
 		// TODO: placeholder address while PegOutEscrow is undeployed; revisit once the real contract
 		// exists and PEGOUT_ESCROW_ADDRESS becomes required (see RskEnv.PegOutEscrowAddress).
 		"PEGOUT_ESCROW_ADDRESS": "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA1",
