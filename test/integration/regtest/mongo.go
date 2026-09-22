@@ -35,7 +35,7 @@ func OpenMongo(t *testing.T) *MongoStack {
 	t.Cleanup(func() {
 		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer disconnectCancel()
-		_ = client.Disconnect(disconnectCtx)
+		require.NoError(t, client.Disconnect(disconnectCtx))
 	})
 	return &MongoStack{
 		client: client,

@@ -93,7 +93,7 @@ func (stack *BitcoinStack) Height(t *testing.T) int64 {
 func btcHostEnv(t *testing.T) environment.BtcEnv {
 	t.Helper()
 	var env environment.Environment
-	_ = environment.Load(&env)
+	require.NoError(t, environment.Load(&env))
 	btc := env.Btc
 	if btc.Network == "" {
 		btc.Network = defaultBtcNetwork

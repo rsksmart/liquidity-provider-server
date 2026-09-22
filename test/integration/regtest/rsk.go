@@ -91,32 +91,10 @@ func OpenRootstock(t *testing.T, cfg *integration.Config) *RootstockStack {
 	require.NoError(t, err)
 	require.Equal(t, uint64(RskChainID), chainID.Uint64())
 
-	deployer, err := crypto.HexToECDSA(DeployerPrivateKeyHex)
-	require.NoError(t, err)
-	deployerAddress := crypto.PubkeyToAddress(deployer.PublicKey)
-	require.Equal(t, common.HexToAddress(DeployerAddressHex), deployerAddress)
-
-	registryAddr := common.HexToAddress(cfg.Rsk.PeginAddressRegistry)
-	configurationsAddr := common.HexToAddress(cfg.Rsk.FlyoverConfigurations)
-	pegInAddr := common.HexToAddress(cfg.Rsk.PeginContract)
-	pauseAddr := common.HexToAddress(cfg.Rsk.PauseRegistry)
-	require.False(t, isZeroAddress(registryAddr), "peginAddressRegistry is missing from integration-test.config.json")
-	require.False(t, isZeroAddress(configurationsAddr), "flyoverConfigurations is missing from integration-test.config.json")
-	require.False(t, isZeroAddress(pegInAddr), "peginContract is missing from integration-test.config.json")
-	require.False(t, isZeroAddress(pauseAddr), "pauseRegistry is missing from integration-test.config.json")
-
+	deployer, deployerAddress := deployerAccount(t)
+	addrs := requireConfiguredAddresses(t, cfg)
+	bindings := bindFlyoverContracts(client, addrs)
 	abis := rootstock.MustLoadFlyoverABIs()
-	registryBinding := peginAddressRegistryBinding.NewPegInAddressRegistryContract()
-	configurationsBinding := flyoverConfigurationsBinding.NewFlyoverConfigurationsContract()
-	pegInBinding := peginCommitFirstBinding.NewPeginCommitFirstContract()
-	pauseBinding := pauseRegistryBinding.NewPauseRegistryContract()
-	rskBridgeBinding := bridgeBinding.NewRskBridge()
-	registryBound := registryBinding.Instance(client, registryAddr)
-	configurationsBound := configurationsBinding.Instance(client, configurationsAddr)
-	pegInBound := pegInBinding.Instance(client, pegInAddr)
-	pauseBound := pauseBinding.Instance(client, pauseAddr)
-	bridgeAddr := common.HexToAddress(RskBridgeHex)
-	bridgeBound := rskBridgeBinding.Instance(client, bridgeAddr)
 
 	return &RootstockStack{
 		client:          client,
@@ -124,33 +102,97 @@ func OpenRootstock(t *testing.T, cfg *integration.Config) *RootstockStack {
 		ChainID:         chainID,
 		Deployer:        deployer,
 		DeployerAddress: deployerAddress,
-		RegistryAddr:    registryAddr,
-		PegInAddr:       pegInAddr,
-		PauseAddr:       pauseAddr,
+		RegistryAddr:    addrs.registry,
+		PegInAddr:       addrs.pegIn,
+		PauseAddr:       addrs.pause,
 		registry: rootstock.NewPegInAddressRegistryContractImpl(
 			rskClient,
-			registryAddr.Hex(),
-			registryBound,
+			addrs.registry.Hex(),
+			bindings.registryBound,
 			noRetry,
-			registryBinding,
+			bindings.registryBinding,
 			abis,
 		),
 		configurations: rootstock.NewFlyoverConfigurationsContractImpl(
 			rskClient,
-			configurationsAddr.Hex(),
-			configurationsBound,
+			addrs.configurations.Hex(),
+			bindings.configurationsBound,
 			noRetry,
-			configurationsBinding,
+			bindings.configurationsBinding,
 			abis,
 		),
-		registryBinding: registryBinding,
-		registryBound:   registryBound,
-		pegInBinding:    pegInBinding,
-		pegInBound:      pegInBound,
-		pauseBinding:    pauseBinding,
-		pauseBound:      pauseBound,
-		bridgeBinding:   rskBridgeBinding,
-		bridgeBound:     bridgeBound,
+		registryBinding: bindings.registryBinding,
+		registryBound:   bindings.registryBound,
+		pegInBinding:    bindings.pegInBinding,
+		pegInBound:      bindings.pegInBound,
+		pauseBinding:    bindings.pauseBinding,
+		pauseBound:      bindings.pauseBound,
+		bridgeBinding:   bindings.bridgeBinding,
+		bridgeBound:     bindings.bridgeBound,
+	}
+}
+
+func deployerAccount(t *testing.T) (*ecdsa.PrivateKey, common.Address) {
+	t.Helper()
+	deployer, err := crypto.HexToECDSA(DeployerPrivateKeyHex)
+	require.NoError(t, err)
+	addr := crypto.PubkeyToAddress(deployer.PublicKey)
+	require.Equal(t, common.HexToAddress(DeployerAddressHex), addr)
+	return deployer, addr
+}
+
+type flyoverAddresses struct {
+	registry       common.Address
+	configurations common.Address
+	pegIn          common.Address
+	pause          common.Address
+}
+
+func requireConfiguredAddresses(t *testing.T, cfg *integration.Config) flyoverAddresses {
+	t.Helper()
+	addrs := flyoverAddresses{
+		registry:       common.HexToAddress(cfg.Rsk.PeginAddressRegistry),
+		configurations: common.HexToAddress(cfg.Rsk.FlyoverConfigurations),
+		pegIn:          common.HexToAddress(cfg.Rsk.PeginContract),
+		pause:          common.HexToAddress(cfg.Rsk.PauseRegistry),
+	}
+	require.False(t, isZeroAddress(addrs.registry), "peginAddressRegistry is missing from integration-test.config.json")
+	require.False(t, isZeroAddress(addrs.configurations), "flyoverConfigurations is missing from integration-test.config.json")
+	require.False(t, isZeroAddress(addrs.pegIn), "peginContract is missing from integration-test.config.json")
+	require.False(t, isZeroAddress(addrs.pause), "pauseRegistry is missing from integration-test.config.json")
+	return addrs
+}
+
+type flyoverBindings struct {
+	registryBinding       *peginAddressRegistryBinding.PegInAddressRegistryContract
+	configurationsBinding *flyoverConfigurationsBinding.FlyoverConfigurationsContract
+	pegInBinding          *peginCommitFirstBinding.PeginCommitFirstContract
+	pauseBinding          *pauseRegistryBinding.PauseRegistryContract
+	bridgeBinding         *bridgeBinding.RskBridge
+	registryBound         *bind.BoundContract
+	configurationsBound   *bind.BoundContract
+	pegInBound            *bind.BoundContract
+	pauseBound            *bind.BoundContract
+	bridgeBound           *bind.BoundContract
+}
+
+func bindFlyoverContracts(client rootstock.RpcClientBinding, addrs flyoverAddresses) flyoverBindings {
+	registryBinding := peginAddressRegistryBinding.NewPegInAddressRegistryContract()
+	configurationsBinding := flyoverConfigurationsBinding.NewFlyoverConfigurationsContract()
+	pegInBinding := peginCommitFirstBinding.NewPeginCommitFirstContract()
+	pauseBinding := pauseRegistryBinding.NewPauseRegistryContract()
+	rskBridgeBinding := bridgeBinding.NewRskBridge()
+	return flyoverBindings{
+		registryBinding:       registryBinding,
+		configurationsBinding: configurationsBinding,
+		pegInBinding:          pegInBinding,
+		pauseBinding:          pauseBinding,
+		bridgeBinding:         rskBridgeBinding,
+		registryBound:         registryBinding.Instance(client, addrs.registry),
+		configurationsBound:   configurationsBinding.Instance(client, addrs.configurations),
+		pegInBound:            pegInBinding.Instance(client, addrs.pegIn),
+		pauseBound:            pauseBinding.Instance(client, addrs.pause),
+		bridgeBound:           rskBridgeBinding.Instance(client, common.HexToAddress(RskBridgeHex)),
 	}
 }
 
@@ -355,7 +397,7 @@ func (stack *RootstockStack) send(
 	to common.Address,
 	value *big.Int,
 	data []byte,
-) *types.Receipt {
+) {
 	t.Helper()
 	opts := bind.NewKeyedTransactor(key, stack.ChainID)
 	opts.Value = value
@@ -386,7 +428,6 @@ func (stack *RootstockStack) send(
 	receipt, err := bind.WaitMined(ctx, stack.client, tx.Hash())
 	require.NoError(t, err)
 	require.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
-	return receipt
 }
 
 func (stack *RootstockStack) contractAt(t *testing.T, to common.Address) *bind.BoundContract {
