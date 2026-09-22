@@ -16,6 +16,9 @@
     "pegoutContract": "0x145845fd06c85B7EA1AA2d030E1a747B3d8d15D7",
     "discoveryContract": "0x75A656f083B217F91f32D6BAC18694ddd38e036A",
     "collateralManagementContract": "0x13cF0a53b6102b518e8b547d5E50b38C1b089E08",
+    "peginAddressRegistry": "0x0000000000000000000000000000000000000000",
+    "flyoverConfigurations": "0x0000000000000000000000000000000000000000",
+    "pauseRegistry": "0x0000000000000000000000000000000000000000",
     "userPrivateKey": "<user private key>"
   },
   "tests": {
