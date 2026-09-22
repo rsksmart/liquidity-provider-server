@@ -50,7 +50,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: DepositEventsCollection, fields: []string{"tx_hash"}},
 		{collection: TrustedAccountCollection, fields: []string{"address"}},
 		{collection: BatchPegOutEventsCollection, fields: []string{"transaction_hash"}},
-		{collection: PegInWatchCollection, fields: []string{"tx_hash", "log_index"}},
+		{collection: PegInWatchCollection, fields: []string{"rsk_address"}},
 	}
 	for _, idx := range uniqueIndexes {
 		if err := createUniqueIndex(ctx, db, idx.collection, idx.fields...); err != nil {
@@ -65,7 +65,6 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: RetainedPegoutQuoteCollection, field: "bridge_rebalances.tx_hash"},
 		{collection: RetainedPeginQuoteCollection, field: "state"},
 		{collection: RetainedPegoutQuoteCollection, field: "state"},
-		{collection: PegInWatchCollection, field: "rsk_address"},
 		{collection: PegInWatchCollection, field: "state"},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.

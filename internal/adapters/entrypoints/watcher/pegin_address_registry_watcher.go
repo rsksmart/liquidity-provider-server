@@ -232,7 +232,7 @@ func (watcher *PegInWatcher) discoverEvent(
 	}
 	watcher.rememberWatch(*result.Watch)
 	if !result.NeedsRescan || slices.ContainsFunc(pending, func(watch rootstock.PegInWatch) bool {
-		return watch.SameLog(result.Watch.TxHash, result.Watch.LogIndex)
+		return watch.RskAddress == result.Watch.RskAddress
 	}) {
 		return pending, nil
 	}
@@ -285,7 +285,7 @@ func (watcher *PegInWatcher) rememberWatch(watch rootstock.PegInWatch) {
 	watcher.stateMutex.Lock()
 	defer watcher.stateMutex.Unlock()
 	for index := range watcher.watches {
-		if watcher.watches[index].SameLog(watch.TxHash, watch.LogIndex) {
+		if watcher.watches[index].RskAddress == watch.RskAddress {
 			watcher.watches[index] = watch
 			return
 		}
