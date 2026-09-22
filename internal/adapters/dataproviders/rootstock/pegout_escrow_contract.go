@@ -173,7 +173,10 @@ func (escrow *pegOutEscrowContractImpl) ClaimPegOut(
 		return blockchain.TransactionReceipt{}, errors.New("claim peg out error: incomplete receipt")
 	}
 
-	transactionReceipt := escrow.receiptFromGeth(receipt, tx)
+	transactionReceipt, err := ParseReceipt(tx, receipt)
+	if err != nil {
+		return blockchain.TransactionReceipt{}, fmt.Errorf("claim peg out error: %w", err)
+	}
 	if receipt.Status == 0 {
 		return transactionReceipt, fmt.Errorf("claim peg out error: transaction reverted (%s)", receipt.TxHash.String())
 	}
@@ -242,31 +245,6 @@ func (escrow *pegOutEscrowContractImpl) GetPegOutCancelledEvents(
 		})
 	}
 	return result, nil
-}
-
-func (escrow *pegOutEscrowContractImpl) receiptFromGeth(receipt *geth.Receipt, tx *geth.Transaction) blockchain.TransactionReceipt {
-	toAddress := ""
-	txValue := entities.NewWei(0)
-	if tx != nil && tx.To() != nil {
-		toAddress = tx.To().String()
-		txValue = entities.NewBigWei(tx.Value())
-	}
-	gasPrice := entities.NewWei(0)
-	if receipt.EffectiveGasPrice != nil {
-		gasPrice = entities.NewWei(receipt.EffectiveGasPrice.Int64())
-	}
-	return blockchain.TransactionReceipt{
-		TransactionHash:   receipt.TxHash.String(),
-		BlockHash:         receipt.BlockHash.String(),
-		BlockNumber:       receipt.BlockNumber.Uint64(),
-		From:              escrow.signer.Address().String(),
-		To:                toAddress,
-		CumulativeGasUsed: new(big.Int).SetUint64(receipt.CumulativeGasUsed),
-		GasUsed:           new(big.Int).SetUint64(receipt.GasUsed),
-		Value:             txValue,
-		GasPrice:          gasPrice,
-		Logs:              convertReceiptLogs(receipt),
-	}
 }
 
 func filterBoundEvents[E bind.ContractEvent](
