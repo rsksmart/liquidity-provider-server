@@ -25,6 +25,9 @@ type InterfacesConfig struct {
 		PegoutContract               string `json:"pegoutContract"`
 		DiscoveryContract            string `json:"discoveryContract"`
 		CollateralManagementContract string `json:"collateralManagementContract"`
+		PeginAddressRegistry         string `json:"peginAddressRegistry"`
+		FlyoverConfigurations        string `json:"flyoverConfigurations"`
+		PauseRegistry                string `json:"pauseRegistry"`
 		UserPrivateKey               string `json:"userPrivateKey"`
 	} `json:"rsk"`
 }

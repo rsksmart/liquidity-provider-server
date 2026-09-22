@@ -72,6 +72,26 @@ func (configurations *flyoverConfigurationsContractImpl) GetRequiredPegInBtcConf
 	return result.Uint64(), nil
 }
 
+func (configurations *flyoverConfigurationsContractImpl) MinAmount() (*entities.Wei, error) {
+	opts := &bind.CallOpts{}
+	result, err := rskRetry(configurations.retryParams.Retries, configurations.retryParams.Sleep,
+		func() (*big.Int, error) {
+			callData, dataErr := configurations.binding.TryPackGetPegInConfiguration()
+			if dataErr != nil {
+				return nil, dataErr
+			}
+			cfg, callErr := bind.Call(configurations.contract, opts, callData, configurations.binding.UnpackGetPegInConfiguration)
+			if callErr != nil {
+				return nil, callErr
+			}
+			return cfg.MinAmount, nil
+		})
+	if err != nil {
+		return nil, err
+	}
+	return entities.NewBigWei(result), nil
+}
+
 func (configurations *flyoverConfigurationsContractImpl) CalculatePegOutFee(amount *entities.Wei) (*entities.Wei, error) {
 	opts := &bind.CallOpts{}
 	result, err := rskRetry(configurations.retryParams.Retries, configurations.retryParams.Sleep,
