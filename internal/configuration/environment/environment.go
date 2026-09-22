@@ -54,6 +54,9 @@ type RskEnv struct {
 	FlyoverConfigurationsAddress string `env:"FLYOVER_CONFIGURATIONS_ADDRESS" validate:"required"`
 	// PegOutEscrowAddress is optional. When empty the escrow adapter is not wired and
 	// the LPS behaves as it does today.
+	// TODO: once the PegOutEscrow contract is deployed, make this a required field
+	// (validate:"required") like the other contract addresses, and drop the optional
+	// wiring in registry.NewRootstockRegistry along with the empty-value test fixtures.
 	PegOutEscrowAddress         string   `env:"PEGOUT_ESCROW_ADDRESS"`
 	BridgeAddress               string   `env:"RSK_BRIDGE_ADDR" validate:"required"`
 	BridgeRequiredConfirmations uint64   `env:"RSK_REQUIRED_BRIDGE_CONFIRMATIONS" validate:"required"`
