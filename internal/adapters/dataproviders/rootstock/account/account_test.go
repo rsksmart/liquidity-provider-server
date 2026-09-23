@@ -149,9 +149,8 @@ func TestGetRskAccountWithDerivation(t *testing.T) {
 	})
 }
 
-// nolint:funlen
-func TestGetAccount_ErrorHandling(t *testing.T) {
-	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-%d", time.Now().UnixNano()))
+func readHotWalletKey(t *testing.T) string {
+	t.Helper()
 	keyFile, setupErr := os.Open(keyPath)
 	require.NoError(t, setupErr)
 	defer func(file *os.File) {
@@ -164,13 +163,19 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 		HotWallet json.RawMessage `json:"hotWallet"`
 	}
 	require.NoError(t, json.Unmarshal(keyBytes, &walletInfo))
+	return string(walletInfo.HotWallet)
+}
+
+func TestGetAccount_ErrorHandling(t *testing.T) {
+	testDir := filepath.Join(t.TempDir(), fmt.Sprintf("test-%d", time.Now().UnixNano()))
+	hotWallet := readHotWalletKey(t)
 	t.Run("Invalid dir", func(t *testing.T) {
 		blocker := filepath.Join(t.TempDir(), "not-a-dir")
 		require.NoError(t, os.WriteFile(blocker, []byte("x"), 0600))
 		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        filepath.Join(blocker, "keystore"),
 			AccountNum:    0,
-			EncryptedJson: string(walletInfo.HotWallet),
+			EncryptedJson: hotWallet,
 			Password:      test.KeyPassword,
 		})
 		assert.Nil(t, testAccount)
@@ -190,7 +195,7 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(walletInfo.HotWallet),
+			EncryptedJson: hotWallet,
 			Password:      "incorrect",
 		})
 		assert.Nil(t, testAccount)
@@ -201,14 +206,14 @@ func TestGetAccount_ErrorHandling(t *testing.T) {
 		_, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    0,
-			EncryptedJson: string(walletInfo.HotWallet),
+			EncryptedJson: hotWallet,
 			Password:      test.KeyPassword,
 		})
 		require.NoError(t, err)
 		testAccount, err := account.GetRskAccount(account.CreationArgs{
 			KeyDir:        testDir,
 			AccountNum:    1,
-			EncryptedJson: string(walletInfo.HotWallet),
+			EncryptedJson: hotWallet,
 			Password:      test.KeyPassword,
 		})
 		assert.Nil(t, testAccount)

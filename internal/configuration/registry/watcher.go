@@ -139,8 +139,8 @@ func NewWatcherRegistry(
 			dbRegistry.PegOutEscrowWatchRepository,
 			useCaseRegistry.claimPegOutUseCase,
 			tickers.PegoutEscrowWatcherTicker,
-			0,
-			0,
+			env.Pegout.EscrowWatcherStartBlock,
+			env.Pegout.EscrowWatcherPageSize,
 			timeouts.PegoutDepositCheck.Seconds(),
 		),
 		BitcoinPeerWatcher: watcher.NewBitcoinPeerWatcher(
