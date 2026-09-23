@@ -43,6 +43,11 @@ func (m *BtcRpcMock) DecodeAddress(address string) ([]byte, error) {
 	return args.Get(0).([]byte), args.Error(1)
 }
 
+func (m *BtcRpcMock) EncodeAddress(addressBytes []byte) (string, error) {
+	args := m.Called(addressBytes)
+	return args.String(0), args.Error(1)
+}
+
 func (m *BtcRpcMock) GetPartialMerkleTree(hash string) ([]byte, error) {
 	args := m.Called(hash)
 	return args.Get(0).([]byte), args.Error(1)
