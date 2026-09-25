@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -1070,23 +1071,7 @@ func TestPegoutMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		mockQuote.State = quote.PegoutStateWaitingForDeposit
 		mockQuote.OwnerAccountAddress = address
 
-		collection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
-			// Assert that the filter structure matches what we expect
-			assert.Len(t, filter, 2)
-			assert.Equal(t, "owner_account_address", filter[0].Key)
-			assert.Equal(t, address, filter[0].Value)
-			assert.Equal(t, "state", filter[1].Key)
-			stateFilter, ok := filter[1].Value.(bson.D)
-			assert.True(t, ok)
-			assert.Len(t, stateFilter, 1)
-			assert.Equal(t, "$in", stateFilter[0].Key)
-			stateValues, ok := stateFilter[0].Value.([]quote.PegoutState)
-			assert.True(t, ok)
-			assert.Len(t, stateValues, 1)
-			assert.Contains(t, stateValues, quote.PegoutStateWaitingForDeposit)
-
-			return true
-		})).Return(mongoDb.NewCursorFromDocuments([]any{mockQuote}, nil, nil)).Once()
+		collection.On("Find", mock.Anything, matchRetainedQuotesOwnerFilter(t, address, []quote.PegoutState{quote.PegoutStateWaitingForDeposit})).Return(mongoDb.NewCursorFromDocuments([]any{mockQuote}, nil, nil)).Once()
 
 		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address, quote.PegoutStateWaitingForDeposit)
@@ -1113,24 +1098,7 @@ func TestPegoutMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		secondQuote.State = quote.PegoutStateSendPegoutFailed
 		secondQuote.OwnerAccountAddress = address
 
-		collection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
-			// Assert that the filter structure matches what we expect
-			assert.Len(t, filter, 2)
-			assert.Equal(t, "owner_account_address", filter[0].Key)
-			assert.Equal(t, address, filter[0].Value)
-			assert.Equal(t, "state", filter[1].Key)
-			stateFilter, ok := filter[1].Value.(bson.D)
-			assert.True(t, ok)
-			assert.Len(t, stateFilter, 1)
-			assert.Equal(t, "$in", stateFilter[0].Key)
-			stateValues, ok := stateFilter[0].Value.([]quote.PegoutState)
-			assert.True(t, ok)
-			assert.Len(t, stateValues, 2)
-			assert.Contains(t, stateValues, quote.PegoutStateSendPegoutSucceeded)
-			assert.Contains(t, stateValues, quote.PegoutStateSendPegoutFailed)
-
-			return true
-		})).Return(mongoDb.NewCursorFromDocuments([]any{firstQuote, secondQuote}, nil, nil)).Once()
+		collection.On("Find", mock.Anything, matchRetainedQuotesOwnerFilter(t, address, []quote.PegoutState{quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateSendPegoutFailed})).Return(mongoDb.NewCursorFromDocuments([]any{firstQuote, secondQuote}, nil, nil)).Once()
 
 		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address, quote.PegoutStateSendPegoutSucceeded, quote.PegoutStateSendPegoutFailed)
@@ -1147,24 +1115,7 @@ func TestPegoutMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
 		const expectedLog = "READ interaction with db: []"
 
-		collection.On("Find", mock.Anything, mock.MatchedBy(func(filter bson.D) bool {
-			// Assert that the filter structure matches what we expect
-			assert.Len(t, filter, 2)
-			assert.Equal(t, "owner_account_address", filter[0].Key)
-			assert.Equal(t, address, filter[0].Value)
-			assert.Equal(t, "state", filter[1].Key)
-			stateFilter, ok := filter[1].Value.(bson.D)
-			assert.True(t, ok)
-			assert.Len(t, stateFilter, 1)
-			assert.Equal(t, "$in", stateFilter[0].Key)
-			stateValues, ok := stateFilter[0].Value.([]quote.PegoutState)
-			assert.True(t, ok)
-			assert.Len(t, stateValues, 2)
-			assert.Contains(t, stateValues, quote.PegoutStateWaitingForDeposit)
-			assert.Contains(t, stateValues, quote.PegoutStateWaitingForDepositConfirmations)
-
-			return true
-		})).Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+		collection.On("Find", mock.Anything, matchRetainedQuotesOwnerFilter(t, address, []quote.PegoutState{quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations})).Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
 
 		defer assertDbInteractionLog(t, expectedLog)()
 		result, err := repo.GetRetainedQuotesForAddress(context.Background(), address, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations)
@@ -1186,6 +1137,29 @@ func TestPegoutMongoRepository_GetRetainedQuotesForAddress(t *testing.T) {
 		collection.AssertExpectations(t)
 		require.Error(t, err)
 		assert.Nil(t, result)
+	})
+	t.Run("Looks up mixed-case stored owners with a lowercase address", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+		states := []quote.PegoutState{quote.PegoutStateWaitingForDeposit}
+		lowercaseAddress := "0xc2a630c053d12d63d32b025082f6ba268db18300"
+
+		collection.On("Find", mock.Anything, matchRetainedQuotesOwnerFilter(t, lowercaseAddress, states)).
+			Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+
+		result, err := repo.GetRetainedQuotesForAddress(context.Background(), lowercaseAddress, states...)
+		require.NoError(t, err)
+		assert.Empty(t, result)
+		collection.AssertExpectations(t)
+	})
+	t.Run("Rejects an invalid owner address", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
+		repo := mongo.NewPegoutMongoRepository(mongo.NewConnection(client, time.Duration(1)))
+
+		result, err := repo.GetRetainedQuotesForAddress(context.Background(), "not-an-address", quote.PegoutStateWaitingForDeposit)
+		require.ErrorIs(t, err, blockchain.InvalidAddressError)
+		assert.Nil(t, result)
+		collection.AssertNotCalled(t, "Find")
 	})
 	t.Run("FillZeroValues is applied to retained pegout quotes with missing gas fields", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.RetainedPegoutQuoteCollection)
