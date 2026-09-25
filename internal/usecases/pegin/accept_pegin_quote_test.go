@@ -141,6 +141,8 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	signerMock.On("Validate", mock.Anything, mock.Anything).Return(true)
 
 	lockingCap := entities.NewWei(100000)
+	normalizedOwner, err := blockchain.NormalizeRskAddress(ownerAccountAddress)
+	require.NoError(t, err)
 	trustedAccountDetails := liquidity_provider.TrustedAccountDetails{
 		Address:        ownerAccountAddress,
 		RbtcLockingCap: lockingCap,
@@ -150,7 +152,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 	trustedAccountHash := hex.EncodeToString(crypto.Keccak256(trustedAccountBytes))
 
 	accountSignature := "d1a9fe0de659875bc75252e6f5a73529ed6a5d88c9d97853ebf2ccc6e3080ecc423eee543470a80d373f1abb3a4f746264b47dda53252ddfc5d65989c1af34401c"
-	trustedAccountRepository.On("GetTrustedAccount", mock.Anything, strings.ToLower(ownerAccountAddress)).Return(&entities.Signed[liquidity_provider.TrustedAccountDetails]{
+	trustedAccountRepository.On("GetTrustedAccount", mock.Anything, normalizedOwner).Return(&entities.Signed[liquidity_provider.TrustedAccountDetails]{
 		Value:     trustedAccountDetails,
 		Signature: accountSignature,
 		Hash:      trustedAccountHash,
@@ -177,7 +179,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 			Signature:           acceptPeginSignature,
 			RequiredLiquidity:   requiredLiquidity,
 			State:               quote.PeginStateWaitingForDeposit,
-			OwnerAccountAddress: ownerAccountAddress,
+			OwnerAccountAddress: normalizedOwner,
 		}
 
 		creationData := quote.PeginCreationData{GasPrice: entities.NewWei(5), FeePercentage: utils.NewBigFloat64(1.24), FixedFee: entities.NewWei(100)}
