@@ -192,13 +192,13 @@ func (wallet *DerivativeWallet) SendWithOpReturn(address string, value *entities
 		return blockchain.BitcoinTransactionResult{}, err
 	}
 	fundedTx, err := wallet.conn.client.FundRawTransaction(rawTx, opts, nil)
+	defer wallet.unlockFundedUtxos(fundedTx)
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
 	if err = validateBtcTxInputCount(len(fundedTx.Transaction.TxIn)); err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
 	}
-	defer wallet.unlockUtxos(fundedTx.Transaction)
 	signedTx, err := wallet.signFundedTransaction(fundedTx)
 	if err != nil {
 		return blockchain.BitcoinTransactionResult{}, err
@@ -343,10 +343,11 @@ func (wallet *DerivativeWallet) buildRawTransactionWithOpReturn(address string, 
 	return rawTx, nil
 }
 
-func (wallet *DerivativeWallet) unlockUtxos(tx *wire.MsgTx) {
-	if tx == nil {
+func (wallet *DerivativeWallet) unlockFundedUtxos(fundedTx *btcjson.FundRawTransactionResult) {
+	if fundedTx == nil || fundedTx.Transaction == nil {
 		return
 	}
+	tx := fundedTx.Transaction
 	outpoints := make([]*wire.OutPoint, 0, len(tx.TxIn))
 	for _, input := range tx.TxIn {
 		if input != nil {
