@@ -103,13 +103,18 @@ func (useCase *AcceptQuoteUseCase) constructResult(
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
 	}
 
+	owner, err := useCase.normalizeOwnerAddress(trustedAccount.Address)
+	if err != nil {
+		return quote.AcceptedQuote{}, err
+	}
+
 	retainedQuote = &quote.RetainedPegoutQuote{
 		QuoteHash:           quoteHash,
 		DepositAddress:      useCase.contracts.PegOut.GetAddress(),
 		Signature:           quoteSignature,
 		RequiredLiquidity:   requiredLiquidity,
 		State:               quote.PegoutStateWaitingForDeposit,
-		OwnerAccountAddress: trustedAccount.Address,
+		OwnerAccountAddress: owner,
 	}
 	creationData := useCase.quoteRepository.GetPegoutCreationData(ctx, quoteHash)
 	if err = useCase.publishQuote(ctx, pegoutQuote, retainedQuote, creationData); err != nil {
@@ -285,4 +290,15 @@ func (useCase *AcceptQuoteUseCase) publishQuote(
 		CreationData:  creationData,
 	})
 	return nil
+}
+
+func (useCase *AcceptQuoteUseCase) normalizeOwnerAddress(address string) (string, error) {
+	if address == "" {
+		return "", nil
+	}
+	normalized, err := blockchain.NormalizeRskAddress(address)
+	if err != nil {
+		return "", usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
+	}
+	return normalized, nil
 }

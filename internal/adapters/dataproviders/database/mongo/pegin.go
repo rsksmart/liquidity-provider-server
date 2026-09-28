@@ -405,11 +405,9 @@ func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Contex
 	defer cancel()
 
 	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
-	filter := bson.D{
-		primitive.E{Key: "owner_account_address", Value: address},
-		primitive.E{Key: "state", Value: bson.D{
-			primitive.E{Key: "$in", Value: states},
-		}},
+	filter, err := retainedQuotesOwnerFilter(address, states)
+	if err != nil {
+		return nil, err
 	}
 
 	rows, err := collection.Find(dbCtx, filter)

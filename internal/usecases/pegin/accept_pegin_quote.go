@@ -283,6 +283,9 @@ func (useCase *AcceptQuoteUseCase) buildRetainedQuote(ctx context.Context, quote
 	if quoteSignature, err = useCase.lp.SignPeginQuote(ctx, quoteHash); err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
+	if owner, err = useCase.normalizeOwnerAddress(owner); err != nil {
+		return nil, err
+	}
 
 	retainedQuote := &quote.RetainedPeginQuote{
 		QuoteHash:           quoteHash,
@@ -296,4 +299,15 @@ func (useCase *AcceptQuoteUseCase) buildRetainedQuote(ctx context.Context, quote
 		return nil, usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
 	}
 	return retainedQuote, nil
+}
+
+func (useCase *AcceptQuoteUseCase) normalizeOwnerAddress(address string) (string, error) {
+	if address == "" {
+		return "", nil
+	}
+	normalized, err := blockchain.NormalizeRskAddress(address)
+	if err != nil {
+		return "", usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, err)
+	}
+	return normalized, nil
 }

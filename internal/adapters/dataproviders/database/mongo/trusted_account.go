@@ -13,18 +13,11 @@ import (
 )
 
 func trustedAccountAddressFilter(address string) (bson.M, error) {
-	normalized, err := blockchain.NormalizeRskAddress(address)
+	filter, err := rskAddressEqualsFilter("address", address)
 	if err != nil {
 		return nil, errors.Join(liquidity_provider.InvalidTrustedAccountAddressError, blockchain.InvalidAddressError, err)
 	}
-	return bson.M{
-		"$expr": bson.M{
-			"$eq": []interface{}{
-				bson.M{"$toLower": "$address"},
-				normalized,
-			},
-		},
-	}, nil
+	return filter, nil
 }
 
 const TrustedAccountCollection = "trustedAccounts"
