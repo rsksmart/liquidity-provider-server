@@ -50,7 +50,7 @@ go test -count=1 -timeout 15m ./test/integration/pegin_commit_first
 
 The tests run in one suite, one after another. They share the LPS wallet and Mongo. `TestFirstDepositRegisterImportClaim` must pass before `TestSecondDepositSameWatch`.
 
-The suite also proves: a deposit below Flyover `minAmount` registers and does not claim; hard pause blocks claim and claim resumes after unpause; a pay with no `registerAddress` never creates a `peginWatch`.
+The suite also proves: a deposit below Flyover `minAmount` makes `registerAddress` revert with `DepositBelowMinimum`, creates no `peginWatch`, and is not claimed; hard pause blocks claim and claim resumes after unpause; a pay with no `registerAddress` never creates a `peginWatch`.
 
 The tests wait until the Rootstock Bridge Bitcoin height includes the deposit block before `registerAddress` or a claim. That is the same wait `fed-migrator` uses (`primeBtcRelay`): mine a few Rootstock blocks, then read `getBtcBlockchainBestChainHeight`.
 
