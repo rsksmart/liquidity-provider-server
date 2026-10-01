@@ -28,8 +28,6 @@ const (
 	bitcoinPeerCheckInterval         = 1 * time.Minute
 	rootstockPeerCheckInterval       = 1 * time.Minute
 	// Deposits older than this stay invisible after import.
-	peginAddressRegistryWatcherInterval         = 1 * time.Minute
-	peginClaimWatcherInterval                   = 1 * time.Minute
 	peginAddressRegistryRescanDepthBlocks int64 = 100
 )
 
