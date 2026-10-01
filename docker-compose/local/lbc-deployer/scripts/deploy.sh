@@ -53,8 +53,11 @@ COLLATERAL_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'CollateralManagement proxy: 
 DISCOVERY_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'FlyoverDiscovery proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
 PEGIN_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'PegInContract proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
 PEGOUT_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'PegOutContract proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+PEGIN_ADDRESS_REGISTRY_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'PegInAddressRegistry proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+FLYOVER_CONFIGURATIONS_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'FlyoverConfigurations proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+PAUSE_REGISTRY_PROXY=$(echo "$DEPLOY_OUTPUT" | grep -o 'PauseRegistry proxy: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
 
-if [ -z "$COLLATERAL_PROXY" ] || [ -z "$DISCOVERY_PROXY" ] || [ -z "$PEGIN_PROXY" ] || [ -z "$PEGOUT_PROXY" ]; then
+if [ -z "$COLLATERAL_PROXY" ] || [ -z "$DISCOVERY_PROXY" ] || [ -z "$PEGIN_PROXY" ] || [ -z "$PEGOUT_PROXY" ] || [ -z "$PEGIN_ADDRESS_REGISTRY_PROXY" ] || [ -z "$FLYOVER_CONFIGURATIONS_PROXY" ] || [ -z "$PAUSE_REGISTRY_PROXY" ]; then
     echo "ERROR: Failed to parse contract addresses from deployment output"
     exit 1
 fi
@@ -62,7 +65,7 @@ fi
 
 echo ""
 echo "Verifying deployed contracts..."
-for CONTRACT_VAR in PEGIN_PROXY PEGOUT_PROXY COLLATERAL_PROXY DISCOVERY_PROXY; do
+for CONTRACT_VAR in PEGIN_PROXY PEGOUT_PROXY COLLATERAL_PROXY DISCOVERY_PROXY PEGIN_ADDRESS_REGISTRY_PROXY FLYOVER_CONFIGURATIONS_PROXY PAUSE_REGISTRY_PROXY; do
   CONTRACT_ADDR=$(eval echo "\$$CONTRACT_VAR")
   CODE=$(curl -s -X POST "$RSK_ENDPOINT" -H "Content-Type: application/json" \
     -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getCode\",\"params\": [\"$CONTRACT_ADDR\",\"latest\"],\"id\":1}" | jq -r ".result")
@@ -79,12 +82,15 @@ done
 echo ""
 echo "Updating $ENV_FILE with deployed addresses..."
 temp_env_file=$(mktemp)
-grep -vE "^(PEGIN_CONTRACT_ADDRESS|PEGOUT_CONTRACT_ADDRESS|COLLATERAL_MANAGEMENT_ADDRESS|DISCOVERY_ADDRESS)=" /"$ENV_FILE" > "$temp_env_file"
+grep -vE "^(PEGIN_CONTRACT_ADDRESS|PEGOUT_CONTRACT_ADDRESS|COLLATERAL_MANAGEMENT_ADDRESS|DISCOVERY_ADDRESS|PEGIN_ADDRESS_REGISTRY_ADDRESS|FLYOVER_CONFIGURATIONS_ADDRESS|PAUSE_REGISTRY_ADDRESS)=" /"$ENV_FILE" > "$temp_env_file"
 {
   echo "PEGIN_CONTRACT_ADDRESS=$PEGIN_PROXY"
   echo "PEGOUT_CONTRACT_ADDRESS=$PEGOUT_PROXY"
   echo "COLLATERAL_MANAGEMENT_ADDRESS=$COLLATERAL_PROXY"
   echo "DISCOVERY_ADDRESS=$DISCOVERY_PROXY"
+  echo "PEGIN_ADDRESS_REGISTRY_ADDRESS=$PEGIN_ADDRESS_REGISTRY_PROXY"
+  echo "FLYOVER_CONFIGURATIONS_ADDRESS=$FLYOVER_CONFIGURATIONS_PROXY"
+  echo "PAUSE_REGISTRY_ADDRESS=$PAUSE_REGISTRY_PROXY"
 } >> "$temp_env_file"
 cat "$temp_env_file" > /"$ENV_FILE"
 rm "$temp_env_file"
