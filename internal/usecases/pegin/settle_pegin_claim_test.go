@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"math/big"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -58,17 +57,9 @@ func newSettleUseCase(
 	)
 }
 
-func matchBlockNumber(number uint64) interface{} {
-	return mock.MatchedBy(func(got *big.Int) bool {
-		return got != nil && got.Cmp(big.NewInt(int64(number))) == 0
-	})
-}
-
-func (h *settleHarness) expectCanonicalReceipt() blockchain.TransactionReceipt {
+func (h *settleHarness) expectReceipt() blockchain.TransactionReceipt {
 	receipt := successReceipt()
 	h.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(receipt, nil).Once()
-	h.rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(receipt.BlockNumber)).
-		Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
 	return receipt
 }
 
@@ -117,22 +108,6 @@ func TestSettlePegInClaimUseCase_GenericRskRpcFailure(t *testing.T) {
 	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
-func TestSettlePegInClaimUseCase_GetBlockByNumberFailure(t *testing.T) {
-	claims := mocks.NewPegInClaimRepositoryMock(t)
-	peginContract := mocks.NewPeginContractMock(t)
-	rsk := mocks.NewRootstockRpcServerMock(t)
-	rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(successReceipt(), nil).Once()
-	rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(successReceipt().BlockNumber)).
-		Return(blockchain.BlockInfo{}, errors.New("not found")).Once()
-	useCase := newSettleUseCase(t, claims, peginContract, rsk)
-
-	err := useCase.Run(context.Background(), submittingClaim())
-	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
-	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
-	peginContract.AssertNotCalled(t, "UnpackPegInRequested", mock.Anything)
-	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
-}
-
 func TestSettlePegInClaimUseCase_RemovedLogsStaySubmitting(t *testing.T) {
 	claims := mocks.NewPegInClaimRepositoryMock(t)
 	peginContract := mocks.NewPeginContractMock(t)
@@ -144,7 +119,6 @@ func TestSettlePegInClaimUseCase_RemovedLogsStaySubmitting(t *testing.T) {
 
 	err := useCase.Run(context.Background(), submittingClaim())
 	require.NoError(t, err)
-	rsk.AssertNotCalled(t, "GetBlockByNumber", mock.Anything, mock.Anything)
 	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
 	peginContract.AssertNotCalled(t, "UnpackPegInRequested", mock.Anything)
 	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
@@ -161,24 +135,7 @@ func TestSettlePegInClaimUseCase_EmptyBlockHashStaysSubmitting(t *testing.T) {
 
 	err := useCase.Run(context.Background(), submittingClaim())
 	require.NoError(t, err)
-	rsk.AssertNotCalled(t, "GetBlockByNumber", mock.Anything, mock.Anything)
 	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
-	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
-}
-
-func TestSettlePegInClaimUseCase_BlockHashMismatchStaysSubmitting(t *testing.T) {
-	claims := mocks.NewPegInClaimRepositoryMock(t)
-	peginContract := mocks.NewPeginContractMock(t)
-	rsk := mocks.NewRootstockRpcServerMock(t)
-	rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(successReceipt(), nil).Once()
-	rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(successReceipt().BlockNumber)).
-		Return(blockchain.BlockInfo{Hash: "0xotherblock"}, nil).Once()
-	useCase := newSettleUseCase(t, claims, peginContract, rsk)
-
-	err := useCase.Run(context.Background(), submittingClaim())
-	require.NoError(t, err)
-	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
-	peginContract.AssertNotCalled(t, "UnpackPegInRequested", mock.Anything)
 	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
@@ -188,8 +145,6 @@ func TestSettlePegInClaimUseCase_TxFailedErrorClassifiesViaPreflight(t *testing.
 	receipt := successReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 		Return(receipt, blockchain.TxFailedError).Once()
-	harness.rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(receipt.BlockNumber)).
-		Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
@@ -213,8 +168,6 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	receipt := successReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 		Return(receipt, blockchain.TxFailedError).Once()
-	harness.rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(receipt.BlockNumber)).
-		Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.expectBuildParams()
@@ -235,8 +188,6 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyLookupErrors(t *testing.T) {
 		receipt := successReceipt()
 		harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 			Return(receipt, blockchain.TxFailedError).Once()
-		harness.rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(receipt.BlockNumber)).
-			Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
 		harness.btc.On("GetTransactionInfo", claimDepositTxID).
 			Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
 
@@ -252,8 +203,6 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyLookupErrors(t *testing.T) {
 		receipt := successReceipt()
 		harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 			Return(receipt, blockchain.TxFailedError).Once()
-		harness.rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(receipt.BlockNumber)).
-			Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
 		harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return((*entities.Wei)(nil), assert.AnError).Once()
 
@@ -268,7 +217,7 @@ func TestSettlePegInClaimUseCase_SuccessfulReceiptWithEventSetsPegInID(t *testin
 	repo := newMemoryClaimRepo(submittingClaim())
 	harness := newSettleHarness(t, repo)
 	pegInID := [32]byte{0xca, 0xfe}
-	receipt := harness.expectCanonicalReceipt()
+	receipt := harness.expectReceipt()
 	harness.pegin.On("UnpackPegInRequested", receipt).Return(blockchain.PegInRequestedEvent{
 		PegInId:    pegInID,
 		RskAddress: test.AnyRskAddress,
@@ -287,7 +236,7 @@ func TestSettlePegInClaimUseCase_SuccessfulReceiptWithEventSetsPegInID(t *testin
 func TestSettlePegInClaimUseCase_SuccessfulReceiptWithoutEventClearsReserve(t *testing.T) {
 	repo := newMemoryClaimRepo(submittingClaim())
 	harness := newSettleHarness(t, repo)
-	receipt := harness.expectCanonicalReceipt()
+	receipt := harness.expectReceipt()
 	harness.pegin.On("UnpackPegInRequested", receipt).Return(blockchain.PegInRequestedEvent{}, errors.New("missing")).Once()
 
 	err := harness.useCase.Run(context.Background(), submittingClaim())
@@ -311,7 +260,6 @@ func TestSettlePegInClaimUseCase_ZeroBlockNumberStaysSubmitting(t *testing.T) {
 
 	err := useCase.Run(context.Background(), submittingClaim())
 	require.NoError(t, err)
-	rsk.AssertNotCalled(t, "GetBlockByNumber", mock.Anything, mock.Anything)
 	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
 	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
@@ -330,8 +278,6 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 			receipt := successReceipt()
 			harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 				Return(receipt, blockchain.TxFailedError).Once()
-			harness.rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(receipt.BlockNumber)).
-				Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
 			harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 			harness.expectBuildParams()
@@ -355,8 +301,6 @@ func TestSettlePegInClaimUseCase_SimulateRpcErrorStaysSubmitting(t *testing.T) {
 	receipt := successReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 		Return(receipt, blockchain.TxFailedError).Once()
-	harness.rsk.On("GetBlockByNumber", mock.Anything, matchBlockNumber(receipt.BlockNumber)).
-		Return(blockchain.BlockInfo{Hash: claimRskBlockHash}, nil).Once()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.expectBuildParams()

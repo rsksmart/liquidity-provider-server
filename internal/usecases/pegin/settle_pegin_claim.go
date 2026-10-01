@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"math/big"
-	"strings"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
@@ -48,11 +46,7 @@ func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock
 		}
 		return useCase.unavailable(err)
 	}
-	onChain, chainErr := useCase.receiptOnCanonicalChain(ctx, receipt)
-	if chainErr != nil {
-		return chainErr
-	}
-	if !onChain {
+	if !receiptOnCanonicalChain(receipt) {
 		return nil
 	}
 	if errors.Is(err, blockchain.TxFailedError) {
@@ -61,26 +55,15 @@ func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock
 	return useCase.finalizeSuccess(ctx, claim, receipt)
 }
 
-func (useCase *SettlePegInClaimUseCase) receiptOnCanonicalChain(
-	ctx context.Context,
-	receipt blockchain.TransactionReceipt,
-) (onChain bool, err error) {
+// receiptOnCanonicalChain needs no block lookup: rskj eth_getTransactionReceipt returns a receipt
+// only when its block is the main-chain block at that height (ReceiptStore.getInMainChain).
+func receiptOnCanonicalChain(receipt blockchain.TransactionReceipt) bool {
 	for _, eventLog := range receipt.Logs {
 		if eventLog.Removed {
-			return false, nil
+			return false
 		}
 	}
-	if receipt.BlockHash == "" || receipt.BlockNumber == 0 {
-		return false, nil
-	}
-	block, err := useCase.rpc.Rsk.GetBlockByNumber(ctx, big.NewInt(int64(receipt.BlockNumber)))
-	if err != nil {
-		return false, useCase.unavailable(err)
-	}
-	if !strings.EqualFold(block.Hash, receipt.BlockHash) {
-		return false, nil
-	}
-	return true, nil
+	return receipt.BlockHash != "" && receipt.BlockNumber != 0
 }
 
 func (useCase *SettlePegInClaimUseCase) finalizeSuccess(
