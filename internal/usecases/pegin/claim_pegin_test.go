@@ -260,6 +260,7 @@ func expectSuccessfulGates(h *claimHarness, times int) {
 	h.btc.On("BuildMerkleBranch", claimDepositTxID).Return(h.merkle, nil).Times(times)
 	h.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).
 		Return(h.spendableRequired(entities.NewWei(0), h.fee), nil).Times(times)
+	h.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Times(times)
 	h.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(h.estimatedGas, nil).Times(times)
 	h.rsk.On("GasPrice", mock.Anything).Return(h.gasPrice.Copy(), nil).Times(times)
 }
@@ -292,6 +293,7 @@ func (h *claimHarness) expectPassingGates(inFlight *entities.Wei) {
 	h.expectBuildParams()
 	h.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).
 		Return(h.spendableRequired(inFlight, h.fee), nil).Once()
+	h.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 	h.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(h.estimatedGas, nil).Once()
 	h.rsk.On("GasPrice", mock.Anything).Return(h.gasPrice.Copy(), nil).Once()
 }
@@ -370,6 +372,43 @@ func TestClaimPegInUseCase_WinPersistsClaimedAndAdapterArgs(t *testing.T) {
 	assert.Equal(t, claimRskTxHash, stored.TxHash)
 	assert.Equal(t, "0", stored.ReservedWei.String())
 	harness.pegin.AssertExpectations(t)
+}
+
+func TestClaimPegInUseCase_SimulateAlreadyProcessedPersistsRaceLost(t *testing.T) {
+	t.Run("no existing claim", func(t *testing.T) {
+		repo := newMemoryClaimRepo()
+		harness := newClaimHarness(t, repo)
+		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(blockchain.ErrPegInAlreadyProcessed).Once()
+
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.NoError(t, err)
+
+		stored := repo.stored()
+		assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+		assert.Equal(t, "0", stored.ReservedWei.String())
+		assert.Empty(t, stored.TxHash)
+		harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		harness.rsk.AssertNotCalled(t, "GasPrice", mock.Anything)
+	})
+	t.Run("existing candidate", func(t *testing.T) {
+		created := candidateWithReserve()
+		repo := newMemoryClaimRepo(created)
+		harness := newClaimHarness(t, repo)
+		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(blockchain.ErrPegInAlreadyProcessed).Once()
+
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.NoError(t, err)
+
+		stored := repo.stored()
+		assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+		assert.Equal(t, "0", stored.ReservedWei.String())
+		assert.Empty(t, stored.TxHash)
+		harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
 }
 
 func TestClaimPegInUseCase_PegInAlreadyProcessedIsQuietRaceLost(t *testing.T) {
@@ -456,6 +495,7 @@ func TestClaimPegInUseCase_InsufficientLiquidityDoesNotSubmit(t *testing.T) {
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.expectBuildParams()
 	harness.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).Return(entities.NewWei(1), nil).Once()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 	harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
 	harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Once()
 
@@ -670,6 +710,7 @@ func TestClaimPegInUseCase_SaveAlreadySubmittedDoesNotSubmit(t *testing.T) {
 	btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(block, nil).Once()
 	btc.On("BuildMerkleBranch", claimDepositTxID).Return(merkle, nil).Once()
 	rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).Return(entities.NewWei(1_000_000_000_000_000_000), nil).Once()
+	peginContract.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 	peginContract.On("EstimateRequestPegInGas", mock.Anything).Return(claimEstimatedGas, nil).Once()
 	rsk.On("GasPrice", mock.Anything).Return(gasPrice.Copy(), nil).Once()
 
@@ -785,6 +826,7 @@ func TestClaimPegInUseCase_WalletBalanceErrorDoesNotSubmit(t *testing.T) {
 	runClaimWithoutSubmitOnUnavailable(t, func(harness *claimHarness, claims *mocks.PegInClaimRepositoryMock) {
 		expectEmptyInFlight(claims)
 		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 		harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
 		harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Once()
 		harness.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).Return((*entities.Wei)(nil), assert.AnError).Once()
@@ -795,6 +837,7 @@ func TestClaimPegInUseCase_GasEstimateErrorDoesNotSubmit(t *testing.T) {
 	runClaimWithoutSubmitOnUnavailable(t, func(harness *claimHarness, claims *mocks.PegInClaimRepositoryMock) {
 		expectEmptyInFlight(claims)
 		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 		harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(uint64(0), assert.AnError).Once()
 	})
 }
@@ -803,6 +846,7 @@ func TestClaimPegInUseCase_GasPriceErrorDoesNotSubmit(t *testing.T) {
 	runClaimWithoutSubmitOnUnavailable(t, func(harness *claimHarness, claims *mocks.PegInClaimRepositoryMock) {
 		expectEmptyInFlight(claims)
 		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 		harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
 		harness.rsk.On("GasPrice", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
 	})
@@ -813,6 +857,7 @@ func TestClaimPegInUseCase_InFlightListErrorDoesNotSubmit(t *testing.T) {
 		claims.On("ListByStates", mock.Anything, rootstock.PegInClaimCandidate, rootstock.PegInClaimSubmitting).
 			Return([]rootstock.PegInClaim(nil), assert.AnError).Once()
 		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 	})
 }
 
@@ -1261,6 +1306,7 @@ func expectSerializedWalletMocks(
 	harness.btc.On("GetTransactionBlockInfo", depositB).Return(harness.block, nil).Once()
 	harness.btc.On("BuildMerkleBranch", claimDepositTxID).Return(harness.merkle, nil).Once()
 	harness.btc.On("BuildMerkleBranch", depositB).Return(harness.merkle, nil).Once()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Twice()
 	harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Twice()
 	harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Twice()
 	harness.rsk.On("GetBalance", mock.Anything, test.AnyRskAddress).
