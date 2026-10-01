@@ -85,7 +85,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	if err != nil {
 		log.Fatal("Error creating use case registry:", err)
 	}
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry, watcher.NewApplicationTickers(), timeouts)
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, dbRegistry, messagingRegistry, watcher.NewApplicationTickers(env.Pegin.FillWithDefaults().WatcherIntervals()), timeouts)
 	return &Application{
 		env: env, timeouts: timeouts,
 		lpRegistry: lpRegistry, useCaseRegistry: useCaseRegistry,
