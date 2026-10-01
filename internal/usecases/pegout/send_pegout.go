@@ -64,7 +64,7 @@ func (useCase *SendPegoutUseCase) isEscrowClaimPath(retainedQuote quote.Retained
 }
 
 func (useCase *SendPegoutUseCase) runEscrowClaim(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) error {
-	pegoutQuote, err := useCase.getEscrowQuote(ctx, retainedQuote)
+	pegoutQuote, err := useCase.loadEncodedEscrowQuote(ctx, retainedQuote)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (useCase *SendPegoutUseCase) getQuote(ctx context.Context, retainedQuote qu
 	return pegoutQuote, nil
 }
 
-func (useCase *SendPegoutUseCase) getEscrowQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) (*quote.PegoutQuote, error) {
+func (useCase *SendPegoutUseCase) loadEncodedEscrowQuote(ctx context.Context, retainedQuote quote.RetainedPegoutQuote) (*quote.PegoutQuote, error) {
 	pegoutQuote, err := useCase.contracts.PegOutEscrow.GetPegOutQuote(retainedQuote.QuoteHash)
 	if err != nil {
 		return nil, useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, err, true)
