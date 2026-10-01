@@ -144,7 +144,7 @@ func TestFlyoverConfigurationsContractImpl_MinAmount(t *testing.T) {
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
 		result, err := configurations.MinAmount()
-		require.Error(t, err)
+		require.ErrorIs(t, err, assert.AnError)
 		assert.Nil(t, result)
 		contractMock.caller.AssertExpectations(t)
 	})
