@@ -710,6 +710,7 @@ func TestPeginContractImpl_EstimateRequestPegInGas(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, paddedRequestPegInGas(), gas)
 	assertRequestPegInNotSent(t, h)
+	assertNoDryRun(t, h)
 }
 
 func TestPeginContractImpl_SimulateRequestPegIn_RejectsWithoutSending(t *testing.T) {
