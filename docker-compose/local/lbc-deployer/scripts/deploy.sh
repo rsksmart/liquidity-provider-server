@@ -3,12 +3,45 @@
 DEPLOYER_PRIVATE_KEY=$(cast wallet derive-private-key "$DEPLOYER_MNEMONIC")
 export DEV_SIGNER_PRIVATE_KEY=$DEPLOYER_PRIVATE_KEY
 
-DEPLOY_OUTPUT=$(forge script script/deployment/DeployFlyover.s.sol:DeployFlyover \
+# LBC v3 PegInContract calls external functions of the Quotes, SignatureValidator, and BtcUtils
+# libraries, so its compiled bytecode keeps library address placeholders. The OpenZeppelin
+# Upgrades helper in DeployFlyover reads that bytecode with vm.getCode, which fails on unlinked
+# bytecode ("vm.getCode: no bytecode for contract; is it abstract or unlinked?"). Deploy the
+# libraries first and link them with --libraries.
+LIB_OUTPUT=$(forge script script/deployment/DeployLibraries.s.sol:DeployLibraries \
     --rpc-url  "$RSK_ENDPOINT" \
     --private-key "$DEPLOYER_PRIVATE_KEY" \
     --broadcast \
     --legacy \
     --slow 2>&1) || {
+      echo "Foundry library deployment failed:"
+      echo "$LIB_OUTPUT"
+      exit 1
+    }
+
+echo "$LIB_OUTPUT"
+
+QUOTES=$(echo "$LIB_OUTPUT" | grep -o 'Quotes: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+SIGNATURE_VALIDATOR=$(echo "$LIB_OUTPUT" | grep -o 'SignatureValidator: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+BTC_UTILS=$(echo "$LIB_OUTPUT" | grep -o 'BtcUtils: 0x[a-fA-F0-9]*' | sed 's/.*: //' | head -1)
+
+if [ -z "$QUOTES" ] || [ -z "$SIGNATURE_VALIDATOR" ] || [ -z "$BTC_UTILS" ]; then
+    echo "ERROR: Failed to parse library addresses from deployment output"
+    exit 1
+fi
+
+echo "Linking libraries Quotes=$QUOTES SignatureValidator=$SIGNATURE_VALIDATOR BtcUtils=$BTC_UTILS"
+
+DEPLOY_OUTPUT=$(forge script script/deployment/DeployFlyover.s.sol:DeployFlyover \
+    --rpc-url  "$RSK_ENDPOINT" \
+    --private-key "$DEPLOYER_PRIVATE_KEY" \
+    --broadcast \
+    --legacy \
+    --slow \
+    --libraries "src/libraries/Quotes.sol:Quotes:${QUOTES}" \
+    --libraries "src/libraries/SignatureValidator.sol:SignatureValidator:${SIGNATURE_VALIDATOR}" \
+    --libraries "node_modules/@rsksmart/btc-transaction-solidity-helper/contracts/BtcUtils.sol:BtcUtils:${BTC_UTILS}" \
+    2>&1) || {
       echo "Foundry deployment failed:"
       echo "$DEPLOY_OUTPUT"
       exit 1
