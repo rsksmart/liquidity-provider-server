@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	peginAddressRegistryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_address_registry"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
@@ -275,12 +276,12 @@ func (s *CommitFirstSuite) TestBelowFlyoverMinDoesNotClaim() {
 	require.NoError(t, err)
 	s.btc.Mine(t, 1)
 	depositTxID := txid.String()
-	s.rsk.RegisterAddress(t, user, s.btc.Rpc, depositTxID)
-	s.rsk.Advance(t, regtest.FinalityDepth)
-	watch := s.mongo.WaitWatchImported(t, user)
-	require.Equal(t, btcAddr, watch.BtcAddress)
+	revert := s.rsk.RegisterAddressRevert(t, user, s.btc.Rpc, depositTxID)
+	belowMin, ok := revert.(*peginAddressRegistryBinding.PegInAddressRegistryContractDepositBelowMinimum)
+	require.True(t, ok, "registerAddress reverted with %T, want DepositBelowMinimum", revert)
+	require.Equal(t, int64(100_000), belowMin.Value.Int64())
 	s.mineUntilBridgeSeesTip()
-	s.mongo.WaitNoPaidClaim(t, user, depositTxID)
+	s.mongo.WaitNoWatch(t, user)
 	require.Zero(t, before.Cmp(s.rsk.Balance(t, user)))
 	require.Nil(t, s.mongo.GetClaim(t, user, depositTxID))
 }

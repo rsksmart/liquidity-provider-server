@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
@@ -331,6 +332,27 @@ func (stack *RootstockStack) BridgeBtcHeight(t *testing.T) int64 {
 
 func (stack *RootstockStack) RegisterAddress(t *testing.T, user common.Address, btc blockchain.BitcoinNetwork, depositTxID string) {
 	t.Helper()
+	callData := stack.registerAddressCallData(t, user, btc, depositTxID)
+	stack.send(t, stack.Deployer, stack.RegistryAddr, big.NewInt(0), callData)
+}
+
+// RegisterAddressRevert calls registerAddress without sending it and returns the decoded custom error.
+func (stack *RootstockStack) RegisterAddressRevert(t *testing.T, user common.Address, btc blockchain.BitcoinNetwork, depositTxID string) any {
+	t.Helper()
+	callData := stack.registerAddressCallData(t, user, btc, depositTxID)
+	msg := ethereum.CallMsg{From: stack.DeployerAddress, To: &stack.RegistryAddr, Data: callData}
+	_, callErr := stack.client.CallContract(context.Background(), msg, nil)
+	require.Error(t, callErr)
+	payload, err := rootstock.ParseRevert(callErr)
+	require.NoError(t, err)
+	require.Equal(t, rootstock.RevertCustom, payload.Kind)
+	decoded, err := stack.registryBinding.UnpackError(payload.Data)
+	require.NoError(t, err)
+	return decoded
+}
+
+func (stack *RootstockStack) registerAddressCallData(t *testing.T, user common.Address, btc blockchain.BitcoinNetwork, depositTxID string) []byte {
+	t.Helper()
 	rawTx, err := btc.GetRawTransaction(depositTxID)
 	require.NoError(t, err)
 	block, err := btc.GetTransactionBlockInfo(depositTxID)
@@ -346,7 +368,7 @@ func (stack *RootstockStack) RegisterAddress(t *testing.T, user common.Address, 
 		merkle.Hashes,
 	)
 	require.NoError(t, err)
-	stack.send(t, stack.Deployer, stack.RegistryAddr, big.NewInt(0), callData)
+	return callData
 }
 
 func (stack *RootstockStack) RequestPegInAsCompetitor(t *testing.T, user common.Address, btc blockchain.BitcoinNetwork, depositTxID string, net *entities.Wei) {
