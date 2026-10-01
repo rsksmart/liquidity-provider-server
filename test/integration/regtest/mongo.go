@@ -64,7 +64,6 @@ func (stack *MongoStack) ListWatches(t *testing.T) []rootstock.PegInWatch {
 	defer cancel()
 	cursor, err := stack.db.Collection(mongo.PegInWatchCollection).Find(ctx, bson.M{})
 	require.NoError(t, err)
-	defer cursor.Close(ctx)
 	var watches []rootstock.PegInWatch
 	require.NoError(t, cursor.All(ctx, &watches))
 	return watches
