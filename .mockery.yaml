@@ -127,6 +127,8 @@ packages:
       NodeReorgCheckUseCase:
       UpdateBtcReleaseUseCase:
       NodePeerCheckUseCase:
+      PegInClaimRunner:
+      PegInClaimSettler:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
     interfaces:
       GetAssetReportUseCase:
