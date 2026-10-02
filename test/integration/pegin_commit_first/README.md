@@ -6,33 +6,21 @@ Watchtower, the SDK, `resolvePegIn`, and the quote-protocol suite in `pegin_test
 
 ## What the tests need
 
-1. An LBC image whose `DeployFlyover` script deploys `FlyoverConfigurations`, calls `setPegInDependencies`, and logs `FlyoverConfigurations proxy:` and `PauseRegistry proxy:`.
+1. An `LBC_GIT_REF` whose `DeployFlyover` script deploys `FlyoverConfigurations`, calls `setPegInDependencies`, and logs `FlyoverConfigurations proxy:` and `PauseRegistry proxy:`.
 2. The local LPS Docker stack, including the Rootstock Bridge (`CREATE_POWPEG=true`).
 3. `test/integration/integration-test.config.json` filled with the addresses written to `.env.regtest` after deploy: `peginContract`, `peginAddressRegistry`, `flyoverConfigurations`, `pauseRegistry` (`PEGIN_CONTRACT_ADDRESS`, `PEGIN_ADDRESS_REGISTRY_ADDRESS`, `FLYOVER_CONFIGURATIONS_ADDRESS`, `PAUSE_REGISTRY_ADDRESS`).
 
 ## Start the stack
 
-From the liquidity-bridge-contract repository that matches this LPS checkout:
-
-```bash
-docker build -t lbc:local .
-```
-
-From this repository:
+The local stack builds the LBC contracts from `LBC_GIT_REF` in `sample-config.env` (the LBC PR #567 branch until it merges into `v3.0.0`). No separate LBC checkout or image build is needed.
 
 ```bash
 cd docker-compose/local
 ```
 
-If the Flyover ABI or LBC image changed, wipe `volumes` and write a new `.env.regtest` before you start. Do not reuse the old chain. Do not run `./lps-local.sh --reset` alone: it recopies `sample-config.env` and pins a GHCR digest.
+If the Flyover ABI or `LBC_GIT_REF` changed, wipe `volumes` and write a new `.env.regtest` before you start. Do not reuse the old chain.
 
-If `.env.regtest` does not exist, copy `sample-config.env` and set:
-
-```
-LBC_IMAGE=lbc:local
-LBC_PULL_POLICY=never
-CREATE_POWPEG=true
-```
+If `.env.regtest` does not exist, `./lps-local.sh` copies `sample-config.env`. Keep `CREATE_POWPEG=true`.
 
 ```bash
 ./lps-local.sh

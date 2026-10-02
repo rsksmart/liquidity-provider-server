@@ -220,10 +220,16 @@ func (s *CommitFirstSuite) TestBelowConfirmationsThenClaim() {
 func (s *CommitFirstSuite) TestRaceLostCompetingClaimer() {
 	t := s.T()
 	deposit := s.importAtOneConfirmation()
+	// Without liquidity the LPS skips the claim, so the competitor always lands first.
+	s.rsk.DrainLPS(t)
+	t.Cleanup(func() {
+		s.rsk.FundLPS(t, entities.EtherToWei(1).AsBigInt())
+	})
 	s.mineUntilBridgeSeesTip()
 	s.rsk.RequestPegInAsCompetitor(t, deposit.user, s.btc.Rpc, deposit.depositTxID, deposit.net)
 	s.rsk.WaitBalanceIncreasedBy(t, deposit.user, deposit.before, deposit.net)
 	paid := s.rsk.Balance(t, deposit.user)
+	s.rsk.FundLPS(t, entities.EtherToWei(1).AsBigInt())
 	s.mongo.WaitClaimStates(t, deposit.user, deposit.depositTxID, rootstock.PegInClaimRaceLost)
 	require.Equal(t, 0, paid.Cmp(s.rsk.Balance(t, deposit.user)))
 }

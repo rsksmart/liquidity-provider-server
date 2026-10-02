@@ -106,6 +106,7 @@ func mustPackPegInConfiguration(t *testing.T, cfg bindings.IFlyoverConfiguration
 		{Name: "percentageFee", Type: "uint256"},
 		{Name: "minAmount", Type: "uint256"},
 		{Name: "maxAmount", Type: "uint256"},
+		{Name: "registrantFee", Type: "uint256"},
 		{Name: "confirmationTiers", Type: "tuple[]", Components: []abi.ArgumentMarshaling{
 			{Name: "maxAmount", Type: "uint256"},
 			{Name: "confirmations", Type: "uint256"},
@@ -125,6 +126,7 @@ func TestFlyoverConfigurationsContractImpl_MinAmount(t *testing.T) {
 		PercentageFee: big.NewInt(0),
 		MinAmount:     min,
 		MaxAmount:     big.NewInt(0),
+		RegistrantFee: big.NewInt(100_000_000_000_000),
 	})
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
