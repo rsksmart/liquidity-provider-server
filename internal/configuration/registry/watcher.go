@@ -91,6 +91,7 @@ func NewWatcherRegistry(
 		PegoutBtcTransferWatcher: watcher.NewPegoutBtcTransferWatcher(
 			useCaseRegistry.getWatchedPegoutQuoteUseCase,
 			useCaseRegistry.refundPegoutUseCase,
+			lpRegistry.LiquidityProvider,
 			messaging.Rpc,
 			messaging.EventBus,
 			tickers.PegoutBtcTransferWatcherTicker,
@@ -137,6 +138,7 @@ func NewWatcherRegistry(
 			rskRegistry.Contracts,
 			messaging.Rpc,
 			dbRegistry.PegOutEscrowWatchRepository,
+			useCaseRegistry.claimPegOutUseCase,
 			tickers.PegoutEscrowWatcherTicker,
 			env.Pegout.EscrowWatcherStartBlock,
 			env.Pegout.EscrowWatcherPageSize,
