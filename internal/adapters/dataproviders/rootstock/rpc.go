@@ -123,14 +123,7 @@ func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string
 	if err != nil {
 		return blockchain.TransactionReceipt{}, err
 	}
-	parsed, err := ParseReceipt(tx, receipt)
-	if err != nil {
-		return blockchain.TransactionReceipt{}, err
-	}
-	if receipt.Status == 0 {
-		return parsed, blockchain.TxFailedError
-	}
-	return parsed, nil
+	return ParseReceipt(tx, receipt)
 }
 
 func (rpc *rskjRpcServer) isNewAccount(ctx context.Context, address common.Address) (bool, error) {

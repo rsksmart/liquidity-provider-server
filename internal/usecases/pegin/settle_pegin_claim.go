@@ -39,17 +39,17 @@ func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock
 		return nil
 	}
 	receipt, err := useCase.rpc.Rsk.GetTransactionReceipt(ctx, claim.TxHash)
-	if err != nil && !errors.Is(err, blockchain.TxFailedError) {
-		if errors.Is(err, blockchain.ErrTransactionReceiptNotFound) {
-			log.Error(LogPegInClaimMissingReceipt(claim.TxHash, claim.RskAddress, claim.DepositTxID))
-			return nil
-		}
+	if errors.Is(err, blockchain.ErrTransactionReceiptNotFound) {
+		log.Error(LogPegInClaimMissingReceipt(claim.TxHash, claim.RskAddress, claim.DepositTxID))
+		return nil
+	}
+	if err != nil {
 		return useCase.unavailable(err)
 	}
 	if !receiptOnCanonicalChain(receipt) {
 		return nil
 	}
-	if errors.Is(err, blockchain.TxFailedError) {
+	if receipt.Status != blockchain.SuccessfulTxStatus {
 		return useCase.identifyFailed(ctx, claim)
 	}
 	return useCase.finalizeSuccess(ctx, claim, receipt)
