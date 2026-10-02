@@ -446,6 +446,76 @@ func TestBitcoinTransactionInformation_FirstOutputToAddress_DiffersFromSum(t *te
 	assert.NotEqual(t, tx.FirstOutputToAddress(address), tx.AmountToAddress(address))
 }
 
+func TestBitcoinTransactionInformation_FirstOutputToAddress_NilAndEmpty(t *testing.T) {
+	address := "2N2Sg8C2uX1YtugYSxEQvRqf9V2EivxcWER"
+	zero := entities.NewWei(0)
+
+	t.Run("absent address", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{
+				"2MvHto2NWaAtiMeDsy2oAHesnK8Rug3Lavc": {entities.NewWei(400)},
+			},
+		}
+		assert.Equal(t, 0, tx.FirstOutputToAddress(address).Cmp(zero))
+	})
+	t.Run("empty slice", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{address: {}},
+		}
+		assert.Equal(t, 0, tx.FirstOutputToAddress(address).Cmp(zero))
+	})
+	t.Run("nil first output", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{address: {nil, entities.NewWei(900)}},
+		}
+		assert.Equal(t, 0, tx.FirstOutputToAddress(address).Cmp(zero))
+	})
+	t.Run("valid first output", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{address: {entities.NewWei(400), entities.NewWei(1100)}},
+		}
+		assert.Equal(t, 0, tx.FirstOutputToAddress(address).Cmp(entities.NewWei(400)))
+	})
+}
+
+func TestBitcoinTransactionInformation_AmountToAddress_SkipsNil(t *testing.T) {
+	address := "2N2Sg8C2uX1YtugYSxEQvRqf9V2EivxcWER"
+	zero := entities.NewWei(0)
+
+	t.Run("absent address", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{
+				"2MvHto2NWaAtiMeDsy2oAHesnK8Rug3Lavc": {entities.NewWei(400)},
+			},
+		}
+		assert.Equal(t, 0, tx.AmountToAddress(address).Cmp(zero))
+	})
+	t.Run("empty slice", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{address: {}},
+		}
+		assert.Equal(t, 0, tx.AmountToAddress(address).Cmp(zero))
+	})
+	t.Run("nil first output", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{address: {nil}},
+		}
+		assert.Equal(t, 0, tx.AmountToAddress(address).Cmp(zero))
+	})
+	t.Run("mixed nil and non-nil", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{address: {nil, entities.NewWei(500), nil, entities.NewWei(1100)}},
+		}
+		assert.Equal(t, 0, tx.AmountToAddress(address).Cmp(entities.NewWei(1600)))
+	})
+	t.Run("valid outputs", func(t *testing.T) {
+		tx := blockchain.BitcoinTransactionInformation{
+			Outputs: map[string][]*entities.Wei{address: {entities.NewWei(400), entities.NewWei(1100)}},
+		}
+		assert.Equal(t, 0, tx.AmountToAddress(address).Cmp(entities.NewWei(1500)))
+	})
+}
+
 func TestBitcoinTransactionInformation_UTXOsToAddress(t *testing.T) {
 	address := "2N1DB2ZfVwWUSm8rxnDpo879awEvwFwtHL9"
 	cases := test.Table[blockchain.BitcoinTransactionInformation, []*entities.Wei]{
@@ -791,6 +861,39 @@ func TestBtcAddressTypeFromString(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, testCase.expected, result)
 			}
+		})
+	}
+}
+
+func TestRejectWitnessSerializedTx(t *testing.T) {
+	cases := []struct {
+		name  string
+		rawTx []byte
+		want  error
+	}{
+		{
+			name:  "short raw bytes",
+			rawTx: []byte{1, 0, 0, 0, 1},
+			want:  blockchain.ErrWitnessSerializedTxNotAccepted,
+		},
+		{
+			name:  "witness serialized marker",
+			rawTx: []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0xaa, 0xbb},
+			want:  blockchain.ErrWitnessSerializedTxNotAccepted,
+		},
+		{
+			name:  "accepted legacy serialization",
+			rawTx: []byte{0x01, 0x00, 0x00, 0x00, 0x01, 0xff, 0xaa, 0xbb},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := blockchain.RejectWitnessSerializedTx(tc.rawTx)
+			if tc.want != nil {
+				require.ErrorIs(t, err, tc.want)
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }
