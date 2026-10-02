@@ -272,6 +272,11 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 	pegoutQuote quote.PegoutQuote,
 	signature []byte,
 ) (bool, error) {
+	_, quoteHash, err := useCase.completeQuote(pegoutQuote)
+	if err != nil {
+		return false, err
+	}
+
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
 
@@ -281,7 +286,8 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 		return false, useCase.handleClaimError(requestHash, err)
 	}
 
-	state, err := useCase.contracts.PegOutEscrow.GetPegOutState(requestHash)
+	// claimPegOut deletes the requestHash entry and re-keys the peg-out to quoteHash.
+	state, err := useCase.contracts.PegOutEscrow.GetPegOutState(quoteHash)
 	if err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
@@ -293,6 +299,18 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 		return false, err
 	}
 	return true, nil
+}
+
+// completeQuote returns the quote as claimPegOut stores it (lpRskAddress set to the claiming LP)
+// and its hashPegOutQuote, the id the escrow, PegOutContract and the OP_RETURN use after the claim.
+func (useCase *ClaimPegOutUseCase) completeQuote(pegoutQuote quote.PegoutQuote) (quote.PegoutQuote, string, error) {
+	completedQuote := pegoutQuote
+	completedQuote.LpRskAddress = useCase.lp.RskAddress()
+	quoteHash, err := useCase.contracts.PegOut.HashPegoutQuote(completedQuote)
+	if err != nil {
+		return quote.PegoutQuote{}, "", usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+	}
+	return completedQuote, quoteHash, nil
 }
 
 func (useCase *ClaimPegOutUseCase) handleClaimError(requestHash string, claimErr error) error {
