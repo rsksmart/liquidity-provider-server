@@ -179,6 +179,63 @@ func (_c *FlyoverConfigurationsContractMock_GetRequiredPegInBtcConfirmations_Cal
 	return _c
 }
 
+// MinAmount provides a mock function with no fields
+func (_m *FlyoverConfigurationsContractMock) MinAmount() (*entities.Wei, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for MinAmount")
+	}
+
+	var r0 *entities.Wei
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (*entities.Wei, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() *entities.Wei); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*entities.Wei)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FlyoverConfigurationsContractMock_MinAmount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MinAmount'
+type FlyoverConfigurationsContractMock_MinAmount_Call struct {
+	*mock.Call
+}
+
+// MinAmount is a helper method to define mock.On call
+func (_e *FlyoverConfigurationsContractMock_Expecter) MinAmount() *FlyoverConfigurationsContractMock_MinAmount_Call {
+	return &FlyoverConfigurationsContractMock_MinAmount_Call{Call: _e.mock.On("MinAmount")}
+}
+
+func (_c *FlyoverConfigurationsContractMock_MinAmount_Call) Run(run func()) *FlyoverConfigurationsContractMock_MinAmount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_MinAmount_Call) Return(_a0 *entities.Wei, _a1 error) *FlyoverConfigurationsContractMock_MinAmount_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_MinAmount_Call) RunAndReturn(run func() (*entities.Wei, error)) *FlyoverConfigurationsContractMock_MinAmount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewFlyoverConfigurationsContractMock creates a new instance of FlyoverConfigurationsContractMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewFlyoverConfigurationsContractMock(t interface {

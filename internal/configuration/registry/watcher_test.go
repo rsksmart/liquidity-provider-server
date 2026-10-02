@@ -83,7 +83,7 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 // default Prometheus registerer, which rejects a second registration.
 func TestNewWatcherRegistry(t *testing.T) {
 	scanTicker, scanTickerStopped := stopReportingTicker()
-	tickers := watcher.NewApplicationTickers()
+	tickers := watcher.NewApplicationTickers(time.Minute, time.Minute)
 	tickers.PegInAddressRegistryWatcherTicker = scanTicker
 	watcherRegistry := buildWatcherRegistry(t, tickers)
 

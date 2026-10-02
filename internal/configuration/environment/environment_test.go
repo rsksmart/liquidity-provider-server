@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
+	"time"
 )
 
 const expectedSecretMask = "********"
@@ -73,6 +74,31 @@ func TestPeginEnv_FillWithDefaults(t *testing.T) {
 		require.Equal(t, uint64(500), defaults.AddressRegistryWatcherStartBlock)
 		require.Equal(t, uint64(10), defaults.AddressRegistryWatcherPageSize)
 	})
+	t.Run("defaults unset watcher intervals to 60 seconds", func(t *testing.T) {
+		env := &environment.PeginEnv{}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(60), defaults.AddressRegistryWatcherIntervalSeconds)
+		require.Equal(t, uint64(60), defaults.ClaimWatcherIntervalSeconds)
+	})
+	t.Run("keeps a 2 second watcher interval", func(t *testing.T) {
+		env := &environment.PeginEnv{
+			AddressRegistryWatcherIntervalSeconds: 2,
+			ClaimWatcherIntervalSeconds:           2,
+		}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(2), defaults.AddressRegistryWatcherIntervalSeconds)
+		require.Equal(t, uint64(2), defaults.ClaimWatcherIntervalSeconds)
+	})
+}
+
+func TestPeginEnv_WatcherIntervals(t *testing.T) {
+	env := &environment.PeginEnv{
+		AddressRegistryWatcherIntervalSeconds: 2,
+		ClaimWatcherIntervalSeconds:           60,
+	}
+	addressRegistry, claim := env.WatcherIntervals()
+	require.Equal(t, 2*time.Second, addressRegistry)
+	require.Equal(t, time.Minute, claim)
 }
 
 func TestNodeReorgEnv_FillWithDefaults(t *testing.T) {

@@ -146,6 +146,14 @@ func (useCase *ClaimPegInUseCase) requestParamsIfAccepted(
 	if err != nil {
 		return nil, blockchain.RequestPegInParams{}, useCase.unavailable(err)
 	}
+	// Gas estimation returns the raw revert, so a claim another caller already won would look
+	// like an outage. The dry run decodes it into ErrPegInAlreadyProcessed.
+	if err = useCase.contracts.PegIn.SimulateRequestPegIn(params); err != nil {
+		if errors.Is(err, blockchain.ErrPegInAlreadyProcessed) {
+			return nil, blockchain.RequestPegInParams{}, useCase.persistAlreadyProcessed(ctx, existing, entry, depositTxID)
+		}
+		return nil, blockchain.RequestPegInParams{}, useCase.unavailable(err)
+	}
 	return fee, params, nil
 }
 
@@ -269,6 +277,26 @@ func (useCase *ClaimPegInUseCase) buildRequestParams(
 		Amount:             amount,
 		Fee:                fee,
 	}, nil
+}
+
+func (useCase *ClaimPegInUseCase) persistAlreadyProcessed(
+	ctx context.Context,
+	existing *rootstock.PegInClaim,
+	entry rootstock.PegInWatch,
+	depositTxID string,
+) error {
+	if existing != nil && existing.IsTerminal() {
+		return nil
+	}
+	claim := rootstock.NewCandidatePegInClaim(entry, depositTxID, entities.NewWei(0), existing)
+	stored, alreadySubmitted, err := useCase.save(ctx, claim)
+	if err != nil {
+		return useCase.unavailable(err)
+	}
+	if alreadySubmitted && stored.IsTerminal() {
+		return nil
+	}
+	return useCase.classifySubmitError(ctx, stored, blockchain.ErrPegInAlreadyProcessed)
 }
 
 func (useCase *ClaimPegInUseCase) classifySubmitError(

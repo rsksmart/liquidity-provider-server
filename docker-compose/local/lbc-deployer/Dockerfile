@@ -1,28 +1,32 @@
-# This is a temporary solution until we update the LBC docker image in the registry
 FROM node:20.15.1@sha256:6326b52a508f0d99ffdbfaa29a69380321b215153db6f32974835bac71b38fa4
 
-ARG DEPLOYER_MNEMONIC
-ARG LBC_COMMIT
-
-# Install Foundry and required tools
 RUN apt-get update -y && \
-    apt-get install -y -qq --no-install-recommends jq make curl && \
-    apt-get clean && \
-    curl -L https://foundry.paradigm.xyz | bash && \
-    /root/.foundry/bin/foundryup && \
-    cp -r /root/.foundry /home/node/.foundry && \
-    chown -R node:node /home/node/.foundry
+    apt-get install -y -qq --no-install-recommends jq make curl git ca-certificates && \
+    apt-get clean
+
+USER node
 
 ENV PATH="/home/node/.foundry/bin:${PATH}"
-ENV WORKDIR=/home/node
 
-WORKDIR $WORKDIR
+# Same Foundry version as the liquidity-bridge-contract Dockerfile.
+ARG FOUNDRY_VERSION=v1.7.1
+RUN curl -L https://foundry.paradigm.xyz | bash && \
+    /home/node/.foundry/bin/foundryup --install "${FOUNDRY_VERSION}"
 
-RUN git clone https://github.com/rsksmart/liquidity-bridge-contract.git lbc
+ARG LBC_GIT_REF=fly-2699-wire-flyover-configurations
+ARG LBC_GIT_URL=https://github.com/rsksmart/liquidity-bridge-contract.git
+# Commit LBC_GIT_REF resolved to. lps-local.sh passes it, so a moved ref rebuilds this layer
+# instead of reusing a cached clone of an older commit.
+ARG LBC_GIT_SHA=
 
-WORKDIR "$WORKDIR/lbc"
+RUN git clone --depth 1 --recurse-submodules --shallow-submodules \
+      --branch "${LBC_GIT_REF}" "${LBC_GIT_URL}" /home/node/lbc && \
+    HEAD_SHA="$(git -C /home/node/lbc rev-parse HEAD)" && \
+    echo "LBC ${LBC_GIT_REF} at ${HEAD_SHA}" && \
+    if [ -n "${LBC_GIT_SHA}" ] && [ "${HEAD_SHA}" != "${LBC_GIT_SHA}" ]; then \
+      echo "ERROR: expected LBC ${LBC_GIT_SHA}, cloned ${HEAD_SHA}"; exit 1; \
+    fi
 
-RUN git checkout ${LBC_COMMIT} && \
-    make install && \
-    npm ci --ignore-scripts && \
-    npm run compile
+WORKDIR /home/node/lbc
+
+RUN npm ci --ignore-scripts && forge build

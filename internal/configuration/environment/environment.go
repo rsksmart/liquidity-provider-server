@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
@@ -210,14 +211,25 @@ func (env *ProviderEnv) ProviderType() liquidity_provider.ProviderType {
 }
 
 type PeginEnv struct {
-	AddressRegistryWatcherStartBlock uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"`
-	AddressRegistryWatcherPageSize   uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"`
+	AddressRegistryWatcherStartBlock      uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"`
+	AddressRegistryWatcherPageSize        uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"`
+	AddressRegistryWatcherIntervalSeconds uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_INTERVAL_SECONDS"`
+	ClaimWatcherIntervalSeconds           uint64 `env:"PEGIN_CLAIM_WATCHER_INTERVAL_SECONDS"`
 }
 
 func (env *PeginEnv) FillWithDefaults() *PeginEnv {
 	const defaultPageSize uint64 = 1000
+	const defaultWatcherIntervalSeconds uint64 = 60
 	env.AddressRegistryWatcherPageSize = utils.FirstNonZero(env.AddressRegistryWatcherPageSize, defaultPageSize)
+	env.AddressRegistryWatcherIntervalSeconds = utils.FirstNonZero(env.AddressRegistryWatcherIntervalSeconds, defaultWatcherIntervalSeconds)
+	env.ClaimWatcherIntervalSeconds = utils.FirstNonZero(env.ClaimWatcherIntervalSeconds, defaultWatcherIntervalSeconds)
 	return env
+}
+
+// WatcherIntervals returns the address registry and claim watcher intervals.
+func (env *PeginEnv) WatcherIntervals() (addressRegistry, claim time.Duration) {
+	return time.Duration(env.AddressRegistryWatcherIntervalSeconds) * time.Second,
+		time.Duration(env.ClaimWatcherIntervalSeconds) * time.Second
 }
 
 type PegoutEnv struct {

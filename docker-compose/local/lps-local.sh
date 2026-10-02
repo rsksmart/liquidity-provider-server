@@ -47,9 +47,18 @@ fi
 ### Contract deployment ###
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
-  # LBC_IMAGE is a pinned digest that never changes between runs, so compose would
-  # treat a previous run's "service_completed_successfully" as still satisfied and
-  # skip re-running the deployer. After a chain reset (rm -rf volumes) that leaves the
+  # Resolve LBC_GIT_REF to a commit so the deployer image rebuilds when the ref moves.
+  LBC_GIT_REF="${LBC_GIT_REF:-fly-2699-wire-flyover-configurations}"
+  LBC_GIT_SHA=$(git ls-remote https://github.com/rsksmart/liquidity-bridge-contract.git "refs/heads/$LBC_GIT_REF" "refs/tags/$LBC_GIT_REF" | head -1 | cut -f1)
+  if [ -z "$LBC_GIT_SHA" ]; then
+    echo "ERROR: LBC_GIT_REF $LBC_GIT_REF not found in liquidity-bridge-contract"
+    exit 1
+  fi
+  export LBC_GIT_REF LBC_GIT_SHA
+  echo "Deploying LBC $LBC_GIT_REF at $LBC_GIT_SHA"
+  # The deployer image does not change between runs, so compose would treat a
+  # previous run's "service_completed_successfully" as still satisfied and skip
+  # re-running the deployer. After a chain reset (rm -rf volumes) that leaves the
   # contracts undeployed. Remove the one-shot containers so they always run fresh.
   docker rm -f lbc-deployer lps-approver >/dev/null 2>&1 || true
   docker compose -f docker-compose.yml -f wallet-funder/docker-compose.funder.yml -f lbc-deployer/docker-compose.lbc-deployer.yml --env-file "$ENV_FILE" up -d --wait
