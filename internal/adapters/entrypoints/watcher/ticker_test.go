@@ -21,9 +21,18 @@ func TestNewApplicationTickers(t *testing.T) {
 }
 
 func TestNewApplicationTickers_UsesProvidedIntervals(t *testing.T) {
-	tickers := watcher.NewApplicationTickers(2*time.Second, 2*time.Second)
-	require.NotNil(t, tickers.PegInAddressRegistryWatcherTicker)
-	require.NotNil(t, tickers.PegInClaimWatcherTicker)
-	tickers.PegInAddressRegistryWatcherTicker.Stop()
-	tickers.PegInClaimWatcherTicker.Stop()
+	// A 10 ms ticker fires well inside one second; a ticker that ignored the argument would not.
+	tickers := watcher.NewApplicationTickers(10*time.Millisecond, 10*time.Millisecond)
+	defer tickers.PegInAddressRegistryWatcherTicker.Stop()
+	defer tickers.PegInClaimWatcherTicker.Stop()
+	for name, ticker := range map[string]<-chan time.Time{
+		"address registry": tickers.PegInAddressRegistryWatcherTicker.C(),
+		"claim":            tickers.PegInClaimWatcherTicker.C(),
+	} {
+		select {
+		case <-ticker:
+		case <-time.After(time.Second):
+			t.Fatalf("%s ticker did not use the provided interval", name)
+		}
+	}
 }
