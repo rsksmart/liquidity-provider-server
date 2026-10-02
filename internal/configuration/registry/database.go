@@ -16,6 +16,7 @@ type Database struct {
 	PenalizedEventRepository    penalization.PenalizedEventRepository
 	TrustedAccountRepository    liquidity_provider.TrustedAccountRepository
 	BatchPegOutRepository       rootstock.BatchPegOutRepository
+	PegInWatchRepository        rootstock.PegInWatchRepository
 	PegOutEscrowWatchRepository blockchain.PegOutEscrowWatchRepository
 	Connection                  *mongo.Connection
 }
@@ -28,6 +29,7 @@ func NewDatabaseRegistry(connection *mongo.Connection) *Database {
 		PenalizedEventRepository:    mongo.NewPenalizedEventRepository(connection),
 		TrustedAccountRepository:    mongo.NewTrustedAccountRepository(connection),
 		BatchPegOutRepository:       mongo.NewBatchPegOutMongoRepository(connection),
+		PegInWatchRepository:        mongo.NewPegInWatchMongoRepository(connection),
 		PegOutEscrowWatchRepository: mongo.NewPegOutEscrowWatchMongoRepository(connection),
 		Connection:                  connection,
 	}
