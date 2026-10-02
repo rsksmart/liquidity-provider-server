@@ -2,6 +2,7 @@ package rootstock
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -12,6 +13,19 @@ const (
 	PegInWatchImported            PegInWatchState = "imported"             // Bitcoin address imported into the wallet
 	PegInWatchUnsupportedEncoding PegInWatchState = "unsupported_encoding" // encoding cannot be converted to a Bitcoin address
 )
+
+// PegInAddressRegistryEncoding mirrors the on-chain IPegInAddressRegistry.Encoding enum.
+type PegInAddressRegistryEncoding uint8
+
+const (
+	PegInAddressRegistryEncodingBase58 PegInAddressRegistryEncoding = iota
+	PegInAddressRegistryEncodingBech32
+	PegInAddressRegistryEncodingBech32M
+)
+
+func IsSupportedPegInEncoding(encoding PegInAddressRegistryEncoding) bool {
+	return encoding == PegInAddressRegistryEncodingBase58
+}
 
 type PegInWatch struct {
 	TxHash           string          `json:"txHash" bson:"tx_hash"`
@@ -29,6 +43,57 @@ type PegInWatch struct {
 	LastError        string          `json:"lastError" bson:"last_error"`
 	CreatedAt        time.Time       `json:"createdAt" bson:"created_at"`
 	UpdatedAt        time.Time       `json:"updatedAt" bson:"updated_at"`
+}
+
+func NewPegInWatch(
+	txHash string,
+	logIndex uint,
+	blockNumber uint64,
+	rskAddress string,
+	registrant string,
+	registrationRoot [32]byte,
+) PegInWatch {
+	now := time.Now().UTC()
+	return PegInWatch{
+		TxHash:           txHash,
+		LogIndex:         logIndex,
+		BlockNumber:      blockNumber,
+		RskAddress:       rskAddress,
+		Registrant:       registrant,
+		RegistrationRoot: registrationRoot,
+		State:            PegInWatchDiscovered,
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+}
+
+func (watch *PegInWatch) SetEncoding(encoding PegInAddressRegistryEncoding) {
+	watch.Encoding = uint8(encoding)
+	watch.UpdatedAt = time.Now().UTC()
+	if IsSupportedPegInEncoding(encoding) {
+		return
+	}
+	watch.State = PegInWatchUnsupportedEncoding
+	watch.LastError = fmt.Sprintf("unsupported encoding %d", encoding)
+}
+
+func (watch *PegInWatch) SameLog(txHash string, logIndex uint) bool {
+	return watch.TxHash == txHash && watch.LogIndex == logIndex
+}
+
+func (watch *PegInWatch) MarkImported() {
+	watch.State = PegInWatchImported
+	watch.LastError = ""
+	watch.UpdatedAt = time.Now().UTC()
+}
+
+func (watch *PegInWatch) RecordError(err error) bool {
+	if watch.LastError == err.Error() {
+		return false
+	}
+	watch.LastError = err.Error()
+	watch.UpdatedAt = time.Now().UTC()
+	return true
 }
 
 type PegInWatchRepository interface {
