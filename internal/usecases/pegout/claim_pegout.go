@@ -272,7 +272,7 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 	pegoutQuote quote.PegoutQuote,
 	signature []byte,
 ) (bool, error) {
-	_, quoteHash, err := useCase.completeQuote(pegoutQuote)
+	completedQuote, quoteHash, err := useCase.completeQuote(pegoutQuote)
 	if err != nil {
 		return false, err
 	}
@@ -295,7 +295,7 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 		log.Info(LogClaimPegoutLostRace(requestHash))
 		return false, nil
 	}
-	if err = useCase.persistClaim(ctx, requestHash, pegoutQuote, signature, receipt.TransactionHash); err != nil {
+	if err = useCase.persistClaim(ctx, requestHash, quoteHash, completedQuote, signature, receipt.TransactionHash); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -328,12 +328,13 @@ func (useCase *ClaimPegOutUseCase) handleClaimError(requestHash string, claimErr
 func (useCase *ClaimPegOutUseCase) persistClaim(
 	ctx context.Context,
 	requestHash string,
+	quoteHash string,
 	pegoutQuote quote.PegoutQuote,
 	signature []byte,
 	claimTxHash string,
 ) error {
 	retainedQuote := quote.RetainedPegoutQuote{
-		QuoteHash:         requestHash,
+		QuoteHash:         quoteHash,
 		DepositAddress:    useCase.contracts.PegOut.GetAddress(),
 		Signature:         hex.EncodeToString(signature),
 		RequiredLiquidity: pegoutQuote.Value.Copy(),
@@ -345,7 +346,7 @@ func (useCase *ClaimPegOutUseCase) persistClaim(
 		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
 	createdQuote := quote.CreatedPegoutQuote{
-		Hash:         requestHash,
+		Hash:         quoteHash,
 		Quote:        pegoutQuote,
 		CreationData: quote.PegoutCreationDataZeroValue(),
 	}
@@ -360,6 +361,6 @@ func (useCase *ClaimPegOutUseCase) persistClaim(
 		Quote:         pegoutQuote,
 		RetainedQuote: retainedQuote,
 	})
-	log.Info(LogClaimPegoutSuccess(requestHash, claimTxHash))
+	log.Info(LogClaimPegoutSuccess(requestHash, quoteHash, claimTxHash))
 	return nil
 }

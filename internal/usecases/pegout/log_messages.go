@@ -26,6 +26,6 @@ func LogClaimPegoutAlreadyClaimed(requestHash string) string {
 	return fmt.Sprintf(LogClaimPegoutPrefix+"already claimed locally %s", requestHash)
 }
 
-func LogClaimPegoutSuccess(requestHash, txHash string) string {
-	return fmt.Sprintf(LogClaimPegoutPrefix+"claimed %s in tx %s", requestHash, txHash)
+func LogClaimPegoutSuccess(requestHash, quoteHash, txHash string) string {
+	return fmt.Sprintf(LogClaimPegoutPrefix+"claimed %s as %s in tx %s", requestHash, quoteHash, txHash)
 }
