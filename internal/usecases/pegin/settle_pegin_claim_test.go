@@ -40,6 +40,12 @@ func newSettleHarness(t *testing.T, repo rootstock.PegInClaimRepository) *settle
 	}
 }
 
+func failedReceipt() blockchain.TransactionReceipt {
+	receipt := successReceipt()
+	receipt.Status = 0
+	return receipt
+}
+
 func newSettleUseCase(
 	t *testing.T,
 	claims rootstock.PegInClaimRepository,
@@ -139,12 +145,12 @@ func TestSettlePegInClaimUseCase_EmptyBlockHashStaysSubmitting(t *testing.T) {
 	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
-func TestSettlePegInClaimUseCase_TxFailedErrorClassifiesViaPreflight(t *testing.T) {
+func TestSettlePegInClaimUseCase_StatusZeroClassifiesViaPreflight(t *testing.T) {
 	repo := newMemoryClaimRepo(submittingClaim())
 	harness := newSettleHarness(t, repo)
-	receipt := successReceipt()
+	receipt := failedReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
-		Return(receipt, blockchain.TxFailedError).Once()
+		Return(receipt, nil).Once()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
@@ -165,9 +171,9 @@ func TestSettlePegInClaimUseCase_TxFailedErrorClassifiesViaPreflight(t *testing.
 func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	repo := newMemoryClaimRepo(submittingClaim())
 	harness := newSettleHarness(t, repo)
-	receipt := successReceipt()
+	receipt := failedReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
-		Return(receipt, blockchain.TxFailedError).Once()
+		Return(receipt, nil).Once()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.expectBuildParams()
@@ -185,9 +191,9 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyLookupErrors(t *testing.T) {
 	t.Run("btc tx info", func(t *testing.T) {
 		claims := mocks.NewPegInClaimRepositoryMock(t)
 		harness := newSettleHarness(t, claims)
-		receipt := successReceipt()
+		receipt := failedReceipt()
 		harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
-			Return(receipt, blockchain.TxFailedError).Once()
+			Return(receipt, nil).Once()
 		harness.btc.On("GetTransactionInfo", claimDepositTxID).
 			Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
 
@@ -200,9 +206,9 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyLookupErrors(t *testing.T) {
 	t.Run("fee oracle", func(t *testing.T) {
 		claims := mocks.NewPegInClaimRepositoryMock(t)
 		harness := newSettleHarness(t, claims)
-		receipt := successReceipt()
+		receipt := failedReceipt()
 		harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
-			Return(receipt, blockchain.TxFailedError).Once()
+			Return(receipt, nil).Once()
 		harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return((*entities.Wei)(nil), assert.AnError).Once()
 
@@ -275,9 +281,9 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 		t.Run(simulateErr.Error(), func(t *testing.T) {
 			repo := newMemoryClaimRepo(submittingClaim())
 			harness := newSettleHarness(t, repo)
-			receipt := successReceipt()
+			receipt := failedReceipt()
 			harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
-				Return(receipt, blockchain.TxFailedError).Once()
+				Return(receipt, nil).Once()
 			harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 			harness.expectBuildParams()
@@ -298,9 +304,9 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 func TestSettlePegInClaimUseCase_SimulateRpcErrorStaysSubmitting(t *testing.T) {
 	claims := mocks.NewPegInClaimRepositoryMock(t)
 	harness := newSettleHarness(t, claims)
-	receipt := successReceipt()
+	receipt := failedReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
-		Return(receipt, blockchain.TxFailedError).Once()
+		Return(receipt, nil).Once()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.expectBuildParams()

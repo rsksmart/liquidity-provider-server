@@ -392,7 +392,7 @@ func TestRskjRpcServer_GetTransactionReceipt_ErrorHandling(t *testing.T) {
 	})
 }
 
-func TestRskjRpcServer_GetTransactionReceipt_StatusZeroIsTxFailedError(t *testing.T) {
+func TestRskjRpcServer_GetTransactionReceipt_StatusZeroReturnsReceipt(t *testing.T) {
 	client := &mocks.RpcClientBindingMock{}
 	rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
 	const (
@@ -428,7 +428,8 @@ func TestRskjRpcServer_GetTransactionReceipt_StatusZeroIsTxFailedError(t *testin
 			S:        sAsBigInt,
 		}), false, nil).Once()
 	receipt, err := rpc.GetTransactionReceipt(context.Background(), txHash)
-	require.ErrorIs(t, err, blockchain.TxFailedError)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(0), receipt.Status)
 	assert.Equal(t, txHash, receipt.TransactionHash)
 	assert.Equal(t, uint64(500), receipt.BlockNumber)
 	client.AssertExpectations(t)
