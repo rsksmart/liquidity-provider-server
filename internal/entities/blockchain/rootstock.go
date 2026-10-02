@@ -82,6 +82,11 @@ type TransactionReceipt struct {
 	Logs              []TransactionLog
 }
 
+// IsFinal reports whether the receipt is at least maxReorgDepth blocks below height.
+func (receipt TransactionReceipt) IsFinal(height, maxReorgDepth uint64) bool {
+	return receipt.BlockNumber+maxReorgDepth <= height
+}
+
 type TransactionLog struct {
 	Address     string
 	Topics      [][32]byte

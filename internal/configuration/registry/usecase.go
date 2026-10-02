@@ -195,12 +195,12 @@ func NewUseCaseRegistry(
 			messaging.Rpc,
 			lpRegistry.LiquidityProvider,
 			mutexes.RskWalletMutex(),
-			env.Rsk.FillWithDefaults().MaxReorgDepth,
 		),
 		settlePegInClaimUseCase: pegin.NewSettlePegInClaimUseCase(
 			databaseRegistry.PegInClaimRepository,
 			rskRegistry.Contracts,
 			messaging.Rpc,
+			env.Rsk.FillWithDefaults().MaxReorgDepth,
 		),
 		expiredPeginQuoteUseCase: pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(

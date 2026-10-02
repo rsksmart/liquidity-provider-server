@@ -36,8 +36,19 @@ func newSettleHarness(t *testing.T, repo rootstock.PegInClaimRepository) *settle
 				PauseRegistry:         base.pause,
 			},
 			blockchain.Rpc{Btc: base.btc, Rsk: base.rsk},
+			settleMaxReorgDepth,
 		),
 	}
+}
+
+// successReceipt is at block 100, so height 102 is final with depth 2.
+const (
+	settleMaxReorgDepth = 2
+	settleFinalHeight   = 102
+)
+
+func (h *settleHarness) expectFinalHeight() {
+	h.rsk.On("GetHeight", mock.Anything).Return(uint64(settleFinalHeight), nil).Once()
 }
 
 func failedReceipt() blockchain.TransactionReceipt {
@@ -60,12 +71,14 @@ func newSettleUseCase(
 			FlyoverConfigurations: mocks.NewFlyoverConfigurationsContractMock(t),
 		},
 		blockchain.Rpc{Btc: mocks.NewBtcRpcMock(t), Rsk: rsk},
+		settleMaxReorgDepth,
 	)
 }
 
 func (h *settleHarness) expectReceipt() blockchain.TransactionReceipt {
 	receipt := successReceipt()
 	h.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(receipt, nil).Once()
+	h.expectFinalHeight()
 	return receipt
 }
 
@@ -151,6 +164,7 @@ func TestSettlePegInClaimUseCase_StatusZeroClassifiesViaPreflight(t *testing.T) 
 	receipt := failedReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 		Return(receipt, nil).Once()
+	harness.expectFinalHeight()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
@@ -174,6 +188,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	receipt := failedReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 		Return(receipt, nil).Once()
+	harness.expectFinalHeight()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.expectBuildParams()
@@ -194,6 +209,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyLookupErrors(t *testing.T) {
 		receipt := failedReceipt()
 		harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 			Return(receipt, nil).Once()
+		harness.expectFinalHeight()
 		harness.btc.On("GetTransactionInfo", claimDepositTxID).
 			Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
 
@@ -209,6 +225,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyLookupErrors(t *testing.T) {
 		receipt := failedReceipt()
 		harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 			Return(receipt, nil).Once()
+		harness.expectFinalHeight()
 		harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return((*entities.Wei)(nil), assert.AnError).Once()
 
@@ -284,6 +301,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 			receipt := failedReceipt()
 			harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 				Return(receipt, nil).Once()
+			harness.expectFinalHeight()
 			harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 			harness.expectBuildParams()
@@ -307,6 +325,7 @@ func TestSettlePegInClaimUseCase_SimulateRpcErrorStaysSubmitting(t *testing.T) {
 	receipt := failedReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 		Return(receipt, nil).Once()
+	harness.expectFinalHeight()
 	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
 	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
 	harness.expectBuildParams()
@@ -316,4 +335,46 @@ func TestSettlePegInClaimUseCase_SimulateRpcErrorStaysSubmitting(t *testing.T) {
 	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
 	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
+func TestSettlePegInClaimUseCase_ReceiptNotFinalStaysSubmitting(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	peginContract := mocks.NewPeginContractMock(t)
+	rsk := mocks.NewRootstockRpcServerMock(t)
+	rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(successReceipt(), nil).Once()
+	rsk.On("GetHeight", mock.Anything).Return(uint64(settleFinalHeight-1), nil).Once()
+	useCase := newSettleUseCase(t, claims, peginContract, rsk)
+
+	err := useCase.Run(context.Background(), submittingClaim())
+	require.NoError(t, err)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	peginContract.AssertNotCalled(t, "UnpackPegInRequested", mock.Anything)
+}
+
+func TestSettlePegInClaimUseCase_GetHeightErrorIsUnavailable(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	peginContract := mocks.NewPeginContractMock(t)
+	rsk := mocks.NewRootstockRpcServerMock(t)
+	rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(successReceipt(), nil).Once()
+	rsk.On("GetHeight", mock.Anything).Return(uint64(0), assert.AnError).Once()
+	useCase := newSettleUseCase(t, claims, peginContract, rsk)
+
+	err := useCase.Run(context.Background(), submittingClaim())
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+	require.ErrorIs(t, err, assert.AnError)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestSettlePegInClaimUseCase_UnpackFailureKeepsStoredPegInID(t *testing.T) {
+	stored := submittingClaim()
+	stored.PegInID = "aabbcc"
+	repo := newMemoryClaimRepo(stored)
+	harness := newSettleHarness(t, repo)
+	receipt := harness.expectReceipt()
+	harness.pegin.On("UnpackPegInRequested", receipt).Return(blockchain.PegInRequestedEvent{}, errors.New("missing")).Once()
+
+	err := harness.useCase.Run(context.Background(), stored)
+	require.NoError(t, err)
+	assert.Equal(t, rootstock.PegInClaimClaimed, repo.stored().State)
+	assert.Equal(t, "aabbcc", repo.stored().PegInID)
 }
