@@ -57,6 +57,24 @@ func TestBtcEnv_FillWithDefaults(t *testing.T) {
 	})
 }
 
+func TestPeginEnv_FillWithDefaults(t *testing.T) {
+	t.Run("defaults zero page size to 1000 and keeps a zero start block", func(t *testing.T) {
+		env := &environment.PeginEnv{}
+		defaults := env.FillWithDefaults()
+		require.Zero(t, defaults.AddressRegistryWatcherStartBlock)
+		require.Equal(t, uint64(1000), defaults.AddressRegistryWatcherPageSize)
+	})
+	t.Run("keeps custom page size and start block", func(t *testing.T) {
+		env := &environment.PeginEnv{
+			AddressRegistryWatcherStartBlock: 500,
+			AddressRegistryWatcherPageSize:   10,
+		}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(500), defaults.AddressRegistryWatcherStartBlock)
+		require.Equal(t, uint64(10), defaults.AddressRegistryWatcherPageSize)
+	})
+}
+
 func TestNodeReorgEnv_FillWithDefaults(t *testing.T) {
 	env := &environment.NodeReorgEnv{AlertCooldownSeconds: 0}
 	defaults := env.FillWithDefaults()
