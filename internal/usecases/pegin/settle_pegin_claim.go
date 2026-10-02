@@ -16,20 +16,23 @@ import (
 var ErrStatus0ReceiptStillCallable = errors.New("status-0 receipt; preflight no longer reverts")
 
 type SettlePegInClaimUseCase struct {
-	claims    rootstock.PegInClaimRepository
-	contracts blockchain.RskContracts
-	rpc       blockchain.Rpc
+	claims        rootstock.PegInClaimRepository
+	contracts     blockchain.RskContracts
+	rpc           blockchain.Rpc
+	maxReorgDepth uint64
 }
 
 func NewSettlePegInClaimUseCase(
 	claims rootstock.PegInClaimRepository,
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
+	maxReorgDepth uint64,
 ) *SettlePegInClaimUseCase {
 	return &SettlePegInClaimUseCase{
-		claims:    claims,
-		contracts: contracts,
-		rpc:       rpc,
+		claims:        claims,
+		contracts:     contracts,
+		rpc:           rpc,
+		maxReorgDepth: maxReorgDepth,
 	}
 }
 
@@ -47,6 +50,13 @@ func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock
 		return useCase.unavailable(err)
 	}
 	if !receiptOnCanonicalChain(receipt) {
+		return nil
+	}
+	height, err := useCase.rpc.Rsk.GetHeight(ctx)
+	if err != nil {
+		return useCase.unavailable(err)
+	}
+	if !receipt.IsFinal(height, useCase.maxReorgDepth) {
 		return nil
 	}
 	if receipt.Status != blockchain.SuccessfulTxStatus {
@@ -73,8 +83,8 @@ func (useCase *SettlePegInClaimUseCase) finalizeSuccess(
 ) error {
 	event, unpackErr := useCase.contracts.PegIn.UnpackPegInRequested(receipt)
 	if unpackErr != nil {
+		// Keep a PegInID the submit path already stored.
 		log.Error(LogPegInClaimMissingEvent(claim.TxHash, claim.RskAddress, claim.DepositTxID, unpackErr))
-		claim.PegInID = ""
 	} else {
 		claim.PegInID = hex.EncodeToString(event.PegInId[:])
 	}

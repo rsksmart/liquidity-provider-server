@@ -21,7 +21,6 @@ type ClaimPegInUseCase struct {
 	rpc            blockchain.Rpc
 	account        liquidity_provider.LiquidityProvider
 	rskWalletMutex sync.Locker
-	maxReorgDepth  uint64
 }
 
 func NewClaimPegInUseCase(
@@ -30,7 +29,6 @@ func NewClaimPegInUseCase(
 	rpc blockchain.Rpc,
 	account liquidity_provider.LiquidityProvider,
 	rskWalletMutex sync.Locker,
-	maxReorgDepth uint64,
 ) *ClaimPegInUseCase {
 	return &ClaimPegInUseCase{
 		claims:         claims,
@@ -38,7 +36,6 @@ func NewClaimPegInUseCase(
 		rpc:            rpc,
 		account:        account,
 		rskWalletMutex: rskWalletMutex,
-		maxReorgDepth:  maxReorgDepth,
 	}
 }
 
@@ -224,27 +221,21 @@ func (useCase *ClaimPegInUseCase) submit(
 	params blockchain.RequestPegInParams,
 ) error {
 	result, submitErr := useCase.contracts.PegIn.RequestPegIn(params)
-	if result.Receipt.TransactionHash != "" {
-		if persistErr := useCase.persistTxHash(ctx, &claim, result.Receipt.TransactionHash); persistErr != nil {
-			return useCase.unavailable(errors.Join(persistErr, submitErr))
-		}
-		if submitErr == nil {
-			return useCase.finalizeSuccess(ctx, claim, result)
-		}
-		return nil
-	}
-	if submitErr != nil {
+	if result.Receipt.TransactionHash == "" && submitErr != nil {
 		return useCase.classifySubmitError(ctx, claim, submitErr)
 	}
-	return useCase.finalizeSuccess(ctx, claim, result)
+	claim.TxHash = result.Receipt.TransactionHash
+	if submitErr == nil {
+		claim.PegInID = hex.EncodeToString(result.Event.PegInId[:])
+	}
+	// The row stays submitting. SettlePegInClaimUseCase marks it claimed after maxReorgDepth.
+	if persistErr := useCase.persistSubmission(ctx, &claim); persistErr != nil {
+		return useCase.unavailable(errors.Join(persistErr, submitErr))
+	}
+	return nil
 }
 
-func (useCase *ClaimPegInUseCase) persistTxHash(
-	ctx context.Context,
-	claim *rootstock.PegInClaim,
-	txHash string,
-) error {
-	claim.TxHash = txHash
+func (useCase *ClaimPegInUseCase) persistSubmission(ctx context.Context, claim *rootstock.PegInClaim) error {
 	claim.UpdatedAt = time.Now().UTC()
 	// RequestPegIn already waited on awaitTx with a detached context, so the
 	// caller deadline can expire after broadcast. Bound this write with the
@@ -318,29 +309,6 @@ func (useCase *ClaimPegInUseCase) classifySubmitError(
 		return useCase.unavailable(errors.Join(submitErr, err))
 	}
 	return usecases.WrapUseCaseError(usecases.ClaimPegInId, submitErr)
-}
-
-func (useCase *ClaimPegInUseCase) finalizeSuccess(
-	ctx context.Context,
-	claim rootstock.PegInClaim,
-	result blockchain.RequestPegInResult,
-) error {
-	height, err := useCase.rpc.Rsk.GetHeight(ctx)
-	if err != nil {
-		return useCase.unavailable(err)
-	}
-	claim.PegInID = hex.EncodeToString(result.Event.PegInId[:])
-	claim.UpdatedAt = time.Now().UTC()
-	if result.Receipt.BlockNumber+useCase.maxReorgDepth <= height {
-		claim.State = rootstock.PegInClaimClaimed
-		claim.ReservedWei = entities.NewWei(0)
-	} else {
-		claim.State = rootstock.PegInClaimSubmitting
-	}
-	if err = useCase.claims.Update(ctx, claim); err != nil {
-		return useCase.unavailable(err)
-	}
-	return nil
 }
 
 // Other in-flight reserves only. Spendable adds this deposit's payable separately.
