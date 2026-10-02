@@ -37,6 +37,7 @@ type AddressRegistered struct {
 	RegistrationRoot [32]byte
 	TxHash           string
 	BlockNumber      uint64
+	LogIndex         uint
 }
 
 type PegInAddressRegistryContract interface {
