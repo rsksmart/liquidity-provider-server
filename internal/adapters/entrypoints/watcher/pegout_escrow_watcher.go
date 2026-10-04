@@ -2,12 +2,14 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	log "github.com/sirupsen/logrus"
 )
@@ -149,6 +151,12 @@ func (watcher *PegoutEscrowWatcher) reconcilePendingClaims(ctx context.Context) 
 
 func (watcher *PegoutEscrowWatcher) tryClaimCandidates(ctx context.Context) {
 	if watcher.claimPegOutUseCase == nil {
+		return
+	}
+	if err := usecases.CheckPauseState(watcher.contracts.PegOut); err != nil {
+		if !errors.Is(err, blockchain.ContractPausedError) {
+			log.Errorf(LogPegoutEscrowError, err)
+		}
 		return
 	}
 	for _, candidate := range watcher.GetCandidates() {
