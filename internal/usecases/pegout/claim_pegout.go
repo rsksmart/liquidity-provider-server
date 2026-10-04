@@ -281,7 +281,7 @@ func (useCase *ClaimPegOutUseCase) checkProfitability(
 ) (bool, error) {
 	btcFeeEstimation, err := useCase.btcWallet.EstimateTxFees(pegoutQuote.DepositAddress, pegoutQuote.Value)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "insufficient funds") {
+		if errors.Is(err, blockchain.BtcInsufficientFundsError) {
 			log.Debug(LogClaimPegoutCapacitySkip(requestHash))
 			return true, nil
 		}
