@@ -15,6 +15,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type ClaimOutcome uint8
+
+const (
+	ClaimOutcomeSkipped ClaimOutcome = iota
+	ClaimOutcomeClaimed
+	ClaimOutcomeClosed
+)
+
+var errRequestClosed = errors.New("peg-out request is no longer open")
+
 type ClaimPegOutUseCase struct {
 	contracts       blockchain.RskContracts
 	rpc             blockchain.Rpc
@@ -45,7 +55,21 @@ func NewClaimPegOutUseCase(
 	}
 }
 
-func (useCase *ClaimPegOutUseCase) Run(ctx context.Context, candidate blockchain.PegOutRequested) (bool, error) {
+func (useCase *ClaimPegOutUseCase) Run(ctx context.Context, candidate blockchain.PegOutRequested) (ClaimOutcome, error) {
+	claimed, err := useCase.run(ctx, candidate)
+	switch {
+	case errors.Is(err, errRequestClosed):
+		return ClaimOutcomeClosed, nil
+	case err != nil:
+		return ClaimOutcomeSkipped, err
+	case claimed:
+		return ClaimOutcomeClaimed, nil
+	default:
+		return ClaimOutcomeSkipped, nil
+	}
+}
+
+func (useCase *ClaimPegOutUseCase) run(ctx context.Context, candidate blockchain.PegOutRequested) (bool, error) {
 	if useCase.contracts.PegOutEscrow == nil {
 		return false, nil
 	}
@@ -66,8 +90,8 @@ func (useCase *ClaimPegOutUseCase) shouldSkipClaim(ctx context.Context, requestH
 	if skip, err := useCase.checkAlreadyClaimed(ctx, requestHash); err != nil || skip {
 		return skip, err
 	}
-	if skip, err := useCase.checkRequestedState(requestHash); err != nil || skip {
-		return skip, err
+	if err := useCase.checkRequestedState(requestHash); err != nil {
+		return false, err
 	}
 	return useCase.checkRestriction(ctx, requestHash)
 }
@@ -92,9 +116,6 @@ func (useCase *ClaimPegOutUseCase) prepareClaim(
 	if err != nil {
 		return quote.PegoutQuote{}, nil, false, err
 	}
-	if claimGas == nil {
-		return quote.PegoutQuote{}, nil, true, nil
-	}
 	skip, err = useCase.checkProfitability(ctx, requestHash, pegoutQuote, claimGas)
 	if err != nil || skip {
 		return quote.PegoutQuote{}, nil, skip, err
@@ -114,16 +135,16 @@ func (useCase *ClaimPegOutUseCase) checkAlreadyClaimed(ctx context.Context, requ
 	return true, nil
 }
 
-func (useCase *ClaimPegOutUseCase) checkRequestedState(requestHash string) (bool, error) {
+func (useCase *ClaimPegOutUseCase) checkRequestedState(requestHash string) error {
 	state, err := useCase.contracts.PegOutEscrow.GetPegOutState(requestHash)
 	if err != nil {
-		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
 	if state == blockchain.EscrowedPegOutStateRequested {
-		return false, nil
+		return nil
 	}
 	log.Info(LogClaimPegoutLostRace(requestHash))
-	return true, nil
+	return errRequestClosed
 }
 
 func (useCase *ClaimPegOutUseCase) checkRestriction(ctx context.Context, requestHash string) (bool, error) {
@@ -234,7 +255,7 @@ func (useCase *ClaimPegOutUseCase) estimateClaimGas(requestHash string, signatur
 	}
 	if state != blockchain.EscrowedPegOutStateRequested {
 		log.Info(LogClaimPegoutLostRace(requestHash))
-		return nil, nil
+		return nil, errRequestClosed
 	}
 	return nil, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 }
@@ -366,7 +387,7 @@ func (useCase *ClaimPegOutUseCase) handleClaimError(
 	}
 	if requestState != blockchain.EscrowedPegOutStateRequested {
 		log.Info(LogClaimPegoutLostRace(requestHash))
-		return false, nil
+		return false, errRequestClosed
 	}
 	return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, claimErr)
 }

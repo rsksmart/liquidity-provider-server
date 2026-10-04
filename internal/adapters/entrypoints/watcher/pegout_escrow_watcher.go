@@ -160,12 +160,12 @@ func (watcher *PegoutEscrowWatcher) tryClaimCandidates(ctx context.Context) {
 		return
 	}
 	for _, candidate := range watcher.GetCandidates() {
-		claimed, err := watcher.claimPegOutUseCase.Run(ctx, candidate)
+		outcome, err := watcher.claimPegOutUseCase.Run(ctx, candidate)
 		if err != nil {
 			log.Error(LogPegoutEscrowClaimError(candidate.RequestHash, err))
 			continue
 		}
-		if claimed {
+		if outcome != pegout.ClaimOutcomeSkipped {
 			if dropErr := watcher.dropCandidate(ctx, candidate.RequestHash); dropErr != nil {
 				log.Error(LogPegoutEscrowClaimError(candidate.RequestHash, dropErr))
 			}
