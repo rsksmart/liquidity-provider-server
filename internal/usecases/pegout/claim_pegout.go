@@ -291,6 +291,7 @@ func (useCase *ClaimPegOutUseCase) checkProfitability(
 	if err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
+	// refundPegOut can't be estimated before the BTC payment exists, so it is costed at the fixed gas limit it is sent with (an upper bound).
 	totalGas := new(entities.Wei).Add(claimGas, entities.NewUWei(refundPegoutGasLimit))
 	rskCost := new(entities.Wei).Mul(totalGas, gasPrice)
 	totalCost := new(entities.Wei).Add(rskCost, btcFeeEstimation.Value)
