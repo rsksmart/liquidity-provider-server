@@ -152,11 +152,14 @@ func (useCase *ClaimPegOutUseCase) checkRestriction(ctx context.Context, request
 	if err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
-	height, err := useCase.rpc.Rsk.GetHeight(ctx)
+	if restrictedUntil == 0 {
+		return false, nil
+	}
+	block, err := useCase.rpc.Rsk.GetBlockByNumber(ctx, nil)
 	if err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
-	if restrictedUntil == 0 || height >= restrictedUntil {
+	if uint64(block.Timestamp.Unix()) >= restrictedUntil {
 		return false, nil
 	}
 	log.Debug(LogClaimPegoutRestrictedSkip(requestHash, restrictedUntil))
@@ -177,6 +180,7 @@ func (useCase *ClaimPegOutUseCase) loadEncodedQuote(requestHash string) (quote.P
 	if pegoutQuote.LpBtcAddress, err = useCase.encodeHexAddress(pegoutQuote.LpBtcAddress); err != nil {
 		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
+	pegoutQuote.LpRskAddress = useCase.lp.RskAddress()
 	return pegoutQuote, nil
 }
 
@@ -184,6 +188,9 @@ func (useCase *ClaimPegOutUseCase) encodeHexAddress(hexAddress string) (string, 
 	addressBytes, err := hex.DecodeString(strings.TrimPrefix(hexAddress, "0x"))
 	if err != nil {
 		return "", err
+	}
+	if len(addressBytes) == 0 {
+		return "", nil
 	}
 	return useCase.rpc.Btc.EncodeAddress(addressBytes)
 }
@@ -308,9 +315,9 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 	pegoutQuote quote.PegoutQuote,
 	signature []byte,
 ) (bool, error) {
-	completedQuote, quoteHash, err := useCase.completeQuote(pegoutQuote)
+	quoteHash, err := useCase.contracts.PegOut.HashPegoutQuote(pegoutQuote)
 	if err != nil {
-		return false, err
+		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
 
 	useCase.rskWalletMutex.Lock()
@@ -321,7 +328,7 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 		return false, err
 	}
 	// Once the claim mines the LP owes the BTC, so it is recorded before it is sent.
-	retainedQuote, err := useCase.persistPendingClaim(ctx, quoteHash, completedQuote, signature)
+	retainedQuote, err := useCase.persistPendingClaim(ctx, quoteHash, pegoutQuote, signature)
 	if err != nil {
 		return false, err
 	}
@@ -329,11 +336,11 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 	txConfig := blockchain.NewTransactionConfig(nil, 0, nil)
 	receipt, err := useCase.contracts.PegOutEscrow.ClaimPegOut(txConfig, requestHash, signature)
 	if err != nil {
-		return useCase.handleClaimError(ctx, requestHash, retainedQuote, completedQuote, err)
+		return useCase.handleClaimError(ctx, requestHash, retainedQuote, pegoutQuote, err)
 	}
 	// A successful claimPegOut re-keys the peg-out to quoteHash. If promoting fails,
 	// ReconcilePendingClaims promotes the pending record later.
-	if err = useCase.promoteClaim(ctx, retainedQuote, completedQuote, receipt.TransactionHash); err != nil {
+	if err = useCase.promoteClaim(ctx, retainedQuote, pegoutQuote, receipt.TransactionHash); err != nil {
 		return false, err
 	}
 	log.Info(LogClaimPegoutSuccess(requestHash, quoteHash, receipt.TransactionHash))
@@ -352,18 +359,6 @@ func (useCase *ClaimPegOutUseCase) checkClaimRecorded(ctx context.Context, reque
 	}
 	log.Info(LogClaimPegoutAlreadyClaimed(requestHash))
 	return true, nil
-}
-
-// completeQuote returns the quote as claimPegOut stores it (lpRskAddress set to the claiming LP)
-// and its hashPegOutQuote, the id the escrow, PegOutContract and the OP_RETURN use after the claim.
-func (useCase *ClaimPegOutUseCase) completeQuote(pegoutQuote quote.PegoutQuote) (quote.PegoutQuote, string, error) {
-	completedQuote := pegoutQuote
-	completedQuote.LpRskAddress = useCase.lp.RskAddress()
-	quoteHash, err := useCase.contracts.PegOut.HashPegoutQuote(completedQuote)
-	if err != nil {
-		return quote.PegoutQuote{}, "", usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
-	}
-	return completedQuote, quoteHash, nil
 }
 
 func (useCase *ClaimPegOutUseCase) handleClaimError(

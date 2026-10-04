@@ -123,7 +123,7 @@ func TestPegoutEscrowWatcher_KeepsSkippedRequest(t *testing.T) {
 	f.escrow.EXPECT().GetPegOutState(escrowWatcherRequestHash).Return(blockchain.EscrowedPegOutStateRequested, nil).Once()
 	f.lp.On("RskAddress").Return(escrowWatcherLpAddress)
 	f.escrow.EXPECT().RestrictedUntil(escrowWatcherLpAddress).Return(uint64(1_000), nil).Once()
-	f.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(10), nil).Once()
+	f.rskRpc.EXPECT().GetBlockByNumber(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Unix(10, 0)}, nil).Once()
 
 	require.NoError(t, f.watcher.Prepare(context.Background()))
 	assert.Empty(t, f.repository.deleted)
