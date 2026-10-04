@@ -1066,6 +1066,54 @@ func derivativeWalletEstimateTxFeesErrorSetups(rskAccount *account.RskAccount) [
 				require.NoError(t, err)
 				result, err := wallet.EstimateTxFees(testnetAddress, entities.NewWei(1))
 				require.Error(t, err)
+				require.NotErrorIs(t, err, blockchain.BtcInsufficientFundsError)
+				assert.Empty(t, result)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "insufficient funds when funding raw tx",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{TxOut: []*wire.TxOut{{Value: 1, PkScript: []byte(paymentScriptMock)}}}, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(0.001), Blocks: 1}, nil).Once()
+				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).
+					Return(nil, &btcjson.RPCError{Code: btcjson.ErrRPCWallet, Message: "Insufficient funds"}).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.EstimateTxFees(testnetAddress, entities.NewWei(1))
+				require.ErrorIs(t, err, blockchain.BtcInsufficientFundsError)
+				require.ErrorContains(t, err, "Insufficient funds")
+				assert.Empty(t, result)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "insufficient funds code when funding raw tx",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{TxOut: []*wire.TxOut{{Value: 1, PkScript: []byte(paymentScriptMock)}}}, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(0.001), Blocks: 1}, nil).Once()
+				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).
+					Return(nil, &btcjson.RPCError{Code: btcjson.ErrRPCWalletInsufficientFunds, Message: "Not enough funds"}).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.EstimateTxFees(testnetAddress, entities.NewWei(1))
+				require.ErrorIs(t, err, blockchain.BtcInsufficientFundsError)
+				assert.Empty(t, result)
+				client.AssertExpectations(t)
+			},
+		},
+		{
+			description: "other wallet error when funding raw tx",
+			setup: func(t *testing.T, client *mocks.ClientAdapterMock) {
+				client.On("CreateRawTransaction", mock.Anything, mock.Anything, mock.Anything).Return(&wire.MsgTx{TxOut: []*wire.TxOut{{Value: 1, PkScript: []byte(paymentScriptMock)}}}, nil).Once()
+				client.On("EstimateSmartFee", mock.Anything, mock.Anything).Return(&btcjson.EstimateSmartFeeResult{FeeRate: btcjson.Float64(0.001), Blocks: 1}, nil).Once()
+				client.On("FundRawTransaction", mock.Anything, mock.Anything, mock.Anything).
+					Return(nil, &btcjson.RPCError{Code: btcjson.ErrRPCWallet, Message: "Fee estimation failed. Fallbackfee is disabled."}).Once()
+				wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+				require.NoError(t, err)
+				result, err := wallet.EstimateTxFees(testnetAddress, entities.NewWei(1))
+				require.Error(t, err)
+				require.NotErrorIs(t, err, blockchain.BtcInsufficientFundsError)
 				assert.Empty(t, result)
 				client.AssertExpectations(t)
 			},
