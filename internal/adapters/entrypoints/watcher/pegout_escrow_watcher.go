@@ -83,6 +83,7 @@ func (watcher *PegoutEscrowWatcher) Prepare(ctx context.Context) error {
 		return err
 	}
 	log.Info(LogPegoutEscrowStart(watcher.lastScannedBlock + 1))
+	watcher.reconcilePendingClaims(ctx)
 	watcher.tryClaimCandidates(ctx)
 	return nil
 }
@@ -133,7 +134,17 @@ func (watcher *PegoutEscrowWatcher) onTick() {
 	}
 	checkContext, checkCancel := context.WithTimeout(context.Background(), watcher.checkTimeout)
 	defer checkCancel()
+	watcher.reconcilePendingClaims(checkContext)
 	watcher.tryClaimCandidates(checkContext)
+}
+
+func (watcher *PegoutEscrowWatcher) reconcilePendingClaims(ctx context.Context) {
+	if watcher.claimPegOutUseCase == nil {
+		return
+	}
+	if err := watcher.claimPegOutUseCase.ReconcilePendingClaims(ctx); err != nil {
+		log.Error(LogPegoutEscrowReconcileError(err))
+	}
 }
 
 func (watcher *PegoutEscrowWatcher) tryClaimCandidates(ctx context.Context) {

@@ -296,3 +296,7 @@ func LogPegoutEscrowStateError(requestHash string, err error) string {
 func LogPegoutEscrowClaimError(requestHash string, err error) string {
 	return fmt.Sprintf(LogPegoutEscrowPrefix+"error claiming peg-out %s: %v", requestHash, err)
 }
+
+func LogPegoutEscrowReconcileError(err error) string {
+	return fmt.Sprintf(LogPegoutEscrowPrefix+"error reconciling pending claims: %v", err)
+}

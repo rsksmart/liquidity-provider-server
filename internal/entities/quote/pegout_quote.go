@@ -32,6 +32,7 @@ const (
 	PegoutStateBridgeTxFailed                 PegoutState = "BridgeTxFailed"
 	PegoutStateBtcReleased                    PegoutState = "BtcReleased"
 	PegoutStateClaimed                        PegoutState = "Claimed"
+	PegoutStateClaimPending                   PegoutState = "ClaimPending"
 )
 
 type PegoutQuoteRepository interface {

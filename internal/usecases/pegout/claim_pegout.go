@@ -190,6 +190,7 @@ func (useCase *ClaimPegOutUseCase) availableLiveLiquidity(ctx context.Context) (
 	}
 	inFlight, err := useCase.quoteRepository.GetRetainedQuoteByState(
 		ctx,
+		quote.PegoutStateClaimPending,
 		quote.PegoutStateClaimed,
 		quote.PegoutStateWaitingForDeposit,
 		quote.PegoutStateWaitingForDepositConfirmations,
@@ -280,24 +281,41 @@ func (useCase *ClaimPegOutUseCase) performClaim(
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
 
+	skip, err := useCase.checkClaimRecorded(ctx, requestHash, quoteHash)
+	if err != nil || skip {
+		return false, err
+	}
+	// Once the claim mines the LP owes the BTC, so it is recorded before it is sent.
+	retainedQuote, err := useCase.persistPendingClaim(ctx, quoteHash, completedQuote, signature)
+	if err != nil {
+		return false, err
+	}
+
 	txConfig := blockchain.NewTransactionConfig(nil, 0, nil)
 	receipt, err := useCase.contracts.PegOutEscrow.ClaimPegOut(txConfig, requestHash, signature)
 	if err != nil {
-		return false, useCase.handleClaimError(requestHash, err)
+		return useCase.handleClaimError(ctx, requestHash, retainedQuote, completedQuote, err)
 	}
+	// A successful claimPegOut re-keys the peg-out to quoteHash. If promoting fails,
+	// ReconcilePendingClaims promotes the pending record later.
+	if err = useCase.promoteClaim(ctx, retainedQuote, completedQuote, receipt.TransactionHash); err != nil {
+		return false, err
+	}
+	log.Info(LogClaimPegoutSuccess(requestHash, quoteHash, receipt.TransactionHash))
+	return true, nil
+}
 
-	// claimPegOut deletes the requestHash entry and re-keys the peg-out to quoteHash.
-	state, err := useCase.contracts.PegOutEscrow.GetPegOutState(quoteHash)
+// checkClaimRecorded skips a request this LP already has a claim record for, e.g. a claim
+// still being mined after a timeout, so it is never sent twice.
+func (useCase *ClaimPegOutUseCase) checkClaimRecorded(ctx context.Context, requestHash, quoteHash string) (bool, error) {
+	retainedQuote, err := useCase.quoteRepository.GetRetainedQuote(ctx, quoteHash)
 	if err != nil {
 		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
-	if state != blockchain.EscrowedPegOutStateClaimed {
-		log.Info(LogClaimPegoutLostRace(requestHash))
+	if retainedQuote == nil {
 		return false, nil
 	}
-	if err = useCase.persistClaim(ctx, requestHash, quoteHash, completedQuote, signature, receipt.TransactionHash); err != nil {
-		return false, err
-	}
+	log.Info(LogClaimPegoutAlreadyClaimed(requestHash))
 	return true, nil
 }
 
@@ -313,37 +331,62 @@ func (useCase *ClaimPegOutUseCase) completeQuote(pegoutQuote quote.PegoutQuote) 
 	return completedQuote, quoteHash, nil
 }
 
-func (useCase *ClaimPegOutUseCase) handleClaimError(requestHash string, claimErr error) error {
-	state, err := useCase.contracts.PegOutEscrow.GetPegOutState(requestHash)
-	if err != nil {
-		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, errors.Join(claimErr, err))
-	}
-	if state != blockchain.EscrowedPegOutStateRequested {
-		log.Info(LogClaimPegoutLostRace(requestHash))
-		return nil
-	}
-	return usecases.WrapUseCaseError(usecases.ClaimPegoutId, claimErr)
-}
-
-func (useCase *ClaimPegOutUseCase) persistClaim(
+func (useCase *ClaimPegOutUseCase) handleClaimError(
 	ctx context.Context,
 	requestHash string,
+	retainedQuote quote.RetainedPegoutQuote,
+	completedQuote quote.PegoutQuote,
+	claimErr error,
+) (bool, error) {
+	if errors.Is(claimErr, context.DeadlineExceeded) {
+		// The claim may still be mined, ReconcilePendingClaims resolves the pending record.
+		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, claimErr)
+	}
+	// Read requestHash first: once it is no longer REQUESTED, the quoteHash state is final.
+	requestState, err := useCase.contracts.PegOutEscrow.GetPegOutState(requestHash)
+	if err != nil {
+		return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, errors.Join(claimErr, err))
+	}
+	if requestState != blockchain.EscrowedPegOutStateRequested {
+		quoteState, stateErr := useCase.contracts.PegOutEscrow.GetPegOutState(retainedQuote.QuoteHash)
+		if stateErr != nil {
+			return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, errors.Join(claimErr, stateErr))
+		}
+		if quoteState == blockchain.EscrowedPegOutStateClaimed {
+			// The claim mined although the call failed, e.g. reading its receipt.
+			if err = useCase.promoteClaim(ctx, retainedQuote, completedQuote, ""); err != nil {
+				return false, errors.Join(claimErr, err)
+			}
+			log.Info(LogClaimPegoutSuccess(requestHash, retainedQuote.QuoteHash, ""))
+			return true, nil
+		}
+	}
+	if err = useCase.deletePendingClaim(ctx, retainedQuote.QuoteHash); err != nil {
+		return false, errors.Join(usecases.WrapUseCaseError(usecases.ClaimPegoutId, claimErr), err)
+	}
+	if requestState != blockchain.EscrowedPegOutStateRequested {
+		log.Info(LogClaimPegoutLostRace(requestHash))
+		return false, nil
+	}
+	return false, usecases.WrapUseCaseError(usecases.ClaimPegoutId, claimErr)
+}
+
+func (useCase *ClaimPegOutUseCase) persistPendingClaim(
+	ctx context.Context,
 	quoteHash string,
 	pegoutQuote quote.PegoutQuote,
 	signature []byte,
-	claimTxHash string,
-) error {
+) (quote.RetainedPegoutQuote, error) {
 	retainedQuote := quote.RetainedPegoutQuote{
 		QuoteHash:         quoteHash,
 		DepositAddress:    useCase.contracts.PegOut.GetAddress(),
 		Signature:         hex.EncodeToString(signature),
 		RequiredLiquidity: pegoutQuote.Value.Copy(),
-		State:             quote.PegoutStateClaimed,
-		UserRskTxHash:     claimTxHash,
+		State:             quote.PegoutStateClaimPending,
 		RemainingToRefund: pegoutQuote.Total(),
 	}
 	if err := entities.ValidateStruct(retainedQuote); err != nil {
-		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+		return quote.RetainedPegoutQuote{}, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
 	createdQuote := quote.CreatedPegoutQuote{
 		Hash:         quoteHash,
@@ -351,9 +394,24 @@ func (useCase *ClaimPegOutUseCase) persistClaim(
 		CreationData: quote.PegoutCreationDataZeroValue(),
 	}
 	if err := useCase.quoteRepository.InsertQuote(ctx, createdQuote); err != nil {
-		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+		return quote.RetainedPegoutQuote{}, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
 	if err := useCase.quoteRepository.InsertRetainedQuote(ctx, retainedQuote); err != nil {
+		err = usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+		return quote.RetainedPegoutQuote{}, errors.Join(err, useCase.deletePendingClaim(ctx, quoteHash))
+	}
+	return retainedQuote, nil
+}
+
+func (useCase *ClaimPegOutUseCase) promoteClaim(
+	ctx context.Context,
+	retainedQuote quote.RetainedPegoutQuote,
+	pegoutQuote quote.PegoutQuote,
+	claimTxHash string,
+) error {
+	retainedQuote.State = quote.PegoutStateClaimed
+	retainedQuote.UserRskTxHash = claimTxHash
+	if err := useCase.quoteRepository.UpdateRetainedQuote(ctx, retainedQuote); err != nil {
 		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
 	useCase.eventBus.Publish(quote.ClaimedPegoutQuoteEvent{
@@ -361,6 +419,68 @@ func (useCase *ClaimPegOutUseCase) persistClaim(
 		Quote:         pegoutQuote,
 		RetainedQuote: retainedQuote,
 	})
-	log.Info(LogClaimPegoutSuccess(requestHash, quoteHash, claimTxHash))
+	return nil
+}
+
+func (useCase *ClaimPegOutUseCase) deletePendingClaim(ctx context.Context, quoteHash string) error {
+	if _, err := useCase.quoteRepository.DeleteQuotes(ctx, []string{quoteHash}); err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+	}
+	return nil
+}
+
+// ReconcilePendingClaims resolves pending claims whose outcome was not recorded, e.g. after a
+// restart or a mining timeout: a mined claim is promoted, one that can no longer mine is deleted.
+func (useCase *ClaimPegOutUseCase) ReconcilePendingClaims(ctx context.Context) error {
+	if useCase.contracts.PegOutEscrow == nil {
+		return nil
+	}
+	useCase.rskWalletMutex.Lock()
+	defer useCase.rskWalletMutex.Unlock()
+
+	pending, err := useCase.quoteRepository.GetRetainedQuoteByState(ctx, quote.PegoutStateClaimPending)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+	} else if len(pending) == 0 {
+		return nil
+	}
+	// Read the time before any state: if a claim is still unmined after a block past its
+	// depositDateLimit, claimPegOut can no longer succeed.
+	block, err := useCase.rpc.Rsk.GetBlockByNumber(ctx, nil)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+	}
+	now := uint64(block.Timestamp.Unix())
+	errs := make([]error, 0)
+	for _, retainedQuote := range pending {
+		errs = append(errs, useCase.reconcilePendingClaim(ctx, retainedQuote, now))
+	}
+	return errors.Join(errs...)
+}
+
+func (useCase *ClaimPegOutUseCase) reconcilePendingClaim(ctx context.Context, retainedQuote quote.RetainedPegoutQuote, now uint64) error {
+	pegoutQuote, err := useCase.quoteRepository.GetQuote(ctx, retainedQuote.QuoteHash)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+	} else if pegoutQuote == nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, usecases.QuoteNotFoundError)
+	}
+	state, err := useCase.contracts.PegOutEscrow.GetPegOutState(retainedQuote.QuoteHash)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
+	}
+	switch {
+	case state == blockchain.EscrowedPegOutStateClaimed:
+		if err = useCase.promoteClaim(ctx, retainedQuote, *pegoutQuote, ""); err != nil {
+			return err
+		}
+		log.Info(LogClaimPegoutPendingPromoted(retainedQuote.QuoteHash))
+	case state != blockchain.EscrowedPegOutStateNone:
+		log.Error(LogClaimPegoutPendingSettled(retainedQuote.QuoteHash, state))
+		return useCase.deletePendingClaim(ctx, retainedQuote.QuoteHash)
+	case now > uint64(pegoutQuote.DepositDateLimit):
+		log.Info(LogClaimPegoutPendingDropped(retainedQuote.QuoteHash))
+		return useCase.deletePendingClaim(ctx, retainedQuote.QuoteHash)
+	}
 	return nil
 }
