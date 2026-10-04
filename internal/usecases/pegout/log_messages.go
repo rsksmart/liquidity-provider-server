@@ -14,6 +14,10 @@ func LogClaimPegoutLostRace(requestHash string) string {
 	return fmt.Sprintf(LogClaimPegoutPrefix+"lost race for %s", requestHash)
 }
 
+func LogClaimPegoutWindowClosed(requestHash string) string {
+	return fmt.Sprintf(LogClaimPegoutPrefix+"claim window closed for %s", requestHash)
+}
+
 func LogClaimPegoutCapacitySkip(requestHash string) string {
 	return fmt.Sprintf(LogClaimPegoutPrefix+"capacity gate failed for %s", requestHash)
 }

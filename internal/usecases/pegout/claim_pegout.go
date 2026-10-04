@@ -112,7 +112,7 @@ func (useCase *ClaimPegOutUseCase) prepareClaim(
 	if err != nil {
 		return quote.PegoutQuote{}, nil, false, err
 	}
-	claimGas, err := useCase.estimateClaimGas(requestHash, signature)
+	claimGas, err := useCase.estimateClaimGas(ctx, requestHash, pegoutQuote, signature)
 	if err != nil {
 		return quote.PegoutQuote{}, nil, false, err
 	}
@@ -244,7 +244,12 @@ func (useCase *ClaimPegOutUseCase) signQuote(pegoutQuote quote.PegoutQuote) ([]b
 	return signatureBytes, nil
 }
 
-func (useCase *ClaimPegOutUseCase) estimateClaimGas(requestHash string, signature []byte) (*entities.Wei, error) {
+func (useCase *ClaimPegOutUseCase) estimateClaimGas(
+	ctx context.Context,
+	requestHash string,
+	pegoutQuote quote.PegoutQuote,
+	signature []byte,
+) (*entities.Wei, error) {
 	claimGas, err := useCase.contracts.PegOutEscrow.EstimateClaimPegOut(requestHash, signature)
 	if err == nil {
 		return claimGas, nil
@@ -255,6 +260,14 @@ func (useCase *ClaimPegOutUseCase) estimateClaimGas(requestHash string, signatur
 	}
 	if state != blockchain.EscrowedPegOutStateRequested {
 		log.Info(LogClaimPegoutLostRace(requestHash))
+		return nil, errRequestClosed
+	}
+	block, blockErr := useCase.rpc.Rsk.GetBlockByNumber(ctx, nil)
+	if blockErr != nil {
+		return nil, usecases.WrapUseCaseError(usecases.ClaimPegoutId, errors.Join(err, blockErr))
+	}
+	if uint64(block.Timestamp.Unix()) > uint64(pegoutQuote.DepositDateLimit) {
+		log.Info(LogClaimPegoutWindowClosed(requestHash))
 		return nil, errRequestClosed
 	}
 	return nil, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
