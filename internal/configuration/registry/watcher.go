@@ -55,10 +55,12 @@ func NewWatcherRegistry(
 	return &WatcherRegistry{
 		PegInAddressRegistryWatcher: peginWatcher,
 		PegInClaimWatcher: watcher.NewPegInClaimWatcher(
-			useCaseRegistry.claimPegInUseCase,
-			useCaseRegistry.settlePegInClaimUseCase,
-			dbRegistry.PegInClaimRepository,
-			dbRegistry.PegInWatchRepository,
+			watcher.NewPegInClaimWatcherUseCases(
+				useCaseRegistry.claimPegInUseCase,
+				useCaseRegistry.settlePegInClaimUseCase,
+				useCaseRegistry.getPegInClaimsUseCase,
+				useCaseRegistry.getPegInWatchesUseCase,
+			),
 			btcRegistry.MonitoringWallet,
 			tickers.PegInClaimWatcherTicker,
 		),
@@ -219,7 +221,7 @@ func newPegInWatcher(
 	return watcher.NewPegInWatcher(
 		useCaseRegistry.replayRegisteredAddressesUseCase,
 		useCaseRegistry.discoverRegisteredAddressUseCase,
-		useCaseRegistry.getPendingRegisteredAddressImportsUseCase,
+		useCaseRegistry.getPegInWatchesUseCase,
 		useCaseRegistry.finalizeRegisteredAddressImportUseCase,
 		messaging.Rpc.Btc,
 		btcRegistry.MonitoringWallet,

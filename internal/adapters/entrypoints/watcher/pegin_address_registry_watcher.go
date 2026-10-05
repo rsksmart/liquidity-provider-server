@@ -16,7 +16,7 @@ import (
 type PegInWatcher struct {
 	replayUseCase      *w.ReplayRegisteredAddressesUseCase
 	discoverUseCase    *w.DiscoverRegisteredAddressUseCase
-	getPendingUseCase  *w.GetPendingRegisteredAddressImportsUseCase
+	getWatchesUseCase  *w.GetPegInWatchesUseCase
 	finalizeUseCase    *w.FinalizeRegisteredAddressImportUseCase
 	btcNetwork         blockchain.BitcoinNetwork
 	wallet             blockchain.BitcoinWallet
@@ -30,7 +30,7 @@ type PegInWatcher struct {
 func NewPegInWatcher(
 	replayUseCase *w.ReplayRegisteredAddressesUseCase,
 	discoverUseCase *w.DiscoverRegisteredAddressUseCase,
-	getPendingUseCase *w.GetPendingRegisteredAddressImportsUseCase,
+	getWatchesUseCase *w.GetPegInWatchesUseCase,
 	finalizeUseCase *w.FinalizeRegisteredAddressImportUseCase,
 	btcNetwork blockchain.BitcoinNetwork,
 	wallet blockchain.BitcoinWallet,
@@ -40,7 +40,7 @@ func NewPegInWatcher(
 	return &PegInWatcher{
 		replayUseCase:      replayUseCase,
 		discoverUseCase:    discoverUseCase,
-		getPendingUseCase:  getPendingUseCase,
+		getWatchesUseCase:  getWatchesUseCase,
 		finalizeUseCase:    finalizeUseCase,
 		btcNetwork:         btcNetwork,
 		wallet:             wallet,
@@ -115,7 +115,7 @@ func (watcher *PegInWatcher) scanWithCheckpoint(
 		return err
 	}
 	watcher.checkpoint = result.Checkpoint
-	pendingImports, err := watcher.getPendingUseCase.Run(ctx)
+	pendingImports, err := watcher.getWatchesUseCase.Run(ctx, rootstock.PegInWatchDiscovered)
 	if err != nil {
 		return err
 	}

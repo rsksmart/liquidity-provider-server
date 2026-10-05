@@ -20,29 +20,49 @@ type PegInClaimSettler interface {
 	Run(ctx context.Context, claim rootstock.PegInClaim) error
 }
 
+type PegInClaimsGetter interface {
+	Run(ctx context.Context, states ...rootstock.PegInClaimState) ([]rootstock.PegInClaim, error)
+}
+
+type PegInWatchesGetter interface {
+	Run(ctx context.Context, states ...rootstock.PegInWatchState) ([]rootstock.PegInWatch, error)
+}
+
+type PegInClaimWatcherUseCases struct {
+	claim      PegInClaimRunner
+	settle     PegInClaimSettler
+	getClaims  PegInClaimsGetter
+	getWatches PegInWatchesGetter
+}
+
+func NewPegInClaimWatcherUseCases(
+	claim PegInClaimRunner,
+	settle PegInClaimSettler,
+	getClaims PegInClaimsGetter,
+	getWatches PegInWatchesGetter,
+) *PegInClaimWatcherUseCases {
+	return &PegInClaimWatcherUseCases{
+		claim:      claim,
+		settle:     settle,
+		getClaims:  getClaims,
+		getWatches: getWatches,
+	}
+}
+
 type PegInClaimWatcher struct {
-	runner             PegInClaimRunner
-	settler            PegInClaimSettler
-	claims             rootstock.PegInClaimRepository
-	watches            rootstock.PegInWatchRepository
+	useCases           *PegInClaimWatcherUseCases
 	btcWallet          blockchain.BitcoinWallet
 	ticker             utils.Ticker
 	watcherStopChannel chan struct{}
 }
 
 func NewPegInClaimWatcher(
-	runner PegInClaimRunner,
-	settler PegInClaimSettler,
-	claims rootstock.PegInClaimRepository,
-	watches rootstock.PegInWatchRepository,
+	useCases *PegInClaimWatcherUseCases,
 	btcWallet blockchain.BitcoinWallet,
 	ticker utils.Ticker,
 ) *PegInClaimWatcher {
 	return &PegInClaimWatcher{
-		runner:             runner,
-		settler:            settler,
-		claims:             claims,
-		watches:            watches,
+		useCases:           useCases,
 		btcWallet:          btcWallet,
 		ticker:             ticker,
 		watcherStopChannel: make(chan struct{}, 1),
@@ -78,7 +98,7 @@ func (watcher *PegInClaimWatcher) check(ctx context.Context) {
 	if watcher.settleSubmitting(ctx) {
 		return
 	}
-	entries, err := watcher.watches.List(ctx)
+	entries, err := watcher.useCases.getWatches.Run(ctx, rootstock.PegInWatchImported)
 	if err != nil {
 		log.Errorf(LogPegInClaimListError, err)
 		return
@@ -89,13 +109,13 @@ func (watcher *PegInClaimWatcher) check(ctx context.Context) {
 }
 
 func (watcher *PegInClaimWatcher) settleSubmitting(ctx context.Context) (aborted bool) {
-	claims, err := watcher.claims.ListByStates(ctx, rootstock.PegInClaimSubmitting)
+	claims, err := watcher.useCases.getClaims.Run(ctx, rootstock.PegInClaimSubmitting)
 	if err != nil {
 		log.Error(LogPegInClaimSettleListError(err))
 		return true
 	}
 	for _, claim := range claims {
-		err = watcher.settler.Run(ctx, claim)
+		err = watcher.useCases.settle.Run(ctx, claim)
 		if errors.Is(err, usecases.InfrastructureUnavailableError) {
 			log.Error(LogPegInClaimSettleAborted(claim.RskAddress, claim.DepositTxID, err))
 			return true
@@ -111,9 +131,6 @@ func (watcher *PegInClaimWatcher) checkEntry(
 	ctx context.Context,
 	entry rootstock.PegInWatch,
 ) {
-	if entry.State != rootstock.PegInWatchImported {
-		return
-	}
 	txs, err := watcher.btcWallet.GetTransactions(entry.BtcAddress)
 	if err != nil {
 		log.Error(LogPegInClaimWalletError(entry.BtcAddress, err))
@@ -121,7 +138,7 @@ func (watcher *PegInClaimWatcher) checkEntry(
 	}
 	for _, tx := range txs {
 		if tx.FirstOutputToAddress(entry.BtcAddress).Cmp(entities.NewWei(0)) > 0 {
-			if err = watcher.runner.Run(ctx, entry, tx.Hash); err != nil {
+			if err = watcher.useCases.claim.Run(ctx, entry, tx.Hash); err != nil {
 				log.Error(LogPegInClaimRunError(entry.RskAddress, tx.Hash, err))
 			}
 		}
