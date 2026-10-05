@@ -13,14 +13,19 @@ ARG FOUNDRY_VERSION=v1.7.1
 RUN curl -L https://foundry.paradigm.xyz | bash && \
     /home/node/.foundry/bin/foundryup --install "${FOUNDRY_VERSION}"
 
-ARG LBC_GIT_REF=fly-2699-wire-flyover-configurations
+# Branch, tag, or full commit SHA. A SHA keeps the deployed contracts in step with the LPS bindings.
+ARG LBC_GIT_REF=87101fe4729eeda2b6fec9ff8cafccca0dcc6cc7
 ARG LBC_GIT_URL=https://github.com/rsksmart/liquidity-bridge-contract.git
-# Commit LBC_GIT_REF resolved to. lps-local.sh passes it, so a moved ref rebuilds this layer
-# instead of reusing a cached clone of an older commit.
+# Commit LBC_GIT_REF resolved to. lps-local.sh passes it, so a moved branch or tag rebuilds this
+# layer instead of reusing a cached clone of an older commit.
 ARG LBC_GIT_SHA=
 
-RUN git clone --depth 1 --recurse-submodules --shallow-submodules \
-      --branch "${LBC_GIT_REF}" "${LBC_GIT_URL}" /home/node/lbc && \
+# git fetch accepts a branch, a tag, or a commit SHA; git clone --branch does not take a SHA.
+RUN git init -q /home/node/lbc && \
+    git -C /home/node/lbc remote add origin "${LBC_GIT_URL}" && \
+    git -C /home/node/lbc fetch -q --depth 1 origin "${LBC_GIT_REF}" && \
+    git -C /home/node/lbc checkout -q FETCH_HEAD && \
+    git -C /home/node/lbc submodule update -q --init --recursive --depth 1 && \
     HEAD_SHA="$(git -C /home/node/lbc rev-parse HEAD)" && \
     echo "LBC ${LBC_GIT_REF} at ${HEAD_SHA}" && \
     if [ -n "${LBC_GIT_SHA}" ] && [ "${HEAD_SHA}" != "${LBC_GIT_SHA}" ]; then \

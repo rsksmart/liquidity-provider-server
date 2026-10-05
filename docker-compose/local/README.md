@@ -5,7 +5,7 @@ The provided docker-compose files can be used to quickly spin up an environment 
 
 * Use scripts located in the `local` directory while being inside that directory. Using them from other directories might cause issues with the relative paths defined in the different compose files.
 * Create an env file and export it as an environment variable `export ENV_FILE=regtest`. If you don't want to create it, the script will use by default the `sample-config.env` file located at the root directory.
-* The local contract deployer builds `liquidity-bridge-contract` from source at `LBC_GIT_REF` (a branch or tag) from your env file. `lps-local.sh` resolves the ref to a commit, so the image rebuilds when the ref moves. The first build takes a few minutes and needs access to GitHub.
+* The local contract deployer builds `liquidity-bridge-contract` from source at `LBC_GIT_REF` (a commit SHA, branch, or tag) from your env file. `sample-config.env` pins a commit that matches the LPS bindings. For a branch or tag, `lps-local.sh` resolves it to a commit, so the image rebuilds when the ref moves. The first build takes a few minutes and needs access to GitHub.
 * Run the following command to create the environment:
 ```bash
     ./lps-local.sh

@@ -12,7 +12,7 @@ Watchtower, the SDK, `resolvePegIn`, and the quote-protocol suite in `pegin_test
 
 ## Start the stack
 
-The local stack builds the LBC contracts from `LBC_GIT_REF` in `sample-config.env` (the LBC PR #567 branch until it merges into `v3.0.0`). No separate LBC checkout or image build is needed.
+The local stack builds the LBC contracts from `LBC_GIT_REF` in `sample-config.env` (a pinned commit whose `DeployFlyover` wires `FlyoverConfigurations`). No separate LBC checkout or image build is needed.
 
 ```bash
 cd docker-compose/local

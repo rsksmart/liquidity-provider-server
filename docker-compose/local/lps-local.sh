@@ -47,9 +47,13 @@ fi
 ### Contract deployment ###
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
-  # Resolve LBC_GIT_REF to a commit so the deployer image rebuilds when the ref moves.
-  LBC_GIT_REF="${LBC_GIT_REF:-fly-2699-wire-flyover-configurations}"
-  LBC_GIT_SHA=$(git ls-remote https://github.com/rsksmart/liquidity-bridge-contract.git "refs/heads/$LBC_GIT_REF" "refs/tags/$LBC_GIT_REF" | head -1 | cut -f1)
+  # Resolve LBC_GIT_REF to a commit so the deployer image rebuilds when a branch or tag moves.
+  LBC_GIT_REF="${LBC_GIT_REF:-87101fe4729eeda2b6fec9ff8cafccca0dcc6cc7}"
+  if [[ "$LBC_GIT_REF" =~ ^[0-9a-f]{40}$ ]]; then
+    LBC_GIT_SHA="$LBC_GIT_REF"
+  else
+    LBC_GIT_SHA=$(git ls-remote https://github.com/rsksmart/liquidity-bridge-contract.git "refs/heads/$LBC_GIT_REF" "refs/tags/$LBC_GIT_REF" | head -1 | cut -f1)
+  fi
   if [ -z "$LBC_GIT_SHA" ]; then
     echo "ERROR: LBC_GIT_REF $LBC_GIT_REF not found in liquidity-bridge-contract"
     exit 1

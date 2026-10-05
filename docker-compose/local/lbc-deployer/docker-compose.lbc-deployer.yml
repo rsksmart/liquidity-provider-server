@@ -3,7 +3,7 @@ services:
     build:
       context: ./lbc-deployer
       args:
-        LBC_GIT_REF: "${LBC_GIT_REF:-fly-2699-wire-flyover-configurations}"
+        LBC_GIT_REF: "${LBC_GIT_REF:-87101fe4729eeda2b6fec9ff8cafccca0dcc6cc7}"
         LBC_GIT_SHA: "${LBC_GIT_SHA:-}"
     pull_policy: build
     image: lps-lbc-deployer:local
