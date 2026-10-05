@@ -145,6 +145,10 @@ func (useCase *ClaimPegInUseCase) requestParamsIfAccepted(
 		if errors.Is(err, blockchain.ErrPegInAlreadyProcessed) {
 			return nil, blockchain.RequestPegInParams{}, useCase.persistAlreadyProcessed(ctx, existing, entry, depositTxID)
 		}
+		if errors.Is(err, blockchain.ErrPegInBelowMinimum) {
+			log.Debug(LogPegInClaimBelowMinimum(entry.RskAddress, depositTxID))
+			return nil, blockchain.RequestPegInParams{}, nil
+		}
 		return nil, blockchain.RequestPegInParams{}, useCase.unavailable(err)
 	}
 	return fee, params, nil
@@ -171,7 +175,7 @@ func (useCase *ClaimPegInUseCase) ensureSpendable(
 	}
 	required := new(entities.Wei).Add(payable, gasCost)
 	// The wallet mutex is held until RequestPegIn returns the receipt, so this balance
-	// already includes earlier claims. No per-claim reservation is needed.
+	// already includes earlier claims.
 	available, err := useCase.peginProvider.AvailablePeginWalletLiquidity(ctx)
 	if err != nil {
 		return false, useCase.unavailable(err)
@@ -220,7 +224,7 @@ func (useCase *ClaimPegInUseCase) submit(
 	if submitErr == nil {
 		claim.PegInID = hex.EncodeToString(result.Event.PegInId[:])
 	}
-	// The row stays submitting. SettlePegInClaimUseCase marks it claimed after maxReorgDepth.
+	// The claim stays submitting until SettlePegInClaimUseCase marks it claimed after maxReorgDepth.
 	if persistErr := useCase.persistSubmission(ctx, &claim); persistErr != nil {
 		return useCase.unavailable(errors.Join(persistErr, submitErr))
 	}

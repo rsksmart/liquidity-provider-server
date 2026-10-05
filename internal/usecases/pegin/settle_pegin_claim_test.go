@@ -289,6 +289,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 		blockchain.ErrDepositOutputNotFound,
 		blockchain.ErrInsufficientConfirmations,
 		blockchain.ErrIncorrectFronting,
+		blockchain.ErrPegInBelowMinimum,
 	}
 	for _, simulateErr := range cases {
 		t.Run(simulateErr.Error(), func(t *testing.T) {

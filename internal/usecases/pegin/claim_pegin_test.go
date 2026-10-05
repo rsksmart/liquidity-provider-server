@@ -367,6 +367,21 @@ func TestClaimPegInUseCase_WinPersistsSubmittingWithHashAndPegInID(t *testing.T)
 	harness.rsk.AssertNotCalled(t, "GetHeight", mock.Anything)
 }
 
+func TestClaimPegInUseCase_SimulateBelowMinimumSkipsWithoutSaving(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	harness.expectGatesBeforeSpendable()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(blockchain.ErrPegInBelowMinimum).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
 func TestClaimPegInUseCase_SimulateAlreadyProcessedPersistsRaceLost(t *testing.T) {
 	t.Run("no existing claim", func(t *testing.T) {
 		repo := newMemoryClaimRepo()

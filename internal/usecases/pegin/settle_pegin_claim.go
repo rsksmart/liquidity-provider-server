@@ -140,7 +140,8 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 	if errors.Is(submitErr, blockchain.ErrAddressNotRegistered) ||
 		errors.Is(submitErr, blockchain.ErrDepositOutputNotFound) ||
 		errors.Is(submitErr, blockchain.ErrInsufficientConfirmations) ||
-		errors.Is(submitErr, blockchain.ErrIncorrectFronting) {
+		errors.Is(submitErr, blockchain.ErrIncorrectFronting) ||
+		errors.Is(submitErr, blockchain.ErrPegInBelowMinimum) {
 		claim.State = rootstock.PegInClaimRetryableFailure
 		claim.TxHash = ""
 		claim.UpdatedAt = time.Now().UTC()

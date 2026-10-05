@@ -26,7 +26,7 @@ var (
 
 // PeginCommitFirstContractMetaData contains all meta data concerning the PeginCommitFirstContract contract.
 var PeginCommitFirstContractMetaData = bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"requestPegIn\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"btcTxSerialized\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"opReturn\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcBlockHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"merkleBranchPath\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"resolvePegIn\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"btcTxHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"btcRawTransaction\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"partialMerkleTree\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"height\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"registerResult\",\"type\":\"int256\",\"internalType\":\"int256\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"PegInRequested\",\"inputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"claimer\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"rskAddr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"netToUser\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"callSuccess\",\"type\":\"bool\",\"indexed\":false,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegInResolved\",\"inputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"claimer\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"registrant\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"released\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"claimerPayout\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"registrantFee\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"userPayout\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AddressNotRegistered\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"DepositOutputNotFound\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"btcTxHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"IncorrectFronting\",\"inputs\":[{\"name\":\"expected\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"actual\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InsufficientConfirmations\",\"inputs\":[{\"name\":\"have\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"required\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"PegInAlreadyProcessed\",\"inputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"requestPegIn\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"btcTxSerialized\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcBlockHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"merkleBranchPath\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"resolvePegIn\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"btcRawTransaction\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"partialMerkleTree\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"height\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"registerResult\",\"type\":\"int256\",\"internalType\":\"int256\"}],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"PegInRequested\",\"inputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"claimer\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"rskAddr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"amount\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"netToUser\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"callSuccess\",\"type\":\"bool\",\"indexed\":false,\"internalType\":\"bool\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"PegInResolved\",\"inputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"indexed\":true,\"internalType\":\"bytes32\"},{\"name\":\"claimer\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"registrant\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"released\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"claimerPayout\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"registrantFee\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"},{\"name\":\"userPayout\",\"type\":\"uint256\",\"indexed\":false,\"internalType\":\"uint256\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AddressNotRegistered\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"DepositOutputNotFound\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"btcTxHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"IncorrectFronting\",\"inputs\":[{\"name\":\"expected\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"actual\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"InsufficientConfirmations\",\"inputs\":[{\"name\":\"have\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"required\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"PegInAlreadyProcessed\",\"inputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"PegInBelowMinimum\",\"inputs\":[{\"name\":\"amount\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minAmount\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"PegInNotClaimed\",\"inputs\":[{\"name\":\"pegInId\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]}]",
 	ID:  "PeginCommitFirstContract",
 }
 
@@ -51,12 +51,12 @@ func (c *PeginCommitFirstContract) Instance(backend bind.ContractBackend, addr c
 }
 
 // PackRequestPegIn is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0xa355e935.  This method will panic if any
+// the contract method with ID 0xfc73bbd3.  This method will panic if any
 // invalid/nil inputs are passed.
 //
-// Solidity: function requestPegIn(address rskAddr, bytes btcTxSerialized, bytes opReturn, bytes32 btcBlockHash, uint256 merkleBranchPath, bytes32[] merkleBranchHashes) payable returns(bytes32 pegInId)
-func (peginCommitFirstContract *PeginCommitFirstContract) PackRequestPegIn(rskAddr common.Address, btcTxSerialized []byte, opReturn []byte, btcBlockHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) []byte {
-	enc, err := peginCommitFirstContract.abi.Pack("requestPegIn", rskAddr, btcTxSerialized, opReturn, btcBlockHash, merkleBranchPath, merkleBranchHashes)
+// Solidity: function requestPegIn(address rskAddr, bytes btcTxSerialized, bytes32 btcBlockHash, uint256 merkleBranchPath, bytes32[] merkleBranchHashes) payable returns(bytes32 pegInId)
+func (peginCommitFirstContract *PeginCommitFirstContract) PackRequestPegIn(rskAddr common.Address, btcTxSerialized []byte, btcBlockHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) []byte {
+	enc, err := peginCommitFirstContract.abi.Pack("requestPegIn", rskAddr, btcTxSerialized, btcBlockHash, merkleBranchPath, merkleBranchHashes)
 	if err != nil {
 		panic(err)
 	}
@@ -64,18 +64,18 @@ func (peginCommitFirstContract *PeginCommitFirstContract) PackRequestPegIn(rskAd
 }
 
 // TryPackRequestPegIn is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0xa355e935.  This method will return an error
+// the contract method with ID 0xfc73bbd3.  This method will return an error
 // if any inputs are invalid/nil.
 //
-// Solidity: function requestPegIn(address rskAddr, bytes btcTxSerialized, bytes opReturn, bytes32 btcBlockHash, uint256 merkleBranchPath, bytes32[] merkleBranchHashes) payable returns(bytes32 pegInId)
-func (peginCommitFirstContract *PeginCommitFirstContract) TryPackRequestPegIn(rskAddr common.Address, btcTxSerialized []byte, opReturn []byte, btcBlockHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) ([]byte, error) {
-	return peginCommitFirstContract.abi.Pack("requestPegIn", rskAddr, btcTxSerialized, opReturn, btcBlockHash, merkleBranchPath, merkleBranchHashes)
+// Solidity: function requestPegIn(address rskAddr, bytes btcTxSerialized, bytes32 btcBlockHash, uint256 merkleBranchPath, bytes32[] merkleBranchHashes) payable returns(bytes32 pegInId)
+func (peginCommitFirstContract *PeginCommitFirstContract) TryPackRequestPegIn(rskAddr common.Address, btcTxSerialized []byte, btcBlockHash [32]byte, merkleBranchPath *big.Int, merkleBranchHashes [][32]byte) ([]byte, error) {
+	return peginCommitFirstContract.abi.Pack("requestPegIn", rskAddr, btcTxSerialized, btcBlockHash, merkleBranchPath, merkleBranchHashes)
 }
 
 // UnpackRequestPegIn is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0xa355e935.
+// from invoking the contract method with ID 0xfc73bbd3.
 //
-// Solidity: function requestPegIn(address rskAddr, bytes btcTxSerialized, bytes opReturn, bytes32 btcBlockHash, uint256 merkleBranchPath, bytes32[] merkleBranchHashes) payable returns(bytes32 pegInId)
+// Solidity: function requestPegIn(address rskAddr, bytes btcTxSerialized, bytes32 btcBlockHash, uint256 merkleBranchPath, bytes32[] merkleBranchHashes) payable returns(bytes32 pegInId)
 func (peginCommitFirstContract *PeginCommitFirstContract) UnpackRequestPegIn(data []byte) ([32]byte, error) {
 	out, err := peginCommitFirstContract.abi.Unpack("requestPegIn", data)
 	if err != nil {
@@ -86,12 +86,12 @@ func (peginCommitFirstContract *PeginCommitFirstContract) UnpackRequestPegIn(dat
 }
 
 // PackResolvePegIn is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x958c8fb0.  This method will panic if any
+// the contract method with ID 0x1747d75e.  This method will panic if any
 // invalid/nil inputs are passed.
 //
-// Solidity: function resolvePegIn(address rskAddr, bytes32 btcTxHash, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256 registerResult)
-func (peginCommitFirstContract *PeginCommitFirstContract) PackResolvePegIn(rskAddr common.Address, btcTxHash [32]byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) []byte {
-	enc, err := peginCommitFirstContract.abi.Pack("resolvePegIn", rskAddr, btcTxHash, btcRawTransaction, partialMerkleTree, height)
+// Solidity: function resolvePegIn(address rskAddr, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256 registerResult)
+func (peginCommitFirstContract *PeginCommitFirstContract) PackResolvePegIn(rskAddr common.Address, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) []byte {
+	enc, err := peginCommitFirstContract.abi.Pack("resolvePegIn", rskAddr, btcRawTransaction, partialMerkleTree, height)
 	if err != nil {
 		panic(err)
 	}
@@ -99,18 +99,18 @@ func (peginCommitFirstContract *PeginCommitFirstContract) PackResolvePegIn(rskAd
 }
 
 // TryPackResolvePegIn is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x958c8fb0.  This method will return an error
+// the contract method with ID 0x1747d75e.  This method will return an error
 // if any inputs are invalid/nil.
 //
-// Solidity: function resolvePegIn(address rskAddr, bytes32 btcTxHash, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256 registerResult)
-func (peginCommitFirstContract *PeginCommitFirstContract) TryPackResolvePegIn(rskAddr common.Address, btcTxHash [32]byte, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) ([]byte, error) {
-	return peginCommitFirstContract.abi.Pack("resolvePegIn", rskAddr, btcTxHash, btcRawTransaction, partialMerkleTree, height)
+// Solidity: function resolvePegIn(address rskAddr, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256 registerResult)
+func (peginCommitFirstContract *PeginCommitFirstContract) TryPackResolvePegIn(rskAddr common.Address, btcRawTransaction []byte, partialMerkleTree []byte, height *big.Int) ([]byte, error) {
+	return peginCommitFirstContract.abi.Pack("resolvePegIn", rskAddr, btcRawTransaction, partialMerkleTree, height)
 }
 
 // UnpackResolvePegIn is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0x958c8fb0.
+// from invoking the contract method with ID 0x1747d75e.
 //
-// Solidity: function resolvePegIn(address rskAddr, bytes32 btcTxHash, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256 registerResult)
+// Solidity: function resolvePegIn(address rskAddr, bytes btcRawTransaction, bytes partialMerkleTree, uint256 height) returns(int256 registerResult)
 func (peginCommitFirstContract *PeginCommitFirstContract) UnpackResolvePegIn(data []byte) (*big.Int, error) {
 	out, err := peginCommitFirstContract.abi.Unpack("resolvePegIn", data)
 	if err != nil {
@@ -230,6 +230,12 @@ func (peginCommitFirstContract *PeginCommitFirstContract) UnpackError(raw []byte
 	}
 	if bytes.Equal(raw[:4], peginCommitFirstContract.abi.Errors["PegInAlreadyProcessed"].ID.Bytes()[:4]) {
 		return peginCommitFirstContract.UnpackPegInAlreadyProcessedError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], peginCommitFirstContract.abi.Errors["PegInBelowMinimum"].ID.Bytes()[:4]) {
+		return peginCommitFirstContract.UnpackPegInBelowMinimumError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], peginCommitFirstContract.abi.Errors["PegInNotClaimed"].ID.Bytes()[:4]) {
+		return peginCommitFirstContract.UnpackPegInNotClaimedError(raw[4:])
 	}
 	return nil, errors.New("Unknown error")
 }
@@ -352,6 +358,55 @@ func PeginCommitFirstContractPegInAlreadyProcessedErrorID() common.Hash {
 func (peginCommitFirstContract *PeginCommitFirstContract) UnpackPegInAlreadyProcessedError(raw []byte) (*PeginCommitFirstContractPegInAlreadyProcessed, error) {
 	out := new(PeginCommitFirstContractPegInAlreadyProcessed)
 	if err := peginCommitFirstContract.abi.UnpackIntoInterface(out, "PegInAlreadyProcessed", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PeginCommitFirstContractPegInBelowMinimum represents a PegInBelowMinimum error raised by the PeginCommitFirstContract contract.
+type PeginCommitFirstContractPegInBelowMinimum struct {
+	Amount    *big.Int
+	MinAmount *big.Int
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error PegInBelowMinimum(uint256 amount, uint256 minAmount)
+func PeginCommitFirstContractPegInBelowMinimumErrorID() common.Hash {
+	return common.HexToHash("0x2571dcd5276c26db60ed3ed3e0950abcca6f9368dcfd1d63bd2c79cbee20f7b4")
+}
+
+// UnpackPegInBelowMinimumError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error PegInBelowMinimum(uint256 amount, uint256 minAmount)
+func (peginCommitFirstContract *PeginCommitFirstContract) UnpackPegInBelowMinimumError(raw []byte) (*PeginCommitFirstContractPegInBelowMinimum, error) {
+	out := new(PeginCommitFirstContractPegInBelowMinimum)
+	if err := peginCommitFirstContract.abi.UnpackIntoInterface(out, "PegInBelowMinimum", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PeginCommitFirstContractPegInNotClaimed represents a PegInNotClaimed error raised by the PeginCommitFirstContract contract.
+type PeginCommitFirstContractPegInNotClaimed struct {
+	PegInId [32]byte
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error PegInNotClaimed(bytes32 pegInId)
+func PeginCommitFirstContractPegInNotClaimedErrorID() common.Hash {
+	return common.HexToHash("0x913cecc833ab31c9001ed04ef71cd13c55d40d8de5a2e4b9ec4ce9bd89ae245d")
+}
+
+// UnpackPegInNotClaimedError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error PegInNotClaimed(bytes32 pegInId)
+func (peginCommitFirstContract *PeginCommitFirstContract) UnpackPegInNotClaimedError(raw []byte) (*PeginCommitFirstContractPegInNotClaimed, error) {
+	out := new(PeginCommitFirstContractPegInNotClaimed)
+	if err := peginCommitFirstContract.abi.UnpackIntoInterface(out, "PegInNotClaimed", raw); err != nil {
 		return nil, err
 	}
 	return out, nil

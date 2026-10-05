@@ -29,6 +29,7 @@ var (
 	ErrAddressNotRegistered           = errors.New("address not registered")
 	ErrDepositOutputNotFound          = errors.New("deposit output not found")
 	ErrInsufficientConfirmations      = errors.New("insufficient confirmations")
+	ErrPegInBelowMinimum              = errors.New("peg-in below minimum")
 	ErrIncorrectFronting              = rootstock.ErrIncorrectFronting
 	ErrWitnessSerializedTxNotAccepted = errors.New("witness-serialized tx not accepted")
 	ErrTransactionReceiptNotFound     = errors.New("transaction receipt not found")
