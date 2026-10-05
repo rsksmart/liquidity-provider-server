@@ -106,9 +106,8 @@ func TestNewCandidatePegInClaim_UsesUTCTimestamps(t *testing.T) {
 		RskAddress: "0xrsk",
 		BtcAddress: "btc-addr",
 	}
-	reserved := entities.NewWei(500)
 
-	claim := rootstock.NewCandidatePegInClaim(entry, "deposit-txid", reserved, nil)
+	claim := rootstock.NewCandidatePegInClaim(entry, "deposit-txid", nil)
 	after := time.Now().UTC().Add(time.Second)
 
 	assert.Equal(t, "0xrsk", claim.RskAddress)
@@ -127,33 +126,10 @@ func TestNewCandidatePegInClaim_PreservesExistingCreatedAt(t *testing.T) {
 	entry := rootstock.PegInWatch{RskAddress: "0xrsk", BtcAddress: "btc-addr"}
 
 	before := time.Now().UTC().Add(-time.Second)
-	claim := rootstock.NewCandidatePegInClaim(entry, "deposit-txid", entities.NewWei(1), existing)
+	claim := rootstock.NewCandidatePegInClaim(entry, "deposit-txid", existing)
 	after := time.Now().UTC().Add(time.Second)
 
 	assert.Equal(t, createdAt, claim.CreatedAt)
 	assert.True(t, !claim.UpdatedAt.Before(before) && !claim.UpdatedAt.After(after))
 	assert.NotEqual(t, claim.CreatedAt, claim.UpdatedAt)
-}
-
-func TestNewCandidatePegInClaim_CopiesReservedWei(t *testing.T) {
-	reserved := entities.NewWei(500)
-	entry := rootstock.PegInWatch{RskAddress: "0xrsk", BtcAddress: "btc-addr"}
-
-	claim := rootstock.NewCandidatePegInClaim(entry, "deposit-txid", reserved, nil)
-
-	require.NotNil(t, claim.ReservedWei)
-	assert.NotSame(t, reserved, claim.ReservedWei)
-	assert.Equal(t, 0, claim.ReservedWei.Cmp(entities.NewWei(500)))
-
-	reserved.Add(reserved, entities.NewWei(100))
-	assert.Equal(t, 0, claim.ReservedWei.Cmp(entities.NewWei(500)))
-}
-
-func TestNewCandidatePegInClaim_NilReservedIsZeroWei(t *testing.T) {
-	entry := rootstock.PegInWatch{RskAddress: "0xrsk", BtcAddress: "btc-addr"}
-
-	claim := rootstock.NewCandidatePegInClaim(entry, "deposit-txid", nil, nil)
-
-	require.NotNil(t, claim.ReservedWei)
-	assert.Equal(t, 0, claim.ReservedWei.Cmp(entities.NewWei(0)))
 }

@@ -32,10 +32,9 @@ type PegInClaim struct {
 	State       PegInClaimState `json:"state" bson:"state"`
 	TxHash      string          `json:"txHash" bson:"tx_hash"`
 	// Empty when a successful receipt has no PegInRequested event to unpack.
-	PegInID     string        `json:"pegInId" bson:"peg_in_id"`
-	ReservedWei *entities.Wei `json:"reservedWei" bson:"reserved_wei"`
-	CreatedAt   time.Time     `json:"createdAt" bson:"created_at"`
-	UpdatedAt   time.Time     `json:"updatedAt" bson:"updated_at"`
+	PegInID   string    `json:"pegInId" bson:"peg_in_id"`
+	CreatedAt time.Time `json:"createdAt" bson:"created_at"`
+	UpdatedAt time.Time `json:"updatedAt" bson:"updated_at"`
 }
 
 type PegInClaimRepository interface {
@@ -62,18 +61,13 @@ func (claim *PegInClaim) IsTerminal() bool {
 	return claim.State == PegInClaimClaimed || claim.State == PegInClaimRaceLost
 }
 
-func NewCandidatePegInClaim(entry PegInWatch, depositTxID string, reserved *entities.Wei, existing *PegInClaim) PegInClaim {
+func NewCandidatePegInClaim(entry PegInWatch, depositTxID string, existing *PegInClaim) PegInClaim {
 	now := time.Now().UTC()
-	copied := entities.NewWei(0)
-	if reserved != nil {
-		copied = reserved.Copy()
-	}
 	claim := PegInClaim{
 		RskAddress:  entry.RskAddress,
 		DepositTxID: depositTxID,
 		BtcAddress:  entry.BtcAddress,
 		State:       PegInClaimCandidate,
-		ReservedWei: copied,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}

@@ -89,7 +89,6 @@ func (useCase *SettlePegInClaimUseCase) finalizeSuccess(
 		claim.PegInID = hex.EncodeToString(event.PegInId[:])
 	}
 	claim.State = rootstock.PegInClaimClaimed
-	claim.ReservedWei = entities.NewWei(0)
 	claim.UpdatedAt = time.Now().UTC()
 	if err := useCase.claims.Update(ctx, claim); err != nil {
 		return useCase.unavailable(err)
@@ -112,9 +111,6 @@ func (useCase *SettlePegInClaimUseCase) identifyFailed(ctx context.Context, clai
 		return useCase.unavailable(err)
 	}
 	if err = blockchain.RejectWitnessSerializedTx(rawTx); err != nil {
-		if releaseErr := useCase.releaseReserve(ctx, &claim); releaseErr != nil {
-			return releaseErr
-		}
 		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, err)
 	}
 	params, err := useCase.buildRequestParams(claim.RskAddress, claim.DepositTxID, amount, fee, rawTx)
@@ -135,7 +131,6 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 ) error {
 	if errors.Is(submitErr, blockchain.ErrPegInAlreadyProcessed) {
 		claim.State = rootstock.PegInClaimRaceLost
-		claim.ReservedWei = entities.NewWei(0)
 		claim.UpdatedAt = time.Now().UTC()
 		if err := useCase.claims.Update(ctx, claim); err != nil {
 			return useCase.unavailable(err)
@@ -148,7 +143,6 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 		errors.Is(submitErr, blockchain.ErrIncorrectFronting) {
 		claim.State = rootstock.PegInClaimRetryableFailure
 		claim.TxHash = ""
-		claim.ReservedWei = entities.NewWei(0)
 		claim.UpdatedAt = time.Now().UTC()
 		if err := useCase.claims.Update(ctx, claim); err != nil {
 			return useCase.unavailable(errors.Join(submitErr, err))
@@ -164,7 +158,6 @@ func (useCase *SettlePegInClaimUseCase) failRetryable(
 ) error {
 	claim.State = rootstock.PegInClaimRetryableFailure
 	claim.TxHash = ""
-	claim.ReservedWei = entities.NewWei(0)
 	claim.UpdatedAt = time.Now().UTC()
 	if err := useCase.claims.Update(ctx, claim); err != nil {
 		return useCase.unavailable(errors.Join(ErrStatus0ReceiptStillCallable, err))
@@ -196,15 +189,6 @@ func (useCase *SettlePegInClaimUseCase) buildRequestParams(
 		Amount:             amount,
 		Fee:                fee,
 	}, nil
-}
-
-func (useCase *SettlePegInClaimUseCase) releaseReserve(ctx context.Context, existing *rootstock.PegInClaim) error {
-	if existing == nil || existing.ReservedWei == nil || existing.ReservedWei.Cmp(entities.NewWei(0)) == 0 {
-		return nil
-	}
-	existing.ReservedWei = entities.NewWei(0)
-	existing.UpdatedAt = time.Now().UTC()
-	return useCase.unavailable(useCase.claims.Update(ctx, *existing))
 }
 
 func (useCase *SettlePegInClaimUseCase) unavailable(err error) error {

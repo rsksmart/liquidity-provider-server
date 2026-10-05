@@ -70,6 +70,11 @@ func (m *ProviderMock) AvailablePeginLiquidity(ctx context.Context) (*entities.W
 	return args.Get(0).(*entities.Wei), args.Error(1)
 }
 
+func (m *ProviderMock) AvailablePeginWalletLiquidity(ctx context.Context) (*entities.Wei, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*entities.Wei), args.Error(1)
+}
+
 func (m *ProviderMock) AvailablePegoutLiquidity(ctx context.Context) (*entities.Wei, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(*entities.Wei), args.Error(1)
