@@ -13,8 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ErrStatus0ReceiptStillCallable = errors.New("status-0 receipt; preflight no longer reverts")
-
 type SettlePegInClaimUseCase struct {
 	claims        rootstock.PegInClaimRepository
 	contracts     blockchain.RskContracts
@@ -111,7 +109,8 @@ func (useCase *SettlePegInClaimUseCase) identifyFailed(ctx context.Context, clai
 		return useCase.unavailable(err)
 	}
 	if err = blockchain.RejectWitnessSerializedTx(rawTx); err != nil {
-		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, err)
+		// Unreachable with the current adapters: GetRawTransaction serializes without witness.
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(err, usecases.NonRecoverableError))
 	}
 	params, err := useCase.buildRequestParams(claim.RskAddress, claim.DepositTxID, amount, fee, rawTx)
 	if err != nil {
@@ -148,7 +147,7 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 		if err := useCase.claims.Update(ctx, claim); err != nil {
 			return useCase.unavailable(errors.Join(submitErr, err))
 		}
-		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, submitErr)
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(submitErr, usecases.NonRecoverableError))
 	}
 	return useCase.unavailable(submitErr)
 }
@@ -161,9 +160,9 @@ func (useCase *SettlePegInClaimUseCase) failRetryable(
 	claim.TxHash = ""
 	claim.UpdatedAt = time.Now().UTC()
 	if err := useCase.claims.Update(ctx, claim); err != nil {
-		return useCase.unavailable(errors.Join(ErrStatus0ReceiptStillCallable, err))
+		return useCase.unavailable(errors.Join(blockchain.TxFailedError, err))
 	}
-	return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, ErrStatus0ReceiptStillCallable)
+	return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(blockchain.TxFailedError, usecases.NonRecoverableError))
 }
 
 func (useCase *SettlePegInClaimUseCase) buildRequestParams(
