@@ -161,8 +161,9 @@ func TestSettlePegInClaimUseCase_EmptyBlockHashStaysSubmitting(t *testing.T) {
 }
 
 func TestSettlePegInClaimUseCase_StatusZeroClassifiesViaPreflight(t *testing.T) {
-	repo := newMemoryClaimRepo(submittingClaim())
-	harness := newSettleHarness(t, repo)
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newSettleHarness(t, claims)
+	lastSaved := recordClaimUpdates(claims)
 	receipt := failedReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 		Return(receipt, nil).Once()
@@ -177,7 +178,7 @@ func TestSettlePegInClaimUseCase_StatusZeroClassifiesViaPreflight(t *testing.T) 
 	err := harness.useCase.Run(context.Background(), submittingClaim())
 	require.NoError(t, err)
 
-	stored := repo.stored()
+	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
 	harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
@@ -185,8 +186,9 @@ func TestSettlePegInClaimUseCase_StatusZeroClassifiesViaPreflight(t *testing.T) 
 }
 
 func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
-	repo := newMemoryClaimRepo(submittingClaim())
-	harness := newSettleHarness(t, repo)
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newSettleHarness(t, claims)
+	lastSaved := recordClaimUpdates(claims)
 	receipt := failedReceipt()
 	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 		Return(receipt, nil).Once()
@@ -199,9 +201,9 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	err := harness.useCase.Run(context.Background(), submittingClaim())
 	require.ErrorIs(t, err, blockchain.TxFailedError)
 	require.ErrorIs(t, err, usecases.NonRecoverableError)
-	assert.Equal(t, rootstock.PegInClaimRetryableFailure, repo.stored().State)
+	assert.Equal(t, rootstock.PegInClaimRetryableFailure, lastSaved().State)
 	harness.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
-	assert.Empty(t, repo.stored().TxHash)
+	assert.Empty(t, lastSaved().TxHash)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
@@ -287,8 +289,9 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyRequestParamsErrors(t *testing.
 }
 
 func TestSettlePegInClaimUseCase_SuccessfulReceiptWithEventSetsPegInID(t *testing.T) {
-	repo := newMemoryClaimRepo(submittingClaim())
-	harness := newSettleHarness(t, repo)
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newSettleHarness(t, claims)
+	lastSaved := recordClaimUpdates(claims)
 	pegInID := [32]byte{0xca, 0xfe}
 	receipt := harness.expectReceipt()
 	harness.pegin.On("UnpackPegInRequested", receipt).Return(blockchain.PegInRequestedEvent{
@@ -299,7 +302,7 @@ func TestSettlePegInClaimUseCase_SuccessfulReceiptWithEventSetsPegInID(t *testin
 	err := harness.useCase.Run(context.Background(), submittingClaim())
 	require.NoError(t, err)
 
-	stored := repo.stored()
+	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimClaimed, stored.State)
 	harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimClaimed))
 	assert.Equal(t, hex.EncodeToString(pegInID[:]), stored.PegInID)
@@ -307,15 +310,16 @@ func TestSettlePegInClaimUseCase_SuccessfulReceiptWithEventSetsPegInID(t *testin
 }
 
 func TestSettlePegInClaimUseCase_SuccessfulReceiptWithoutEventIsClaimed(t *testing.T) {
-	repo := newMemoryClaimRepo(submittingClaim())
-	harness := newSettleHarness(t, repo)
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newSettleHarness(t, claims)
+	lastSaved := recordClaimUpdates(claims)
 	receipt := harness.expectReceipt()
 	harness.pegin.On("UnpackPegInRequested", receipt).Return(blockchain.PegInRequestedEvent{}, errors.New("missing")).Once()
 
 	err := harness.useCase.Run(context.Background(), submittingClaim())
 	require.NoError(t, err)
 
-	stored := repo.stored()
+	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimClaimed, stored.State)
 	assert.Empty(t, stored.PegInID)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
@@ -346,8 +350,9 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 	}
 	for _, simulateErr := range cases {
 		t.Run(simulateErr.Error(), func(t *testing.T) {
-			repo := newMemoryClaimRepo(submittingClaim())
-			harness := newSettleHarness(t, repo)
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newSettleHarness(t, claims)
+			lastSaved := recordClaimUpdates(claims)
 			receipt := failedReceipt()
 			harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).
 				Return(receipt, nil).Once()
@@ -361,7 +366,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 			require.ErrorIs(t, err, simulateErr)
 			require.ErrorIs(t, err, usecases.NonRecoverableError)
 			require.NotErrorIs(t, err, usecases.InfrastructureUnavailableError)
-			stored := repo.stored()
+			stored := lastSaved()
 			assert.Equal(t, rootstock.PegInClaimRetryableFailure, stored.State)
 			assert.Empty(t, stored.TxHash)
 			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
@@ -418,15 +423,16 @@ func TestSettlePegInClaimUseCase_GetHeightErrorIsUnavailable(t *testing.T) {
 func TestSettlePegInClaimUseCase_UnpackFailureKeepsStoredPegInID(t *testing.T) {
 	stored := submittingClaim()
 	stored.PegInID = "aabbcc"
-	repo := newMemoryClaimRepo(stored)
-	harness := newSettleHarness(t, repo)
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newSettleHarness(t, claims)
+	lastSaved := recordClaimUpdates(claims)
 	receipt := harness.expectReceipt()
 	harness.pegin.On("UnpackPegInRequested", receipt).Return(blockchain.PegInRequestedEvent{}, errors.New("missing")).Once()
 
 	err := harness.useCase.Run(context.Background(), stored)
 	require.NoError(t, err)
-	assert.Equal(t, rootstock.PegInClaimClaimed, repo.stored().State)
-	assert.Equal(t, "aabbcc", repo.stored().PegInID)
+	assert.Equal(t, rootstock.PegInClaimClaimed, lastSaved().State)
+	assert.Equal(t, "aabbcc", lastSaved().PegInID)
 }
 
 func TestSettlePegInClaimUseCase_WitnessSerializedRawTxIsNonRecoverable(t *testing.T) {
