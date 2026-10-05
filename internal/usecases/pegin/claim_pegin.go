@@ -93,7 +93,7 @@ func (useCase *ClaimPegInUseCase) runnableClaim(
 ) (existing *rootstock.PegInClaim, runnable bool, err error) {
 	existing, err = useCase.claims.Get(ctx, rskAddress, depositTxID)
 	if err != nil {
-		return nil, false, useCase.unavailable(err)
+		return nil, false, usecases.JoinInfrastructureUnavailable(err)
 	}
 	if existing != nil && (existing.IsTerminal() || existing.TxHash != "") {
 		return nil, false, nil
@@ -113,7 +113,7 @@ func (useCase *ClaimPegInUseCase) prepareClaim(
 ) (request claimRequest, ready bool, err error) {
 	tx, err := useCase.rpc.Btc.GetTransactionInfo(depositTxID)
 	if err != nil {
-		return claimRequest{}, false, useCase.unavailable(err)
+		return claimRequest{}, false, usecases.JoinInfrastructureUnavailable(err)
 	}
 	amount := tx.FirstOutputToAddress(entry.BtcAddress)
 	if amount.Cmp(entities.NewWei(0)) <= 0 {
@@ -125,7 +125,7 @@ func (useCase *ClaimPegInUseCase) prepareClaim(
 	}
 	fee, err := useCase.contracts.FlyoverConfigurations.CalculatePegInFee(amount)
 	if err != nil {
-		return claimRequest{}, false, useCase.unavailable(err)
+		return claimRequest{}, false, usecases.JoinInfrastructureUnavailable(err)
 	}
 	if amount.Cmp(fee) < 0 {
 		return claimRequest{}, false, nil
@@ -157,7 +157,7 @@ func (useCase *ClaimPegInUseCase) handleDryRunResult(
 		log.Debug(LogPegInClaimBelowMinimum(request.entry.RskAddress, request.depositTxID))
 		return false, nil
 	default:
-		return false, useCase.unavailable(dryRunErr)
+		return false, usecases.JoinInfrastructureUnavailable(dryRunErr)
 	}
 }
 
@@ -167,7 +167,7 @@ func (useCase *ClaimPegInUseCase) isClaimable(
 ) (claimable bool, err error) {
 	requiredConfirmations, err := useCase.contracts.FlyoverConfigurations.GetRequiredPegInBtcConfirmations(amount)
 	if err != nil {
-		return false, useCase.unavailable(err)
+		return false, usecases.JoinInfrastructureUnavailable(err)
 	}
 	if tx.Confirmations < requiredConfirmations {
 		return false, nil
@@ -176,7 +176,7 @@ func (useCase *ClaimPegInUseCase) isClaimable(
 		if errors.Is(err, blockchain.ContractPausedError) {
 			return false, nil
 		}
-		return false, useCase.unavailable(err)
+		return false, usecases.JoinInfrastructureUnavailable(err)
 	}
 	return true, nil
 }
@@ -192,7 +192,7 @@ func (useCase *ClaimPegInUseCase) requestParams(request claimRequest) (blockchai
 		return blockchain.RequestPegInParams{}, err
 	}
 	if err != nil {
-		return blockchain.RequestPegInParams{}, useCase.unavailable(err)
+		return blockchain.RequestPegInParams{}, usecases.JoinInfrastructureUnavailable(err)
 	}
 	return params, nil
 }
@@ -200,11 +200,11 @@ func (useCase *ClaimPegInUseCase) requestParams(request claimRequest) (blockchai
 func (useCase *ClaimPegInUseCase) hasWalletLiquidity(ctx context.Context, request claimRequest) (enough bool, err error) {
 	estimatedGas, err := useCase.contracts.PegIn.EstimateRequestPegInGas(request.params)
 	if err != nil {
-		return false, useCase.unavailable(err)
+		return false, usecases.JoinInfrastructureUnavailable(err)
 	}
 	gasPrice, err := useCase.rpc.Rsk.GasPrice(ctx)
 	if err != nil {
-		return false, useCase.unavailable(err)
+		return false, usecases.JoinInfrastructureUnavailable(err)
 	}
 	gasCost := new(entities.Wei).Mul(gasPrice, entities.NewUWei(estimatedGas))
 	payable, err := rootstock.CalculatePegInClaimPayableValue(request.amount, request.fee)
@@ -216,7 +216,7 @@ func (useCase *ClaimPegInUseCase) hasWalletLiquidity(ctx context.Context, reques
 	// already includes earlier claims.
 	available, err := useCase.peginProvider.AvailablePeginWalletLiquidity(ctx)
 	if err != nil {
-		return false, useCase.unavailable(err)
+		return false, usecases.JoinInfrastructureUnavailable(err)
 	}
 	if available.Cmp(required) < 0 {
 		log.Debug(LogPegInClaimInsufficientWalletLiquidity(request.entry.RskAddress, request.depositTxID, available, required))
@@ -229,7 +229,7 @@ func (useCase *ClaimPegInUseCase) armAndSubmit(ctx context.Context, request clai
 	claim := rootstock.NewCandidatePegInClaim(request.entry, request.depositTxID, request.existing)
 	stored, alreadySubmitted, err := useCase.save(ctx, claim)
 	if err != nil {
-		return useCase.unavailable(err)
+		return usecases.JoinInfrastructureUnavailable(err)
 	}
 	if alreadySubmitted {
 		return nil
@@ -238,7 +238,7 @@ func (useCase *ClaimPegInUseCase) armAndSubmit(ctx context.Context, request clai
 	stored.TxHash = ""
 	stored.UpdatedAt = time.Now().UTC()
 	if err = useCase.claims.Update(ctx, stored); err != nil {
-		return useCase.unavailable(err)
+		return usecases.JoinInfrastructureUnavailable(err)
 	}
 	return useCase.submit(ctx, stored, request.params)
 }
@@ -258,7 +258,7 @@ func (useCase *ClaimPegInUseCase) submit(
 	}
 	// The claim stays submitting until SettlePegInClaimUseCase marks it claimed after maxReorgDepth.
 	if persistErr := useCase.persistSubmission(ctx, &claim); persistErr != nil {
-		return useCase.unavailable(errors.Join(persistErr, submitErr))
+		return usecases.JoinInfrastructureUnavailable(errors.Join(persistErr, submitErr))
 	}
 	return nil
 }
@@ -276,7 +276,7 @@ func (useCase *ClaimPegInUseCase) persistAlreadyProcessed(ctx context.Context, r
 	claim := rootstock.NewCandidatePegInClaim(request.entry, request.depositTxID, request.existing)
 	stored, alreadySubmitted, err := useCase.save(ctx, claim)
 	if err != nil {
-		return useCase.unavailable(err)
+		return usecases.JoinInfrastructureUnavailable(err)
 	}
 	if alreadySubmitted && stored.IsTerminal() {
 		return nil
@@ -293,14 +293,14 @@ func (useCase *ClaimPegInUseCase) classifySubmitError(
 	if errors.Is(submitErr, blockchain.ErrPegInAlreadyProcessed) {
 		claim.State = rootstock.PegInClaimRaceLost
 		if err := useCase.claims.Update(ctx, claim); err != nil {
-			return useCase.unavailable(err)
+			return usecases.JoinInfrastructureUnavailable(err)
 		}
 		useCase.eventBus.Publish(rootstock.NewPegInClaimCompletedEvent(claim))
 		return nil
 	}
 	claim.State = rootstock.PegInClaimRetryableFailure
 	if err := useCase.claims.Update(ctx, claim); err != nil {
-		return useCase.unavailable(errors.Join(submitErr, err))
+		return usecases.JoinInfrastructureUnavailable(errors.Join(submitErr, err))
 	}
 	return submitErr
 }
@@ -355,11 +355,4 @@ func (useCase *ClaimPegInUseCase) refreshClaim(
 		return rootstock.PegInClaim{}, false, err
 	}
 	return claim, false, nil
-}
-
-func (useCase *ClaimPegInUseCase) unavailable(err error) error {
-	if err == nil {
-		return nil
-	}
-	return errors.Join(err, usecases.InfrastructureUnavailableError)
 }

@@ -460,6 +460,18 @@ func TestCheckPauseLevel(t *testing.T) {
 	})
 }
 
+func TestJoinInfrastructureUnavailable(t *testing.T) {
+	t.Run("nil stays nil", func(t *testing.T) {
+		require.NoError(t, u.JoinInfrastructureUnavailable(nil))
+	})
+	t.Run("keeps the cause and adds the outage marker", func(t *testing.T) {
+		cause := assert.AnError
+		err := u.JoinInfrastructureUnavailable(cause)
+		require.ErrorIs(t, err, cause)
+		require.ErrorIs(t, err, u.InfrastructureUnavailableError)
+	})
+}
+
 func TestSafeLogStr(t *testing.T) {
 	assert.Equal(t, "abc", u.SafeLogStr("abc"))
 	assert.Equal(t, "a b c", u.SafeLogStr("a\nb\rc"))
