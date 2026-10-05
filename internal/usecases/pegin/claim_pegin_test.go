@@ -1181,13 +1181,16 @@ func expectSerializedWalletMocks(
 	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Twice()
 	harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Twice()
 	harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Twice()
+	afterFirstClaim := new(entities.Wei).Sub(required, entities.NewWei(1))
+	harness.provider.On("AvailablePeginWalletLiquidity", mock.Anything).
+		Run(func(mock.Arguments) { balanceCalls.Add(1) }).
+		Return(required, nil).Once()
 	harness.provider.On("AvailablePeginWalletLiquidity", mock.Anything).
 		Run(func(mock.Arguments) {
-			if balanceCalls.Add(1) == 2 {
-				<-requestReturned
-			}
+			balanceCalls.Add(1)
+			<-requestReturned
 		}).
-		Return(required, nil).Twice()
+		Return(afterFirstClaim, nil).Once()
 	harness.pegin.On("RequestPegIn", mock.Anything).
 		Run(func(mock.Arguments) {
 			close(requestStarted)
