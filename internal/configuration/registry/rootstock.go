@@ -190,29 +190,22 @@ func createBoundContracts(
 		pauseRegistryAddress         common.Address
 		flyoverConfigurationsAddress common.Address
 	)
-	if err = rootstock.ParseAddress(&peginContractAddress, env.Rsk.PeginContractAddress); err != nil {
-		return rskBoundContracts{}, err
-	}
-	if err = rootstock.ParseAddress(&pegoutContractAddress, env.Rsk.PegoutContractAddress); err != nil {
-		return rskBoundContracts{}, err
-	}
-	if err = rootstock.ParseAddress(&collateralManagementAddress, env.Rsk.CollateralManagementAddress); err != nil {
-		return rskBoundContracts{}, err
-	}
-	if err = rootstock.ParseAddress(&discoveryAddress, env.Rsk.DiscoveryAddress); err != nil {
-		return rskBoundContracts{}, err
-	}
-	if err = rootstock.ParseAddress(&bridgeAddress, env.Rsk.BridgeAddress); err != nil {
-		return rskBoundContracts{}, err
-	}
-	if err = rootstock.ParseAddress(&peginAddressRegistryAddress, env.Rsk.PegInAddressRegistryAddress); err != nil {
-		return rskBoundContracts{}, err
-	}
-	if err = rootstock.ParseAddress(&pauseRegistryAddress, env.Rsk.PauseRegistryAddress); err != nil {
-		return rskBoundContracts{}, err
-	}
-	if err = rootstock.ParseAddress(&flyoverConfigurationsAddress, env.Rsk.FlyoverConfigurationsAddress); err != nil {
-		return rskBoundContracts{}, err
+	for _, address := range []struct {
+		target *common.Address
+		value  string
+	}{
+		{&peginContractAddress, env.Rsk.PeginContractAddress},
+		{&pegoutContractAddress, env.Rsk.PegoutContractAddress},
+		{&collateralManagementAddress, env.Rsk.CollateralManagementAddress},
+		{&discoveryAddress, env.Rsk.DiscoveryAddress},
+		{&bridgeAddress, env.Rsk.BridgeAddress},
+		{&peginAddressRegistryAddress, env.Rsk.PegInAddressRegistryAddress},
+		{&pauseRegistryAddress, env.Rsk.PauseRegistryAddress},
+		{&flyoverConfigurationsAddress, env.Rsk.FlyoverConfigurationsAddress},
+	} {
+		if err = rootstock.ParseAddress(address.target, address.value); err != nil {
+			return rskBoundContracts{}, err
+		}
 	}
 
 	peginContract := bindings.peginContract.Instance(client.Rpc(), peginContractAddress)
