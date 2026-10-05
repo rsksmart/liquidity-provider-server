@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// requestPegInSelector is keccak256("requestPegIn(address,bytes,bytes,bytes32,uint256,bytes32[])")[:4]
+// requestPegInSelector is keccak256("requestPegIn(address,bytes,bytes32,uint256,bytes32[])")[:4]
 // from the pinned IPegInCommitFirst ABI, not from the packer under test.
-var requestPegInSelector = []byte{0xa3, 0x55, 0xe9, 0x35}
+var requestPegInSelector = []byte{0xfc, 0x73, 0xbb, 0xd3}
 
 func TestPeginCommitFirstBindingPacksRequestPegIn(t *testing.T) {
 	contract := commitfirst.NewPeginCommitFirstContract()
@@ -23,7 +23,7 @@ func TestPeginCommitFirstBindingPacksRequestPegIn(t *testing.T) {
 	path := big.NewInt(1)
 	hashes := [][32]byte{{0x22}}
 
-	calldata := contract.PackRequestPegIn(rskAddr, rawTx, []byte{}, blockHash, path, hashes)
+	calldata := contract.PackRequestPegIn(rskAddr, rawTx, blockHash, path, hashes)
 
 	require.GreaterOrEqual(t, len(calldata), 4)
 	assert.Equal(t, requestPegInSelector, calldata[:4])
@@ -34,6 +34,7 @@ func TestPeginCommitFirstBindingPacksRequestPegIn(t *testing.T) {
 	assert.Contains(t, commitfirst.PeginCommitFirstContractMetaData.ABI, `"name":"DepositOutputNotFound"`)
 	assert.Contains(t, commitfirst.PeginCommitFirstContractMetaData.ABI, `"name":"InsufficientConfirmations"`)
 	assert.Contains(t, commitfirst.PeginCommitFirstContractMetaData.ABI, `"name":"IncorrectFronting"`)
+	assert.Contains(t, commitfirst.PeginCommitFirstContractMetaData.ABI, `"name":"PegInBelowMinimum"`)
 
 	var (
 		_ = contract.UnpackError
@@ -44,6 +45,7 @@ func TestPeginCommitFirstBindingPacksRequestPegIn(t *testing.T) {
 		_ *commitfirst.PeginCommitFirstContractDepositOutputNotFound
 		_ *commitfirst.PeginCommitFirstContractInsufficientConfirmations
 		_ *commitfirst.PeginCommitFirstContractIncorrectFronting
+		_ *commitfirst.PeginCommitFirstContractPegInBelowMinimum
 		_ *commitfirst.PeginCommitFirstContractPegInRequested
 	)
 }

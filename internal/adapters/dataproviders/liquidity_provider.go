@@ -193,8 +193,7 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 	return new(entities.Wei).Sub(liquidity, lockedLiquidity), nil
 }
 
-// AvailablePeginWalletLiquidity is the RSK wallet balance that a commit-first claim can spend.
-// It excludes the LBC balance, because requestPegIn can only pay with the value sent from the wallet.
+// The LBC balance is excluded because requestPegIn can only pay with the value sent from the wallet.
 func (lp *LocalLiquidityProvider) AvailablePeginWalletLiquidity(ctx context.Context) (*entities.Wei, error) {
 	return lp.rpc.Rsk.GetBalance(ctx, lp.RskAddress())
 }

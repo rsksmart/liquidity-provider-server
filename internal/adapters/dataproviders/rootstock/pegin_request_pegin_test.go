@@ -23,9 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// pinnedRequestPegInABI is the IPegInCommitFirst requestPegIn signature from PR #517,
-// parsed independently of the generated packer under test.
-const pinnedRequestPegInABI = `[{"type":"function","name":"requestPegIn","stateMutability":"payable","inputs":[{"name":"rskAddr","type":"address"},{"name":"btcTxSerialized","type":"bytes"},{"name":"opReturn","type":"bytes"},{"name":"btcBlockHash","type":"bytes32"},{"name":"merkleBranchPath","type":"uint256"},{"name":"merkleBranchHashes","type":"bytes32[]"}],"outputs":[{"name":"pegInId","type":"bytes32"}]}]`
+// pinnedRequestPegInABI is parsed independently of the generated packer under test.
+const pinnedRequestPegInABI = `[{"type":"function","name":"requestPegIn","stateMutability":"payable","inputs":[{"name":"rskAddr","type":"address"},{"name":"btcTxSerialized","type":"bytes"},{"name":"btcBlockHash","type":"bytes32"},{"name":"merkleBranchPath","type":"uint256"},{"name":"merkleBranchHashes","type":"bytes32[]"}],"outputs":[{"name":"pegInId","type":"bytes32"}]}]`
 
 const requestPegInEstimatedGas = uint64(1000)
 
@@ -40,14 +39,8 @@ func packPinnedRequestPegIn(t *testing.T, rskAddr common.Address, rawTx []byte, 
 	t.Helper()
 	parsed, err := abi.JSON(strings.NewReader(pinnedRequestPegInABI))
 	require.NoError(t, err)
-	calldata, err := parsed.Pack("requestPegIn", rskAddr, rawTx, []byte{}, blockHash, path, hashes)
+	calldata, err := parsed.Pack("requestPegIn", rskAddr, rawTx, blockHash, path, hashes)
 	require.NoError(t, err)
-	inputs := parsed.Methods["requestPegIn"].Inputs
-	require.Len(t, inputs, 6)
-	for _, input := range inputs {
-		assert.NotEqual(t, "amount", input.Name)
-		assert.NotEqual(t, "btcTxHash", input.Name)
-	}
 	return calldata
 }
 
@@ -477,6 +470,7 @@ func TestPeginContractImpl_RequestPegIn_PreflightTypedErrors(t *testing.T) {
 		{"DepositOutputNotFound", commitfirst.PeginCommitFirstContractDepositOutputNotFoundErrorID(), append(mustPackAddress(t, parsedAddress), mustPackBytes32(t, btcTxHash)...), blockchain.ErrDepositOutputNotFound},
 		{"InsufficientConfirmations", commitfirst.PeginCommitFirstContractInsufficientConfirmationsErrorID(), append(mustPackUint256(t, big.NewInt(1)), mustPackUint256(t, big.NewInt(6))...), blockchain.ErrInsufficientConfirmations},
 		{"IncorrectFronting", commitfirst.PeginCommitFirstContractIncorrectFrontingErrorID(), append(mustPackUint256(t, big.NewInt(1000)), mustPackUint256(t, big.NewInt(500))...), blockchain.ErrIncorrectFronting},
+		{"PegInBelowMinimum", commitfirst.PeginCommitFirstContractPegInBelowMinimumErrorID(), append(mustPackUint256(t, big.NewInt(1000)), mustPackUint256(t, big.NewInt(5000))...), blockchain.ErrPegInBelowMinimum},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -37,6 +37,14 @@ func LogPegInClaimInsufficientWalletLiquidity(rskAddress, depositTxID string, av
 	)
 }
 
+func LogPegInClaimBelowMinimum(rskAddress, depositTxID string) string {
+	return fmt.Sprintf(
+		"PegInClaim: deposit %s/%s is below the Flyover minimum; not claiming",
+		rskAddress,
+		depositTxID,
+	)
+}
+
 func LogPegInClaimMissingEvent(txHash, rskAddress, depositTxID string, err error) string {
 	return fmt.Sprintf(
 		"PegInClaimWatcher: receipt %s for %s/%s is missing PegInRequested; follow incident-recovery; not resubmitting: %v",

@@ -486,7 +486,6 @@ func (peginContract *peginContractImpl) packRequestPegIn(params blockchain.Reque
 	return peginContract.commitFirst.TryPackRequestPegIn(
 		rskAddress,
 		params.BitcoinRawTx,
-		[]byte{},
 		params.BtcBlockHash,
 		params.MerkleBranchPath,
 		params.MerkleBranchHashes,
@@ -607,6 +606,8 @@ func mapUnpackedRequestPegInError(unpacked any) error {
 		return blockchain.ErrInsufficientConfirmations
 	case *commitfirst.PeginCommitFirstContractIncorrectFronting:
 		return blockchain.ErrIncorrectFronting
+	case *commitfirst.PeginCommitFirstContractPegInBelowMinimum:
+		return blockchain.ErrPegInBelowMinimum
 	default:
 		return nil
 	}
