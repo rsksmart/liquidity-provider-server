@@ -105,12 +105,11 @@ func (useCase *ClaimPegInUseCase) evaluateGates(
 	if tx.Confirmations < requiredConfirmations {
 		return nil, blockchain.RequestPegInParams{}, nil
 	}
-	level, err := useCase.contracts.PauseRegistry.PauseLevel()
-	if err != nil {
+	if err = usecases.CheckPauseLevel(useCase.contracts.PauseRegistry, blockchain.PauseLevelSoft); err != nil {
+		if errors.Is(err, blockchain.ContractPausedError) {
+			return nil, blockchain.RequestPegInParams{}, nil
+		}
 		return nil, blockchain.RequestPegInParams{}, useCase.unavailable(err)
-	}
-	if level >= blockchain.PauseLevelHard {
-		return nil, blockchain.RequestPegInParams{}, nil
 	}
 	fee, err := useCase.contracts.FlyoverConfigurations.CalculatePegInFee(amount)
 	if err != nil {

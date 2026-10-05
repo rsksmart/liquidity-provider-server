@@ -2,6 +2,7 @@ package usecases_test
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -416,6 +417,46 @@ func TestCheckPauseState(t *testing.T) {
 		require.ErrorIs(t, err, blockchain.ContractPausedError)
 		require.Contains(t, err.Error(), "paused A")
 		require.Contains(t, err.Error(), "5")
+	})
+}
+
+func TestCheckPauseLevel(t *testing.T) {
+	cases := []struct {
+		name   string
+		level  uint8
+		paused bool
+	}{
+		{name: "none does not block", level: blockchain.PauseLevelNone, paused: false},
+		{name: "soft blocks a soft check", level: blockchain.PauseLevelSoft, paused: true},
+		{name: "hard blocks a soft check", level: blockchain.PauseLevelHard, paused: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			registry := mocks.NewPauseRegistryContractMock(t)
+			registry.On("PauseLevel").Return(tc.level, nil).Once()
+			if tc.paused {
+				registry.On("GetAddress").Return("0xpause").Once()
+			}
+			err := u.CheckPauseLevel(registry, blockchain.PauseLevelSoft)
+			if !tc.paused {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, blockchain.ContractPausedError)
+			assert.Contains(t, err.Error(), fmt.Sprintf("Pause level %d", tc.level))
+		})
+	}
+	t.Run("soft does not block a hard check", func(t *testing.T) {
+		registry := mocks.NewPauseRegistryContractMock(t)
+		registry.On("PauseLevel").Return(blockchain.PauseLevelSoft, nil).Once()
+		require.NoError(t, u.CheckPauseLevel(registry, blockchain.PauseLevelHard))
+	})
+	t.Run("returns the registry error", func(t *testing.T) {
+		registry := mocks.NewPauseRegistryContractMock(t)
+		registry.On("PauseLevel").Return(uint8(0), assert.AnError).Once()
+		err := u.CheckPauseLevel(registry, blockchain.PauseLevelSoft)
+		require.ErrorIs(t, err, assert.AnError)
+		require.NotErrorIs(t, err, blockchain.ContractPausedError)
 	})
 }
 
