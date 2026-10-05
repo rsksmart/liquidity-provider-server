@@ -370,7 +370,7 @@ func CheckPauseLevel(registry blockchain.PauseRegistryContract, blockingLevel ui
 	if level < blockingLevel {
 		return nil
 	}
-	log.Warnf("PauseRegistry %s is at pause level %d", registry.GetAddress(), level)
+	log.Warn(LogPauseLevelBlocks(registry.GetAddress(), level))
 	return fmt.Errorf("%w. Pause level %d", blockchain.ContractPausedError, level)
 }
 

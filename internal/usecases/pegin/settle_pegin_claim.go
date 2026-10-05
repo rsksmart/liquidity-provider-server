@@ -50,7 +50,7 @@ func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock
 	if err != nil {
 		return useCase.unavailable(err)
 	}
-	if !receiptOnCanonicalChain(receipt) {
+	if !useCase.receiptOnCanonicalChain(receipt) {
 		return nil
 	}
 	height, err := useCase.rpc.Rsk.GetHeight(ctx)
@@ -68,7 +68,7 @@ func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock
 
 // receiptOnCanonicalChain needs no block lookup: rskj eth_getTransactionReceipt returns a receipt
 // only when its block is the main-chain block at that height (ReceiptStore.getInMainChain).
-func receiptOnCanonicalChain(receipt blockchain.TransactionReceipt) bool {
+func (useCase *SettlePegInClaimUseCase) receiptOnCanonicalChain(receipt blockchain.TransactionReceipt) bool {
 	for _, eventLog := range receipt.Logs {
 		if eventLog.Removed {
 			return false
@@ -108,21 +108,16 @@ func (useCase *SettlePegInClaimUseCase) identifyFailed(ctx context.Context, clai
 	if err != nil {
 		return useCase.unavailable(err)
 	}
-	rawTx, err := useCase.rpc.Btc.GetRawTransaction(claim.DepositTxID)
-	if err != nil {
-		return useCase.unavailable(err)
-	}
-	if err = blockchain.RejectWitnessSerializedTx(rawTx); err != nil {
-		// Unreachable with the current adapters: GetRawTransaction serializes without witness.
-		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(err, usecases.NonRecoverableError))
-	}
 	params, err := usecases.BuildRequestPegInParams(useCase.rpc.Btc, usecases.RequestPegInInput{
 		RskAddress:  claim.RskAddress,
 		DepositTxID: claim.DepositTxID,
 		Amount:      amount,
 		Fee:         fee,
-		RawTx:       rawTx,
 	})
+	if errors.Is(err, blockchain.ErrWitnessSerializedTxNotAccepted) {
+		// Unreachable with the current adapters: GetRawTransaction serializes without witness.
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(err, usecases.NonRecoverableError))
+	}
 	if err != nil {
 		return useCase.unavailable(err)
 	}

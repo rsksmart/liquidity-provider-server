@@ -20,6 +20,9 @@ func (useCase *GetPegInWatchesUseCase) Run(
 	ctx context.Context,
 	states ...rootstock.PegInWatchState,
 ) ([]rootstock.PegInWatch, error) {
+	if len(states) == 0 {
+		return []rootstock.PegInWatch{}, nil
+	}
 	watches, err := useCase.repository.List(ctx)
 	if err != nil {
 		return nil, usecases.WrapUseCaseError(usecases.GetPegInWatchesId, err)

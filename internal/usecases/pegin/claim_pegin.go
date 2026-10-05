@@ -56,8 +56,8 @@ func (useCase *ClaimPegInUseCase) Run(
 	entry rootstock.PegInWatch,
 	depositTxID string,
 ) error {
-	existing, ok, err := useCase.runnableClaim(ctx, entry.RskAddress, depositTxID)
-	if err != nil || !ok {
+	existing, runnable, err := useCase.runnableClaim(ctx, entry.RskAddress, depositTxID)
+	if err != nil || !runnable {
 		return err
 	}
 	request, ready, err := useCase.prepareClaim(ctx, existing, entry, depositTxID)
@@ -78,8 +78,8 @@ func (useCase *ClaimPegInUseCase) Run(
 func (useCase *ClaimPegInUseCase) runnableClaim(
 	ctx context.Context,
 	rskAddress, depositTxID string,
-) (*rootstock.PegInClaim, bool, error) {
-	existing, err := useCase.claims.Get(ctx, rskAddress, depositTxID)
+) (existing *rootstock.PegInClaim, runnable bool, err error) {
+	existing, err = useCase.claims.Get(ctx, rskAddress, depositTxID)
 	if err != nil {
 		return nil, false, useCase.unavailable(err)
 	}
@@ -119,11 +119,34 @@ func (useCase *ClaimPegInUseCase) prepareClaim(
 		return claimRequest{}, false, nil
 	}
 	request = claimRequest{entry: entry, depositTxID: depositTxID, existing: existing, amount: amount, fee: fee}
-	request.params, ready, err = useCase.dryRunRequestParams(ctx, request)
-	if err != nil || !ready {
+	if request.params, err = useCase.requestParams(request); err != nil {
+		return claimRequest{}, false, err
+	}
+	// Gas estimation returns the raw revert, so a claim another caller already won would look
+	// like an outage. The dry run decodes it into ErrPegInAlreadyProcessed.
+	dryRunErr := useCase.contracts.PegIn.SimulateRequestPegIn(request.params)
+	if ready, err = useCase.handleDryRunResult(ctx, request, dryRunErr); err != nil || !ready {
 		return claimRequest{}, false, err
 	}
 	return request, true, nil
+}
+
+func (useCase *ClaimPegInUseCase) handleDryRunResult(
+	ctx context.Context,
+	request claimRequest,
+	dryRunErr error,
+) (ready bool, err error) {
+	switch {
+	case dryRunErr == nil:
+		return true, nil
+	case errors.Is(dryRunErr, blockchain.ErrPegInAlreadyProcessed):
+		return false, useCase.persistAlreadyProcessed(ctx, request)
+	case errors.Is(dryRunErr, blockchain.ErrPegInBelowMinimum):
+		log.Debug(LogPegInClaimBelowMinimum(request.entry.RskAddress, request.depositTxID))
+		return false, nil
+	default:
+		return false, useCase.unavailable(dryRunErr)
+	}
 }
 
 func (useCase *ClaimPegInUseCase) isClaimable(
@@ -146,41 +169,20 @@ func (useCase *ClaimPegInUseCase) isClaimable(
 	return true, nil
 }
 
-func (useCase *ClaimPegInUseCase) dryRunRequestParams(
-	ctx context.Context,
-	request claimRequest,
-) (params blockchain.RequestPegInParams, ready bool, err error) {
-	rawTx, err := useCase.rpc.Btc.GetRawTransaction(request.depositTxID)
-	if err != nil {
-		return blockchain.RequestPegInParams{}, false, useCase.unavailable(err)
-	}
-	if err = blockchain.RejectWitnessSerializedTx(rawTx); err != nil {
-		return blockchain.RequestPegInParams{}, false, usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
-	}
-	params, err = usecases.BuildRequestPegInParams(useCase.rpc.Btc, usecases.RequestPegInInput{
+func (useCase *ClaimPegInUseCase) requestParams(request claimRequest) (blockchain.RequestPegInParams, error) {
+	params, err := usecases.BuildRequestPegInParams(useCase.rpc.Btc, usecases.RequestPegInInput{
 		RskAddress:  request.entry.RskAddress,
 		DepositTxID: request.depositTxID,
 		Amount:      request.amount,
 		Fee:         request.fee,
-		RawTx:       rawTx,
 	})
+	if errors.Is(err, blockchain.ErrWitnessSerializedTxNotAccepted) {
+		return blockchain.RequestPegInParams{}, usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
+	}
 	if err != nil {
-		return blockchain.RequestPegInParams{}, false, useCase.unavailable(err)
+		return blockchain.RequestPegInParams{}, useCase.unavailable(err)
 	}
-	// Gas estimation returns the raw revert, so a claim another caller already won would look
-	// like an outage. The dry run decodes it into ErrPegInAlreadyProcessed.
-	err = useCase.contracts.PegIn.SimulateRequestPegIn(params)
-	switch {
-	case err == nil:
-		return params, true, nil
-	case errors.Is(err, blockchain.ErrPegInAlreadyProcessed):
-		return blockchain.RequestPegInParams{}, false, useCase.persistAlreadyProcessed(ctx, request)
-	case errors.Is(err, blockchain.ErrPegInBelowMinimum):
-		log.Debug(LogPegInClaimBelowMinimum(request.entry.RskAddress, request.depositTxID))
-		return blockchain.RequestPegInParams{}, false, nil
-	default:
-		return blockchain.RequestPegInParams{}, false, useCase.unavailable(err)
-	}
+	return params, nil
 }
 
 func (useCase *ClaimPegInUseCase) hasWalletLiquidity(ctx context.Context, request claimRequest) (enough bool, err error) {
@@ -259,9 +261,6 @@ func (useCase *ClaimPegInUseCase) persistSubmission(ctx context.Context, claim *
 }
 
 func (useCase *ClaimPegInUseCase) persistAlreadyProcessed(ctx context.Context, request claimRequest) error {
-	if request.existing != nil && request.existing.IsTerminal() {
-		return nil
-	}
 	claim := rootstock.NewCandidatePegInClaim(request.entry, request.depositTxID, request.existing)
 	stored, alreadySubmitted, err := useCase.save(ctx, claim)
 	if err != nil {

@@ -179,6 +179,7 @@ func TestSettlePegInClaimUseCase_StatusZeroClassifiesViaPreflight(t *testing.T) 
 
 	stored := repo.stored()
 	assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+	harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 	harness.pegin.AssertNotCalled(t, "UnpackPegInRequested", mock.Anything)
 }
