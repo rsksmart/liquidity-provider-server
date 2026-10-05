@@ -194,7 +194,8 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 
 	err := harness.useCase.Run(context.Background(), submittingClaim())
-	require.ErrorIs(t, err, pegin.ErrStatus0ReceiptStillCallable)
+	require.ErrorIs(t, err, blockchain.TxFailedError)
+	require.ErrorIs(t, err, usecases.NonRecoverableError)
 	assert.Equal(t, rootstock.PegInClaimRetryableFailure, repo.stored().State)
 	assert.Empty(t, repo.stored().TxHash)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
@@ -306,6 +307,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 
 			err := harness.useCase.Run(context.Background(), submittingClaim())
 			require.ErrorIs(t, err, simulateErr)
+			require.ErrorIs(t, err, usecases.NonRecoverableError)
 			require.NotErrorIs(t, err, usecases.InfrastructureUnavailableError)
 			stored := repo.stored()
 			assert.Equal(t, rootstock.PegInClaimRetryableFailure, stored.State)
@@ -373,4 +375,22 @@ func TestSettlePegInClaimUseCase_UnpackFailureKeepsStoredPegInID(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, rootstock.PegInClaimClaimed, repo.stored().State)
 	assert.Equal(t, "aabbcc", repo.stored().PegInID)
+}
+
+func TestSettlePegInClaimUseCase_WitnessSerializedRawTxIsNonRecoverable(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newSettleHarness(t, claims)
+	harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(failedReceipt(), nil).Once()
+	harness.expectFinalHeight()
+	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
+	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+	witnessRawTx := []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0xaa, 0xbb}
+	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(witnessRawTx, nil).Once()
+
+	err := harness.useCase.Run(context.Background(), submittingClaim())
+	require.ErrorIs(t, err, blockchain.ErrWitnessSerializedTxNotAccepted)
+	require.ErrorIs(t, err, usecases.NonRecoverableError)
+	require.NotErrorIs(t, err, usecases.InfrastructureUnavailableError)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	harness.pegin.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything)
 }
