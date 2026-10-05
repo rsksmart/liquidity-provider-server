@@ -29,7 +29,7 @@ func depositTxIDArg(args mock.Arguments) string {
 	return claim.DepositTxID
 }
 
-func submittingClaimRow(depositTxID string) rootstock.PegInClaim {
+func submittingClaim(depositTxID string) rootstock.PegInClaim {
 	return rootstock.PegInClaim{
 		RskAddress:  test.AnyRskAddress,
 		DepositTxID: depositTxID,
@@ -41,13 +41,17 @@ func newClaimWatcherForTest(
 	t *testing.T,
 	runner watcher.PegInClaimRunner,
 	settler watcher.PegInClaimSettler,
-	claims *mocks.PegInClaimRepositoryMock,
-	watches *mocks.PegInWatchRepositoryMock,
+	submittingClaims *mocks.PegInClaimsGetterMock,
+	importedWatches *mocks.PegInWatchesGetterMock,
 	wallet *mocks.BitcoinWalletMock,
 	ticker utils.Ticker,
 ) *watcher.PegInClaimWatcher {
 	t.Helper()
-	return watcher.NewPegInClaimWatcher(runner, settler, claims, watches, wallet, ticker)
+	return watcher.NewPegInClaimWatcher(
+		watcher.NewPegInClaimWatcherUseCases(runner, settler, submittingClaims, importedWatches),
+		wallet,
+		ticker,
+	)
 }
 
 func importedWatchEntry() rootstock.PegInWatch {
@@ -70,28 +74,29 @@ func payingWatchTx(btcAddress string) blockchain.BitcoinTransactionInformation {
 func runClaimWatcherTick(
 	t *testing.T,
 	runner *mocks.PegInClaimRunnerMock,
-	setup func(*mocks.PegInWatchRepositoryMock, *mocks.BitcoinWalletMock),
-	assertTick func(*assert.CollectT, *mocks.PegInWatchRepositoryMock, *mocks.BitcoinWalletMock, *mocks.PegInClaimRunnerMock),
+	setup func(*mocks.PegInWatchesGetterMock, *mocks.BitcoinWalletMock),
+	assertTick func(*assert.CollectT, *mocks.PegInWatchesGetterMock, *mocks.BitcoinWalletMock, *mocks.PegInClaimRunnerMock),
 ) {
 	t.Helper()
-	watchRepo := mocks.NewPegInWatchRepositoryMock(t)
+	importedWatches := mocks.NewPegInWatchesGetterMock(t)
 	wallet := mocks.NewBitcoinWalletMock(t)
-	claims := mocks.NewPegInClaimRepositoryMock(t)
+	submittingClaims := mocks.NewPegInClaimsGetterMock(t)
 	settler := mocks.NewPegInClaimSettlerMock(t)
-	claims.EXPECT().ListByStates(mock.Anything, rootstock.PegInClaimSubmitting).
+	submittingClaims.EXPECT().Run(mock.Anything, rootstock.PegInClaimSubmitting).
 		Return([]rootstock.PegInClaim{}, nil).Once()
-	setup(watchRepo, wallet)
+	setup(importedWatches, wallet)
 
 	ticker := &mocks.TickerMock{}
 	ticks := make(chan time.Time)
 	ticker.EXPECT().C().Return(ticks)
 	ticker.EXPECT().Stop()
 
-	claimWatcher := watcher.NewPegInClaimWatcher(
+	claimWatcher := newClaimWatcherForTest(
+		t,
 		runner,
 		settler,
-		claims,
-		watchRepo,
+		submittingClaims,
+		importedWatches,
 		wallet,
 		ticker,
 	)
@@ -100,44 +105,30 @@ func runClaimWatcherTick(
 	go claimWatcher.Shutdown(make(chan bool, 1))
 
 	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-		assertTick(collect, watchRepo, wallet, runner)
+		assertTick(collect, importedWatches, wallet, runner)
 	}, time.Second, 10*time.Millisecond)
 }
 
 func TestPegInClaimWatcher_EmptyWalletHistoryCreatesZeroClaims(t *testing.T) {
 	runner := mocks.NewPegInClaimRunnerMock(t)
-	runClaimWatcherTick(t, runner, func(watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock) {
-		watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
+	runClaimWatcherTick(t, runner, func(importedWatches *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock) {
+		importedWatches.EXPECT().Run(mock.Anything, rootstock.PegInWatchImported).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
 		wallet.EXPECT().GetTransactions("bcrt1qimported").Return([]blockchain.BitcoinTransactionInformation{}, nil).Once()
-	}, func(collect *assert.CollectT, watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
+	}, func(collect *assert.CollectT, importedWatches *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
 		mt := newMockCollectT(collect)
 		wallet.AssertNumberOfCalls(mt, "GetTransactions", 1)
 		runner.AssertNotCalled(mt, "Run", mock.Anything, mock.Anything, mock.Anything)
-		watchRepo.AssertExpectations(mt)
-	})
-}
-
-func TestPegInClaimWatcher_DiscoveredRowIsIgnored(t *testing.T) {
-	runner := mocks.NewPegInClaimRunnerMock(t)
-	discovered := importedWatchEntry()
-	discovered.State = rootstock.PegInWatchDiscovered
-	runClaimWatcherTick(t, runner, func(watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock) {
-		watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{discovered}, nil).Once()
-	}, func(collect *assert.CollectT, watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
-		mt := newMockCollectT(collect)
-		watchRepo.AssertNumberOfCalls(mt, "List", 1)
-		wallet.AssertNotCalled(mt, "GetTransactions", mock.Anything)
-		runner.AssertNotCalled(mt, "Run", mock.Anything, mock.Anything, mock.Anything)
+		importedWatches.AssertExpectations(mt)
 	})
 }
 
 func TestPegInClaimWatcher_ListErrorCreatesZeroClaims(t *testing.T) {
 	runner := mocks.NewPegInClaimRunnerMock(t)
-	runClaimWatcherTick(t, runner, func(watchRepo *mocks.PegInWatchRepositoryMock, _ *mocks.BitcoinWalletMock) {
-		watchRepo.EXPECT().List(mock.Anything).Return(nil, assert.AnError).Once()
-	}, func(collect *assert.CollectT, watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
+	runClaimWatcherTick(t, runner, func(importedWatches *mocks.PegInWatchesGetterMock, _ *mocks.BitcoinWalletMock) {
+		importedWatches.EXPECT().Run(mock.Anything, rootstock.PegInWatchImported).Return(nil, assert.AnError).Once()
+	}, func(collect *assert.CollectT, importedWatches *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
 		mt := newMockCollectT(collect)
-		watchRepo.AssertNumberOfCalls(mt, "List", 1)
+		importedWatches.AssertNumberOfCalls(mt, "Run", 1)
 		wallet.AssertNotCalled(mt, "GetTransactions", mock.Anything)
 		runner.AssertNotCalled(mt, "Run", mock.Anything, mock.Anything, mock.Anything)
 	})
@@ -145,10 +136,10 @@ func TestPegInClaimWatcher_ListErrorCreatesZeroClaims(t *testing.T) {
 
 func TestPegInClaimWatcher_WalletErrorCreatesZeroClaims(t *testing.T) {
 	runner := mocks.NewPegInClaimRunnerMock(t)
-	runClaimWatcherTick(t, runner, func(watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock) {
-		watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
+	runClaimWatcherTick(t, runner, func(importedWatches *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock) {
+		importedWatches.EXPECT().Run(mock.Anything, rootstock.PegInWatchImported).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
 		wallet.EXPECT().GetTransactions("bcrt1qimported").Return(nil, assert.AnError).Once()
-	}, func(collect *assert.CollectT, _ *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
+	}, func(collect *assert.CollectT, _ *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
 		mt := newMockCollectT(collect)
 		wallet.AssertNumberOfCalls(mt, "GetTransactions", 1)
 		runner.AssertNotCalled(mt, "Run", mock.Anything, mock.Anything, mock.Anything)
@@ -157,15 +148,15 @@ func TestPegInClaimWatcher_WalletErrorCreatesZeroClaims(t *testing.T) {
 
 func TestPegInClaimWatcher_ZeroFirstOutputIsSkipped(t *testing.T) {
 	runner := mocks.NewPegInClaimRunnerMock(t)
-	runClaimWatcherTick(t, runner, func(watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock) {
-		watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
+	runClaimWatcherTick(t, runner, func(importedWatches *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock) {
+		importedWatches.EXPECT().Run(mock.Anything, rootstock.PegInWatchImported).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
 		wallet.EXPECT().GetTransactions("bcrt1qimported").Return([]blockchain.BitcoinTransactionInformation{{
 			Hash: "aabbcc",
 			Outputs: map[string][]*entities.Wei{
 				"other": {entities.NewWei(1)},
 			},
 		}}, nil).Once()
-	}, func(collect *assert.CollectT, _ *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
+	}, func(collect *assert.CollectT, _ *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
 		mt := newMockCollectT(collect)
 		wallet.AssertNumberOfCalls(mt, "GetTransactions", 1)
 		runner.AssertNotCalled(mt, "Run", mock.Anything, mock.Anything, mock.Anything)
@@ -175,12 +166,12 @@ func TestPegInClaimWatcher_ZeroFirstOutputIsSkipped(t *testing.T) {
 func TestPegInClaimWatcher_PayingTransactionRunsClaim(t *testing.T) {
 	runner := mocks.NewPegInClaimRunnerMock(t)
 	runner.On("Run", mock.Anything, mock.Anything, "aabbcc").Return(nil).Once()
-	runClaimWatcherTick(t, runner, func(watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock) {
-		watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
+	runClaimWatcherTick(t, runner, func(importedWatches *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock) {
+		importedWatches.EXPECT().Run(mock.Anything, rootstock.PegInWatchImported).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
 		wallet.EXPECT().GetTransactions("bcrt1qimported").Return([]blockchain.BitcoinTransactionInformation{
 			payingWatchTx("bcrt1qimported"),
 		}, nil).Once()
-	}, func(collect *assert.CollectT, _ *mocks.PegInWatchRepositoryMock, _ *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
+	}, func(collect *assert.CollectT, _ *mocks.PegInWatchesGetterMock, _ *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
 		runner.AssertNumberOfCalls(newMockCollectT(collect), "Run", 1)
 	})
 }
@@ -188,23 +179,24 @@ func TestPegInClaimWatcher_PayingTransactionRunsClaim(t *testing.T) {
 func TestPegInClaimWatcher_RunErrorDoesNotStopTick(t *testing.T) {
 	runner := mocks.NewPegInClaimRunnerMock(t)
 	runner.On("Run", mock.Anything, mock.Anything, "aabbcc").Return(assert.AnError).Once()
-	runClaimWatcherTick(t, runner, func(watchRepo *mocks.PegInWatchRepositoryMock, wallet *mocks.BitcoinWalletMock) {
-		watchRepo.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
+	runClaimWatcherTick(t, runner, func(importedWatches *mocks.PegInWatchesGetterMock, wallet *mocks.BitcoinWalletMock) {
+		importedWatches.EXPECT().Run(mock.Anything, rootstock.PegInWatchImported).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
 		wallet.EXPECT().GetTransactions("bcrt1qimported").Return([]blockchain.BitcoinTransactionInformation{
 			payingWatchTx("bcrt1qimported"),
 		}, nil).Once()
-	}, func(collect *assert.CollectT, _ *mocks.PegInWatchRepositoryMock, _ *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
+	}, func(collect *assert.CollectT, _ *mocks.PegInWatchesGetterMock, _ *mocks.BitcoinWalletMock, runner *mocks.PegInClaimRunnerMock) {
 		runner.AssertNumberOfCalls(newMockCollectT(collect), "Run", 1)
 	})
 }
 
 func TestPegInClaimWatcher_Shutdown(t *testing.T) {
 	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
-		return watcher.NewPegInClaimWatcher(
+		return newClaimWatcherForTest(
+			t,
 			mocks.NewPegInClaimRunnerMock(t),
 			mocks.NewPegInClaimSettlerMock(t),
-			mocks.NewPegInClaimRepositoryMock(t),
-			mocks.NewPegInWatchRepositoryMock(t),
+			mocks.NewPegInClaimsGetterMock(t),
+			mocks.NewPegInWatchesGetterMock(t),
 			mocks.NewBitcoinWalletMock(t),
 			ticker,
 		)
@@ -215,18 +207,19 @@ func TestPegInClaimWatcher_Prepare(t *testing.T) {
 	runner := mocks.NewPegInClaimRunnerMock(t)
 	settler := mocks.NewPegInClaimSettlerMock(t)
 	settler.On("Run", mock.Anything, mock.Anything).Return(nil).Once()
-	claims := mocks.NewPegInClaimRepositoryMock(t)
-	claims.EXPECT().ListByStates(mock.Anything, rootstock.PegInClaimSubmitting).
+	submittingClaims := mocks.NewPegInClaimsGetterMock(t)
+	submittingClaims.EXPECT().Run(mock.Anything, rootstock.PegInClaimSubmitting).
 		Return([]rootstock.PegInClaim{{
 			RskAddress:  test.AnyRskAddress,
 			DepositTxID: "aa",
 			State:       rootstock.PegInClaimSubmitting,
 		}}, nil).Once()
-	claimWatcher := watcher.NewPegInClaimWatcher(
+	claimWatcher := newClaimWatcherForTest(
+		t,
 		runner,
 		settler,
-		claims,
-		mocks.NewPegInWatchRepositoryMock(t),
+		submittingClaims,
+		mocks.NewPegInWatchesGetterMock(t),
 		mocks.NewBitcoinWalletMock(t),
 		&mocks.TickerMock{},
 	)
@@ -235,28 +228,28 @@ func TestPegInClaimWatcher_Prepare(t *testing.T) {
 	runner.AssertNotCalled(t, "Run", mock.Anything, mock.Anything, mock.Anything)
 }
 
-func TestPegInClaimWatcher_PrepareContinuesAfterRowSpecificError(t *testing.T) {
+func TestPegInClaimWatcher_PrepareContinuesAfterClaimSpecificError(t *testing.T) {
 	settler := mocks.NewPegInClaimSettlerMock(t)
 	var ids []string
-	settler.On("Run", mock.Anything, submittingClaimRow("aa")).
+	settler.On("Run", mock.Anything, submittingClaim("aa")).
 		Run(func(args mock.Arguments) {
 			ids = append(ids, depositTxIDArg(args))
 		}).
 		Return(assert.AnError).Once()
-	settler.On("Run", mock.Anything, submittingClaimRow("bb")).
+	settler.On("Run", mock.Anything, submittingClaim("bb")).
 		Run(func(args mock.Arguments) {
 			ids = append(ids, depositTxIDArg(args))
 		}).
 		Return(nil).Once()
-	claims := mocks.NewPegInClaimRepositoryMock(t)
-	claims.EXPECT().ListByStates(mock.Anything, rootstock.PegInClaimSubmitting).
-		Return([]rootstock.PegInClaim{submittingClaimRow("aa"), submittingClaimRow("bb")}, nil).Once()
+	submittingClaims := mocks.NewPegInClaimsGetterMock(t)
+	submittingClaims.EXPECT().Run(mock.Anything, rootstock.PegInClaimSubmitting).
+		Return([]rootstock.PegInClaim{submittingClaim("aa"), submittingClaim("bb")}, nil).Once()
 	claimWatcher := newClaimWatcherForTest(
 		t,
 		mocks.NewPegInClaimRunnerMock(t),
 		settler,
-		claims,
-		mocks.NewPegInWatchRepositoryMock(t),
+		submittingClaims,
+		mocks.NewPegInWatchesGetterMock(t),
 		mocks.NewBitcoinWalletMock(t),
 		&mocks.TickerMock{},
 	)
@@ -267,26 +260,26 @@ func TestPegInClaimWatcher_PrepareContinuesAfterRowSpecificError(t *testing.T) {
 func TestPegInClaimWatcher_PrepareAbortsOnInfrastructureUnavailable(t *testing.T) {
 	settler := mocks.NewPegInClaimSettlerMock(t)
 	var ids []string
-	settler.On("Run", mock.Anything, submittingClaimRow("aa")).
+	settler.On("Run", mock.Anything, submittingClaim("aa")).
 		Run(func(args mock.Arguments) {
 			ids = append(ids, depositTxIDArg(args))
 		}).
 		Return(errors.Join(assert.AnError, usecases.InfrastructureUnavailableError)).Once()
-	claims := mocks.NewPegInClaimRepositoryMock(t)
-	claims.EXPECT().ListByStates(mock.Anything, rootstock.PegInClaimSubmitting).
-		Return([]rootstock.PegInClaim{submittingClaimRow("aa"), submittingClaimRow("bb")}, nil).Once()
+	submittingClaims := mocks.NewPegInClaimsGetterMock(t)
+	submittingClaims.EXPECT().Run(mock.Anything, rootstock.PegInClaimSubmitting).
+		Return([]rootstock.PegInClaim{submittingClaim("aa"), submittingClaim("bb")}, nil).Once()
 	claimWatcher := newClaimWatcherForTest(
 		t,
 		mocks.NewPegInClaimRunnerMock(t),
 		settler,
-		claims,
-		mocks.NewPegInWatchRepositoryMock(t),
+		submittingClaims,
+		mocks.NewPegInWatchesGetterMock(t),
 		mocks.NewBitcoinWalletMock(t),
 		&mocks.TickerMock{},
 	)
 	require.NoError(t, claimWatcher.Prepare(context.Background()))
 	assert.Equal(t, []string{"aa"}, ids)
-	settler.AssertNotCalled(t, "Run", mock.Anything, submittingClaimRow("bb"))
+	settler.AssertNotCalled(t, "Run", mock.Anything, submittingClaim("bb"))
 }
 
 func TestPegInClaimWatcher_TickSettlesBeforeNewClaims(t *testing.T) {
@@ -300,21 +293,21 @@ func TestPegInClaimWatcher_TickSettlesBeforeNewClaims(t *testing.T) {
 	settler := mocks.NewPegInClaimSettlerMock(t)
 	settler.On("Run", mock.Anything, mock.Anything).Return(nil).Once()
 	runner := mocks.NewPegInClaimRunnerMock(t)
-	claims := mocks.NewPegInClaimRepositoryMock(t)
-	watches := mocks.NewPegInWatchRepositoryMock(t)
+	submittingClaims := mocks.NewPegInClaimsGetterMock(t)
+	importedWatches := mocks.NewPegInWatchesGetterMock(t)
 	wallet := mocks.NewBitcoinWalletMock(t)
-	claims.EXPECT().ListByStates(mock.Anything, rootstock.PegInClaimSubmitting).
+	submittingClaims.EXPECT().Run(mock.Anything, rootstock.PegInClaimSubmitting).
 		Run(func(_ context.Context, _ ...rootstock.PegInClaimState) { record("list-submitting") }).
-		Return([]rootstock.PegInClaim{submittingClaimRow("aa")}, nil).Once()
-	watches.EXPECT().List(mock.Anything).
-		Run(func(_ context.Context) { record("list-watches") }).
+		Return([]rootstock.PegInClaim{submittingClaim("aa")}, nil).Once()
+	importedWatches.EXPECT().Run(mock.Anything, rootstock.PegInWatchImported).
+		Run(func(_ context.Context, _ ...rootstock.PegInWatchState) { record("list-watches") }).
 		Return([]rootstock.PegInWatch{}, nil).Once()
 
 	ticker := &mocks.TickerMock{}
 	ticks := make(chan time.Time)
 	ticker.EXPECT().C().Return(ticks)
 	ticker.EXPECT().Stop()
-	claimWatcher := newClaimWatcherForTest(t, runner, settler, claims, watches, wallet, ticker)
+	claimWatcher := newClaimWatcherForTest(t, runner, settler, submittingClaims, importedWatches, wallet, ticker)
 	go claimWatcher.Start()
 	ticks <- time.Now()
 	go claimWatcher.Shutdown(make(chan bool, 1))
@@ -327,18 +320,18 @@ func TestPegInClaimWatcher_TickSettlesBeforeNewClaims(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 }
 
-func TestPegInClaimWatcher_TickContinuesAfterRowSpecificError(t *testing.T) {
+func TestPegInClaimWatcher_TickContinuesAfterClaimSpecificError(t *testing.T) {
 	settler := mocks.NewPegInClaimSettlerMock(t)
 	var mu sync.Mutex
 	var ids []string
-	settler.On("Run", mock.Anything, submittingClaimRow("aa")).
+	settler.On("Run", mock.Anything, submittingClaim("aa")).
 		Run(func(args mock.Arguments) {
 			mu.Lock()
 			ids = append(ids, depositTxIDArg(args))
 			mu.Unlock()
 		}).
 		Return(assert.AnError).Once()
-	settler.On("Run", mock.Anything, submittingClaimRow("bb")).
+	settler.On("Run", mock.Anything, submittingClaim("bb")).
 		Run(func(args mock.Arguments) {
 			mu.Lock()
 			ids = append(ids, depositTxIDArg(args))
@@ -347,12 +340,12 @@ func TestPegInClaimWatcher_TickContinuesAfterRowSpecificError(t *testing.T) {
 		Return(nil).Once()
 	runner := mocks.NewPegInClaimRunnerMock(t)
 	runner.On("Run", mock.Anything, mock.Anything, "aabbcc").Return(nil).Once()
-	claims := mocks.NewPegInClaimRepositoryMock(t)
-	watches := mocks.NewPegInWatchRepositoryMock(t)
+	submittingClaims := mocks.NewPegInClaimsGetterMock(t)
+	importedWatches := mocks.NewPegInWatchesGetterMock(t)
 	wallet := mocks.NewBitcoinWalletMock(t)
-	claims.EXPECT().ListByStates(mock.Anything, rootstock.PegInClaimSubmitting).
-		Return([]rootstock.PegInClaim{submittingClaimRow("aa"), submittingClaimRow("bb")}, nil).Once()
-	watches.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
+	submittingClaims.EXPECT().Run(mock.Anything, rootstock.PegInClaimSubmitting).
+		Return([]rootstock.PegInClaim{submittingClaim("aa"), submittingClaim("bb")}, nil).Once()
+	importedWatches.EXPECT().Run(mock.Anything, rootstock.PegInWatchImported).Return([]rootstock.PegInWatch{importedWatchEntry()}, nil).Once()
 	wallet.EXPECT().GetTransactions("bcrt1qimported").Return([]blockchain.BitcoinTransactionInformation{
 		payingWatchTx("bcrt1qimported"),
 	}, nil).Once()
@@ -361,7 +354,7 @@ func TestPegInClaimWatcher_TickContinuesAfterRowSpecificError(t *testing.T) {
 	ticks := make(chan time.Time)
 	ticker.EXPECT().C().Return(ticks)
 	ticker.EXPECT().Stop()
-	claimWatcher := newClaimWatcherForTest(t, runner, settler, claims, watches, wallet, ticker)
+	claimWatcher := newClaimWatcherForTest(t, runner, settler, submittingClaims, importedWatches, wallet, ticker)
 	go claimWatcher.Start()
 	ticks <- time.Now()
 	go claimWatcher.Shutdown(make(chan bool, 1))
@@ -378,7 +371,7 @@ func TestPegInClaimWatcher_TickAbortsOnInfrastructureUnavailable(t *testing.T) {
 	settler := mocks.NewPegInClaimSettlerMock(t)
 	var mu sync.Mutex
 	var ids []string
-	settler.On("Run", mock.Anything, submittingClaimRow("aa")).
+	settler.On("Run", mock.Anything, submittingClaim("aa")).
 		Run(func(args mock.Arguments) {
 			mu.Lock()
 			ids = append(ids, depositTxIDArg(args))
@@ -386,17 +379,17 @@ func TestPegInClaimWatcher_TickAbortsOnInfrastructureUnavailable(t *testing.T) {
 		}).
 		Return(errors.Join(assert.AnError, usecases.InfrastructureUnavailableError)).Once()
 	runner := mocks.NewPegInClaimRunnerMock(t)
-	claims := mocks.NewPegInClaimRepositoryMock(t)
-	watches := mocks.NewPegInWatchRepositoryMock(t)
+	submittingClaims := mocks.NewPegInClaimsGetterMock(t)
+	importedWatches := mocks.NewPegInWatchesGetterMock(t)
 	wallet := mocks.NewBitcoinWalletMock(t)
-	claims.EXPECT().ListByStates(mock.Anything, rootstock.PegInClaimSubmitting).
-		Return([]rootstock.PegInClaim{submittingClaimRow("aa"), submittingClaimRow("bb")}, nil).Once()
+	submittingClaims.EXPECT().Run(mock.Anything, rootstock.PegInClaimSubmitting).
+		Return([]rootstock.PegInClaim{submittingClaim("aa"), submittingClaim("bb")}, nil).Once()
 
 	ticker := &mocks.TickerMock{}
 	ticks := make(chan time.Time)
 	ticker.EXPECT().C().Return(ticks)
 	ticker.EXPECT().Stop()
-	claimWatcher := newClaimWatcherForTest(t, runner, settler, claims, watches, wallet, ticker)
+	claimWatcher := newClaimWatcherForTest(t, runner, settler, submittingClaims, importedWatches, wallet, ticker)
 	go claimWatcher.Start()
 	ticks <- time.Now()
 	go claimWatcher.Shutdown(make(chan bool, 1))
@@ -406,7 +399,7 @@ func TestPegInClaimWatcher_TickAbortsOnInfrastructureUnavailable(t *testing.T) {
 		defer mu.Unlock()
 		assert.Equal(collect, []string{"aa"}, ids)
 		runner.AssertNotCalled(newMockCollectT(collect), "Run", mock.Anything, mock.Anything, mock.Anything)
-		watches.AssertNotCalled(newMockCollectT(collect), "List", mock.Anything)
+		importedWatches.AssertNotCalled(newMockCollectT(collect), "Run", mock.Anything)
 		wallet.AssertNotCalled(newMockCollectT(collect), "GetTransactions", mock.Anything)
 	}, time.Second, 10*time.Millisecond)
 }
@@ -416,8 +409,8 @@ func TestPegInClaimWatcher_StopChannelIsStruct(t *testing.T) {
 		t,
 		mocks.NewPegInClaimRunnerMock(t),
 		mocks.NewPegInClaimSettlerMock(t),
-		mocks.NewPegInClaimRepositoryMock(t),
-		mocks.NewPegInWatchRepositoryMock(t),
+		mocks.NewPegInClaimsGetterMock(t),
+		mocks.NewPegInWatchesGetterMock(t),
 		mocks.NewBitcoinWalletMock(t),
 		&mocks.TickerMock{},
 	)
@@ -434,8 +427,8 @@ func TestPegInClaimWatcher_ShutdownSendsTrueOnCloseChannel(t *testing.T) {
 		t,
 		mocks.NewPegInClaimRunnerMock(t),
 		mocks.NewPegInClaimSettlerMock(t),
-		mocks.NewPegInClaimRepositoryMock(t),
-		mocks.NewPegInWatchRepositoryMock(t),
+		mocks.NewPegInClaimsGetterMock(t),
+		mocks.NewPegInWatchesGetterMock(t),
 		mocks.NewBitcoinWalletMock(t),
 		ticker,
 	)

@@ -1018,7 +1018,7 @@ func TestClaimPegInUseCase_FeeEqualToAmountIsAccepted(t *testing.T) {
 	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
 }
 
-func TestClaimPegInUseCase_InsertConflictRereadsSubmittedRow(t *testing.T) {
+func TestClaimPegInUseCase_InsertConflictRereadsSubmittedClaim(t *testing.T) {
 	claims := mocks.NewPegInClaimRepositoryMock(t)
 	harness := newClaimHarness(t, claims)
 	originalCreated := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
