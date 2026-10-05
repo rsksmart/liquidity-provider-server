@@ -233,6 +233,50 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyLookupErrors(t *testing.T) {
 		claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
 		harness.pegin.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything)
 	})
+	paramCases := []struct {
+		name string
+		stub func(*settleHarness)
+	}{
+		{
+			name: "raw tx",
+			stub: func(h *settleHarness) {
+				h.btc.On("GetRawTransaction", claimDepositTxID).Return([]byte(nil), assert.AnError).Once()
+			},
+		},
+		{
+			name: "block info",
+			stub: func(h *settleHarness) {
+				h.btc.On("GetRawTransaction", claimDepositTxID).Return(h.rawTx, nil).Once()
+				h.btc.On("GetTransactionBlockInfo", claimDepositTxID).
+					Return(blockchain.BitcoinBlockInformation{}, assert.AnError).Once()
+			},
+		},
+		{
+			name: "merkle branch",
+			stub: func(h *settleHarness) {
+				h.btc.On("GetRawTransaction", claimDepositTxID).Return(h.rawTx, nil).Once()
+				h.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(h.block, nil).Once()
+				h.btc.On("BuildMerkleBranch", claimDepositTxID).Return(blockchain.MerkleBranch{}, assert.AnError).Once()
+			},
+		},
+	}
+	for _, tc := range paramCases {
+		t.Run(tc.name, func(t *testing.T) {
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newSettleHarness(t, claims)
+			harness.rsk.On("GetTransactionReceipt", mock.Anything, claimRskTxHash).Return(failedReceipt(), nil).Once()
+			harness.expectFinalHeight()
+			harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
+			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+			tc.stub(harness)
+
+			err := harness.useCase.Run(context.Background(), submittingClaim())
+			require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+			require.ErrorIs(t, err, assert.AnError)
+			claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+			harness.pegin.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything)
+		})
+	}
 }
 
 func TestSettlePegInClaimUseCase_SuccessfulReceiptWithEventSetsPegInID(t *testing.T) {
