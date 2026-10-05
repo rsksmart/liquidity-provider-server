@@ -81,7 +81,6 @@ type PeginLiquidityProvider interface {
 	HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error
 	PeginConfiguration(ctx context.Context) PeginConfiguration
 	AvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error)
-	// AvailablePeginWalletLiquidity is the RSK wallet balance that a commit-first claim can spend. It excludes the LBC balance.
 	AvailablePeginWalletLiquidity(ctx context.Context) (*entities.Wei, error)
 }
 

@@ -361,6 +361,18 @@ func CheckPauseState(contracts ...blockchain.Pausable) error {
 	return nil
 }
 
+func CheckPauseLevel(registry blockchain.PauseRegistryContract, blockingLevel uint8) error {
+	level, err := registry.PauseLevel()
+	if err != nil {
+		return err
+	}
+	if level < blockingLevel {
+		return nil
+	}
+	log.Warnf("PauseRegistry %s is at pause level %d", registry.GetAddress(), level)
+	return fmt.Errorf("%w. Pause level %d", blockchain.ContractPausedError, level)
+}
+
 func checkPauseState(contract blockchain.Pausable) error {
 	pausedStatus, err := contract.PausedStatus()
 	if err != nil {

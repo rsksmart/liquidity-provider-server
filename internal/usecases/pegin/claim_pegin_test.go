@@ -3,6 +3,7 @@ package pegin_test
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -491,31 +492,36 @@ func TestClaimPegInUseCase_InsufficientLiquidityDoesNotSubmit(t *testing.T) {
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
-func TestClaimPegInUseCase_HardPauseDoesNotSubmit(t *testing.T) {
-	t.Run("no existing claim", func(t *testing.T) {
-		claims := mocks.NewPegInClaimRepositoryMock(t)
-		harness := newClaimHarness(t, claims)
-		expectNoExistingClaim(claims)
-		harness.expectRefetch(10)
-		harness.pause.On("PauseLevel").Return(blockchain.PauseLevelHard, nil).Once()
+func TestClaimPegInUseCase_PauseDoesNotSubmit(t *testing.T) {
+	for _, level := range []uint8{blockchain.PauseLevelSoft, blockchain.PauseLevelHard} {
+		t.Run(fmt.Sprintf("level %d no existing claim", level), func(t *testing.T) {
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newClaimHarness(t, claims)
+			expectNoExistingClaim(claims)
+			harness.expectRefetch(10)
+			harness.pause.On("PauseLevel").Return(level, nil).Once()
+			harness.pause.On("GetAddress").Return("0xpause").Once()
 
-		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
-		require.NoError(t, err)
-		claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
-		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
-		harness.provider.AssertNotCalled(t, "AvailablePeginWalletLiquidity", mock.Anything)
-	})
-	t.Run("existing candidate is left unchanged", func(t *testing.T) {
-		created := candidateClaim()
-		repo := newMemoryClaimRepo(created)
-		harness := newClaimHarness(t, repo)
-		harness.expectRefetch(10)
-		harness.pause.On("PauseLevel").Return(blockchain.PauseLevelHard, nil).Once()
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.NoError(t, err)
+			claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+			harness.provider.AssertNotCalled(t, "AvailablePeginWalletLiquidity", mock.Anything)
+		})
+		t.Run(fmt.Sprintf("level %d existing candidate is left unchanged", level), func(t *testing.T) {
+			created := candidateClaim()
+			repo := newMemoryClaimRepo(created)
+			harness := newClaimHarness(t, repo)
+			harness.expectRefetch(10)
+			harness.pause.On("PauseLevel").Return(level, nil).Once()
+			harness.pause.On("GetAddress").Return("0xpause").Once()
 
-		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
-		require.NoError(t, err)
-		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
-	})
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.NoError(t, err)
+			assert.Equal(t, created, repo.stored())
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		})
+	}
 }
 
 func TestClaimPegInUseCase_TerminalStatesAreNoOp(t *testing.T) {
