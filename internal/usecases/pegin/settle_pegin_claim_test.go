@@ -236,6 +236,9 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyLookupErrors(t *testing.T) {
 		claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
 		harness.pegin.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything)
 	})
+}
+
+func TestSettlePegInClaimUseCase_TxFailedIdentifyRequestParamsErrors(t *testing.T) {
 	paramCases := []struct {
 		name string
 		stub func(*settleHarness)
