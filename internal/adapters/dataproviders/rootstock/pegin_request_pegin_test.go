@@ -258,7 +258,7 @@ func TestPeginContractImpl_RequestPegIn_PackingMatchesPinnedABI(t *testing.T) {
 	result, err := h.pegin.RequestPegIn(sampleRequestPegInParams(amount, fee))
 	require.NoError(t, err)
 	assert.Equal(t, expectedValue, result.Receipt.Value)
-	assert.True(t, strings.HasPrefix(hex.EncodeToString(expectedData), "a355e935"))
+	assert.True(t, strings.HasPrefix(hex.EncodeToString(expectedData), "fc73bbd3"))
 	assertPegInRequestedEvent(t, fixture, result.Event)
 	assertPayableDryRun(t, h, expectedData, expectedValue.AsBigInt())
 	h.contractMock.transactor.AssertExpectations(t)
