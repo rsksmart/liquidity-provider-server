@@ -10,10 +10,16 @@ type RequestPegInInput struct {
 	DepositTxID string
 	Amount      *entities.Wei
 	Fee         *entities.Wei
-	RawTx       []byte
 }
 
 func BuildRequestPegInParams(btc blockchain.BitcoinNetwork, input RequestPegInInput) (blockchain.RequestPegInParams, error) {
+	rawTx, err := btc.GetRawTransaction(input.DepositTxID)
+	if err != nil {
+		return blockchain.RequestPegInParams{}, err
+	}
+	if err = blockchain.RejectWitnessSerializedTx(rawTx); err != nil {
+		return blockchain.RequestPegInParams{}, err
+	}
 	block, err := btc.GetTransactionBlockInfo(input.DepositTxID)
 	if err != nil {
 		return blockchain.RequestPegInParams{}, err
@@ -24,7 +30,7 @@ func BuildRequestPegInParams(btc blockchain.BitcoinNetwork, input RequestPegInIn
 	}
 	return blockchain.RequestPegInParams{
 		RskAddress:         input.RskAddress,
-		BitcoinRawTx:       input.RawTx,
+		BitcoinRawTx:       rawTx,
 		BtcBlockHash:       block.Hash,
 		MerkleBranchPath:   merkle.Path,
 		MerkleBranchHashes: merkle.Hashes,

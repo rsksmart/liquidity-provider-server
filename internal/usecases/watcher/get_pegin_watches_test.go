@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +37,6 @@ func TestGetPegInWatchesUseCase_Run_FiltersByState(t *testing.T) {
 			states: []rootstock.PegInWatchState{rootstock.PegInWatchImported, rootstock.PegInWatchUnsupportedEncoding},
 			want:   []rootstock.PegInWatch{watches[0], watches[2]},
 		},
-		{name: "no states", states: nil, want: []rootstock.PegInWatch{}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -49,6 +49,16 @@ func TestGetPegInWatchesUseCase_Run_FiltersByState(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestGetPegInWatchesUseCase_Run_NoStatesReturnsEmpty(t *testing.T) {
+	repository := mocks.NewPegInWatchRepositoryMock(t)
+
+	got, err := watcher.NewGetPegInWatchesUseCase(repository).Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Empty(t, got)
+	repository.AssertNotCalled(t, "List", mock.Anything)
 }
 
 func TestGetPegInWatchesUseCase_Run_WrapsError(t *testing.T) {

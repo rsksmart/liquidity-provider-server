@@ -113,11 +113,6 @@ func matchClaimCompleted(state rootstock.PegInClaimState) interface{} {
 	})
 }
 
-func claimProvider(t *testing.T) *mocks.ProviderMock {
-	t.Helper()
-	return mocks.NewProviderMock(t)
-}
-
 func matchWei(want *entities.Wei) interface{} {
 	return mock.MatchedBy(func(got *entities.Wei) bool {
 		return got != nil && got.Cmp(want) == 0
@@ -176,7 +171,7 @@ func newClaimHarness(t *testing.T, repo rootstock.PegInClaimRepository) *claimHa
 			State:      rootstock.PegInWatchImported,
 		},
 	}
-	harness.provider = claimProvider(t)
+	harness.provider = mocks.NewProviderMock(t)
 	harness.eventBus = claimEventBus()
 	harness.useCase = pegin.NewClaimPegInUseCase(
 		harness.repo,
@@ -409,6 +404,7 @@ func TestClaimPegInUseCase_SimulateAlreadyProcessedPersistsRaceLost(t *testing.T
 
 		stored := repo.stored()
 		assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+		harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
 		assert.Empty(t, stored.TxHash)
 		harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
@@ -426,6 +422,7 @@ func TestClaimPegInUseCase_SimulateAlreadyProcessedPersistsRaceLost(t *testing.T
 
 		stored := repo.stored()
 		assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+		harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
 		assert.Empty(t, stored.TxHash)
 		harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
@@ -686,7 +683,7 @@ func TestClaimPegInUseCase_SaveAlreadySubmittedDoesNotSubmit(t *testing.T) {
 	btc.On("GetRawTransaction", claimDepositTxID).Return(rawTx, nil).Once()
 	btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(block, nil).Once()
 	btc.On("BuildMerkleBranch", claimDepositTxID).Return(merkle, nil).Once()
-	provider := claimProvider(t)
+	provider := mocks.NewProviderMock(t)
 	provider.On("AvailablePeginWalletLiquidity", mock.Anything).Return(entities.NewWei(1_000_000_000_000_000_000), nil).Once()
 	peginContract.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
 	peginContract.On("EstimateRequestPegInGas", mock.Anything).Return(claimEstimatedGas, nil).Once()
