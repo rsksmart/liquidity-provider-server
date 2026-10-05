@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -112,7 +111,13 @@ func (useCase *SettlePegInClaimUseCase) identifyFailed(ctx context.Context, clai
 		// Unreachable with the current adapters: GetRawTransaction serializes without witness.
 		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(err, usecases.NonRecoverableError))
 	}
-	params, err := useCase.buildRequestParams(claim.RskAddress, claim.DepositTxID, amount, fee, rawTx)
+	params, err := usecases.BuildRequestPegInParams(useCase.rpc.Btc, usecases.RequestPegInInput{
+		RskAddress:  claim.RskAddress,
+		DepositTxID: claim.DepositTxID,
+		Amount:      amount,
+		Fee:         fee,
+		RawTx:       rawTx,
+	})
 	if err != nil {
 		return useCase.unavailable(err)
 	}
@@ -163,32 +168,6 @@ func (useCase *SettlePegInClaimUseCase) failRetryable(
 		return useCase.unavailable(errors.Join(blockchain.TxFailedError, err))
 	}
 	return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(blockchain.TxFailedError, usecases.NonRecoverableError))
-}
-
-func (useCase *SettlePegInClaimUseCase) buildRequestParams(
-	rskAddress string,
-	depositTxID string,
-	amount *entities.Wei,
-	fee *entities.Wei,
-	rawTx []byte,
-) (blockchain.RequestPegInParams, error) {
-	block, err := useCase.rpc.Btc.GetTransactionBlockInfo(depositTxID)
-	if err != nil {
-		return blockchain.RequestPegInParams{}, err
-	}
-	merkle, err := useCase.rpc.Btc.BuildMerkleBranch(depositTxID)
-	if err != nil {
-		return blockchain.RequestPegInParams{}, err
-	}
-	return blockchain.RequestPegInParams{
-		RskAddress:         rskAddress,
-		BitcoinRawTx:       rawTx,
-		BtcBlockHash:       block.Hash,
-		MerkleBranchPath:   merkle.Path,
-		MerkleBranchHashes: merkle.Hashes,
-		Amount:             amount,
-		Fee:                fee,
-	}, nil
 }
 
 func (useCase *SettlePegInClaimUseCase) unavailable(err error) error {
