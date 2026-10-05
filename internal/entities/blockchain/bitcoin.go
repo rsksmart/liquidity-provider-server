@@ -192,6 +192,16 @@ func (tx *BitcoinTransactionInformation) UTXOsToAddress(address string) []*entit
 	return utxos
 }
 
+// FirstOutputToAddress returns the first output paying address, converted already to wei.
+// This matches LBC _readPegInAmount (first matching output), not AmountToAddress which sums.
+func (tx *BitcoinTransactionInformation) FirstOutputToAddress(address string) *entities.Wei {
+	utxos := tx.UTXOsToAddress(address)
+	if len(utxos) == 0 {
+		return entities.NewWei(0)
+	}
+	return utxos[0]
+}
+
 func BtcAddressTypeFromString(value string) (BtcAddressType, error) {
 	value = strings.ToLower(value)
 	switch value {

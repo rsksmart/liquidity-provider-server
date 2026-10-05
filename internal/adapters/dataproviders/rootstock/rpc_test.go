@@ -317,6 +317,7 @@ func TestRskjRpcServer_GetTransactionReceipt(t *testing.T) {
 			GasUsed:           big.NewInt(143691),
 			Value:             entities.NewWei(0),
 			GasPrice:          entities.NewWei(26065600),
+			Status:            blockchain.SuccessfulTxStatus,
 			Logs: []blockchain.TransactionLog{
 				{
 					Address: contract,
