@@ -183,6 +183,15 @@ func WrapUseCaseError(useCase UseCaseId, err error) error {
 	return WrapUseCaseErrorArgs(useCase, err, make(ErrorArgs, 0))
 }
 
+// JoinInfrastructureUnavailable marks err as an outage, so a watcher can stop the current
+// pass and retry later instead of treating the item as failed. A nil err stays nil.
+func JoinInfrastructureUnavailable(err error) error {
+	if err == nil {
+		return nil
+	}
+	return errors.Join(err, InfrastructureUnavailableError)
+}
+
 // SafeLogStr strips CR/LF from a user-controlled string before it is included
 // in a structured log field, preventing log forging (CWE-117).
 func SafeLogStr(s string) string {

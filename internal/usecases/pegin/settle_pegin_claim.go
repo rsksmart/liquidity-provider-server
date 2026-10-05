@@ -48,14 +48,14 @@ func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock
 		return nil
 	}
 	if err != nil {
-		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, useCase.unavailable(err))
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, usecases.JoinInfrastructureUnavailable(err))
 	}
 	if !useCase.receiptOnCanonicalChain(receipt) {
 		return nil
 	}
 	height, err := useCase.rpc.Rsk.GetHeight(ctx)
 	if err != nil {
-		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, useCase.unavailable(err))
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, usecases.JoinInfrastructureUnavailable(err))
 	}
 	if !receipt.IsFinal(height, useCase.maxReorgDepth) {
 		return nil
@@ -97,7 +97,7 @@ func (useCase *SettlePegInClaimUseCase) finalizeSuccess(
 	claim.State = rootstock.PegInClaimClaimed
 	claim.UpdatedAt = time.Now().UTC()
 	if err := useCase.claims.Update(ctx, claim); err != nil {
-		return useCase.unavailable(err)
+		return usecases.JoinInfrastructureUnavailable(err)
 	}
 	useCase.eventBus.Publish(rootstock.NewPegInClaimCompletedEvent(claim))
 	return nil
@@ -106,12 +106,12 @@ func (useCase *SettlePegInClaimUseCase) finalizeSuccess(
 func (useCase *SettlePegInClaimUseCase) identifyFailed(ctx context.Context, claim rootstock.PegInClaim) error {
 	tx, err := useCase.rpc.Btc.GetTransactionInfo(claim.DepositTxID)
 	if err != nil {
-		return useCase.unavailable(err)
+		return usecases.JoinInfrastructureUnavailable(err)
 	}
 	amount := tx.FirstOutputToAddress(claim.BtcAddress)
 	fee, err := useCase.contracts.FlyoverConfigurations.CalculatePegInFee(amount)
 	if err != nil {
-		return useCase.unavailable(err)
+		return usecases.JoinInfrastructureUnavailable(err)
 	}
 	params, err := usecases.BuildRequestPegInParams(useCase.rpc.Btc, usecases.RequestPegInInput{
 		RskAddress:  claim.RskAddress,
@@ -124,7 +124,7 @@ func (useCase *SettlePegInClaimUseCase) identifyFailed(ctx context.Context, clai
 		return errors.Join(err, usecases.NonRecoverableError)
 	}
 	if err != nil {
-		return useCase.unavailable(err)
+		return usecases.JoinInfrastructureUnavailable(err)
 	}
 	simulateErr := useCase.contracts.PegIn.SimulateRequestPegIn(params)
 	if simulateErr == nil {
@@ -142,7 +142,7 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 		claim.State = rootstock.PegInClaimRaceLost
 		claim.UpdatedAt = time.Now().UTC()
 		if err := useCase.claims.Update(ctx, claim); err != nil {
-			return useCase.unavailable(err)
+			return usecases.JoinInfrastructureUnavailable(err)
 		}
 		useCase.eventBus.Publish(rootstock.NewPegInClaimCompletedEvent(claim))
 		return nil
@@ -156,11 +156,11 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 		claim.TxHash = ""
 		claim.UpdatedAt = time.Now().UTC()
 		if err := useCase.claims.Update(ctx, claim); err != nil {
-			return useCase.unavailable(errors.Join(submitErr, err))
+			return usecases.JoinInfrastructureUnavailable(errors.Join(submitErr, err))
 		}
 		return errors.Join(submitErr, usecases.NonRecoverableError)
 	}
-	return useCase.unavailable(submitErr)
+	return usecases.JoinInfrastructureUnavailable(submitErr)
 }
 
 func (useCase *SettlePegInClaimUseCase) failRetryable(
@@ -171,14 +171,7 @@ func (useCase *SettlePegInClaimUseCase) failRetryable(
 	claim.TxHash = ""
 	claim.UpdatedAt = time.Now().UTC()
 	if err := useCase.claims.Update(ctx, claim); err != nil {
-		return useCase.unavailable(errors.Join(blockchain.TxFailedError, err))
+		return usecases.JoinInfrastructureUnavailable(errors.Join(blockchain.TxFailedError, err))
 	}
 	return errors.Join(blockchain.TxFailedError, usecases.NonRecoverableError)
-}
-
-func (useCase *SettlePegInClaimUseCase) unavailable(err error) error {
-	if err == nil {
-		return nil
-	}
-	return errors.Join(err, usecases.InfrastructureUnavailableError)
 }
