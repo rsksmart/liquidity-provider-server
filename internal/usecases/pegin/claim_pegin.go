@@ -19,7 +19,7 @@ type ClaimPegInUseCase struct {
 	claims         rootstock.PegInClaimRepository
 	contracts      blockchain.RskContracts
 	rpc            blockchain.Rpc
-	account        liquidity_provider.LiquidityProvider
+	peginProvider  liquidity_provider.PeginLiquidityProvider
 	rskWalletMutex sync.Locker
 }
 
@@ -27,14 +27,14 @@ func NewClaimPegInUseCase(
 	claims rootstock.PegInClaimRepository,
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
-	account liquidity_provider.LiquidityProvider,
+	peginProvider liquidity_provider.PeginLiquidityProvider,
 	rskWalletMutex sync.Locker,
 ) *ClaimPegInUseCase {
 	return &ClaimPegInUseCase{
 		claims:         claims,
 		contracts:      contracts,
 		rpc:            rpc,
-		account:        account,
+		peginProvider:  peginProvider,
 		rskWalletMutex: rskWalletMutex,
 	}
 }
@@ -55,7 +55,7 @@ func (useCase *ClaimPegInUseCase) Run(
 	}
 	amount := tx.FirstOutputToAddress(entry.BtcAddress)
 	if amount.Cmp(entities.NewWei(0)) <= 0 {
-		return useCase.releaseReserve(ctx, existing)
+		return nil
 	}
 	fee, params, err := useCase.evaluateGates(ctx, existing, entry, depositTxID, tx, amount)
 	if err != nil || fee == nil {
@@ -65,11 +65,11 @@ func (useCase *ClaimPegInUseCase) Run(
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
 
-	payable, err := useCase.ensureSpendable(ctx, existing, entry.RskAddress, depositTxID, amount, fee, params)
-	if err != nil || payable == nil {
+	enough, err := useCase.ensureSpendable(ctx, entry.RskAddress, depositTxID, amount, fee, params)
+	if err != nil || !enough {
 		return err
 	}
-	return useCase.armAndSubmit(ctx, existing, entry, depositTxID, payable, params)
+	return useCase.armAndSubmit(ctx, existing, entry, depositTxID, params)
 }
 
 func (useCase *ClaimPegInUseCase) runnableClaim(
@@ -103,21 +103,21 @@ func (useCase *ClaimPegInUseCase) evaluateGates(
 		return nil, blockchain.RequestPegInParams{}, useCase.unavailable(err)
 	}
 	if tx.Confirmations < requiredConfirmations {
-		return nil, blockchain.RequestPegInParams{}, useCase.releaseReserve(ctx, existing)
+		return nil, blockchain.RequestPegInParams{}, nil
 	}
 	level, err := useCase.contracts.PauseRegistry.PauseLevel()
 	if err != nil {
 		return nil, blockchain.RequestPegInParams{}, useCase.unavailable(err)
 	}
 	if level >= blockchain.PauseLevelHard {
-		return nil, blockchain.RequestPegInParams{}, useCase.releaseReserve(ctx, existing)
+		return nil, blockchain.RequestPegInParams{}, nil
 	}
 	fee, err := useCase.contracts.FlyoverConfigurations.CalculatePegInFee(amount)
 	if err != nil {
 		return nil, blockchain.RequestPegInParams{}, useCase.unavailable(err)
 	}
 	if amount.Cmp(fee) < 0 {
-		return nil, blockchain.RequestPegInParams{}, useCase.releaseReserve(ctx, existing)
+		return nil, blockchain.RequestPegInParams{}, nil
 	}
 	return useCase.requestParamsIfAccepted(ctx, existing, entry, depositTxID, amount, fee)
 }
@@ -134,9 +134,6 @@ func (useCase *ClaimPegInUseCase) requestParamsIfAccepted(
 		return nil, blockchain.RequestPegInParams{}, useCase.unavailable(err)
 	}
 	if err = blockchain.RejectWitnessSerializedTx(rawTx); err != nil {
-		if releaseErr := useCase.releaseReserve(ctx, existing); releaseErr != nil {
-			return nil, blockchain.RequestPegInParams{}, releaseErr
-		}
 		return nil, blockchain.RequestPegInParams{}, usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
 	}
 	params, err := useCase.buildRequestParams(entry.RskAddress, depositTxID, amount, fee, rawTx)
@@ -156,38 +153,35 @@ func (useCase *ClaimPegInUseCase) requestParamsIfAccepted(
 
 func (useCase *ClaimPegInUseCase) ensureSpendable(
 	ctx context.Context,
-	existing *rootstock.PegInClaim,
 	rskAddress, depositTxID string,
 	amount, fee *entities.Wei,
 	params blockchain.RequestPegInParams,
-) (*entities.Wei, error) {
-	inFlight, err := useCase.inFlightReserved(ctx, rskAddress, depositTxID)
-	if err != nil {
-		return nil, useCase.unavailable(err)
-	}
+) (bool, error) {
 	estimatedGas, err := useCase.contracts.PegIn.EstimateRequestPegInGas(params)
 	if err != nil {
-		return nil, useCase.unavailable(err)
+		return false, useCase.unavailable(err)
 	}
 	gasPrice, err := useCase.rpc.Rsk.GasPrice(ctx)
 	if err != nil {
-		return nil, useCase.unavailable(err)
-	}
-	walletBalance, err := useCase.rpc.Rsk.GetBalance(ctx, useCase.account.RskAddress())
-	if err != nil {
-		return nil, useCase.unavailable(err)
+		return false, useCase.unavailable(err)
 	}
 	gasCost := new(entities.Wei).Mul(gasPrice, entities.NewUWei(estimatedGas))
 	payable, err := rootstock.CalculatePegInClaimPayableValue(amount, fee)
 	if err != nil {
-		return nil, usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
+		return false, usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
 	}
 	required := new(entities.Wei).Add(payable, gasCost)
-	required.Add(required, inFlight)
-	if walletBalance.Cmp(required) < 0 {
-		return nil, useCase.releaseReserve(ctx, existing)
+	// The wallet mutex is held until RequestPegIn returns the receipt, so this balance
+	// already includes earlier claims. No per-claim reservation is needed.
+	available, err := useCase.peginProvider.AvailablePeginWalletLiquidity(ctx)
+	if err != nil {
+		return false, useCase.unavailable(err)
 	}
-	return payable, nil
+	if available.Cmp(required) < 0 {
+		log.Debug(LogPegInClaimInsufficientWalletLiquidity(rskAddress, depositTxID, available, required))
+		return false, nil
+	}
+	return true, nil
 }
 
 func (useCase *ClaimPegInUseCase) armAndSubmit(
@@ -195,10 +189,9 @@ func (useCase *ClaimPegInUseCase) armAndSubmit(
 	existing *rootstock.PegInClaim,
 	entry rootstock.PegInWatch,
 	depositTxID string,
-	payable *entities.Wei,
 	params blockchain.RequestPegInParams,
 ) error {
-	claim := rootstock.NewCandidatePegInClaim(entry, depositTxID, payable, existing)
+	claim := rootstock.NewCandidatePegInClaim(entry, depositTxID, existing)
 	stored, alreadySubmitted, err := useCase.save(ctx, claim)
 	if err != nil {
 		return useCase.unavailable(err)
@@ -279,7 +272,7 @@ func (useCase *ClaimPegInUseCase) persistAlreadyProcessed(
 	if existing != nil && existing.IsTerminal() {
 		return nil
 	}
-	claim := rootstock.NewCandidatePegInClaim(entry, depositTxID, entities.NewWei(0), existing)
+	claim := rootstock.NewCandidatePegInClaim(entry, depositTxID, existing)
 	stored, alreadySubmitted, err := useCase.save(ctx, claim)
 	if err != nil {
 		return useCase.unavailable(err)
@@ -295,7 +288,6 @@ func (useCase *ClaimPegInUseCase) classifySubmitError(
 	claim rootstock.PegInClaim,
 	submitErr error,
 ) error {
-	claim.ReservedWei = entities.NewWei(0)
 	claim.UpdatedAt = time.Now().UTC()
 	if errors.Is(submitErr, blockchain.ErrPegInAlreadyProcessed) {
 		claim.State = rootstock.PegInClaimRaceLost
@@ -309,54 +301,6 @@ func (useCase *ClaimPegInUseCase) classifySubmitError(
 		return useCase.unavailable(errors.Join(submitErr, err))
 	}
 	return usecases.WrapUseCaseError(usecases.ClaimPegInId, submitErr)
-}
-
-// Other in-flight reserves only. Spendable adds this deposit's payable separately.
-func (useCase *ClaimPegInUseCase) inFlightReserved(
-	ctx context.Context,
-	rskAddress string,
-	depositTxID string,
-) (*entities.Wei, error) {
-	claims, err := useCase.claims.ListByStates(
-		ctx,
-		rootstock.PegInClaimCandidate,
-		rootstock.PegInClaimSubmitting,
-	)
-	if err != nil {
-		return nil, err
-	}
-	total := entities.NewWei(0)
-	for _, claim := range claims {
-		if (claim.RskAddress != rskAddress || claim.DepositTxID != depositTxID) && claim.ReservedWei != nil {
-			total.Add(total, claim.ReservedWei)
-		}
-	}
-	return total, nil
-}
-
-func (useCase *ClaimPegInUseCase) releaseReserve(ctx context.Context, existing *rootstock.PegInClaim) error {
-	if existing == nil || existing.ReservedWei == nil || existing.ReservedWei.Cmp(entities.NewWei(0)) == 0 {
-		return nil
-	}
-	current, err := useCase.claims.Get(ctx, existing.RskAddress, existing.DepositTxID)
-	if err != nil {
-		return useCase.unavailable(err)
-	}
-	if !useCase.reservableClaim(current) {
-		return nil
-	}
-	current.ReservedWei = entities.NewWei(0)
-	current.UpdatedAt = time.Now().UTC()
-	return useCase.unavailable(useCase.claims.Update(ctx, *current))
-}
-
-func (useCase *ClaimPegInUseCase) reservableClaim(current *rootstock.PegInClaim) bool {
-	return current != nil &&
-		!current.IsTerminal() &&
-		current.State != rootstock.PegInClaimSubmitting &&
-		current.TxHash == "" &&
-		current.ReservedWei != nil &&
-		current.ReservedWei.Cmp(entities.NewWei(0)) > 0
 }
 
 func (useCase *ClaimPegInUseCase) save(

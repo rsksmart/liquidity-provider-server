@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,7 +21,6 @@ func samplePegInClaim(state rootstock.PegInClaimState) rootstock.PegInClaim {
 		DepositTxID: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
 		BtcAddress:  "bcrt1qexample",
 		State:       state,
-		ReservedWei: entities.NewWei(1_000_000_000_000_000_000),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}

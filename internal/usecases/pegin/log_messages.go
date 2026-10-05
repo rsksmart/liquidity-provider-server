@@ -27,6 +27,16 @@ func LogPegInClaimSubmittingEmptyTxHash(rskAddress, depositTxID string) string {
 	)
 }
 
+func LogPegInClaimInsufficientWalletLiquidity(rskAddress, depositTxID string, available, required fmt.Stringer) string {
+	return fmt.Sprintf(
+		"PegInClaim: not enough wallet liquidity for %s/%s (available %s wei, required %s wei); will retry",
+		rskAddress,
+		depositTxID,
+		available,
+		required,
+	)
+}
+
 func LogPegInClaimMissingEvent(txHash, rskAddress, depositTxID string, err error) string {
 	return fmt.Sprintf(
 		"PegInClaimWatcher: receipt %s for %s/%s is missing PegInRequested; follow incident-recovery; not resubmitting: %v",

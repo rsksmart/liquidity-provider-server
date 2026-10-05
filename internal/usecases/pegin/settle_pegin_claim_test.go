@@ -177,7 +177,6 @@ func TestSettlePegInClaimUseCase_StatusZeroClassifiesViaPreflight(t *testing.T) 
 
 	stored := repo.stored()
 	assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
-	assert.Equal(t, "0", stored.ReservedWei.String())
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 	harness.pegin.AssertNotCalled(t, "UnpackPegInRequested", mock.Anything)
 }
@@ -198,7 +197,6 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	require.ErrorIs(t, err, pegin.ErrStatus0ReceiptStillCallable)
 	assert.Equal(t, rootstock.PegInClaimRetryableFailure, repo.stored().State)
 	assert.Empty(t, repo.stored().TxHash)
-	assert.Equal(t, "0", repo.stored().ReservedWei.String())
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
@@ -252,11 +250,10 @@ func TestSettlePegInClaimUseCase_SuccessfulReceiptWithEventSetsPegInID(t *testin
 	stored := repo.stored()
 	assert.Equal(t, rootstock.PegInClaimClaimed, stored.State)
 	assert.Equal(t, hex.EncodeToString(pegInID[:]), stored.PegInID)
-	assert.Equal(t, "0", stored.ReservedWei.String())
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
-func TestSettlePegInClaimUseCase_SuccessfulReceiptWithoutEventClearsReserve(t *testing.T) {
+func TestSettlePegInClaimUseCase_SuccessfulReceiptWithoutEventIsClaimed(t *testing.T) {
 	repo := newMemoryClaimRepo(submittingClaim())
 	harness := newSettleHarness(t, repo)
 	receipt := harness.expectReceipt()
@@ -268,7 +265,6 @@ func TestSettlePegInClaimUseCase_SuccessfulReceiptWithoutEventClearsReserve(t *t
 	stored := repo.stored()
 	assert.Equal(t, rootstock.PegInClaimClaimed, stored.State)
 	assert.Empty(t, stored.PegInID)
-	assert.Equal(t, "0", stored.ReservedWei.String())
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
@@ -313,7 +309,6 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 			stored := repo.stored()
 			assert.Equal(t, rootstock.PegInClaimRetryableFailure, stored.State)
 			assert.Empty(t, stored.TxHash)
-			assert.Equal(t, "0", stored.ReservedWei.String())
 			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 		})
 	}
