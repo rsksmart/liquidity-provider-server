@@ -57,22 +57,34 @@ func (useCase *ClaimPegInUseCase) Run(
 	depositTxID string,
 ) error {
 	existing, runnable, err := useCase.runnableClaim(ctx, entry.RskAddress, depositTxID)
-	if err != nil || !runnable {
-		return err
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
+	}
+	if !runnable {
+		return nil
 	}
 	request, ready, err := useCase.prepareClaim(ctx, existing, entry, depositTxID)
-	if err != nil || !ready {
-		return err
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
+	}
+	if !ready {
+		return nil
 	}
 
 	useCase.rskWalletMutex.Lock()
 	defer useCase.rskWalletMutex.Unlock()
 
 	enough, err := useCase.hasWalletLiquidity(ctx, request)
-	if err != nil || !enough {
-		return err
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
 	}
-	return useCase.armAndSubmit(ctx, request)
+	if !enough {
+		return nil
+	}
+	if err = useCase.armAndSubmit(ctx, request); err != nil {
+		return usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
+	}
+	return nil
 }
 
 func (useCase *ClaimPegInUseCase) runnableClaim(
@@ -177,7 +189,7 @@ func (useCase *ClaimPegInUseCase) requestParams(request claimRequest) (blockchai
 		Fee:         request.fee,
 	})
 	if errors.Is(err, blockchain.ErrWitnessSerializedTxNotAccepted) {
-		return blockchain.RequestPegInParams{}, usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
+		return blockchain.RequestPegInParams{}, err
 	}
 	if err != nil {
 		return blockchain.RequestPegInParams{}, useCase.unavailable(err)
@@ -197,7 +209,7 @@ func (useCase *ClaimPegInUseCase) hasWalletLiquidity(ctx context.Context, reques
 	gasCost := new(entities.Wei).Mul(gasPrice, entities.NewUWei(estimatedGas))
 	payable, err := rootstock.CalculatePegInClaimPayableValue(request.amount, request.fee)
 	if err != nil {
-		return false, usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
+		return false, err
 	}
 	required := new(entities.Wei).Add(payable, gasCost)
 	// The wallet mutex is held until RequestPegIn returns the receipt, so this balance
@@ -290,7 +302,7 @@ func (useCase *ClaimPegInUseCase) classifySubmitError(
 	if err := useCase.claims.Update(ctx, claim); err != nil {
 		return useCase.unavailable(errors.Join(submitErr, err))
 	}
-	return usecases.WrapUseCaseError(usecases.ClaimPegInId, submitErr)
+	return submitErr
 }
 
 func (useCase *ClaimPegInUseCase) save(
@@ -349,5 +361,5 @@ func (useCase *ClaimPegInUseCase) unavailable(err error) error {
 	if err == nil {
 		return nil
 	}
-	return usecases.WrapUseCaseError(usecases.ClaimPegInId, errors.Join(err, usecases.InfrastructureUnavailableError))
+	return errors.Join(err, usecases.InfrastructureUnavailableError)
 }

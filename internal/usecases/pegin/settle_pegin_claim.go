@@ -48,22 +48,27 @@ func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock
 		return nil
 	}
 	if err != nil {
-		return useCase.unavailable(err)
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, useCase.unavailable(err))
 	}
 	if !useCase.receiptOnCanonicalChain(receipt) {
 		return nil
 	}
 	height, err := useCase.rpc.Rsk.GetHeight(ctx)
 	if err != nil {
-		return useCase.unavailable(err)
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, useCase.unavailable(err))
 	}
 	if !receipt.IsFinal(height, useCase.maxReorgDepth) {
 		return nil
 	}
 	if receipt.Status != blockchain.SuccessfulTxStatus {
-		return useCase.identifyFailed(ctx, claim)
+		err = useCase.identifyFailed(ctx, claim)
+	} else {
+		err = useCase.finalizeSuccess(ctx, claim, receipt)
 	}
-	return useCase.finalizeSuccess(ctx, claim, receipt)
+	if err != nil {
+		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, err)
+	}
+	return nil
 }
 
 // receiptOnCanonicalChain needs no block lookup: rskj eth_getTransactionReceipt returns a receipt
@@ -116,7 +121,7 @@ func (useCase *SettlePegInClaimUseCase) identifyFailed(ctx context.Context, clai
 	})
 	if errors.Is(err, blockchain.ErrWitnessSerializedTxNotAccepted) {
 		// Unreachable with the current adapters: GetRawTransaction serializes without witness.
-		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(err, usecases.NonRecoverableError))
+		return errors.Join(err, usecases.NonRecoverableError)
 	}
 	if err != nil {
 		return useCase.unavailable(err)
@@ -153,7 +158,7 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 		if err := useCase.claims.Update(ctx, claim); err != nil {
 			return useCase.unavailable(errors.Join(submitErr, err))
 		}
-		return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(submitErr, usecases.NonRecoverableError))
+		return errors.Join(submitErr, usecases.NonRecoverableError)
 	}
 	return useCase.unavailable(submitErr)
 }
@@ -168,12 +173,12 @@ func (useCase *SettlePegInClaimUseCase) failRetryable(
 	if err := useCase.claims.Update(ctx, claim); err != nil {
 		return useCase.unavailable(errors.Join(blockchain.TxFailedError, err))
 	}
-	return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(blockchain.TxFailedError, usecases.NonRecoverableError))
+	return errors.Join(blockchain.TxFailedError, usecases.NonRecoverableError)
 }
 
 func (useCase *SettlePegInClaimUseCase) unavailable(err error) error {
 	if err == nil {
 		return nil
 	}
-	return usecases.WrapUseCaseError(usecases.SettlePegInClaimId, errors.Join(err, usecases.InfrastructureUnavailableError))
+	return errors.Join(err, usecases.InfrastructureUnavailableError)
 }
