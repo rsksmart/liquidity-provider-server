@@ -23,15 +23,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// pinnedRequestPegInABI is the IPegInCommitFirst requestPegIn signature from PR #517,
-// parsed independently of the generated packer under test.
-const pinnedRequestPegInABI = `[{"type":"function","name":"requestPegIn","stateMutability":"payable","inputs":[{"name":"rskAddr","type":"address"},{"name":"btcTxSerialized","type":"bytes"},{"name":"opReturn","type":"bytes"},{"name":"btcBlockHash","type":"bytes32"},{"name":"merkleBranchPath","type":"uint256"},{"name":"merkleBranchHashes","type":"bytes32[]"}],"outputs":[{"name":"pegInId","type":"bytes32"}]}]`
+// pinnedRequestPegInABI is parsed independently of the generated packer under test.
+const pinnedRequestPegInABI = `[{"type":"function","name":"requestPegIn","stateMutability":"payable","inputs":[{"name":"rskAddr","type":"address"},{"name":"btcTxSerialized","type":"bytes"},{"name":"btcBlockHash","type":"bytes32"},{"name":"merkleBranchPath","type":"uint256"},{"name":"merkleBranchHashes","type":"bytes32[]"}],"outputs":[{"name":"pegInId","type":"bytes32"}]}]`
 
 const requestPegInEstimatedGas = uint64(1000)
 
 var (
 	strippedRawTx    = []byte{0x01, 0x00, 0x00, 0x00, 0x01, 0xff, 0xaa, 0xbb}
-	witnessRawTx     = []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0xaa, 0xbb}
 	requestBlockHash = [32]byte{0x11}
 	requestPath      = big.NewInt(1)
 	requestHashes    = [][32]byte{{0x22}}
@@ -41,14 +39,8 @@ func packPinnedRequestPegIn(t *testing.T, rskAddr common.Address, rawTx []byte, 
 	t.Helper()
 	parsed, err := abi.JSON(strings.NewReader(pinnedRequestPegInABI))
 	require.NoError(t, err)
-	calldata, err := parsed.Pack("requestPegIn", rskAddr, rawTx, []byte{}, blockHash, path, hashes)
+	calldata, err := parsed.Pack("requestPegIn", rskAddr, rawTx, blockHash, path, hashes)
 	require.NoError(t, err)
-	inputs := parsed.Methods["requestPegIn"].Inputs
-	require.Len(t, inputs, 6)
-	for _, input := range inputs {
-		assert.NotEqual(t, "amount", input.Name)
-		assert.NotEqual(t, "btcTxHash", input.Name)
-	}
 	return calldata
 }
 
@@ -266,7 +258,7 @@ func TestPeginContractImpl_RequestPegIn_PackingMatchesPinnedABI(t *testing.T) {
 	result, err := h.pegin.RequestPegIn(sampleRequestPegInParams(amount, fee))
 	require.NoError(t, err)
 	assert.Equal(t, expectedValue, result.Receipt.Value)
-	assert.True(t, strings.HasPrefix(hex.EncodeToString(expectedData), "a355e935"))
+	assert.True(t, strings.HasPrefix(hex.EncodeToString(expectedData), "fc73bbd3"))
 	assertPegInRequestedEvent(t, fixture, result.Event)
 	assertPayableDryRun(t, h, expectedData, expectedValue.AsBigInt())
 	h.contractMock.transactor.AssertExpectations(t)
@@ -347,20 +339,6 @@ func TestPeginContractImpl_RequestPegIn_SatToWeiBoundary(t *testing.T) {
 	assert.Equal(t, oneSat, result.Receipt.Value)
 	assertPegInRequestedEvent(t, fixture, result.Event)
 	assertPayableDryRun(t, h, expectedData, oneSat.AsBigInt())
-}
-
-func TestPeginContractImpl_RequestPegIn_RejectsWitnessSerializedTx(t *testing.T) {
-	h := newRequestPegInHarness(t)
-	params := sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0))
-	params.BitcoinRawTx = witnessRawTx
-	guardRejectedRequestPegIn(h)
-
-	result, err := h.pegin.RequestPegIn(params)
-	require.ErrorIs(t, err, blockchain.ErrWitnessSerializedTxNotAccepted)
-	assert.Empty(t, result.Receipt.TransactionHash)
-	assertNoDryRun(t, h)
-	assertRequestPegInNotSent(t, h)
-	assertRequestPegInNotEstimated(t, h)
 }
 
 func TestPeginContractImpl_RequestPegIn_StatusZeroDoesNotClassifyRaceLoss(t *testing.T) {
@@ -492,6 +470,7 @@ func TestPeginContractImpl_RequestPegIn_PreflightTypedErrors(t *testing.T) {
 		{"DepositOutputNotFound", commitfirst.PeginCommitFirstContractDepositOutputNotFoundErrorID(), append(mustPackAddress(t, parsedAddress), mustPackBytes32(t, btcTxHash)...), blockchain.ErrDepositOutputNotFound},
 		{"InsufficientConfirmations", commitfirst.PeginCommitFirstContractInsufficientConfirmationsErrorID(), append(mustPackUint256(t, big.NewInt(1)), mustPackUint256(t, big.NewInt(6))...), blockchain.ErrInsufficientConfirmations},
 		{"IncorrectFronting", commitfirst.PeginCommitFirstContractIncorrectFrontingErrorID(), append(mustPackUint256(t, big.NewInt(1000)), mustPackUint256(t, big.NewInt(500))...), blockchain.ErrIncorrectFronting},
+		{"PegInBelowMinimum", commitfirst.PeginCommitFirstContractPegInBelowMinimumErrorID(), append(mustPackUint256(t, big.NewInt(1000)), mustPackUint256(t, big.NewInt(5000))...), blockchain.ErrPegInBelowMinimum},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -611,20 +590,6 @@ func TestPeginContractImpl_RequestPegIn_MatchingTopicUnpackError(t *testing.T) {
 	assertPayableDryRun(t, h, expectedData, amount.AsBigInt())
 }
 
-func TestPeginContractImpl_RequestPegIn_RejectsShortRawTx(t *testing.T) {
-	h := newRequestPegInHarness(t)
-	params := sampleRequestPegInParams(entities.SatoshiToWei(1000), entities.NewWei(0))
-	params.BitcoinRawTx = []byte{1, 0, 0, 0, 1}
-	guardRejectedRequestPegIn(h)
-
-	result, err := h.pegin.RequestPegIn(params)
-	require.ErrorIs(t, err, blockchain.ErrWitnessSerializedTxNotAccepted)
-	assert.Empty(t, result.Receipt.TransactionHash)
-	assertNoDryRun(t, h)
-	assertRequestPegInNotSent(t, h)
-	assertRequestPegInNotEstimated(t, h)
-}
-
 func TestPeginContractImpl_RequestPegIn_NilAmountOrFee(t *testing.T) {
 	t.Run("nil amount", func(t *testing.T) {
 		h := newRequestPegInHarness(t)
@@ -739,6 +704,7 @@ func TestPeginContractImpl_EstimateRequestPegInGas(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, paddedRequestPegInGas(), gas)
 	assertRequestPegInNotSent(t, h)
+	assertNoDryRun(t, h)
 }
 
 func TestPeginContractImpl_SimulateRequestPegIn_RejectsWithoutSending(t *testing.T) {
@@ -751,16 +717,6 @@ func TestPeginContractImpl_SimulateRequestPegIn_RejectsWithoutSending(t *testing
 			name:   "invalid address",
 			mutate: func(params *blockchain.RequestPegInParams) { params.RskAddress = "not-an-address" },
 			want:   blockchain.InvalidAddressError,
-		},
-		{
-			name:   "short raw tx",
-			mutate: func(params *blockchain.RequestPegInParams) { params.BitcoinRawTx = []byte{1, 0, 0, 0, 1} },
-			want:   blockchain.ErrWitnessSerializedTxNotAccepted,
-		},
-		{
-			name:   "witness serialized tx",
-			mutate: func(params *blockchain.RequestPegInParams) { params.BitcoinRawTx = witnessRawTx },
-			want:   blockchain.ErrWitnessSerializedTxNotAccepted,
 		},
 	}
 	for _, tc := range cases {

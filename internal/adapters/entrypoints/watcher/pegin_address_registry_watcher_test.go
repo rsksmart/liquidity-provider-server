@@ -407,7 +407,7 @@ func (fixture *pegInWatcherFixture) resetTarget(t *testing.T, bus entities.Event
 	fixture.target = entrypoint.NewPegInWatcher(
 		replay,
 		usecase.NewDiscoverRegisteredAddressUseCase(fixture.repository, fixture.registry, fixture.wallet),
-		usecase.NewGetPendingRegisteredAddressImportsUseCase(fixture.repository),
+		usecase.NewGetPegInWatchesUseCase(fixture.repository),
 		usecase.NewFinalizeRegisteredAddressImportUseCase(fixture.repository),
 		fixture.btcNetwork,
 		fixture.wallet,

@@ -193,6 +193,11 @@ func (lp *LocalLiquidityProvider) AvailablePeginLiquidity(ctx context.Context) (
 	return new(entities.Wei).Sub(liquidity, lockedLiquidity), nil
 }
 
+// The LBC balance is excluded because requestPegIn can only pay with the value sent from the wallet.
+func (lp *LocalLiquidityProvider) AvailablePeginWalletLiquidity(ctx context.Context) (*entities.Wei, error) {
+	return lp.rpc.Rsk.GetBalance(ctx, lp.RskAddress())
+}
+
 func (lp *LocalLiquidityProvider) GeneralConfiguration(ctx context.Context) liquidity_provider.GeneralConfiguration {
 	configuration, err := liquidity_provider.ValidateConfiguration(lp.signer, crypto.Keccak256, func() (*entities.Signed[liquidity_provider.GeneralConfiguration], error) {
 		return lp.lpRepository.GetGeneralConfiguration(ctx)

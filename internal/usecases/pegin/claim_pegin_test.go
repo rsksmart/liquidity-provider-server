@@ -1,0 +1,1316 @@
+package pegin_test
+
+import (
+	"context"
+	"encoding/hex"
+	"fmt"
+	"math/big"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
+	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	claimDepositTxID  = "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
+	claimBtcAddress   = "bcrt1qclaimaddress0000000000000000000000000"
+	claimRskTxHash    = "0xclaimsubmit"
+	claimRskBlockHash = "0xclaimblock"
+)
+
+func claimEventBus() *mocks.EventBusMock {
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Maybe()
+	return eventBus
+}
+
+func matchClaimCompleted(state rootstock.PegInClaimState) interface{} {
+	return mock.MatchedBy(func(event rootstock.PegInClaimCompletedEvent) bool {
+		return event.Id() == rootstock.PegInClaimCompletedEventId && event.Claim.State == state
+	})
+}
+
+func matchWei(want *entities.Wei) interface{} {
+	return mock.MatchedBy(func(got *entities.Wei) bool {
+		return got != nil && got.Cmp(want) == 0
+	})
+}
+
+const claimEstimatedGas uint64 = 100000
+
+type claimHarness struct {
+	repo         rootstock.PegInClaimRepository
+	pegin        *mocks.PeginContractMock
+	pause        *mocks.PauseRegistryContractMock
+	configs      *mocks.FlyoverConfigurationsContractMock
+	btc          *mocks.BtcRpcMock
+	rsk          *mocks.RootstockRpcServerMock
+	provider     *mocks.ProviderMock
+	eventBus     *mocks.EventBusMock
+	useCase      *pegin.ClaimPegInUseCase
+	amount       *entities.Wei
+	fee          *entities.Wei
+	gasPrice     *entities.Wei
+	estimatedGas uint64
+	rawTx        []byte
+	block        blockchain.BitcoinBlockInformation
+	merkle       blockchain.MerkleBranch
+	entry        rootstock.PegInWatch
+}
+
+func newClaimHarness(t *testing.T, repo rootstock.PegInClaimRepository) *claimHarness {
+	t.Helper()
+	amount := entities.NewWei(1_000_000_000_000_000_000)
+	fee := entities.NewWei(1_000_000_000_000_000)
+	harness := &claimHarness{
+		repo:         repo,
+		pegin:        mocks.NewPeginContractMock(t),
+		pause:        mocks.NewPauseRegistryContractMock(t),
+		configs:      mocks.NewFlyoverConfigurationsContractMock(t),
+		btc:          mocks.NewBtcRpcMock(t),
+		rsk:          mocks.NewRootstockRpcServerMock(t),
+		amount:       amount,
+		fee:          fee,
+		gasPrice:     entities.NewWei(1),
+		estimatedGas: claimEstimatedGas,
+		rawTx:        []byte{0x01, 0x00, 0x00, 0x00, 0x01, 0xff, 0xaa, 0xbb},
+		block: blockchain.BitcoinBlockInformation{
+			Hash:   [32]byte{9, 8, 7, 6, 5, 4, 3, 2, 1},
+			Height: big.NewInt(500),
+		},
+		merkle: blockchain.MerkleBranch{
+			Path:   big.NewInt(3),
+			Hashes: [][32]byte{{11}, {12}},
+		},
+		entry: rootstock.PegInWatch{
+			RskAddress: test.AnyRskAddress,
+			BtcAddress: claimBtcAddress,
+			State:      rootstock.PegInWatchImported,
+		},
+	}
+	harness.provider = mocks.NewProviderMock(t)
+	harness.eventBus = claimEventBus()
+	harness.useCase = pegin.NewClaimPegInUseCase(
+		harness.repo,
+		blockchain.RskContracts{
+			PegIn:                 harness.pegin,
+			FlyoverConfigurations: harness.configs,
+			PauseRegistry:         harness.pause,
+		},
+		blockchain.Rpc{Btc: harness.btc, Rsk: harness.rsk},
+		harness.provider,
+		&sync.Mutex{},
+		harness.eventBus,
+	)
+	return harness
+}
+
+func (h *claimHarness) payingTx(confirmations uint64) blockchain.BitcoinTransactionInformation {
+	return h.payingTxFor(claimDepositTxID, confirmations)
+}
+
+func (h *claimHarness) payingTxFor(depositTxID string, confirmations uint64) blockchain.BitcoinTransactionInformation {
+	return blockchain.BitcoinTransactionInformation{
+		Hash:          depositTxID,
+		Confirmations: confirmations,
+		Outputs: map[string][]*entities.Wei{
+			claimBtcAddress: {h.amount.Copy(), entities.NewWei(5)},
+		},
+	}
+}
+
+func expectNoExistingClaim(claims *mocks.PegInClaimRepositoryMock) {
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil)
+}
+
+func expectExistingClaim(claims *mocks.PegInClaimRepositoryMock, claim rootstock.PegInClaim) {
+	copied := claim
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).Return(&copied, nil)
+}
+
+func expectInsertOk(claims *mocks.PegInClaimRepositoryMock) {
+	claims.On("Insert", mock.Anything, mock.Anything).Return(nil).Once()
+}
+
+func recordClaimUpdates(claims *mocks.PegInClaimRepositoryMock) func() rootstock.PegInClaim {
+	var mu sync.Mutex
+	var last rootstock.PegInClaim
+	claims.On("Update", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			claim, ok := args.Get(1).(rootstock.PegInClaim)
+			if !ok {
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			last = claim
+		}).
+		Return(nil)
+	return func() rootstock.PegInClaim {
+		mu.Lock()
+		defer mu.Unlock()
+		return last
+	}
+}
+
+func expectUpdatesOk(claims *mocks.PegInClaimRepositoryMock) {
+	claims.On("Update", mock.Anything, mock.Anything).Return(nil)
+}
+
+func matchSubmittingEmptyHash() interface{} {
+	return mock.MatchedBy(func(claim rootstock.PegInClaim) bool {
+		return claim.State == rootstock.PegInClaimSubmitting && claim.TxHash == ""
+	})
+}
+
+func expectMarkerUpdate(claims *mocks.PegInClaimRepositoryMock) {
+	claims.On("Update", mock.Anything, matchSubmittingEmptyHash()).Return(nil).Once()
+}
+
+func submittingEmptyHashClaim() rootstock.PegInClaim {
+	created := submittingClaim()
+	created.TxHash = ""
+	return created
+}
+
+func candidateClaim() rootstock.PegInClaim {
+	return rootstock.PegInClaim{
+		RskAddress:  test.AnyRskAddress,
+		DepositTxID: claimDepositTxID,
+		BtcAddress:  claimBtcAddress,
+		State:       rootstock.PegInClaimCandidate,
+		UpdatedAt:   time.Now().UTC().Add(-time.Hour),
+	}
+}
+
+func winningRequestResult(pegInID [32]byte) blockchain.RequestPegInResult {
+	return blockchain.RequestPegInResult{
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: pegInID, RskAddress: test.AnyRskAddress},
+	}
+}
+
+func (h *claimHarness) expectRefetch(confirmations uint64) {
+	h.btc.On("GetTransactionInfo", claimDepositTxID).Return(h.payingTx(confirmations), nil).Once()
+	h.configs.On("GetRequiredPegInBtcConfirmations", matchWei(h.amount)).Return(uint64(6), nil).Once()
+}
+
+func (h *claimHarness) gasCost() *entities.Wei {
+	return new(entities.Wei).Mul(h.gasPrice.Copy(), entities.NewUWei(h.estimatedGas))
+}
+
+func (h *claimHarness) payable(fee *entities.Wei) *entities.Wei {
+	required := new(entities.Wei).Sub(h.amount.Copy(), fee.Copy())
+	if required.Cmp(entities.NewWei(0)) < 0 {
+		return entities.NewWei(0)
+	}
+	return required
+}
+
+func (h *claimHarness) spendableRequired(fee *entities.Wei) *entities.Wei {
+	return new(entities.Wei).Add(h.payable(fee), h.gasCost())
+}
+
+func (h *claimHarness) expectPassingGates() {
+	h.expectRefetch(10)
+	h.pause.On("PauseLevel").Return(blockchain.PauseLevelNone, nil).Once()
+	h.configs.On("CalculatePegInFee", matchWei(h.amount)).Return(h.fee.Copy(), nil).Once()
+	h.expectBuildParams()
+	h.provider.On("AvailablePeginWalletLiquidity", mock.Anything).
+		Return(h.spendableRequired(h.fee), nil).Once()
+	h.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
+	h.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(h.estimatedGas, nil).Once()
+	h.rsk.On("GasPrice", mock.Anything).Return(h.gasPrice.Copy(), nil).Once()
+}
+
+func (h *claimHarness) expectBuildParams() {
+	h.btc.On("GetRawTransaction", claimDepositTxID).Return(h.rawTx, nil).Once()
+	h.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(h.block, nil).Once()
+	h.btc.On("BuildMerkleBranch", claimDepositTxID).Return(h.merkle, nil).Once()
+}
+
+func (h *claimHarness) expectPauseNone() {
+	h.pause.On("PauseLevel").Return(blockchain.PauseLevelNone, nil).Once()
+}
+
+func TestClaimPegInUseCase_BelowConfirmationsMakesZeroContractCalls(t *testing.T) {
+	t.Run("no existing claim", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectNoExistingClaim(claims)
+		harness.expectRefetch(2)
+
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.NoError(t, err)
+		claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+		claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		harness.pause.AssertNotCalled(t, "PauseLevel")
+		harness.provider.AssertNotCalled(t, "AvailablePeginWalletLiquidity", mock.Anything)
+		harness.btc.AssertNotCalled(t, "GetRawTransaction", mock.Anything)
+	})
+	t.Run("existing candidate is left unchanged", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectExistingClaim(claims, candidateClaim())
+		harness.expectRefetch(2)
+
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.NoError(t, err)
+		claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
+}
+
+func TestClaimPegInUseCase_WinPersistsSubmittingWithHashAndPegInID(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	expectInsertOk(claims)
+	lastSaved := recordClaimUpdates(claims)
+	harness.expectPassingGates()
+
+	pegInID := [32]byte{0xaa, 0xbb, 0xcc}
+	harness.pegin.On("RequestPegIn", mock.MatchedBy(func(params blockchain.RequestPegInParams) bool {
+		return params.RskAddress == test.AnyRskAddress &&
+			assert.ObjectsAreEqual(harness.rawTx, params.BitcoinRawTx) &&
+			params.BtcBlockHash == harness.block.Hash &&
+			params.MerkleBranchPath.Cmp(harness.merkle.Path) == 0 &&
+			len(params.MerkleBranchHashes) == 2 &&
+			params.Amount.Cmp(harness.amount) == 0 &&
+			params.Fee.Cmp(harness.fee) == 0
+	})).Return(blockchain.RequestPegInResult{
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: pegInID, RskAddress: test.AnyRskAddress},
+	}, nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+
+	stored := lastSaved()
+	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
+	assert.Equal(t, hex.EncodeToString(pegInID[:]), stored.PegInID)
+	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	harness.pegin.AssertExpectations(t)
+	harness.rsk.AssertNotCalled(t, "GetHeight", mock.Anything)
+}
+
+func TestClaimPegInUseCase_SimulateBelowMinimumSkipsWithoutSaving(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	harness.expectGatesBeforeSpendable()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(blockchain.ErrPegInBelowMinimum).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
+func TestClaimPegInUseCase_SimulateAlreadyProcessedPersistsRaceLost(t *testing.T) {
+	t.Run("no existing claim", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectNoExistingClaim(claims)
+		expectInsertOk(claims)
+		lastSaved := recordClaimUpdates(claims)
+		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(blockchain.ErrPegInAlreadyProcessed).Once()
+
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.NoError(t, err)
+
+		stored := lastSaved()
+		assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+		harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
+		assert.Empty(t, stored.TxHash)
+		harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		harness.rsk.AssertNotCalled(t, "GasPrice", mock.Anything)
+	})
+	t.Run("existing candidate", func(t *testing.T) {
+		created := candidateClaim()
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectExistingClaim(claims, created)
+		lastSaved := recordClaimUpdates(claims)
+		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(blockchain.ErrPegInAlreadyProcessed).Once()
+
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.NoError(t, err)
+
+		stored := lastSaved()
+		assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+		harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
+		assert.Empty(t, stored.TxHash)
+		harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
+}
+
+func TestClaimPegInUseCase_PegInAlreadyProcessedIsQuietRaceLost(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	expectInsertOk(claims)
+	lastSaved := recordClaimUpdates(claims)
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(
+		blockchain.RequestPegInResult{},
+		blockchain.ErrPegInAlreadyProcessed,
+	).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+
+	stored := lastSaved()
+	assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+	assert.Empty(t, stored.PegInID)
+	harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
+}
+
+func TestClaimPegInUseCase_StoredCandidateAlreadyProcessedIsRaceLost(t *testing.T) {
+	created := candidateClaim()
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectExistingClaim(claims, created)
+	lastSaved := recordClaimUpdates(claims)
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(
+		blockchain.RequestPegInResult{},
+		blockchain.ErrPegInAlreadyProcessed,
+	).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	stored := lastSaved()
+	assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
+	assert.Empty(t, stored.TxHash)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+}
+
+func TestLogPegInClaimSubmittingEmptyTxHash(t *testing.T) {
+	msg := pegin.LogPegInClaimSubmittingEmptyTxHash(test.AnyRskAddress, claimDepositTxID)
+	assert.Contains(t, msg, "follow incident-recovery")
+	assert.Contains(t, msg, test.AnyRskAddress)
+	assert.Contains(t, msg, claimDepositTxID)
+	assert.Contains(t, msg, "not resubmitting")
+	assert.NotContains(t, msg, "already processed")
+	assert.NotContains(t, msg, "INCIDENT")
+}
+
+func TestClaimPegInUseCase_TypedFailuresAreRetryableNotClaimed(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+	}{
+		{name: "AddressNotRegistered", err: blockchain.ErrAddressNotRegistered},
+		{name: "IncorrectFronting", err: blockchain.ErrIncorrectFronting},
+		{name: "InsufficientConfirmations", err: blockchain.ErrInsufficientConfirmations},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newClaimHarness(t, claims)
+			expectNoExistingClaim(claims)
+			expectInsertOk(claims)
+			lastSaved := recordClaimUpdates(claims)
+			harness.expectPassingGates()
+			harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{}, tc.err).Once()
+
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.ErrorIs(t, err, tc.err)
+
+			stored := lastSaved()
+			assert.Equal(t, rootstock.PegInClaimRetryableFailure, stored.State)
+			harness.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
+			assert.NotEqual(t, rootstock.PegInClaimClaimed, stored.State)
+		})
+	}
+}
+
+func TestClaimPegInUseCase_InsufficientLiquidityDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	harness.expectRefetch(10)
+	harness.expectPauseNone()
+	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+	harness.expectBuildParams()
+	harness.provider.On("AvailablePeginWalletLiquidity", mock.Anything).Return(entities.NewWei(1), nil).Once()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
+	harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
+	harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
+func TestClaimPegInUseCase_PauseDoesNotSubmit(t *testing.T) {
+	for _, level := range []uint8{blockchain.PauseLevelSoft, blockchain.PauseLevelHard} {
+		t.Run(fmt.Sprintf("level %d no existing claim", level), func(t *testing.T) {
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newClaimHarness(t, claims)
+			expectNoExistingClaim(claims)
+			harness.expectRefetch(10)
+			harness.pause.On("PauseLevel").Return(level, nil).Once()
+			harness.pause.On("GetAddress").Return("0xpause").Once()
+
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.NoError(t, err)
+			claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+			harness.provider.AssertNotCalled(t, "AvailablePeginWalletLiquidity", mock.Anything)
+		})
+		t.Run(fmt.Sprintf("level %d existing candidate is left unchanged", level), func(t *testing.T) {
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newClaimHarness(t, claims)
+			expectExistingClaim(claims, candidateClaim())
+			harness.expectRefetch(10)
+			harness.pause.On("PauseLevel").Return(level, nil).Once()
+			harness.pause.On("GetAddress").Return("0xpause").Once()
+
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.NoError(t, err)
+			claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		})
+	}
+}
+
+func TestClaimPegInUseCase_TerminalStatesAreNoOp(t *testing.T) {
+	for _, state := range []rootstock.PegInClaimState{
+		rootstock.PegInClaimClaimed,
+		rootstock.PegInClaimRaceLost,
+	} {
+		t.Run(string(state), func(t *testing.T) {
+			existing := rootstock.PegInClaim{
+				RskAddress:  test.AnyRskAddress,
+				DepositTxID: claimDepositTxID,
+				BtcAddress:  claimBtcAddress,
+				State:       state,
+				TxHash:      claimRskTxHash,
+				PegInID:     "already",
+			}
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newClaimHarness(t, claims)
+			expectExistingClaim(claims, existing)
+
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.NoError(t, err)
+			harness.btc.AssertNotCalled(t, "GetTransactionInfo", mock.Anything)
+			harness.rsk.AssertNotCalled(t, "GetTransactionReceipt", mock.Anything, mock.Anything)
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+			claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+		})
+	}
+}
+
+func submittingClaim() rootstock.PegInClaim {
+	return rootstock.PegInClaim{
+		RskAddress:  test.AnyRskAddress,
+		DepositTxID: claimDepositTxID,
+		BtcAddress:  claimBtcAddress,
+		State:       rootstock.PegInClaimSubmitting,
+		TxHash:      claimRskTxHash,
+	}
+}
+
+func successReceipt() blockchain.TransactionReceipt {
+	return blockchain.TransactionReceipt{
+		TransactionHash: claimRskTxHash,
+		BlockHash:       claimRskBlockHash,
+		BlockNumber:     100,
+		Status:          blockchain.SuccessfulTxStatus,
+	}
+}
+
+func TestClaimPegInUseCase_ZeroFirstOutputDoesNotSubmit(t *testing.T) {
+	zeroOutput := func(amount *entities.Wei) blockchain.BitcoinTransactionInformation {
+		return blockchain.BitcoinTransactionInformation{
+			Hash:          claimDepositTxID,
+			Confirmations: 10,
+			Outputs:       map[string][]*entities.Wei{"other": {amount.Copy()}},
+		}
+	}
+	t.Run("no existing claim", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectNoExistingClaim(claims)
+		harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(zeroOutput(harness.amount), nil).Once()
+
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.NoError(t, err)
+		claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		harness.pause.AssertNotCalled(t, "PauseLevel")
+	})
+	t.Run("existing candidate is left unchanged", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectExistingClaim(claims, candidateClaim())
+		harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(zeroOutput(harness.amount), nil).Once()
+
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.NoError(t, err)
+		claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		harness.pause.AssertNotCalled(t, "PauseLevel")
+	})
+}
+
+func TestClaimPegInUseCase_ExistingTxHashDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectExistingClaim(claims, submittingClaim())
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	harness.btc.AssertNotCalled(t, "GetTransactionInfo", mock.Anything)
+	harness.rsk.AssertNotCalled(t, "GetTransactionReceipt", mock.Anything, mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestClaimPegInUseCase_SaveAlreadySubmittedDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	peginContract := mocks.NewPeginContractMock(t)
+	pause := mocks.NewPauseRegistryContractMock(t)
+	configs := mocks.NewFlyoverConfigurationsContractMock(t)
+	btc := mocks.NewBtcRpcMock(t)
+	rsk := mocks.NewRootstockRpcServerMock(t)
+	amount := entities.NewWei(1_000_000_000_000_000_000)
+	fee := entities.NewWei(1_000_000_000_000_000)
+	gasPrice := entities.NewWei(1)
+	rawTx := []byte{0x01, 0x00, 0x00, 0x00, 0x01, 0xff, 0xaa, 0xbb}
+	block := blockchain.BitcoinBlockInformation{Hash: [32]byte{9}, Height: big.NewInt(500)}
+	merkle := blockchain.MerkleBranch{Path: big.NewInt(3), Hashes: [][32]byte{{11}}}
+	entry := rootstock.PegInWatch{
+		RskAddress: test.AnyRskAddress,
+		BtcAddress: claimBtcAddress,
+		State:      rootstock.PegInWatchImported,
+	}
+	stored := submittingClaim()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil).Once()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return(&stored, nil).Once()
+	btc.On("GetTransactionInfo", claimDepositTxID).Return(blockchain.BitcoinTransactionInformation{
+		Hash:          claimDepositTxID,
+		Confirmations: 10,
+		Outputs:       map[string][]*entities.Wei{claimBtcAddress: {amount.Copy()}},
+	}, nil).Once()
+	configs.On("GetRequiredPegInBtcConfirmations", matchWei(amount)).Return(uint64(6), nil).Once()
+	pause.On("PauseLevel").Return(blockchain.PauseLevelNone, nil).Once()
+	configs.On("CalculatePegInFee", matchWei(amount)).Return(fee.Copy(), nil).Once()
+	btc.On("GetRawTransaction", claimDepositTxID).Return(rawTx, nil).Once()
+	btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(block, nil).Once()
+	btc.On("BuildMerkleBranch", claimDepositTxID).Return(merkle, nil).Once()
+	provider := mocks.NewProviderMock(t)
+	provider.On("AvailablePeginWalletLiquidity", mock.Anything).Return(entities.NewWei(1_000_000_000_000_000_000), nil).Once()
+	peginContract.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
+	peginContract.On("EstimateRequestPegInGas", mock.Anything).Return(claimEstimatedGas, nil).Once()
+	rsk.On("GasPrice", mock.Anything).Return(gasPrice.Copy(), nil).Once()
+
+	useCase := pegin.NewClaimPegInUseCase(
+		claims,
+		blockchain.RskContracts{
+			PegIn:                 peginContract,
+			FlyoverConfigurations: configs,
+			PauseRegistry:         pause,
+		},
+		blockchain.Rpc{Btc: btc, Rsk: rsk},
+		provider,
+		&sync.Mutex{},
+		new(mocks.EventBusMock),
+	)
+	err := useCase.Run(context.Background(), entry, claimDepositTxID)
+	require.NoError(t, err)
+	peginContract.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestClaimPegInUseCase_OracleErrorsDoNotSubmit(t *testing.T) {
+	t.Run("confirmations oracle", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectNoExistingClaim(claims)
+		harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
+		harness.configs.On("GetRequiredPegInBtcConfirmations", matchWei(harness.amount)).Return(uint64(0), assert.AnError).Once()
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
+	t.Run("hard-pause oracle", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectNoExistingClaim(claims)
+		harness.expectRefetch(10)
+		harness.pause.On("PauseLevel").Return(uint8(0), assert.AnError).Once()
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
+	t.Run("fee oracle", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectNoExistingClaim(claims)
+		harness.expectRefetch(10)
+		harness.expectPauseNone()
+		harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return((*entities.Wei)(nil), assert.AnError).Once()
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
+}
+
+func (h *claimHarness) expectGatesBeforeSpendable() {
+	h.expectRefetch(10)
+	h.expectPauseNone()
+	h.configs.On("CalculatePegInFee", matchWei(h.amount)).Return(h.fee.Copy(), nil).Once()
+	h.expectBuildParams()
+}
+
+func runClaimWithoutSubmitOnUnavailable(t *testing.T, setup func(*claimHarness, *mocks.PegInClaimRepositoryMock)) {
+	t.Helper()
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	setup(harness, claims)
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+	claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
+func TestClaimPegInUseCase_WalletLiquidityErrorDoesNotSubmit(t *testing.T) {
+	runClaimWithoutSubmitOnUnavailable(t, func(harness *claimHarness, claims *mocks.PegInClaimRepositoryMock) {
+		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
+		harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
+		harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Once()
+		harness.provider.On("AvailablePeginWalletLiquidity", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
+	})
+}
+
+func TestClaimPegInUseCase_GasEstimateErrorDoesNotSubmit(t *testing.T) {
+	runClaimWithoutSubmitOnUnavailable(t, func(harness *claimHarness, claims *mocks.PegInClaimRepositoryMock) {
+		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
+		harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(uint64(0), assert.AnError).Once()
+	})
+}
+
+func TestClaimPegInUseCase_GasPriceErrorDoesNotSubmit(t *testing.T) {
+	runClaimWithoutSubmitOnUnavailable(t, func(harness *claimHarness, claims *mocks.PegInClaimRepositoryMock) {
+		harness.expectGatesBeforeSpendable()
+		harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Once()
+		harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Once()
+		harness.rsk.On("GasPrice", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
+	})
+}
+
+func TestClaimPegInUseCase_FeeAboveAmountStaysReevaluable(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectExistingClaim(claims, candidateClaim())
+	harness.expectRefetch(10)
+	harness.expectPauseNone()
+	highFee := new(entities.Wei).Add(harness.amount.Copy(), entities.NewWei(1))
+	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(highFee, nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	require.NotErrorIs(t, err, blockchain.ErrIncorrectFronting)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	harness.btc.AssertNotCalled(t, "GetRawTransaction", mock.Anything)
+	harness.provider.AssertNotCalled(t, "AvailablePeginWalletLiquidity", mock.Anything)
+}
+
+func TestClaimPegInUseCase_RejectsWitnessSerializedTx(t *testing.T) {
+	cases := []struct {
+		name  string
+		rawTx []byte
+	}{
+		{name: "short raw bytes", rawTx: []byte{1, 0, 0, 0, 1}},
+		{name: "witness serialized marker", rawTx: []byte{0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0xaa, 0xbb}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name+" no existing claim", func(t *testing.T) {
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newClaimHarness(t, claims)
+			expectNoExistingClaim(claims)
+			harness.expectRefetch(10)
+			harness.expectPauseNone()
+			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+			harness.btc.On("GetRawTransaction", claimDepositTxID).Return(tc.rawTx, nil).Once()
+
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.ErrorIs(t, err, blockchain.ErrWitnessSerializedTxNotAccepted)
+			require.NotErrorIs(t, err, usecases.InfrastructureUnavailableError)
+			claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+			claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+			harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
+			harness.pegin.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything)
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+			harness.btc.AssertNotCalled(t, "GetTransactionBlockInfo", mock.Anything)
+			harness.btc.AssertNotCalled(t, "BuildMerkleBranch", mock.Anything)
+		})
+		t.Run(tc.name+" existing candidate", func(t *testing.T) {
+			created := candidateClaim()
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newClaimHarness(t, claims)
+			expectExistingClaim(claims, created)
+			harness.expectRefetch(10)
+			harness.expectPauseNone()
+			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+			harness.btc.On("GetRawTransaction", claimDepositTxID).Return(tc.rawTx, nil).Once()
+
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.ErrorIs(t, err, blockchain.ErrWitnessSerializedTxNotAccepted)
+			require.NotErrorIs(t, err, usecases.InfrastructureUnavailableError)
+			claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+			claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+			harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
+			harness.pegin.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything)
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+			harness.btc.AssertNotCalled(t, "GetTransactionBlockInfo", mock.Anything)
+			harness.btc.AssertNotCalled(t, "BuildMerkleBranch", mock.Anything)
+		})
+	}
+}
+
+func TestClaimPegInUseCase_SuccessfulSendWithoutEventStaysSubmitting(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	expectInsertOk(claims)
+	lastSaved := recordClaimUpdates(claims)
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{
+		Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
+	}, nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	stored := lastSaved()
+	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
+	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	var emptyPegInID [32]byte
+	assert.Equal(t, hex.EncodeToString(emptyPegInID[:]), stored.PegInID)
+}
+
+func TestClaimPegInUseCase_BuildParamsErrorIsRetryable(t *testing.T) {
+	cases := []struct {
+		name string
+		stub func(*claimHarness)
+	}{
+		{
+			name: "raw tx",
+			stub: func(h *claimHarness) {
+				h.btc.On("GetRawTransaction", claimDepositTxID).Return([]byte(nil), assert.AnError).Once()
+			},
+		},
+		{
+			name: "block info",
+			stub: func(h *claimHarness) {
+				h.btc.On("GetRawTransaction", claimDepositTxID).Return(h.rawTx, nil).Once()
+				h.btc.On("GetTransactionBlockInfo", claimDepositTxID).
+					Return(blockchain.BitcoinBlockInformation{}, assert.AnError).Once()
+			},
+		},
+		{
+			name: "merkle branch",
+			stub: func(h *claimHarness) {
+				h.btc.On("GetRawTransaction", claimDepositTxID).Return(h.rawTx, nil).Once()
+				h.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(h.block, nil).Once()
+				h.btc.On("BuildMerkleBranch", claimDepositTxID).Return(blockchain.MerkleBranch{}, assert.AnError).Once()
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			claims := mocks.NewPegInClaimRepositoryMock(t)
+			harness := newClaimHarness(t, claims)
+			expectNoExistingClaim(claims)
+			harness.expectRefetch(10)
+			harness.expectPauseNone()
+			harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Once()
+			tc.stub(harness)
+
+			err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+			require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+			claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+		})
+	}
+}
+
+func TestClaimPegInUseCase_GetAndBtcLookupErrors(t *testing.T) {
+	t.Run("claim get", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+			Return((*rootstock.PegInClaim)(nil), assert.AnError).Once()
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+		harness.btc.AssertNotCalled(t, "GetTransactionInfo", mock.Anything)
+	})
+	t.Run("btc tx info", func(t *testing.T) {
+		claims := mocks.NewPegInClaimRepositoryMock(t)
+		harness := newClaimHarness(t, claims)
+		expectNoExistingClaim(claims)
+		harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
+		err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+		require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	})
+}
+
+func TestClaimPegInUseCase_HashedSubmitErrorStaysSubmitting(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	expectInsertOk(claims)
+	lastSaved := recordClaimUpdates(claims)
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(
+		blockchain.RequestPegInResult{
+			Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
+		},
+		blockchain.TxFailedError,
+	).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	stored := lastSaved()
+	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
+	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+}
+
+func TestClaimPegInUseCase_UpdateAfterHashDoesNotClaim(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	expectInsertOk(claims)
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(blockchain.RequestPegInResult{
+		Receipt: blockchain.TransactionReceipt{
+			TransactionHash: claimRskTxHash,
+			BlockNumber:     100,
+			Status:          blockchain.SuccessfulTxStatus,
+		},
+		Event: blockchain.PegInRequestedEvent{PegInId: [32]byte{7}, RskAddress: test.AnyRskAddress},
+	}, nil).Once()
+	expectMarkerUpdate(claims)
+	claims.On("Update", mock.Anything, mock.Anything).Return(assert.AnError).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+	harness.rsk.AssertNotCalled(t, "GetHeight", mock.Anything)
+	claims.AssertNumberOfCalls(t, "Update", 2)
+}
+
+func TestClaimPegInUseCase_RaceLostUpdateErrorDoesNotClaim(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	expectInsertOk(claims)
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(
+		blockchain.RequestPegInResult{},
+		blockchain.ErrPegInAlreadyProcessed,
+	).Once()
+	expectMarkerUpdate(claims)
+	claims.On("Update", mock.Anything, mock.Anything).Return(assert.AnError).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+}
+
+func TestClaimPegInUseCase_InsertErrorDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	claims.On("Insert", mock.Anything, mock.Anything).Return(assert.AnError).Once()
+	harness.expectPassingGates()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
+func TestClaimPegInUseCase_FeeEqualToAmountIsAccepted(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	expectInsertOk(claims)
+	expectUpdatesOk(claims)
+	harness.fee = harness.amount.Copy()
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(winningRequestResult([32]byte{9}), nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+}
+
+func TestClaimPegInUseCase_InsertConflictRereadsSubmittedClaim(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	originalCreated := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	stored := submittingClaim()
+	stored.CreatedAt = originalCreated
+
+	harness.expectPassingGates()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil).Twice()
+	claims.On("Insert", mock.Anything, mock.Anything).Return(rootstock.ErrPegInClaimAlreadyExists).Once()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return(&stored, nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestClaimPegInUseCase_InsertConflictKeepsStoredCreatedAt(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	harness.expectPassingGates()
+	storedByOtherWriter := candidateClaim()
+	storedByOtherWriter.CreatedAt = time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil).Twice()
+	claims.On("Insert", mock.Anything, mock.Anything).Return(rootstock.ErrPegInClaimAlreadyExists).Once()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).Return(&storedByOtherWriter, nil).Once()
+	lastSaved := recordClaimUpdates(claims)
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(winningRequestResult([32]byte{4}), nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+
+	stored := lastSaved()
+	assert.Equal(t, storedByOtherWriter.CreatedAt, stored.CreatedAt)
+	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+}
+
+func expectSerializedWalletMocks(
+	harness *claimHarness,
+	depositB string,
+	required *entities.Wei,
+	requestStarted, holdRequest, requestReturned chan struct{},
+	balanceCalls *atomic.Int32,
+) {
+	harness.btc.On("GetTransactionInfo", claimDepositTxID).Return(harness.payingTx(10), nil).Once()
+	harness.btc.On("GetTransactionInfo", depositB).Return(harness.payingTxFor(depositB, 10), nil).Once()
+	harness.configs.On("GetRequiredPegInBtcConfirmations", matchWei(harness.amount)).Return(uint64(6), nil).Twice()
+	harness.pause.On("PauseLevel").Return(blockchain.PauseLevelNone, nil).Twice()
+	harness.configs.On("CalculatePegInFee", matchWei(harness.amount)).Return(harness.fee.Copy(), nil).Twice()
+	harness.btc.On("GetRawTransaction", claimDepositTxID).Return(harness.rawTx, nil).Once()
+	harness.btc.On("GetRawTransaction", depositB).Return(harness.rawTx, nil).Once()
+	harness.btc.On("GetTransactionBlockInfo", claimDepositTxID).Return(harness.block, nil).Once()
+	harness.btc.On("GetTransactionBlockInfo", depositB).Return(harness.block, nil).Once()
+	harness.btc.On("BuildMerkleBranch", claimDepositTxID).Return(harness.merkle, nil).Once()
+	harness.btc.On("BuildMerkleBranch", depositB).Return(harness.merkle, nil).Once()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(nil).Twice()
+	harness.pegin.On("EstimateRequestPegInGas", mock.Anything).Return(harness.estimatedGas, nil).Twice()
+	harness.rsk.On("GasPrice", mock.Anything).Return(harness.gasPrice.Copy(), nil).Twice()
+	afterFirstClaim := new(entities.Wei).Sub(required, entities.NewWei(1))
+	harness.provider.On("AvailablePeginWalletLiquidity", mock.Anything).
+		Run(func(mock.Arguments) { balanceCalls.Add(1) }).
+		Return(required, nil).Once()
+	harness.provider.On("AvailablePeginWalletLiquidity", mock.Anything).
+		Run(func(mock.Arguments) {
+			balanceCalls.Add(1)
+			<-requestReturned
+		}).
+		Return(afterFirstClaim, nil).Once()
+	harness.pegin.On("RequestPegIn", mock.Anything).
+		Run(func(mock.Arguments) {
+			close(requestStarted)
+			<-holdRequest
+			close(requestReturned)
+		}).
+		Return(winningRequestResult([32]byte{6}), nil).Once()
+}
+
+func TestClaimPegInUseCase_SpendableDecisionSerializedUnderWalletMutex(t *testing.T) {
+	depositB := "bb" + claimDepositTxID[2:]
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	claims.On("Get", mock.Anything, test.AnyRskAddress, depositB).Return((*rootstock.PegInClaim)(nil), nil)
+	expectInsertOk(claims)
+	expectUpdatesOk(claims)
+	required := harness.spendableRequired(harness.fee)
+	requestStarted := make(chan struct{})
+	holdRequest := make(chan struct{})
+	requestReturned := make(chan struct{})
+	var balanceCalls atomic.Int32
+	expectSerializedWalletMocks(harness, depositB, required, requestStarted, holdRequest, requestReturned, &balanceCalls)
+
+	errA := make(chan error, 1)
+	errB := make(chan error, 1)
+	go func() {
+		errA <- harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	}()
+	<-requestStarted
+	go func() {
+		errB <- harness.useCase.Run(context.Background(), harness.entry, depositB)
+	}()
+	assert.Never(t, func() bool {
+		return balanceCalls.Load() > 1
+	}, 80*time.Millisecond, 5*time.Millisecond)
+	close(holdRequest)
+	require.NoError(t, <-errA)
+	require.NoError(t, <-errB)
+
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+	assert.Equal(t, int32(2), balanceCalls.Load())
+	claims.AssertNotCalled(t, "Insert", mock.Anything, mock.MatchedBy(func(claim rootstock.PegInClaim) bool {
+		return claim.DepositTxID == depositB
+	}))
+}
+
+func TestClaimPegInUseCase_HashPersistUsesDetachedContext(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	harness.expectPassingGates()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil)
+	claims.On("Insert", mock.Anything, mock.Anything).Return(nil).Once()
+	expectMarkerUpdate(claims)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	harness.pegin.On("RequestPegIn", mock.Anything).
+		Run(func(mock.Arguments) { cancel() }).
+		Return(winningRequestResult([32]byte{8}), nil).Once()
+
+	var sawHashPersist bool
+	var persistCanceled bool
+	claims.On("Update", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			claim, ok := args.Get(1).(rootstock.PegInClaim)
+			if !ok {
+				return
+			}
+			if sawHashPersist || claim.TxHash != claimRskTxHash {
+				return
+			}
+			ctxArg, ok := args.Get(0).(context.Context)
+			if !ok {
+				return
+			}
+			sawHashPersist = true
+			persistCanceled = ctxArg.Err() != nil
+		}).
+		Return(nil)
+
+	err := harness.useCase.Run(ctx, harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	require.True(t, sawHashPersist)
+	require.False(t, persistCanceled)
+}
+
+func TestClaimPegInUseCase_HashPersistJoinsOriginalSubmitCause(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	harness.expectPassingGates()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil)
+	claims.On("Insert", mock.Anything, mock.Anything).Return(nil).Once()
+	expectMarkerUpdate(claims)
+	harness.pegin.On("RequestPegIn", mock.Anything).
+		Return(
+			blockchain.RequestPegInResult{
+				Receipt: blockchain.TransactionReceipt{TransactionHash: claimRskTxHash, BlockNumber: 100},
+			},
+			blockchain.ErrAddressNotRegistered,
+		).Once()
+	claims.On("Update", mock.Anything, mock.Anything).Return(assert.AnError).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.ErrorIs(t, err, assert.AnError)
+	require.ErrorIs(t, err, blockchain.ErrAddressNotRegistered)
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+	claims.AssertNumberOfCalls(t, "Update", 2)
+}
+
+func TestClaimPegInUseCase_SubmittingEmptyHashDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectExistingClaim(claims, submittingEmptyHashClaim())
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	harness.btc.AssertNotCalled(t, "GetTransactionInfo", mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestClaimPegInUseCase_CandidateEmptyHashRetriesSubmit(t *testing.T) {
+	created := candidateClaim()
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectExistingClaim(claims, created)
+	lastSaved := recordClaimUpdates(claims)
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(winningRequestResult([32]byte{0x11}), nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	stored := lastSaved()
+	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
+	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+}
+
+func TestClaimPegInUseCase_RetryableFailureEmptyHashRetriesSubmit(t *testing.T) {
+	created := candidateClaim()
+	created.State = rootstock.PegInClaimRetryableFailure
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectExistingClaim(claims, created)
+	lastSaved := recordClaimUpdates(claims)
+	harness.expectPassingGates()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(winningRequestResult([32]byte{0x13}), nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	stored := lastSaved()
+	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
+	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+}
+
+func TestClaimPegInUseCase_HashPersistFailThenNextRunDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	harness.expectPassingGates()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil).Twice()
+	expectInsertOk(claims)
+	expectMarkerUpdate(claims)
+	claims.On("Update", mock.Anything, mock.MatchedBy(func(claim rootstock.PegInClaim) bool {
+		return claim.TxHash == claimRskTxHash
+	})).Return(assert.AnError).Once()
+	marker := submittingEmptyHashClaim()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).Return(&marker, nil).Once()
+	harness.pegin.On("RequestPegIn", mock.Anything).Return(winningRequestResult([32]byte{0x12}), nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+
+	err = harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
+	claims.AssertNumberOfCalls(t, "Update", 2)
+}
+
+func TestClaimPegInUseCase_MarkerUpdateErrorDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	expectNoExistingClaim(claims)
+	expectInsertOk(claims)
+	harness.expectPassingGates()
+	claims.On("Update", mock.Anything, matchSubmittingEmptyHash()).Return(assert.AnError).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
+func TestClaimPegInUseCase_MarkerUpdateErrorLeavesCandidate(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	harness.expectPassingGates()
+	expectNoExistingClaim(claims)
+	var inserted rootstock.PegInClaim
+	claims.On("Insert", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			if claim, ok := args.Get(1).(rootstock.PegInClaim); ok {
+				inserted = claim
+			}
+		}).
+		Return(nil).Once()
+	claims.On("Update", mock.Anything, matchSubmittingEmptyHash()).Return(assert.AnError).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
+	assert.Equal(t, rootstock.PegInClaimCandidate, inserted.State)
+	assert.Empty(t, inserted.TxHash)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
+func TestClaimPegInUseCase_SaveConflictRaceLostDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	stored := rootstock.PegInClaim{
+		RskAddress:  test.AnyRskAddress,
+		DepositTxID: claimDepositTxID,
+		BtcAddress:  claimBtcAddress,
+		State:       rootstock.PegInClaimRaceLost,
+	}
+	harness.expectPassingGates()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil).Twice()
+	claims.On("Insert", mock.Anything, mock.Anything).Return(rootstock.ErrPegInClaimAlreadyExists).Once()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return(&stored, nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestClaimPegInUseCase_SaveConflictSubmittingEmptyDoesNotSubmit(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	stored := submittingEmptyHashClaim()
+	harness.expectPassingGates()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil).Twice()
+	claims.On("Insert", mock.Anything, mock.Anything).Return(rootstock.ErrPegInClaimAlreadyExists).Once()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return(&stored, nil).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+}

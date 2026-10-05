@@ -951,3 +951,32 @@ func TestLocalLiquidityProvider_StateConfiguration(t *testing.T) {
 		assert.Contains(t, err.Error(), "encoding/hex: invalid byte")
 	})
 }
+
+func TestLocalLiquidityProvider_AvailablePeginWalletLiquidity(t *testing.T) {
+	t.Run("should return the wallet balance and ignore the LBC balance", func(t *testing.T) {
+		signer := new(mocks.TransactionSignerMock)
+		signer.On("Address").Return(common.HexToAddress(rskTestAddress)).Once()
+		peginContractMock := new(mocks.PeginContractMock)
+		rpcMock := new(mocks.RootstockRpcServerMock)
+		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(800), nil).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{PegIn: peginContractMock})
+
+		liquidity, err := lp.AvailablePeginWalletLiquidity(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, entities.NewWei(800), liquidity)
+		peginContractMock.AssertNotCalled(t, "GetBalance", mock.Anything)
+		rpcMock.AssertExpectations(t)
+		signer.AssertExpectations(t)
+	})
+	t.Run("should return the wallet balance error", func(t *testing.T) {
+		signer := new(mocks.TransactionSignerMock)
+		signer.On("Address").Return(common.HexToAddress(rskTestAddress)).Once()
+		rpcMock := new(mocks.RootstockRpcServerMock)
+		rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(nil, assert.AnError).Once()
+		lp := dataproviders.NewLocalLiquidityProvider(nil, nil, nil, blockchain.Rpc{Rsk: rpcMock}, signer, nil, blockchain.RskContracts{})
+
+		liquidity, err := lp.AvailablePeginWalletLiquidity(context.Background())
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Nil(t, liquidity)
+	})
+}

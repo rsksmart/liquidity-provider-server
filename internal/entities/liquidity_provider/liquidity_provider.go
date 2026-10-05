@@ -81,6 +81,7 @@ type PeginLiquidityProvider interface {
 	HasPeginLiquidity(ctx context.Context, requiredLiquidity *entities.Wei) error
 	PeginConfiguration(ctx context.Context) PeginConfiguration
 	AvailablePeginLiquidity(ctx context.Context) (*entities.Wei, error)
+	AvailablePeginWalletLiquidity(ctx context.Context) (*entities.Wei, error)
 }
 
 type PegoutLiquidityProvider interface {

@@ -10,6 +10,7 @@ import (
 
 type WatcherRegistry struct {
 	PegInAddressRegistryWatcher *watcher.PegInWatcher
+	PegInClaimWatcher           *watcher.PegInClaimWatcher
 
 	PeginDepositAddressWatcher         *watcher.PeginDepositAddressWatcher
 	PeginBridgeWatcher                 *watcher.PeginBridgeWatcher
@@ -53,6 +54,16 @@ func NewWatcherRegistry(
 
 	return &WatcherRegistry{
 		PegInAddressRegistryWatcher: peginWatcher,
+		PegInClaimWatcher: watcher.NewPegInClaimWatcher(
+			watcher.NewPegInClaimWatcherUseCases(
+				useCaseRegistry.claimPegInUseCase,
+				useCaseRegistry.settlePegInClaimUseCase,
+				useCaseRegistry.getPegInClaimsUseCase,
+				useCaseRegistry.getPegInWatchesUseCase,
+			),
+			btcRegistry.MonitoringWallet,
+			tickers.PegInClaimWatcherTicker,
+		),
 		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
 			watcher.NewPeginDepositAddressWatcherUseCases(
 				useCaseRegistry.callForUserUseCase,
@@ -210,7 +221,7 @@ func newPegInWatcher(
 	return watcher.NewPegInWatcher(
 		useCaseRegistry.replayRegisteredAddressesUseCase,
 		useCaseRegistry.discoverRegisteredAddressUseCase,
-		useCaseRegistry.getPendingRegisteredAddressImportsUseCase,
+		useCaseRegistry.getPegInWatchesUseCase,
 		useCaseRegistry.finalizeRegisteredAddressImportUseCase,
 		messaging.Rpc.Btc,
 		btcRegistry.MonitoringWallet,

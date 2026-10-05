@@ -23,76 +23,80 @@ type UseCaseId string
 const EthereumSignedMessagePrefix = "\x19Ethereum Signed Message:\n32"
 
 const (
-	GetPeginQuoteId                      UseCaseId = "GetPeginQuote"
-	GetPegoutQuoteId                     UseCaseId = "GetPegoutQuote"
-	AcceptPeginQuoteId                   UseCaseId = "AcceptPeginQuote"
-	AcceptPegoutQuoteId                  UseCaseId = "AcceptPegoutQuote"
-	ProviderDetailId                     UseCaseId = "ProviderDetail"
-	GetProvidersId                       UseCaseId = "GetProviders"
-	GetUserQuotesId                      UseCaseId = "GetUserQuotes"
-	ProviderResignId                     UseCaseId = "ProviderResign"
-	ChangeProviderStatusId               UseCaseId = "ChangeProviderStatus"
-	GetCollateralId                      UseCaseId = "GetCollateral"
-	GetPegoutCollateralId                UseCaseId = "GetPegoutCollateral"
-	AddCollateralId                      UseCaseId = "AddCollateral"
-	AddPegoutCollateralId                UseCaseId = "AddPegoutCollateral"
-	WithdrawCollateralId                 UseCaseId = "WithdrawCollateral"
-	WithdrawPegoutCollateralId           UseCaseId = "WithdrawPegoutCollateral"
-	CallForUserId                        UseCaseId = "CallForUser"
-	RegisterPeginId                      UseCaseId = "RegisterPegin"
-	SendPegoutId                         UseCaseId = "SendPegout"
-	RefundPegoutId                       UseCaseId = "RefundPegout"
-	ProviderRegistrationId               UseCaseId = "ProviderRegistration"
-	GetWatchedPeginQuoteId               UseCaseId = "GetWatchedPeginQuote"
-	GetWatchedPegoutQuoteId              UseCaseId = "GetWatchedPegoutQuote"
-	DiscoverRegisteredAddressId          UseCaseId = "DiscoverRegisteredAddress"
-	GetPendingRegisteredAddressImportsId UseCaseId = "GetPendingRegisteredAddressImports"
-	ReplayRegisteredAddressesId          UseCaseId = "ReplayRegisteredAddresses"
-	FinalizeRegisteredAddressImportId    UseCaseId = "FinalizeRegisteredAddressImport"
-	ExpiredPeginQuoteId                  UseCaseId = "ExpiredPeginQuote"
-	ExpiredPegoutQuoteId                 UseCaseId = "ExpiredPegoutQuote"
-	UpdatePegoutDepositId                UseCaseId = "UpdatePegoutDeposit"
-	InitPegoutDepositCacheId             UseCaseId = "InitPegoutDepositCache"
-	CheckLiquidityId                     UseCaseId = "CheckLiquidity"
-	PenalizationId                       UseCaseId = "Penalization"
-	SetPeginConfigId                     UseCaseId = "SetPeginConfigUseCase"
-	SetPegoutConfigId                    UseCaseId = "SetPegoutConfigUseCase"
-	SetGeneralConfigId                   UseCaseId = "SetGeneralConfigUseCase"
-	UpdateTrustedAccountId               UseCaseId = "UpdateTrustedAccountUseCase"
-	AddTrustedAccountId                  UseCaseId = "AddTrustedAccountUseCase"
-	DeleteTrustedAccountId               UseCaseId = "DeleteTrustedAccountUseCase"
-	LoginId                              UseCaseId = "Login"
-	ChangeCredentialsId                  UseCaseId = "ChangeCredentials"
-	DefaultCredentialsId                 UseCaseId = "GenerateDefaultCredentials"
-	InitializeStateConfigurationId       UseCaseId = "InitializeStateConfiguration"
-	GetManagementUiId                    UseCaseId = "GetManagementUi"
-	BridgePegoutId                       UseCaseId = "BridgePegout"
-	PeginQuoteStatusId                   UseCaseId = "PeginQuoteStatus"
-	PegoutQuoteStatusId                  UseCaseId = "PegoutQuoteStatus"
-	GetAvailableLiquidityId              UseCaseId = "GetAvailableLiquidity"
-	UpdatePeginDepositId                 UseCaseId = "UpdatePeginDeposit"
-	ServerInfoId                         UseCaseId = "ServerInfo"
-	SummariesUseCaseId                   UseCaseId = "Summaries"
-	GetPeginReportId                     UseCaseId = "GetPeginReport"
-	GetPegoutReportId                    UseCaseId = "GetPegoutReport"
-	GetRevenueReportId                   UseCaseId = "GetRevenueReport"
-	GetTransactionsReportId              UseCaseId = "GetTransactionsReport"
-	EclipseCheckId                       UseCaseId = "EclipseCheck"
-	UpdateBtcReleaseId                   UseCaseId = "UpdateBtcRelease"
-	RecommendedPegoutId                  UseCaseId = "RecommendedPegout"
-	RecommendedPeginId                   UseCaseId = "RecommendedPegin"
-	TransferExcessToColdWalletId         UseCaseId = "TransferExcessToColdWallet"
-	CheckColdWalletAddressChangeId       UseCaseId = "CheckColdWalletAddressChange"
-	LowLiquidityAlertId                  UseCaseId = "LowLiquidityAlert"
-	GetLiquidityRatioId                  UseCaseId = "GetLiquidityRatio"
-	SetLiquidityRatioId                  UseCaseId = "SetLiquidityRatio"
-	NodeReorgAlertId                     UseCaseId = "NodeReorgAlert"
-	NodePeerAlertId                      UseCaseId = "NodePeerAlert"
-	GetTrustedAccountId                  UseCaseId = "GetTrustedAccountUseCase"
+	GetPeginQuoteId                   UseCaseId = "GetPeginQuote"
+	GetPegoutQuoteId                  UseCaseId = "GetPegoutQuote"
+	AcceptPeginQuoteId                UseCaseId = "AcceptPeginQuote"
+	AcceptPegoutQuoteId               UseCaseId = "AcceptPegoutQuote"
+	ProviderDetailId                  UseCaseId = "ProviderDetail"
+	GetProvidersId                    UseCaseId = "GetProviders"
+	GetUserQuotesId                   UseCaseId = "GetUserQuotes"
+	ProviderResignId                  UseCaseId = "ProviderResign"
+	ChangeProviderStatusId            UseCaseId = "ChangeProviderStatus"
+	GetCollateralId                   UseCaseId = "GetCollateral"
+	GetPegoutCollateralId             UseCaseId = "GetPegoutCollateral"
+	AddCollateralId                   UseCaseId = "AddCollateral"
+	AddPegoutCollateralId             UseCaseId = "AddPegoutCollateral"
+	WithdrawCollateralId              UseCaseId = "WithdrawCollateral"
+	WithdrawPegoutCollateralId        UseCaseId = "WithdrawPegoutCollateral"
+	CallForUserId                     UseCaseId = "CallForUser"
+	RegisterPeginId                   UseCaseId = "RegisterPegin"
+	SendPegoutId                      UseCaseId = "SendPegout"
+	RefundPegoutId                    UseCaseId = "RefundPegout"
+	ProviderRegistrationId            UseCaseId = "ProviderRegistration"
+	GetWatchedPeginQuoteId            UseCaseId = "GetWatchedPeginQuote"
+	GetWatchedPegoutQuoteId           UseCaseId = "GetWatchedPegoutQuote"
+	DiscoverRegisteredAddressId       UseCaseId = "DiscoverRegisteredAddress"
+	ReplayRegisteredAddressesId       UseCaseId = "ReplayRegisteredAddresses"
+	FinalizeRegisteredAddressImportId UseCaseId = "FinalizeRegisteredAddressImport"
+	ClaimPegInId                      UseCaseId = "ClaimPegIn"
+	SettlePegInClaimId                UseCaseId = "SettlePegInClaim"
+	GetPegInWatchesId                 UseCaseId = "GetPegInWatches"
+	GetPegInClaimsId                  UseCaseId = "GetPegInClaims"
+	ExpiredPeginQuoteId               UseCaseId = "ExpiredPeginQuote"
+	ExpiredPegoutQuoteId              UseCaseId = "ExpiredPegoutQuote"
+	UpdatePegoutDepositId             UseCaseId = "UpdatePegoutDeposit"
+	InitPegoutDepositCacheId          UseCaseId = "InitPegoutDepositCache"
+	CheckLiquidityId                  UseCaseId = "CheckLiquidity"
+	PenalizationId                    UseCaseId = "Penalization"
+	SetPeginConfigId                  UseCaseId = "SetPeginConfigUseCase"
+	SetPegoutConfigId                 UseCaseId = "SetPegoutConfigUseCase"
+	SetGeneralConfigId                UseCaseId = "SetGeneralConfigUseCase"
+	UpdateTrustedAccountId            UseCaseId = "UpdateTrustedAccountUseCase"
+	AddTrustedAccountId               UseCaseId = "AddTrustedAccountUseCase"
+	DeleteTrustedAccountId            UseCaseId = "DeleteTrustedAccountUseCase"
+	LoginId                           UseCaseId = "Login"
+	ChangeCredentialsId               UseCaseId = "ChangeCredentials"
+	DefaultCredentialsId              UseCaseId = "GenerateDefaultCredentials"
+	InitializeStateConfigurationId    UseCaseId = "InitializeStateConfiguration"
+	GetManagementUiId                 UseCaseId = "GetManagementUi"
+	BridgePegoutId                    UseCaseId = "BridgePegout"
+	PeginQuoteStatusId                UseCaseId = "PeginQuoteStatus"
+	PegoutQuoteStatusId               UseCaseId = "PegoutQuoteStatus"
+	GetAvailableLiquidityId           UseCaseId = "GetAvailableLiquidity"
+	UpdatePeginDepositId              UseCaseId = "UpdatePeginDeposit"
+	ServerInfoId                      UseCaseId = "ServerInfo"
+	SummariesUseCaseId                UseCaseId = "Summaries"
+	GetPeginReportId                  UseCaseId = "GetPeginReport"
+	GetPegoutReportId                 UseCaseId = "GetPegoutReport"
+	GetRevenueReportId                UseCaseId = "GetRevenueReport"
+	GetTransactionsReportId           UseCaseId = "GetTransactionsReport"
+	EclipseCheckId                    UseCaseId = "EclipseCheck"
+	UpdateBtcReleaseId                UseCaseId = "UpdateBtcRelease"
+	RecommendedPegoutId               UseCaseId = "RecommendedPegout"
+	RecommendedPeginId                UseCaseId = "RecommendedPegin"
+	TransferExcessToColdWalletId      UseCaseId = "TransferExcessToColdWallet"
+	CheckColdWalletAddressChangeId    UseCaseId = "CheckColdWalletAddressChange"
+	LowLiquidityAlertId               UseCaseId = "LowLiquidityAlert"
+	GetLiquidityRatioId               UseCaseId = "GetLiquidityRatio"
+	SetLiquidityRatioId               UseCaseId = "SetLiquidityRatio"
+	NodeReorgAlertId                  UseCaseId = "NodeReorgAlert"
+	NodePeerAlertId                   UseCaseId = "NodePeerAlert"
+	GetTrustedAccountId               UseCaseId = "GetTrustedAccountUseCase"
 )
 
 var (
 	NonRecoverableError                 = errors.New("non recoverable")
+	InfrastructureUnavailableError      = errors.New("infrastructure unavailable")
 	TxBelowMinimumError                 = errors.New("requested amount should be greater than bridge's min transaction value")
 	RskAddressNotSupportedError         = errors.New("rsk address not supported")
 	QuoteNotFoundError                  = errors.New("quote not found")
@@ -177,6 +181,15 @@ func (args ErrorArgs) String() string {
 
 func WrapUseCaseError(useCase UseCaseId, err error) error {
 	return WrapUseCaseErrorArgs(useCase, err, make(ErrorArgs, 0))
+}
+
+// JoinInfrastructureUnavailable marks err as an outage, so a watcher can stop the current
+// pass and retry later instead of treating the item as failed. A nil err stays nil.
+func JoinInfrastructureUnavailable(err error) error {
+	if err == nil {
+		return nil
+	}
+	return errors.Join(err, InfrastructureUnavailableError)
 }
 
 // SafeLogStr strips CR/LF from a user-controlled string before it is included
@@ -356,6 +369,18 @@ func CheckPauseState(contracts ...blockchain.Pausable) error {
 		}
 	}
 	return nil
+}
+
+func CheckPauseLevel(registry blockchain.PauseRegistryContract, blockingLevel uint8) error {
+	level, err := registry.PauseLevel()
+	if err != nil {
+		return err
+	}
+	if level < blockingLevel {
+		return nil
+	}
+	log.Warn(LogPauseLevelBlocks(registry.GetAddress(), level))
+	return fmt.Errorf("%w. Pause level %d", blockchain.ContractPausedError, level)
 }
 
 func checkPauseState(contract blockchain.Pausable) error {

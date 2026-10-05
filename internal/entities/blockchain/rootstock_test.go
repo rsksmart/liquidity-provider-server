@@ -113,3 +113,21 @@ func TestDecodeStringTrim_Fail(t *testing.T) {
 		require.Error(t, err)
 	}
 }
+
+func TestTransactionReceipt_IsFinal(t *testing.T) {
+	receipt := blockchain.TransactionReceipt{BlockNumber: 100}
+	cases := []struct {
+		name   string
+		height uint64
+		final  bool
+	}{
+		{name: "below depth", height: 101, final: false},
+		{name: "exactly at depth", height: 102, final: true},
+		{name: "above depth", height: 150, final: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.final, receipt.IsFinal(tc.height, 2))
+		})
+	}
+}
