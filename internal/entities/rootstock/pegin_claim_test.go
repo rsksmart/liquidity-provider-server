@@ -133,3 +133,13 @@ func TestNewCandidatePegInClaim_PreservesExistingCreatedAt(t *testing.T) {
 	assert.True(t, !claim.UpdatedAt.Before(before) && !claim.UpdatedAt.After(after))
 	assert.NotEqual(t, claim.CreatedAt, claim.UpdatedAt)
 }
+
+func TestNewPegInClaimCompletedEvent(t *testing.T) {
+	claim := rootstock.PegInClaim{RskAddress: "0xabc", DepositTxID: "aa", State: rootstock.PegInClaimClaimed}
+
+	event := rootstock.NewPegInClaimCompletedEvent(claim)
+
+	assert.Equal(t, rootstock.PegInClaimCompletedEventId, event.Id())
+	assert.False(t, event.CreationTimestamp().IsZero())
+	assert.Equal(t, claim, event.Claim)
+}

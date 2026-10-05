@@ -36,6 +36,7 @@ func newSettleHarness(t *testing.T, repo rootstock.PegInClaimRepository) *settle
 				PauseRegistry:         base.pause,
 			},
 			blockchain.Rpc{Btc: base.btc, Rsk: base.rsk},
+			base.eventBus,
 			settleMaxReorgDepth,
 		),
 	}
@@ -71,6 +72,7 @@ func newSettleUseCase(
 			FlyoverConfigurations: mocks.NewFlyoverConfigurationsContractMock(t),
 		},
 		blockchain.Rpc{Btc: mocks.NewBtcRpcMock(t), Rsk: rsk},
+		claimEventBus(),
 		settleMaxReorgDepth,
 	)
 }
@@ -197,6 +199,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	require.ErrorIs(t, err, blockchain.TxFailedError)
 	require.ErrorIs(t, err, usecases.NonRecoverableError)
 	assert.Equal(t, rootstock.PegInClaimRetryableFailure, repo.stored().State)
+	harness.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
 	assert.Empty(t, repo.stored().TxHash)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
@@ -294,6 +297,7 @@ func TestSettlePegInClaimUseCase_SuccessfulReceiptWithEventSetsPegInID(t *testin
 
 	stored := repo.stored()
 	assert.Equal(t, rootstock.PegInClaimClaimed, stored.State)
+	harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimClaimed))
 	assert.Equal(t, hex.EncodeToString(pegInID[:]), stored.PegInID)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
