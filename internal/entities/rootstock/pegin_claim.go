@@ -15,6 +15,8 @@ var (
 	ErrIncorrectFronting = errors.New("incorrect fronting")
 )
 
+const PegInClaimCompletedEventId entities.EventId = "PegInClaimCompleted"
+
 type PegInClaimState string
 
 const (
@@ -75,4 +77,16 @@ func NewCandidatePegInClaim(entry PegInWatch, depositTxID string, existing *PegI
 		claim.CreatedAt = existing.CreatedAt
 	}
 	return claim
+}
+
+type PegInClaimCompletedEvent struct {
+	entities.Event
+	Claim PegInClaim
+}
+
+func NewPegInClaimCompletedEvent(claim PegInClaim) PegInClaimCompletedEvent {
+	return PegInClaimCompletedEvent{
+		Event: entities.NewBaseEvent(PegInClaimCompletedEventId),
+		Claim: claim,
+	}
 }

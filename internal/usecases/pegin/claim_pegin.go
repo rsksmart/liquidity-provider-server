@@ -21,6 +21,7 @@ type ClaimPegInUseCase struct {
 	rpc            blockchain.Rpc
 	peginProvider  liquidity_provider.PeginLiquidityProvider
 	rskWalletMutex sync.Locker
+	eventBus       entities.EventBus
 }
 
 func NewClaimPegInUseCase(
@@ -29,6 +30,7 @@ func NewClaimPegInUseCase(
 	rpc blockchain.Rpc,
 	peginProvider liquidity_provider.PeginLiquidityProvider,
 	rskWalletMutex sync.Locker,
+	eventBus entities.EventBus,
 ) *ClaimPegInUseCase {
 	return &ClaimPegInUseCase{
 		claims:         claims,
@@ -36,6 +38,7 @@ func NewClaimPegInUseCase(
 		rpc:            rpc,
 		peginProvider:  peginProvider,
 		rskWalletMutex: rskWalletMutex,
+		eventBus:       eventBus,
 	}
 }
 
@@ -281,6 +284,7 @@ func (useCase *ClaimPegInUseCase) classifySubmitError(
 		if err := useCase.claims.Update(ctx, claim); err != nil {
 			return useCase.unavailable(err)
 		}
+		useCase.eventBus.Publish(rootstock.NewPegInClaimCompletedEvent(claim))
 		return nil
 	}
 	claim.State = rootstock.PegInClaimRetryableFailure

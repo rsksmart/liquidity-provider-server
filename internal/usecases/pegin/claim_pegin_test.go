@@ -101,6 +101,18 @@ func (repo *memoryClaimRepo) stored() rootstock.PegInClaim {
 	return repo.byKey[claimKey(test.AnyRskAddress, claimDepositTxID)]
 }
 
+func claimEventBus() *mocks.EventBusMock {
+	eventBus := new(mocks.EventBusMock)
+	eventBus.On("Publish", mock.Anything).Maybe()
+	return eventBus
+}
+
+func matchClaimCompleted(state rootstock.PegInClaimState) interface{} {
+	return mock.MatchedBy(func(event rootstock.PegInClaimCompletedEvent) bool {
+		return event.Id() == rootstock.PegInClaimCompletedEventId && event.Claim.State == state
+	})
+}
+
 func claimProvider(t *testing.T) *mocks.ProviderMock {
 	t.Helper()
 	return mocks.NewProviderMock(t)
@@ -122,6 +134,7 @@ type claimHarness struct {
 	btc          *mocks.BtcRpcMock
 	rsk          *mocks.RootstockRpcServerMock
 	provider     *mocks.ProviderMock
+	eventBus     *mocks.EventBusMock
 	useCase      *pegin.ClaimPegInUseCase
 	amount       *entities.Wei
 	fee          *entities.Wei
@@ -164,6 +177,7 @@ func newClaimHarness(t *testing.T, repo rootstock.PegInClaimRepository) *claimHa
 		},
 	}
 	harness.provider = claimProvider(t)
+	harness.eventBus = claimEventBus()
 	harness.useCase = pegin.NewClaimPegInUseCase(
 		harness.repo,
 		blockchain.RskContracts{
@@ -174,6 +188,7 @@ func newClaimHarness(t *testing.T, repo rootstock.PegInClaimRepository) *claimHa
 		blockchain.Rpc{Btc: harness.btc, Rsk: harness.rsk},
 		harness.provider,
 		&sync.Mutex{},
+		harness.eventBus,
 	)
 	return harness
 }
@@ -432,6 +447,7 @@ func TestClaimPegInUseCase_PegInAlreadyProcessedIsQuietRaceLost(t *testing.T) {
 	stored := repo.stored()
 	assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
 	assert.Empty(t, stored.PegInID)
+	harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
 }
 
 func TestClaimPegInUseCase_StoredCandidateAlreadyProcessedIsRaceLost(t *testing.T) {
@@ -483,6 +499,7 @@ func TestClaimPegInUseCase_TypedFailuresAreRetryableNotClaimed(t *testing.T) {
 
 			stored := repo.stored()
 			assert.Equal(t, rootstock.PegInClaimRetryableFailure, stored.State)
+			harness.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
 			assert.NotEqual(t, rootstock.PegInClaimClaimed, stored.State)
 		})
 	}
@@ -685,6 +702,7 @@ func TestClaimPegInUseCase_SaveAlreadySubmittedDoesNotSubmit(t *testing.T) {
 		blockchain.Rpc{Btc: btc, Rsk: rsk},
 		provider,
 		&sync.Mutex{},
+		new(mocks.EventBusMock),
 	)
 	err := useCase.Run(context.Background(), entry, claimDepositTxID)
 	require.NoError(t, err)

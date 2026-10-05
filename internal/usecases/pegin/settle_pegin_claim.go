@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -16,6 +17,7 @@ type SettlePegInClaimUseCase struct {
 	claims        rootstock.PegInClaimRepository
 	contracts     blockchain.RskContracts
 	rpc           blockchain.Rpc
+	eventBus      entities.EventBus
 	maxReorgDepth uint64
 }
 
@@ -23,12 +25,14 @@ func NewSettlePegInClaimUseCase(
 	claims rootstock.PegInClaimRepository,
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
+	eventBus entities.EventBus,
 	maxReorgDepth uint64,
 ) *SettlePegInClaimUseCase {
 	return &SettlePegInClaimUseCase{
 		claims:        claims,
 		contracts:     contracts,
 		rpc:           rpc,
+		eventBus:      eventBus,
 		maxReorgDepth: maxReorgDepth,
 	}
 }
@@ -90,6 +94,7 @@ func (useCase *SettlePegInClaimUseCase) finalizeSuccess(
 	if err := useCase.claims.Update(ctx, claim); err != nil {
 		return useCase.unavailable(err)
 	}
+	useCase.eventBus.Publish(rootstock.NewPegInClaimCompletedEvent(claim))
 	return nil
 }
 
@@ -139,6 +144,7 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 		if err := useCase.claims.Update(ctx, claim); err != nil {
 			return useCase.unavailable(err)
 		}
+		useCase.eventBus.Publish(rootstock.NewPegInClaimCompletedEvent(claim))
 		return nil
 	}
 	if errors.Is(submitErr, blockchain.ErrAddressNotRegistered) ||
