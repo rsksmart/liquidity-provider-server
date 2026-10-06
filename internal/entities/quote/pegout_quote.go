@@ -32,6 +32,7 @@ const (
 	PegoutStateBridgeTxFailed                 PegoutState = "BridgeTxFailed"
 	PegoutStateBtcReleased                    PegoutState = "BtcReleased"
 	PegoutStateClaimed                        PegoutState = "Claimed"
+	PegoutStateClaimPending                   PegoutState = "ClaimPending"
 )
 
 type PegoutQuoteRepository interface {
@@ -81,9 +82,9 @@ func PegoutCreationDataZeroValue() PegoutCreationData {
 type PegoutQuote struct {
 	LbcAddress            string        `json:"lbcAddress" bson:"lbc_address" validate:"required"`
 	LpRskAddress          string        `json:"lpRskAddress" bson:"lp_rsk_address" validate:"required"`
-	BtcRefundAddress      string        `json:"btcRefundAddress" bson:"btc_refund_address" validate:"required"`
+	BtcRefundAddress      string        `json:"btcRefundAddress" bson:"btc_refund_address" validate:"omitempty"`
 	RskRefundAddress      string        `json:"rskRefundAddress" bson:"rsk_refund_address" validate:"required"`
-	LpBtcAddress          string        `json:"lpBtcAddress" bson:"lp_btc_address" validate:"required"`
+	LpBtcAddress          string        `json:"lpBtcAddress" bson:"lp_btc_address" validate:"omitempty"`
 	CallFee               *entities.Wei `json:"callFee" bson:"call_fee" validate:"required"`
 	PenaltyFee            *entities.Wei `json:"penaltyFee" bson:"penalty_fee" validate:"required"`
 	Nonce                 int64         `json:"nonce" bson:"nonce" validate:"required"`
@@ -91,7 +92,7 @@ type PegoutQuote struct {
 	Value                 *entities.Wei `json:"value" bson:"value" validate:"required"`
 	AgreementTimestamp    uint32        `json:"agreementTimestamp" bson:"agreement_timestamp" validate:"required"`
 	DepositDateLimit      uint32        `json:"depositDateLimit" bson:"deposit_date_limit" validate:"required"`
-	DepositConfirmations  uint16        `json:"depositConfirmations" bson:"deposit_confirmations" validate:"required"`
+	DepositConfirmations  uint16        `json:"depositConfirmations" bson:"deposit_confirmations" validate:"omitempty"`
 	TransferConfirmations uint16        `json:"transferConfirmations" bson:"transfer_confirmations" validate:"required"`
 	TransferTime          uint32        `json:"transferTime" bson:"transfer_time" validate:"required"`
 	ExpireDate            uint32        `json:"expireDate" bson:"expire_date" validate:"required"`

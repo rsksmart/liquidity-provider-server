@@ -42,6 +42,7 @@ var (
 	BtcAddressInvalidNetworkError = errors.New("address network is not valid")
 	BtcAddressNotSupportedError   = errors.New("btc address not supported")
 	TooManyInputsError            = errors.New("transaction has more inputs than the maximum allowed for a single transaction")
+	BtcInsufficientFundsError     = errors.New("insufficient funds")
 )
 
 const (
@@ -117,8 +118,13 @@ type BitcoinWallet interface {
 	Send(address string, value *entities.Wei) (BitcoinTransactionResult, error)
 	SendWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) (BitcoinTransactionResult, error)
 	CreateUnfundedTransactionWithOpReturn(address string, value *entities.Wei, opReturnContent []byte) ([]byte, error)
+	// ImportAddress watches an address without scanning history.
 	ImportAddress(address string) error
+	// RescanBlockchain scans from fromHeight. Negative heights are clamped to 0.
+	RescanBlockchain(fromHeight int64) (BitcoinRescanResult, error)
 	GetTransactions(address string) ([]BitcoinTransactionInformation, error)
+	// GetTransaction returns the requested wallet transaction. Conflicted confirmations (-1) map to 0.
+	GetTransaction(hash string) (BitcoinTransactionInformation, error)
 	Address() string
 	Unlock() error
 }
@@ -154,6 +160,11 @@ type BitcoinTransactionInformation struct {
 	Confirmations uint64
 	Outputs       map[string][]*entities.Wei
 	HasWitness    bool
+}
+
+type BitcoinRescanResult struct {
+	StartHeight int64
+	StopHeight  int64
 }
 
 type BitcoinBlockchainInfo struct {

@@ -156,6 +156,9 @@ func (useCase *SendPegoutUseCase) encodeHexAddress(hexAddress string) (string, e
 	if err != nil {
 		return "", err
 	}
+	if len(addressBytes) == 0 {
+		return "", nil
+	}
 	return useCase.rpc.Btc.EncodeAddress(addressBytes)
 }
 
@@ -327,7 +330,7 @@ func (useCase *SendPegoutUseCase) validateRetainedQuote(ctx context.Context, ret
 		retainedQuote.State == quote.PegoutStateClaimed
 	if !validState {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, usecases.WrongStateError, true)
-	} else if retainedQuote.UserRskTxHash == "" {
+	} else if retainedQuote.UserRskTxHash == "" && !useCase.isEscrowClaimPath(retainedQuote) {
 		return useCase.publishErrorEvent(ctx, retainedQuote, quote.PegoutQuote{}, errors.New("user rsk tx hash not provided"), true)
 	}
 	return nil

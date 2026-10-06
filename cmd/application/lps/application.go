@@ -81,7 +81,10 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	}
 	mutexes := environment.NewApplicationMutexes()
 
-	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	useCaseRegistry, err := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	if err != nil {
+		log.Fatal("Error creating use case registry:", err)
+	}
 	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, dbRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
 		env: env, timeouts: timeouts,
@@ -182,8 +185,24 @@ func (app *Application) addRunningService(service entities.Closeable) {
 
 func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher, error) {
 	var err error
+	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
+	defer cancel()
+
+	watchers := app.enabledWatchers()
+
+	for _, w := range watchers {
+		if err = w.Prepare(prepareCtx); err != nil {
+			return nil, err
+		}
+		app.addRunningService(w)
+	}
+	return watchers, nil
+}
+
+func (app *Application) enabledWatchers() []watcher.Watcher {
 	watchers := []watcher.Watcher{
 		app.watcherRegistry.PeginDepositAddressWatcher,
+		app.watcherRegistry.PegInAddressRegistryWatcher,
 		app.watcherRegistry.PeginBridgeWatcher,
 		app.watcherRegistry.PegoutRskDepositWatcher,
 		app.watcherRegistry.PegoutBtcTransferWatcher,
@@ -202,6 +221,7 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 		app.watcherRegistry.BitcoinReorgWatcher,
 		app.watcherRegistry.RootstockReorgWatcher,
 		app.watcherRegistry.ReorgMetricsWatcher,
+		app.watcherRegistry.PegInAddressRegistryMetricsWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {
@@ -209,15 +229,7 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 		watchers = append(watchers, app.watcherRegistry.BitcoinEclipseWatcher)
 	}
 
-	prepareCtx, cancel := context.WithTimeout(ctx, app.timeouts.WatcherPreparation.Seconds())
-	defer cancel()
-	for _, w := range watchers {
-		if err = w.Prepare(prepareCtx); err != nil {
-			return nil, err
-		}
-		app.addRunningService(w)
-	}
-	return watchers, nil
+	return watchers
 }
 
 func (app *Application) ShutdownServices() {

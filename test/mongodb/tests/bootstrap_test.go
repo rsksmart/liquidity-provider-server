@@ -39,6 +39,8 @@ func TestBootstrap_IndexesCreated(t *testing.T) {
 		{collection: mongo.RetainedPegoutQuoteCollection, field: "quote_hash", unique: false},
 		{collection: mongo.PeginQuoteCollection, field: "hash", unique: false},
 		{collection: mongo.PegoutQuoteCollection, field: "hash", unique: false},
+		{collection: mongo.PegInWatchCollection, field: "rsk_address", unique: true},
+		{collection: mongo.PegInWatchCollection, field: "state", unique: false},
 	}
 
 	for _, expected := range expectedIndexes {
@@ -74,6 +76,7 @@ func TestBootstrap_RegistryConstruction(t *testing.T) {
 	assert.NotNil(t, db.TrustedAccountRepository)
 	assert.NotNil(t, db.PenalizedEventRepository)
 	assert.NotNil(t, db.BatchPegOutRepository)
+	assert.NotNil(t, db.PegInWatchRepository)
 	assert.NotNil(t, db.Connection)
 }
 
