@@ -33,6 +33,9 @@ var (
 	ErrIncorrectFronting              = rootstock.ErrIncorrectFronting
 	ErrWitnessSerializedTxNotAccepted = errors.New("witness-serialized tx not accepted")
 	ErrTransactionReceiptNotFound     = errors.New("transaction receipt not found")
+	ErrPegInNotClaimed                = errors.New("peg-in not claimed")
+	ErrPegInNotResolved               = errors.New("peg-in not resolved")
+	ErrBridgeRejectedPegIn            = errors.New("bridge rejected peg-in")
 )
 
 type RskContracts struct {
