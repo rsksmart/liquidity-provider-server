@@ -104,6 +104,13 @@ func (api *MempoolSpaceApi) DecodeAddress(address string) ([]byte, error) {
 	return bitcoin.DecodeAddress(address)
 }
 
+func (api *MempoolSpaceApi) EncodeAddress(addressBytes []byte) (string, error) {
+	if err := api.validateNetwork(); err != nil {
+		return "", err
+	}
+	return bitcoin.EncodeAddress(addressBytes, api.config)
+}
+
 func (api *MempoolSpaceApi) GetTransactionInfo(hash string) (blockchain.BitcoinTransactionInformation, error) {
 	if err := api.validateNetwork(); err != nil {
 		return blockchain.BitcoinTransactionInformation{}, err

@@ -42,6 +42,7 @@ var (
 	BtcAddressInvalidNetworkError = errors.New("address network is not valid")
 	BtcAddressNotSupportedError   = errors.New("btc address not supported")
 	TooManyInputsError            = errors.New("transaction has more inputs than the maximum allowed for a single transaction")
+	BtcInsufficientFundsError     = errors.New("insufficient funds")
 )
 
 const (
@@ -131,6 +132,7 @@ type BitcoinWallet interface {
 type BitcoinNetwork interface {
 	ValidateAddress(address string) error
 	DecodeAddress(address string) ([]byte, error)
+	EncodeAddress(addressBytes []byte) (string, error)
 	GetTransactionInfo(hash string) (BitcoinTransactionInformation, error)
 	GetRawTransaction(hash string) ([]byte, error)
 	GetPartialMerkleTree(hash string) ([]byte, error)
