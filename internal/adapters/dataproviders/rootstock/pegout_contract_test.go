@@ -239,6 +239,40 @@ func TestPegoutContractImpl_HashPegoutQuote_ParsingErrors(t *testing.T) {
 	})
 }
 
+func TestPegoutContractImpl_HashPegoutQuote_ZeroDepositConfirmations(t *testing.T) {
+	escrowQuote := pegoutQuote
+	escrowQuote.DepositConfirmations = 0
+	escrowParsed := parsedPegoutQuote
+	escrowParsed.DepositConfirmations = 0
+	hash := [32]byte{1, 2, 3}
+	t.Run("HashPegoutQuote", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		pegoutBinding := bindings.NewPegoutContract()
+		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackHashPegOutQuote(escrowParsed)),
+			mock.Anything,
+		).Return(mustPackBytes32(t, hash), nil).Once()
+		result, err := pegoutContract.HashPegoutQuote(escrowQuote)
+		require.NoError(t, err)
+		assert.Equal(t, hex.EncodeToString(hash[:]), result)
+	})
+	t.Run("HashPegoutQuoteEIP712", func(t *testing.T) {
+		contractMock := createBoundContractMock()
+		pegoutBinding := bindings.NewPegoutContract()
+		pegoutContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), pegoutBinding, Abis)
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(pegoutBinding.PackHashPegOutQuoteEIP712(escrowParsed)),
+			mock.Anything,
+		).Return(mustPackBytes32(t, hash), nil).Once()
+		result, err := pegoutContract.HashPegoutQuoteEIP712(escrowQuote)
+		require.NoError(t, err)
+		assert.Equal(t, hash, result)
+	})
+}
+
 func TestPegoutContractImpl_IsPegOutQuoteCompleted(t *testing.T) {
 	const quoteHash = "762d73db7e80d845dae50d6ddda4d64d59f99352ead28afd51610e5674b08c0a"
 	parsedQuoteHash := [32]byte{0x76, 0x2d, 0x73, 0xdb, 0x7e, 0x80, 0xd8, 0x45, 0xda, 0xe5, 0xd, 0x6d, 0xdd, 0xa4, 0xd6, 0x4d, 0x59, 0xf9, 0x93, 0x52, 0xea, 0xd2, 0x8a, 0xfd, 0x51, 0x61, 0xe, 0x56, 0x74, 0xb0, 0x8c, 0xa}

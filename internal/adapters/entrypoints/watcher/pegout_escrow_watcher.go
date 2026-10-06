@@ -2,12 +2,14 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	log "github.com/sirupsen/logrus"
 )
@@ -83,6 +85,7 @@ func (watcher *PegoutEscrowWatcher) Prepare(ctx context.Context) error {
 		return err
 	}
 	log.Info(LogPegoutEscrowStart(watcher.lastScannedBlock + 1))
+	watcher.reconcilePendingClaims(ctx)
 	watcher.tryClaimCandidates(ctx)
 	return nil
 }
@@ -133,20 +136,36 @@ func (watcher *PegoutEscrowWatcher) onTick() {
 	}
 	checkContext, checkCancel := context.WithTimeout(context.Background(), watcher.checkTimeout)
 	defer checkCancel()
+	watcher.reconcilePendingClaims(checkContext)
 	watcher.tryClaimCandidates(checkContext)
+}
+
+func (watcher *PegoutEscrowWatcher) reconcilePendingClaims(ctx context.Context) {
+	if watcher.claimPegOutUseCase == nil {
+		return
+	}
+	if err := watcher.claimPegOutUseCase.ReconcilePendingClaims(ctx); err != nil {
+		log.Error(LogPegoutEscrowReconcileError(err))
+	}
 }
 
 func (watcher *PegoutEscrowWatcher) tryClaimCandidates(ctx context.Context) {
 	if watcher.claimPegOutUseCase == nil {
 		return
 	}
+	if err := usecases.CheckPauseState(watcher.contracts.PegOut); err != nil {
+		if !errors.Is(err, blockchain.ContractPausedError) {
+			log.Errorf(LogPegoutEscrowError, err)
+		}
+		return
+	}
 	for _, candidate := range watcher.GetCandidates() {
-		claimed, err := watcher.claimPegOutUseCase.Run(ctx, candidate)
+		outcome, err := watcher.claimPegOutUseCase.Run(ctx, candidate)
 		if err != nil {
 			log.Error(LogPegoutEscrowClaimError(candidate.RequestHash, err))
 			continue
 		}
-		if claimed {
+		if outcome != pegout.ClaimOutcomeSkipped {
 			if dropErr := watcher.dropCandidate(ctx, candidate.RequestHash); dropErr != nil {
 				log.Error(LogPegoutEscrowClaimError(candidate.RequestHash, dropErr))
 			}

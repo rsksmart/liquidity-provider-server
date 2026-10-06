@@ -117,7 +117,7 @@ func TestPegoutRskDepositWatcher_Start_Claimed(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskAlreadyWatched(testRetainedQuote.QuoteHash))
+		checkFunction := test.LogContains(t, watcher.LogPegoutRskAlreadyWatched(testRetainedQuote.QuoteHash))
 		claimedChannel <- quote.ClaimedPegoutQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.ClaimedPegoutQuoteEventId),
 			Quote:         testPegoutQuote,
@@ -126,7 +126,7 @@ func TestPegoutRskDepositWatcher_Start_Claimed(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle incorrect event", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskWrongEvent)
+		checkFunction := test.LogContains(t, watcher.LogPegoutRskWrongEvent)
 		claimedChannel <- quote.AcceptedPeginQuoteEvent{Event: entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId)}
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})

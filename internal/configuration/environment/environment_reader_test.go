@@ -13,26 +13,27 @@ import (
 func setUpEnv(t *testing.T) {
 	// this map is to define the value for the vars that intentionally have a zero value in the sample-config.env file
 	var sampleZeroVars = map[string]string{
-		"ENABLE_SECURITY_HEADERS":              "true",
-		"MANAGEMENT_USE_HTTPS":                 "true",
-		"ENABLE_MANAGEMENT_API":                "true",
-		"LBC_ADDR":                             "0x1234",
-		"ACCOUNT_NUM":                          "1",
-		"CAPTCHA_SECRET_KEY":                   "secret",
-		"CAPTCHA_SITE_KEY":                     "site",
-		"PEGOUT_DEPOSIT_CACHE_START_BLOCK":     "1",
-		"RSK_EXTRA_SOURCES":                    "test1,test2",
-		"BTC_EXTRA_SOURCES":                    `[{"format": "rpc", "url": "test3.com"}, {"format": "mempool", "url": "test4.com"}]`,
-		"ECLIPSE_RSK_TOLERANCE_THRESHOLD":      "5",
-		"ECLIPSE_RSK_MAX_MS_WAIT_FOR_BLOCK":    "1000",
-		"ECLIPSE_RSK_WAIT_POLLING_MS_INTERVAL": "500",
-		"ECLIPSE_BTC_TOLERANCE_THRESHOLD":      "5",
-		"ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK":    "1000",
-		"ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL": "500",
-		"ECLIPSE_ALERT_COOLDOWN_SECONDS":       "60",
-		"ECLIPSE_CHECK_ENABLED":                "true",
-		"BTC_RELEASE_WATCHER_START_BLOCK":      "1",
-		"PEGOUT_ESCROW_WATCHER_START_BLOCK":    "1",
+		"ENABLE_SECURITY_HEADERS":                    "true",
+		"MANAGEMENT_USE_HTTPS":                       "true",
+		"ENABLE_MANAGEMENT_API":                      "true",
+		"LBC_ADDR":                                   "0x1234",
+		"ACCOUNT_NUM":                                "1",
+		"CAPTCHA_SECRET_KEY":                         "secret",
+		"CAPTCHA_SITE_KEY":                           "site",
+		"PEGOUT_DEPOSIT_CACHE_START_BLOCK":           "1",
+		"RSK_EXTRA_SOURCES":                          "test1,test2",
+		"BTC_EXTRA_SOURCES":                          `[{"format": "rpc", "url": "test3.com"}, {"format": "mempool", "url": "test4.com"}]`,
+		"ECLIPSE_RSK_TOLERANCE_THRESHOLD":            "5",
+		"ECLIPSE_RSK_MAX_MS_WAIT_FOR_BLOCK":          "1000",
+		"ECLIPSE_RSK_WAIT_POLLING_MS_INTERVAL":       "500",
+		"ECLIPSE_BTC_TOLERANCE_THRESHOLD":            "5",
+		"ECLIPSE_BTC_MAX_MS_WAIT_FOR_BLOCK":          "1000",
+		"ECLIPSE_BTC_WAIT_POLLING_MS_INTERVAL":       "500",
+		"ECLIPSE_ALERT_COOLDOWN_SECONDS":             "60",
+		"ECLIPSE_CHECK_ENABLED":                      "true",
+		"BTC_RELEASE_WATCHER_START_BLOCK":            "1",
+		"PEGOUT_ESCROW_WATCHER_START_BLOCK":          "1",
+		"PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK": "1",
 		// TODO: placeholder address while PegOutEscrow is undeployed; revisit once the real contract
 		// exists and PEGOUT_ESCROW_ADDRESS becomes required (see RskEnv.PegOutEscrowAddress).
 		"PEGOUT_ESCROW_ADDRESS": "0x8901a2Bbf639bFD21A97004BA4D7aE2BD00B8DA1",
@@ -80,6 +81,15 @@ func TestLoad(t *testing.T) {
 		env := &environment.Environment{}
 		err := environment.Load(env)
 		require.NoError(t, err)
+	})
+	t.Run("preserves an explicitly configured zero start block", func(t *testing.T) {
+		t.Setenv("PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK", "0")
+		t.Setenv("PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE", "10")
+		env := &environment.Environment{}
+		require.NoError(t, environment.Load(env))
+
+		assert.Zero(t, env.Pegin.AddressRegistryWatcherStartBlock)
+		assert.Equal(t, uint64(10), env.Pegin.AddressRegistryWatcherPageSize)
 	})
 }
 
