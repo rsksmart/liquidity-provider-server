@@ -855,6 +855,20 @@ func TestPeginContractImpl_ResolvePegIn_SendErrors(t *testing.T) {
 		assert.Nil(t, result.ClaimerPayout)
 		assert.Nil(t, result.RegistrantFee)
 	})
+	t.Run("PegInResolved without data is not taken as resolved", func(t *testing.T) {
+		m := newResolvePegInMocks()
+		m.expectDryRun(t, resolvePegInOutput(t, 1000), nil)
+		emptyLog := mustPegInResolvedLog(t, resolvedFixture, common.HexToAddress(test.AnyRskAddress))
+		emptyLog.Data = nil
+		m.expectSend(t, true, emptyLog)
+
+		result, err := m.pegin.ResolvePegIn(resolvePegInParams)
+
+		require.ErrorIs(t, err, blockchain.ErrPegInNotResolved)
+		assert.Equal(t, "0x"+test.AnyHash, result.Receipt.TransactionHash)
+		assert.Nil(t, result.ClaimerPayout)
+		assert.Nil(t, result.RegistrantFee)
+	})
 }
 
 func TestPeginContractImpl_ResolvePegIn_InvalidAddress(t *testing.T) {

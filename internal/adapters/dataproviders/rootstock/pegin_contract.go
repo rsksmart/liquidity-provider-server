@@ -712,8 +712,6 @@ func (peginContract *peginContractImpl) callResolvePegIn(callData []byte) error 
 	const (
 		alreadyProcessedError = "PegInAlreadyProcessed"
 		notClaimedError       = "PegInNotClaimed"
-		// rskj UNPROCESSABLE_TX_VALIDATIONS_ERROR, returned while the deposit lacks confirmations
-		bridgeTxValidationsErrorCode = -303
 	)
 	result, callErr := peginContract.contract.CallRaw(&bind.CallOpts{From: peginContract.signer.Address()}, callData)
 	parsedRevert, err := ParseRevertReason(peginContract.abis.PegInCommitFirst, callErr)
@@ -727,6 +725,12 @@ func (peginContract *peginContractImpl) callResolvePegIn(callData []byte) error 
 	case parsedRevert != nil:
 		return fmt.Errorf("%s with: %s", resolvePegInRevertedPrefix, parsedRevert.Name)
 	}
+	return peginContract.resolvePegInResultError(result)
+}
+
+func (peginContract *peginContractImpl) resolvePegInResultError(result []byte) error {
+	// rskj UNPROCESSABLE_TX_VALIDATIONS_ERROR, returned while the deposit lacks confirmations
+	const bridgeTxValidationsErrorCode = -303
 	registerResult, err := peginContract.commitFirst.UnpackResolvePegIn(result)
 	if err != nil {
 		return fmt.Errorf("error parsing resolvePegIn result: %w", err)
@@ -749,7 +753,8 @@ func (peginContract *peginContractImpl) unpackPegInResolved(receipt *geth.Receip
 			!eventLog.Removed &&
 			eventLog.Address == contract &&
 			len(eventLog.Topics) > 0 &&
-			eventLog.Topics[0] == eventID {
+			eventLog.Topics[0] == eventID &&
+			len(eventLog.Data) > 0 {
 			return peginContract.commitFirst.UnpackPegInResolvedEvent(eventLog)
 		}
 	}
