@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -51,7 +52,7 @@ func TestAcceptQuoteUseCase_Run_Paused(t *testing.T) {
 	pegoutContract.EXPECT().GetAddress().Return("test-contract")
 
 	contracts := blockchain.RskContracts{PegOut: pegoutContract}
-	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, contracts, lp)
+	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, contracts, lp, new(mocks.TrustedAccountRepositoryMock), crypto.Keccak256)
 	result, err := useCase.Run(context.Background(), acceptPegoutQuoteHash, "")
 	assert.Empty(t, result)
 	require.ErrorIs(t, err, blockchain.ContractPausedError)
@@ -69,7 +70,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 	lp := new(mocks.ProviderMock)
 	lp.On("SignPegoutQuote", test.AnyCtx, acceptPegoutQuoteHash).Return(acceptPegoutQuoteHashSignature, nil)
 
-	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, blockchain.RskContracts{PegOut: pegoutContract}, lp)
+	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, blockchain.RskContracts{PegOut: pegoutContract}, lp, new(mocks.TrustedAccountRepositoryMock), crypto.Keccak256)
 	result, err := useCase.Run(context.Background(), quoteHash, "")
 
 	quoteRepositoryMock.AssertExpectations(t)
@@ -98,7 +99,7 @@ func TestAcceptQuoteUseCase_Run_AlreadyAccepted(t *testing.T) {
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
 
-	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, lp)
+	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, lp, new(mocks.TrustedAccountRepositoryMock), crypto.Keccak256)
 	result, err := useCase.Run(context.Background(), acceptPegoutQuoteHash, "")
 
 	require.NoError(t, err)
@@ -115,7 +116,7 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
 
-	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, lp)
+	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, lp, new(mocks.TrustedAccountRepositoryMock), crypto.Keccak256)
 	result, err := useCase.Run(context.Background(), acceptPegoutQuoteHash, "")
 
 	assert.Empty(t, result)
@@ -132,7 +133,7 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
 
-	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, lp)
+	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, lp, new(mocks.TrustedAccountRepositoryMock), crypto.Keccak256)
 	result, err := useCase.Run(context.Background(), acceptPegoutQuoteHash, "")
 
 	assert.Empty(t, result)
@@ -149,7 +150,7 @@ func TestAcceptQuoteUseCase_Run_SignError(t *testing.T) {
 	lp := new(mocks.ProviderMock)
 	lp.On("SignPegoutQuote", test.AnyCtx, acceptPegoutQuoteHash).Return("", assert.AnError).Once()
 
-	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, lp)
+	useCase := pegout.NewAcceptQuoteUseCase(quoteRepository, blockchain.RskContracts{PegOut: pegoutContract}, lp, new(mocks.TrustedAccountRepositoryMock), crypto.Keccak256)
 	result, err := useCase.Run(context.Background(), acceptPegoutQuoteHash, "")
 
 	assert.Empty(t, result)
