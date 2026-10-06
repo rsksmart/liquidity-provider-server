@@ -273,7 +273,7 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 		}, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskAlreadyWatched(testRetainedQuote.QuoteHash))
+		checkFunction := test.LogContains(t, watcher.LogPegoutRskAlreadyWatched(testRetainedQuote.QuoteHash))
 		acceptPegoutChannel <- quote.AcceptedPegoutQuoteEvent{
 			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
 			Quote:         testPegoutQuote,
@@ -282,7 +282,7 @@ func TestPegoutRskDepositWatcher_Start_QuoteAccepted(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle incorrect event sent to bus", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskWrongEvent)
+		checkFunction := test.LogContains(t, watcher.LogPegoutRskWrongEvent)
 		acceptPegoutChannel <- quote.AcceptedPeginQuoteEvent{Event: entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId)}
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
@@ -324,7 +324,7 @@ func TestPegoutRskDepositWatcher_Start_BlockchainCheck_CheckDeposits(t *testing.
 
 	go depositWatcher.Start()
 	t.Run("should handle error getting deposits", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, watcher.LogPegoutRskGetDepositsError(uint64(0), uint64(5), assert.AnError))
+		checkFunction := test.LogContains(t, watcher.LogPegoutRskGetDepositsError(uint64(0), uint64(5), assert.AnError))
 		rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(5), nil).Once()
 		pegoutContract.EXPECT().GetDepositEvents(mock.Anything, uint64(0), mock.MatchedBy(matchUinPtr(5))).Return(nil, assert.AnError)
 		tickerChannel <- time.Now()
@@ -795,7 +795,7 @@ func TestPegoutRskDepositWatcher_Start_ChainHeightError(t *testing.T) {
 
 	go depositWatcher.Start()
 
-	checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegoutRskChainHeight, assert.AnError))
+	checkFunction := test.LogContains(t, fmt.Sprintf(watcher.LogPegoutRskChainHeight, assert.AnError))
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(0), assert.AnError).Once()
 	tickerChannel <- time.Now()
 

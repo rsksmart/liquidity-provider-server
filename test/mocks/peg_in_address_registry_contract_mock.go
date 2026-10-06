@@ -295,9 +295,9 @@ func (_c *PegInAddressRegistryContractMock_GetRegistration_Call) RunAndReturn(ru
 	return _c
 }
 
-// GetRegistrationRoot provides a mock function with no fields
-func (_m *PegInAddressRegistryContractMock) GetRegistrationRoot() ([32]byte, error) {
-	ret := _m.Called()
+// GetRegistrationRoot provides a mock function with given fields: ctx, blockNumber
+func (_m *PegInAddressRegistryContractMock) GetRegistrationRoot(ctx context.Context, blockNumber uint64) ([32]byte, error) {
+	ret := _m.Called(ctx, blockNumber)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetRegistrationRoot")
@@ -305,19 +305,19 @@ func (_m *PegInAddressRegistryContractMock) GetRegistrationRoot() ([32]byte, err
 
 	var r0 [32]byte
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([32]byte, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) ([32]byte, error)); ok {
+		return rf(ctx, blockNumber)
 	}
-	if rf, ok := ret.Get(0).(func() [32]byte); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) [32]byte); ok {
+		r0 = rf(ctx, blockNumber)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([32]byte)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context, uint64) error); ok {
+		r1 = rf(ctx, blockNumber)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -331,13 +331,15 @@ type PegInAddressRegistryContractMock_GetRegistrationRoot_Call struct {
 }
 
 // GetRegistrationRoot is a helper method to define mock.On call
-func (_e *PegInAddressRegistryContractMock_Expecter) GetRegistrationRoot() *PegInAddressRegistryContractMock_GetRegistrationRoot_Call {
-	return &PegInAddressRegistryContractMock_GetRegistrationRoot_Call{Call: _e.mock.On("GetRegistrationRoot")}
+//   - ctx context.Context
+//   - blockNumber uint64
+func (_e *PegInAddressRegistryContractMock_Expecter) GetRegistrationRoot(ctx interface{}, blockNumber interface{}) *PegInAddressRegistryContractMock_GetRegistrationRoot_Call {
+	return &PegInAddressRegistryContractMock_GetRegistrationRoot_Call{Call: _e.mock.On("GetRegistrationRoot", ctx, blockNumber)}
 }
 
-func (_c *PegInAddressRegistryContractMock_GetRegistrationRoot_Call) Run(run func()) *PegInAddressRegistryContractMock_GetRegistrationRoot_Call {
+func (_c *PegInAddressRegistryContractMock_GetRegistrationRoot_Call) Run(run func(ctx context.Context, blockNumber uint64)) *PegInAddressRegistryContractMock_GetRegistrationRoot_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(context.Context), args[1].(uint64))
 	})
 	return _c
 }
@@ -347,7 +349,7 @@ func (_c *PegInAddressRegistryContractMock_GetRegistrationRoot_Call) Return(_a0 
 	return _c
 }
 
-func (_c *PegInAddressRegistryContractMock_GetRegistrationRoot_Call) RunAndReturn(run func() ([32]byte, error)) *PegInAddressRegistryContractMock_GetRegistrationRoot_Call {
+func (_c *PegInAddressRegistryContractMock_GetRegistrationRoot_Call) RunAndReturn(run func(context.Context, uint64) ([32]byte, error)) *PegInAddressRegistryContractMock_GetRegistrationRoot_Call {
 	_c.Call.Return(run)
 	return _c
 }

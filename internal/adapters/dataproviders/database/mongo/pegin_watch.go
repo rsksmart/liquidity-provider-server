@@ -1,0 +1,147 @@
+package mongo
+
+import (
+	"context"
+	"errors"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongoDb "go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+)
+
+const PegInWatchCollection = "peginWatch"
+
+type peginWatchMongoRepository struct {
+	conn *Connection
+}
+
+func NewPegInWatchMongoRepository(conn *Connection) *peginWatchMongoRepository {
+	return &peginWatchMongoRepository{conn: conn}
+}
+
+func (repo *peginWatchMongoRepository) Upsert(
+	ctx context.Context,
+	watch rootstock.PegInWatch,
+) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	filter := rskAddressIdentity(watch.RskAddress)
+	update := bson.M{"$setOnInsert": watch}
+	_, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
+		dbCtx,
+		filter,
+		update,
+		options.UpdateOne().SetUpsert(true),
+	)
+	if mongoDb.IsDuplicateKeyError(err) {
+		return nil
+	}
+	return err
+}
+
+func (repo *peginWatchMongoRepository) Get(
+	ctx context.Context,
+	rskAddress string,
+) (*rootstock.PegInWatch, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	var watch rootstock.PegInWatch
+	err := repo.conn.Collection(PegInWatchCollection).
+		FindOne(dbCtx, rskAddressIdentity(rskAddress)).
+		Decode(&watch)
+	if errors.Is(err, mongoDb.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &watch, nil
+}
+
+func (repo *peginWatchMongoRepository) List(
+	ctx context.Context,
+) ([]rootstock.PegInWatch, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	cursor, err := repo.conn.Collection(PegInWatchCollection).Find(
+		dbCtx,
+		bson.M{"rsk_address": bson.M{"$exists": true}},
+		options.Find().SetSort(bson.D{{Key: "block_number", Value: 1}, {Key: "log_index", Value: 1}}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(dbCtx)
+
+	watches := make([]rootstock.PegInWatch, 0)
+	if err = cursor.All(dbCtx, &watches); err != nil {
+		return nil, err
+	}
+	return watches, nil
+}
+
+func (repo *peginWatchMongoRepository) Update(
+	ctx context.Context,
+	watch rootstock.PegInWatch,
+) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	result, err := repo.conn.Collection(PegInWatchCollection).ReplaceOne(
+		dbCtx,
+		rskAddressIdentity(watch.RskAddress),
+		watch,
+	)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount != 1 {
+		return errors.New("pegin watch not found")
+	}
+	return nil
+}
+
+func (repo *peginWatchMongoRepository) ReplaceFromBlock(
+	ctx context.Context,
+	fromBlock uint64,
+	watches []rootstock.PegInWatch,
+) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	session, err := repo.conn.client.StartSession()
+	if err != nil {
+		return err
+	}
+	defer session.EndSession(dbCtx)
+
+	_, err = session.WithTransaction(dbCtx, func(sessionCtx context.Context) (any, error) {
+		collection := repo.conn.Collection(PegInWatchCollection)
+		if _, deleteErr := collection.DeleteMany(sessionCtx, bson.M{
+			"rsk_address":  bson.M{"$exists": true},
+			"block_number": bson.M{"$gte": fromBlock},
+		}); deleteErr != nil {
+			return nil, deleteErr
+		}
+		for _, watch := range watches {
+			if _, updateErr := collection.UpdateOne(
+				sessionCtx,
+				rskAddressIdentity(watch.RskAddress),
+				bson.M{"$setOnInsert": watch},
+				options.UpdateOne().SetUpsert(true),
+			); updateErr != nil {
+				return nil, updateErr
+			}
+		}
+		return nil, nil
+	})
+	return err
+}
+
+func rskAddressIdentity(rskAddress string) bson.M {
+	return bson.M{"rsk_address": rskAddress}
+}
