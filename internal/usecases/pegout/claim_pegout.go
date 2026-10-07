@@ -180,6 +180,7 @@ func (useCase *ClaimPegOutUseCase) loadEncodedQuote(requestHash string) (quote.P
 	if pegoutQuote.LpBtcAddress, err = useCase.encodeHexAddress(pegoutQuote.LpBtcAddress); err != nil {
 		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
+	// EIP-712 binds the completed quote; request id / OP_RETURN stay the incomplete-quote hash.
 	pegoutQuote.LpRskAddress = useCase.lp.RskAddress()
 	return pegoutQuote, nil
 }
@@ -301,7 +302,9 @@ func (useCase *ClaimPegOutUseCase) checkProfitability(
 	totalGas := new(entities.Wei).Add(claimGas, entities.NewUWei(refundPegoutGasLimit))
 	rskCost := new(entities.Wei).Mul(totalGas, gasPrice)
 	totalCost := new(entities.Wei).Add(rskCost, btcFeeEstimation.Value)
-	if pegoutQuote.CallFee.Cmp(totalCost) > 0 {
+	// GasFee is the snapshotted miner-fee cap prepaid by the user; it covers BTC fee variance.
+	revenue := new(entities.Wei).Add(pegoutQuote.CallFee, pegoutQuote.GasFee)
+	if revenue.Cmp(totalCost) > 0 {
 		return false, nil
 	}
 	log.Debug(LogClaimPegoutProfitabilitySkip(requestHash))
