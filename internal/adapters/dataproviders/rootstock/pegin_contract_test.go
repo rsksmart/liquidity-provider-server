@@ -842,33 +842,63 @@ func TestPeginContractImpl_ResolvePegIn_SendErrors(t *testing.T) {
 		assert.Nil(t, result.ClaimerPayout)
 		assert.Nil(t, result.RegistrantFee)
 	})
-	t.Run("successful receipt without PegInResolved keeps the receipt", func(t *testing.T) {
-		m := newResolvePegInMocks()
-		m.expectDryRun(t, resolvePegInOutput(t, 1000), nil)
-		otherContract := common.HexToAddress("0x0D8Fb5d32704DB2931e05DB91F64BcA6f76Ce573")
-		m.expectSend(t, true, mustPegInResolvedLog(t, resolvedFixture, otherContract))
+}
 
-		result, err := m.pegin.ResolvePegIn(resolvePegInParams)
+func TestPeginContractImpl_ResolvePegIn_ReceiptWithoutPegInResolved(t *testing.T) {
+	parsed, err := commitfirst.PeginCommitFirstContractMetaData.ParseABI()
+	require.NoError(t, err)
+	tests := []struct {
+		name   string
+		modify func(eventLog *geth.Log)
+	}{
+		{name: "log from another contract", modify: func(eventLog *geth.Log) {
+			eventLog.Address = common.HexToAddress("0x0D8Fb5d32704DB2931e05DB91F64BcA6f76Ce573")
+		}},
+		{name: "log without data", modify: func(eventLog *geth.Log) { eventLog.Data = nil }},
+		{name: "removed log", modify: func(eventLog *geth.Log) { eventLog.Removed = true }},
+		{name: "log of another event", modify: func(eventLog *geth.Log) { eventLog.Topics[0] = parsed.Events["PegInRequested"].ID }},
+		{name: "log without topics", modify: func(eventLog *geth.Log) { eventLog.Topics = nil }},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newResolvePegInMocks()
+			m.expectDryRun(t, resolvePegInOutput(t, 1000), nil)
+			eventLog := mustPegInResolvedLog(t, resolvedFixture, common.HexToAddress(test.AnyRskAddress))
+			tc.modify(eventLog)
+			m.expectSend(t, true, eventLog)
 
-		require.ErrorIs(t, err, blockchain.ErrPegInNotResolved)
-		assert.Equal(t, "0x"+test.AnyHash, result.Receipt.TransactionHash)
-		assert.Nil(t, result.ClaimerPayout)
-		assert.Nil(t, result.RegistrantFee)
-	})
-	t.Run("PegInResolved without data is not taken as resolved", func(t *testing.T) {
-		m := newResolvePegInMocks()
-		m.expectDryRun(t, resolvePegInOutput(t, 1000), nil)
-		emptyLog := mustPegInResolvedLog(t, resolvedFixture, common.HexToAddress(test.AnyRskAddress))
-		emptyLog.Data = nil
-		m.expectSend(t, true, emptyLog)
+			result, err := m.pegin.ResolvePegIn(resolvePegInParams)
 
-		result, err := m.pegin.ResolvePegIn(resolvePegInParams)
+			require.ErrorIs(t, err, blockchain.ErrPegInNotResolved)
+			assert.Equal(t, "0x"+test.AnyHash, result.Receipt.TransactionHash)
+			assert.Nil(t, result.ClaimerPayout)
+			assert.Nil(t, result.RegistrantFee)
+		})
+	}
+}
 
-		require.ErrorIs(t, err, blockchain.ErrPegInNotResolved)
-		assert.Equal(t, "0x"+test.AnyHash, result.Receipt.TransactionHash)
-		assert.Nil(t, result.ClaimerPayout)
-		assert.Nil(t, result.RegistrantFee)
-	})
+func TestPeginContractImpl_ResolvePegIn_MalformedCallResult(t *testing.T) {
+	m := newResolvePegInMocks()
+	m.expectDryRun(t, []byte{1}, nil)
+
+	result, err := m.pegin.ResolvePegIn(resolvePegInParams)
+
+	require.ErrorContains(t, err, "error parsing resolvePegIn result")
+	assert.Empty(t, result)
+	m.assertNotSent(t)
+}
+
+func TestPeginContractImpl_ResolvePegIn_PackError(t *testing.T) {
+	m := newResolvePegInMocks()
+	params := resolvePegInParams
+	params.BlockHeight = big.NewInt(-1)
+
+	result, err := m.pegin.ResolvePegIn(params)
+
+	require.ErrorContains(t, err, "negatively-signed value")
+	assert.Empty(t, result)
+	m.contractMock.caller.AssertNotCalled(t, "CallContract", mock.Anything, mock.Anything, mock.Anything)
+	m.assertNotSent(t)
 }
 
 func TestPeginContractImpl_ResolvePegIn_InvalidAddress(t *testing.T) {
