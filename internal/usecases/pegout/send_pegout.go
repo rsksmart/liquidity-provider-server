@@ -247,13 +247,13 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 	var err error
 	var newState quote.PegoutState
 
-	requestHashBytes, err := hex.DecodeString(retainedQuote.QuoteHash)
+	quoteHashBytes, err := hex.DecodeString(retainedQuote.QuoteHash)
 	if err != nil {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
 		return quote.RetainedPegoutQuote{}, useCase.publishErrorEvent(ctx, retainedQuote, *pegoutQuote, err, false)
 	}
 
-	if err = useCase.validatePegoutTransaction(retainedQuote, pegoutQuote, requestHashBytes); err != nil {
+	if err = useCase.validatePegoutTransaction(retainedQuote, pegoutQuote, quoteHashBytes); err != nil {
 		retainedQuote.UserRskTxHash = receipt.TransactionHash
 		errorStr := err.Error()
 		isNonRecoverable := strings.Contains(errorStr, "(non-recoverable)") ||
@@ -262,7 +262,7 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 	}
 
 	var txResult blockchain.BitcoinTransactionResult
-	if txResult, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, requestHashBytes); err != nil {
+	if txResult, err = useCase.btcWallet.SendWithOpReturn(pegoutQuote.DepositAddress, pegoutQuote.Value, quoteHashBytes); err != nil {
 		newState = quote.PegoutStateSendPegoutFailed
 	} else {
 		newState = quote.PegoutStateSendPegoutSucceeded
@@ -288,12 +288,12 @@ func (useCase *SendPegoutUseCase) performSendPegout(
 func (useCase *SendPegoutUseCase) validatePegoutTransaction(
 	retainedQuote quote.RetainedPegoutQuote,
 	pegoutQuote *quote.PegoutQuote,
-	requestHashBytes []byte,
+	quoteHashBytes []byte,
 ) error {
 	rawTx, err := useCase.btcWallet.CreateUnfundedTransactionWithOpReturn(
 		pegoutQuote.DepositAddress,
 		pegoutQuote.Value,
-		requestHashBytes,
+		quoteHashBytes,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create unfunded transaction (non-recoverable): %w", err)
