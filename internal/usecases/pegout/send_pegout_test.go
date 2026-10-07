@@ -1108,7 +1108,7 @@ func TestSendPegoutUseCase_Run_MultipleDepositsInOneTx(t *testing.T) {
 // nolint:funlen
 func TestSendPegoutUseCase_Step8_OpReturnCarriesEscrowId(t *testing.T) {
 	escrowId := sendPegoutRetainedQuote.QuoteHash
-	requestHashBytes, err := hex.DecodeString(escrowId)
+	quoteHashBytes, err := hex.DecodeString(escrowId)
 	require.NoError(t, err)
 
 	retained := sendPegoutRetainedQuote
@@ -1125,8 +1125,8 @@ func TestSendPegoutUseCase_Step8_OpReturnCarriesEscrowId(t *testing.T) {
 	unfundedTx := []byte{0x0a, 0x0b}
 	btcWallet := new(mocks.BitcoinWalletMock)
 	btcWallet.On("GetBalance").Return(entities.NewWei(100_000), nil).Once()
-	btcWallet.On("CreateUnfundedTransactionWithOpReturn", encodedDest, escrowQuote.Value, requestHashBytes).Return(unfundedTx, nil).Once()
-	btcWallet.On("SendWithOpReturn", encodedDest, escrowQuote.Value, requestHashBytes).Return(
+	btcWallet.On("CreateUnfundedTransactionWithOpReturn", encodedDest, escrowQuote.Value, quoteHashBytes).Return(unfundedTx, nil).Once()
+	btcWallet.On("SendWithOpReturn", encodedDest, escrowQuote.Value, quoteHashBytes).Return(
 		blockchain.BitcoinTransactionResult{Hash: btcTxHash, Fee: btcFee}, nil,
 	).Once()
 
@@ -1168,8 +1168,8 @@ func TestSendPegoutUseCase_Step8_OpReturnCarriesEscrowId(t *testing.T) {
 	err = useCase.Run(context.Background(), retained)
 	require.NoError(t, err)
 
-	btcWallet.AssertCalled(t, "SendWithOpReturn", encodedDest, escrowQuote.Value, requestHashBytes)
-	btcWallet.AssertCalled(t, "CreateUnfundedTransactionWithOpReturn", encodedDest, escrowQuote.Value, requestHashBytes)
+	btcWallet.AssertCalled(t, "SendWithOpReturn", encodedDest, escrowQuote.Value, quoteHashBytes)
+	btcWallet.AssertCalled(t, "CreateUnfundedTransactionWithOpReturn", encodedDest, escrowQuote.Value, quoteHashBytes)
 	btcWallet.AssertExpectations(t)
 	escrow.AssertExpectations(t)
 	quoteRepository.AssertExpectations(t)

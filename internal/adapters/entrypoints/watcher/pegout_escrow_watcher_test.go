@@ -117,7 +117,7 @@ func TestPegoutEscrowWatcher_KeepsRequestOnClaimError(t *testing.T) {
 	assert.Len(t, f.watcher.GetCandidates(), 1)
 }
 
-func matchUin64Ptr(expected uint64) interface{} {
+func matchUint64Ptr(expected uint64) interface{} {
 	return mock.MatchedBy(func(v *uint64) bool {
 		return v != nil && *v == expected
 	})
@@ -141,7 +141,7 @@ func newEscrowScanFixtures(t *testing.T) (
 	return escrow, repo, rskRpc, ticker, tickerChannel
 }
 
-func foreignRequested() blockchain.PegOutRequested {
+func foreignPegOutRequest() blockchain.PegOutRequested {
 	return blockchain.PegOutRequested{
 		RequestHash:        escrowWatcherRequestHash,
 		RefundAddress:      "0x1111111111111111111111111111111111111111",
@@ -160,11 +160,11 @@ func TestPegoutEscrowWatcher_Step5_DiscoversForeignRequest(t *testing.T) {
 	repo.On("GetCheckpoint", mock.Anything).Return(uint64(10), true, nil).Once()
 	repo.On("ListCandidates", mock.Anything).Return([]blockchain.PegOutRequested{}, nil).Once()
 
-	requested := foreignRequested()
+	requested := foreignPegOutRequest()
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(20), nil).Once()
-	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutRequested{requested}, nil).Once()
-	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutClaimed{}, nil).Once()
-	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutCancelled{}, nil).Once()
+	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutRequested{requested}, nil).Once()
+	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutClaimed{}, nil).Once()
+	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutCancelled{}, nil).Once()
 	repo.On("UpsertCandidate", mock.Anything, requested).Return(nil).Once()
 	repo.On("SetCheckpoint", mock.Anything, uint64(20)).Return(nil).Once()
 
@@ -195,21 +195,21 @@ func TestPegoutEscrowWatcher_Step5_DropsOnClaimedEvent(t *testing.T) {
 	escrow, repo, rskRpc, ticker, tickerChannel := newEscrowScanFixtures(t)
 	contracts := blockchain.RskContracts{PegOutEscrow: escrow}
 	rpc := blockchain.Rpc{Rsk: rskRpc}
-	requested := foreignRequested()
+	requested := foreignPegOutRequest()
 
 	repo.On("GetCheckpoint", mock.Anything).Return(uint64(10), true, nil).Once()
 	repo.On("ListCandidates", mock.Anything).Return([]blockchain.PegOutRequested{requested}, nil).Once()
 	escrow.EXPECT().GetPegOutState(escrowWatcherRequestHash).Return(blockchain.EscrowedPegOutStateRequested, nil).Once()
 
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(20), nil).Once()
-	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutRequested{}, nil).Once()
-	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutClaimed{{
+	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutRequested{}, nil).Once()
+	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutClaimed{{
 		LpAddress:   "0xlp",
 		RequestHash: escrowWatcherRequestHash,
 		TxHash:      "0xclaim",
 		BlockNumber: 15,
 	}}, nil).Once()
-	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutCancelled{}, nil).Once()
+	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutCancelled{}, nil).Once()
 	repo.On("DeleteCandidate", mock.Anything, escrowWatcherRequestHash).Return(nil).Once()
 	repo.On("SetCheckpoint", mock.Anything, uint64(20)).Return(nil).Once()
 
@@ -236,16 +236,16 @@ func TestPegoutEscrowWatcher_Step5_DropsOnCancelledEvent(t *testing.T) {
 	escrow, repo, rskRpc, ticker, tickerChannel := newEscrowScanFixtures(t)
 	contracts := blockchain.RskContracts{PegOutEscrow: escrow}
 	rpc := blockchain.Rpc{Rsk: rskRpc}
-	requested := foreignRequested()
+	requested := foreignPegOutRequest()
 
 	repo.On("GetCheckpoint", mock.Anything).Return(uint64(10), true, nil).Once()
 	repo.On("ListCandidates", mock.Anything).Return([]blockchain.PegOutRequested{requested}, nil).Once()
 	escrow.EXPECT().GetPegOutState(escrowWatcherRequestHash).Return(blockchain.EscrowedPegOutStateRequested, nil).Once()
 
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(20), nil).Once()
-	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutRequested{}, nil).Once()
-	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutClaimed{}, nil).Once()
-	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUin64Ptr(20)).Return([]blockchain.PegOutCancelled{{
+	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutRequested{}, nil).Once()
+	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutClaimed{}, nil).Once()
+	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutCancelled{{
 		RequestHash: escrowWatcherRequestHash,
 		TxHash:      "0xcancel",
 		BlockNumber: 16,
@@ -276,9 +276,9 @@ func TestPegoutEscrowWatcher_Step5_ReconcilesStaleCandidateOnRestart(t *testing.
 	contracts := blockchain.RskContracts{PegOutEscrow: escrow}
 	rpc := blockchain.Rpc{Rsk: rskRpc}
 
-	stale := foreignRequested()
+	stale := foreignPegOutRequest()
 	stale.RequestHash = "stalehash000000000000000000000000000000000000000000000000000000000"
-	alive := foreignRequested()
+	alive := foreignPegOutRequest()
 
 	repo.On("GetCheckpoint", mock.Anything).Return(uint64(100), true, nil).Once()
 	repo.On("ListCandidates", mock.Anything).Return([]blockchain.PegOutRequested{stale, alive}, nil).Once()
@@ -308,16 +308,16 @@ func TestPegoutEscrowWatcher_Step5_AdvancesCheckpointWithoutReprocess(t *testing
 
 	// First tick: scan 11..15
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(15), nil).Once()
-	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUin64Ptr(15)).Return(nil, nil).Once()
-	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUin64Ptr(15)).Return(nil, nil).Once()
-	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUin64Ptr(15)).Return(nil, nil).Once()
+	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUint64Ptr(15)).Return(nil, nil).Once()
+	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUint64Ptr(15)).Return(nil, nil).Once()
+	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUint64Ptr(15)).Return(nil, nil).Once()
 	repo.On("SetCheckpoint", mock.Anything, uint64(15)).Return(nil).Once()
 
 	// Second tick: must start at 16, not re-fetch 11..15
 	rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(18), nil).Once()
-	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(16), matchUin64Ptr(18)).Return(nil, nil).Once()
-	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(16), matchUin64Ptr(18)).Return(nil, nil).Once()
-	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(16), matchUin64Ptr(18)).Return(nil, nil).Once()
+	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(16), matchUint64Ptr(18)).Return(nil, nil).Once()
+	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(16), matchUint64Ptr(18)).Return(nil, nil).Once()
+	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(16), matchUint64Ptr(18)).Return(nil, nil).Once()
 	repo.On("SetCheckpoint", mock.Anything, uint64(18)).Return(nil).Once()
 
 	w := watcher.NewPegoutEscrowWatcher(contracts, rpc, repo, nil, ticker, 0, 2000, time.Second)
