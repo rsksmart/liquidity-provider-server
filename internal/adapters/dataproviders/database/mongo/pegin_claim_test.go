@@ -113,7 +113,7 @@ func TestPegInClaimMongoRepository_Get(t *testing.T) {
 
 func TestPegInClaimMongoRepository_Update(t *testing.T) {
 	claim := samplePegInClaim(rootstock.PegInClaimSubmitting)
-	claim.TxHash = "0xabc"
+	claim.RequestTxHash = "0xabc"
 	identity := pegInClaimIdentity(claim)
 
 	t.Run("replaces a matching claim", func(t *testing.T) {

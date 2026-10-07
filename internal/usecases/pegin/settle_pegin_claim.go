@@ -38,13 +38,13 @@ func NewSettlePegInClaimUseCase(
 }
 
 func (useCase *SettlePegInClaimUseCase) Run(ctx context.Context, claim rootstock.PegInClaim) error {
-	if claim.TxHash == "" {
-		log.Error(LogPegInClaimEmptyTxHash(claim.RskAddress, claim.DepositTxID))
+	if claim.RequestTxHash == "" {
+		log.Error(LogPegInClaimEmptyRequestTxHash(claim.RskAddress, claim.DepositTxID))
 		return nil
 	}
-	receipt, err := useCase.rpc.Rsk.GetTransactionReceipt(ctx, claim.TxHash)
+	receipt, err := useCase.rpc.Rsk.GetTransactionReceipt(ctx, claim.RequestTxHash)
 	if errors.Is(err, blockchain.ErrTransactionReceiptNotFound) {
-		log.Error(LogPegInClaimMissingReceipt(claim.TxHash, claim.RskAddress, claim.DepositTxID))
+		log.Error(LogPegInClaimMissingReceipt(claim.RequestTxHash, claim.RskAddress, claim.DepositTxID))
 		return nil
 	}
 	if err != nil {
@@ -90,7 +90,7 @@ func (useCase *SettlePegInClaimUseCase) finalizeSuccess(
 	event, unpackErr := useCase.contracts.PegIn.UnpackPegInRequested(receipt)
 	if unpackErr != nil {
 		// Keep a PegInID the submit path already stored.
-		log.Error(LogPegInClaimMissingEvent(claim.TxHash, claim.RskAddress, claim.DepositTxID, unpackErr))
+		log.Error(LogPegInClaimMissingEvent(claim.RequestTxHash, claim.RskAddress, claim.DepositTxID, unpackErr))
 	} else {
 		claim.PegInID = hex.EncodeToString(event.PegInId[:])
 	}
@@ -153,7 +153,7 @@ func (useCase *SettlePegInClaimUseCase) classifySubmitError(
 		errors.Is(submitErr, blockchain.ErrIncorrectFronting) ||
 		errors.Is(submitErr, blockchain.ErrPegInBelowMinimum) {
 		claim.State = rootstock.PegInClaimRetryableFailure
-		claim.TxHash = ""
+		claim.RequestTxHash = ""
 		claim.UpdatedAt = time.Now().UTC()
 		if err := useCase.claims.Update(ctx, claim); err != nil {
 			return usecases.JoinInfrastructureUnavailable(errors.Join(submitErr, err))
@@ -168,7 +168,7 @@ func (useCase *SettlePegInClaimUseCase) failRetryable(
 	claim rootstock.PegInClaim,
 ) error {
 	claim.State = rootstock.PegInClaimRetryableFailure
-	claim.TxHash = ""
+	claim.RequestTxHash = ""
 	claim.UpdatedAt = time.Now().UTC()
 	if err := useCase.claims.Update(ctx, claim); err != nil {
 		return usecases.JoinInfrastructureUnavailable(errors.Join(blockchain.TxFailedError, err))

@@ -28,11 +28,11 @@ const (
 )
 
 type PegInClaim struct {
-	RskAddress  string          `json:"rskAddress" bson:"rsk_address"`
-	DepositTxID string          `json:"depositTxId" bson:"deposit_txid"`
-	BtcAddress  string          `json:"btcAddress" bson:"btc_address"`
-	State       PegInClaimState `json:"state" bson:"state"`
-	TxHash      string          `json:"txHash" bson:"tx_hash"`
+	RskAddress    string          `json:"rskAddress" bson:"rsk_address"`
+	DepositTxID   string          `json:"depositTxId" bson:"deposit_txid"`
+	BtcAddress    string          `json:"btcAddress" bson:"btc_address"`
+	State         PegInClaimState `json:"state" bson:"state"`
+	RequestTxHash string          `json:"requestTxHash" bson:"request_tx_hash"`
 	// Empty when a successful receipt has no PegInRequested event to unpack.
 	PegInID   string    `json:"pegInId" bson:"peg_in_id"`
 	CreatedAt time.Time `json:"createdAt" bson:"created_at"`

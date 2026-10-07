@@ -91,7 +91,7 @@ func TestSettlePegInClaimUseCase_EmptyHashDoesNotResubmit(t *testing.T) {
 	useCase := newSettleUseCase(t, claims, peginContract, rsk)
 
 	claim := submittingClaim()
-	claim.TxHash = ""
+	claim.RequestTxHash = ""
 	err := useCase.Run(context.Background(), claim)
 	require.NoError(t, err)
 	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
@@ -203,7 +203,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyNilIsRetryable(t *testing.T) {
 	require.ErrorIs(t, err, usecases.NonRecoverableError)
 	assert.Equal(t, rootstock.PegInClaimRetryableFailure, lastSaved().State)
 	harness.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
-	assert.Empty(t, lastSaved().TxHash)
+	assert.Empty(t, lastSaved().RequestTxHash)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
@@ -368,7 +368,7 @@ func TestSettlePegInClaimUseCase_TxFailedIdentifyTypedContractErrorIsRetryable(t
 			require.NotErrorIs(t, err, usecases.InfrastructureUnavailableError)
 			stored := lastSaved()
 			assert.Equal(t, rootstock.PegInClaimRetryableFailure, stored.State)
-			assert.Empty(t, stored.TxHash)
+			assert.Empty(t, stored.RequestTxHash)
 			harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 		})
 	}

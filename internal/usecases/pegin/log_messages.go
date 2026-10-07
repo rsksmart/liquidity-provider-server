@@ -2,9 +2,9 @@ package pegin
 
 import "fmt"
 
-func LogPegInClaimEmptyTxHash(rskAddress, depositTxID string) string {
+func LogPegInClaimEmptyRequestTxHash(rskAddress, depositTxID string) string {
 	return fmt.Sprintf(
-		"PegInClaimWatcher: submitting claim %s/%s has empty TxHash; follow incident-recovery; not resubmitting",
+		"PegInClaimWatcher: submitting claim %s/%s has empty RequestTxHash; follow incident-recovery; not resubmitting",
 		rskAddress,
 		depositTxID,
 	)
@@ -19,9 +19,9 @@ func LogPegInClaimMissingReceipt(txHash, rskAddress, depositTxID string) string 
 	)
 }
 
-func LogPegInClaimSubmittingEmptyTxHash(rskAddress, depositTxID string) string {
+func LogPegInClaimSubmittingEmptyRequestTxHash(rskAddress, depositTxID string) string {
 	return fmt.Sprintf(
-		"PegInClaim: submitting claim %s/%s has empty TxHash; follow incident-recovery; not resubmitting",
+		"PegInClaim: submitting claim %s/%s has empty RequestTxHash; follow incident-recovery; not resubmitting",
 		rskAddress,
 		depositTxID,
 	)

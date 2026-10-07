@@ -171,7 +171,7 @@ func expectUpdatesOk(claims *mocks.PegInClaimRepositoryMock) {
 
 func matchSubmittingEmptyHash() interface{} {
 	return mock.MatchedBy(func(claim rootstock.PegInClaim) bool {
-		return claim.State == rootstock.PegInClaimSubmitting && claim.TxHash == ""
+		return claim.State == rootstock.PegInClaimSubmitting && claim.RequestTxHash == ""
 	})
 }
 
@@ -181,7 +181,7 @@ func expectMarkerUpdate(claims *mocks.PegInClaimRepositoryMock) {
 
 func submittingEmptyHashClaim() rootstock.PegInClaim {
 	created := submittingClaim()
-	created.TxHash = ""
+	created.RequestTxHash = ""
 	return created
 }
 
@@ -310,7 +310,7 @@ func TestClaimPegInUseCase_WinPersistsSubmittingWithHashAndPegInID(t *testing.T)
 	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
 	assert.Equal(t, hex.EncodeToString(pegInID[:]), stored.PegInID)
-	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	assert.Equal(t, claimRskTxHash, stored.RequestTxHash)
 	harness.pegin.AssertExpectations(t)
 	harness.rsk.AssertNotCalled(t, "GetHeight", mock.Anything)
 }
@@ -346,7 +346,7 @@ func TestClaimPegInUseCase_SimulateAlreadyProcessedPersistsRaceLost(t *testing.T
 		stored := lastSaved()
 		assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
 		harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
-		assert.Empty(t, stored.TxHash)
+		assert.Empty(t, stored.RequestTxHash)
 		harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 		harness.rsk.AssertNotCalled(t, "GasPrice", mock.Anything)
@@ -366,7 +366,7 @@ func TestClaimPegInUseCase_SimulateAlreadyProcessedPersistsRaceLost(t *testing.T
 		stored := lastSaved()
 		assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
 		harness.eventBus.AssertCalled(t, "Publish", matchClaimCompleted(rootstock.PegInClaimRaceLost))
-		assert.Empty(t, stored.TxHash)
+		assert.Empty(t, stored.RequestTxHash)
 		harness.pegin.AssertNotCalled(t, "EstimateRequestPegInGas", mock.Anything)
 		harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 	})
@@ -409,12 +409,12 @@ func TestClaimPegInUseCase_StoredCandidateAlreadyProcessedIsRaceLost(t *testing.
 	require.NoError(t, err)
 	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimRaceLost, stored.State)
-	assert.Empty(t, stored.TxHash)
+	assert.Empty(t, stored.RequestTxHash)
 	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
 }
 
-func TestLogPegInClaimSubmittingEmptyTxHash(t *testing.T) {
-	msg := pegin.LogPegInClaimSubmittingEmptyTxHash(test.AnyRskAddress, claimDepositTxID)
+func TestLogPegInClaimSubmittingEmptyRequestTxHash(t *testing.T) {
+	msg := pegin.LogPegInClaimSubmittingEmptyRequestTxHash(test.AnyRskAddress, claimDepositTxID)
 	assert.Contains(t, msg, "follow incident-recovery")
 	assert.Contains(t, msg, test.AnyRskAddress)
 	assert.Contains(t, msg, claimDepositTxID)
@@ -511,12 +511,12 @@ func TestClaimPegInUseCase_TerminalStatesAreNoOp(t *testing.T) {
 	} {
 		t.Run(string(state), func(t *testing.T) {
 			existing := rootstock.PegInClaim{
-				RskAddress:  test.AnyRskAddress,
-				DepositTxID: claimDepositTxID,
-				BtcAddress:  claimBtcAddress,
-				State:       state,
-				TxHash:      claimRskTxHash,
-				PegInID:     "already",
+				RskAddress:    test.AnyRskAddress,
+				DepositTxID:   claimDepositTxID,
+				BtcAddress:    claimBtcAddress,
+				State:         state,
+				RequestTxHash: claimRskTxHash,
+				PegInID:       "already",
 			}
 			claims := mocks.NewPegInClaimRepositoryMock(t)
 			harness := newClaimHarness(t, claims)
@@ -534,11 +534,11 @@ func TestClaimPegInUseCase_TerminalStatesAreNoOp(t *testing.T) {
 
 func submittingClaim() rootstock.PegInClaim {
 	return rootstock.PegInClaim{
-		RskAddress:  test.AnyRskAddress,
-		DepositTxID: claimDepositTxID,
-		BtcAddress:  claimBtcAddress,
-		State:       rootstock.PegInClaimSubmitting,
-		TxHash:      claimRskTxHash,
+		RskAddress:    test.AnyRskAddress,
+		DepositTxID:   claimDepositTxID,
+		BtcAddress:    claimBtcAddress,
+		State:         rootstock.PegInClaimSubmitting,
+		RequestTxHash: claimRskTxHash,
 	}
 }
 
@@ -585,7 +585,7 @@ func TestClaimPegInUseCase_ZeroFirstOutputDoesNotSubmit(t *testing.T) {
 	})
 }
 
-func TestClaimPegInUseCase_ExistingTxHashDoesNotSubmit(t *testing.T) {
+func TestClaimPegInUseCase_ExistingRequestTxHashDoesNotSubmit(t *testing.T) {
 	claims := mocks.NewPegInClaimRepositoryMock(t)
 	harness := newClaimHarness(t, claims)
 	expectExistingClaim(claims, submittingClaim())
@@ -823,7 +823,7 @@ func TestClaimPegInUseCase_SuccessfulSendWithoutEventStaysSubmitting(t *testing.
 	require.NoError(t, err)
 	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
-	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	assert.Equal(t, claimRskTxHash, stored.RequestTxHash)
 	var emptyPegInID [32]byte
 	assert.Equal(t, hex.EncodeToString(emptyPegInID[:]), stored.PegInID)
 }
@@ -913,7 +913,7 @@ func TestClaimPegInUseCase_HashedSubmitErrorStaysSubmitting(t *testing.T) {
 	require.NoError(t, err)
 	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
-	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	assert.Equal(t, claimRskTxHash, stored.RequestTxHash)
 	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
 }
 
@@ -1022,7 +1022,7 @@ func TestClaimPegInUseCase_InsertConflictKeepsStoredCreatedAt(t *testing.T) {
 
 	stored := lastSaved()
 	assert.Equal(t, storedByOtherWriter.CreatedAt, stored.CreatedAt)
-	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	assert.Equal(t, claimRskTxHash, stored.RequestTxHash)
 	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
 	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
 }
@@ -1127,7 +1127,7 @@ func TestClaimPegInUseCase_HashPersistUsesDetachedContext(t *testing.T) {
 			if !ok {
 				return
 			}
-			if sawHashPersist || claim.TxHash != claimRskTxHash {
+			if sawHashPersist || claim.RequestTxHash != claimRskTxHash {
 				return
 			}
 			ctxArg, ok := args.Get(0).(context.Context)
@@ -1195,7 +1195,7 @@ func TestClaimPegInUseCase_CandidateEmptyHashRetriesSubmit(t *testing.T) {
 	require.NoError(t, err)
 	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
-	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	assert.Equal(t, claimRskTxHash, stored.RequestTxHash)
 	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
 }
 
@@ -1213,7 +1213,7 @@ func TestClaimPegInUseCase_RetryableFailureEmptyHashRetriesSubmit(t *testing.T) 
 	require.NoError(t, err)
 	stored := lastSaved()
 	assert.Equal(t, rootstock.PegInClaimSubmitting, stored.State)
-	assert.Equal(t, claimRskTxHash, stored.TxHash)
+	assert.Equal(t, claimRskTxHash, stored.RequestTxHash)
 	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
 }
 
@@ -1226,7 +1226,7 @@ func TestClaimPegInUseCase_HashPersistFailThenNextRunDoesNotSubmit(t *testing.T)
 	expectInsertOk(claims)
 	expectMarkerUpdate(claims)
 	claims.On("Update", mock.Anything, mock.MatchedBy(func(claim rootstock.PegInClaim) bool {
-		return claim.TxHash == claimRskTxHash
+		return claim.RequestTxHash == claimRskTxHash
 	})).Return(assert.AnError).Once()
 	marker := submittingEmptyHashClaim()
 	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).Return(&marker, nil).Once()
@@ -1272,7 +1272,7 @@ func TestClaimPegInUseCase_MarkerUpdateErrorLeavesCandidate(t *testing.T) {
 	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
 	require.ErrorIs(t, err, usecases.InfrastructureUnavailableError)
 	assert.Equal(t, rootstock.PegInClaimCandidate, inserted.State)
-	assert.Empty(t, inserted.TxHash)
+	assert.Empty(t, inserted.RequestTxHash)
 	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
 }
 
