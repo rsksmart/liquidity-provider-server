@@ -25,6 +25,8 @@ const (
 	PegInClaimClaimed          PegInClaimState = "claimed"
 	PegInClaimRaceLost         PegInClaimState = "race_lost"
 	PegInClaimRetryableFailure PegInClaimState = "retryable_failure"
+	PegInClaimResolved         PegInClaimState = "resolved"
+	PegInClaimResolveFailed    PegInClaimState = "resolve_failed"
 )
 
 type PegInClaim struct {
@@ -34,9 +36,14 @@ type PegInClaim struct {
 	State         PegInClaimState `json:"state" bson:"state"`
 	RequestTxHash string          `json:"requestTxHash" bson:"request_tx_hash"`
 	// Empty when a successful receipt has no PegInRequested event to unpack.
-	PegInID   string    `json:"pegInId" bson:"peg_in_id"`
-	CreatedAt time.Time `json:"createdAt" bson:"created_at"`
-	UpdatedAt time.Time `json:"updatedAt" bson:"updated_at"`
+	PegInID         string        `json:"pegInId" bson:"peg_in_id"`
+	ResolveTxHash   string        `json:"resolveTxHash" bson:"resolve_tx_hash"`
+	ResolveGasUsed  uint64        `json:"resolveGasUsed" bson:"resolve_gas_used"`
+	ResolveGasPrice *entities.Wei `json:"resolveGasPrice" bson:"resolve_gas_price"`
+	ClaimerPayout   *entities.Wei `json:"claimerPayout" bson:"claimer_payout"`
+	RegistrantFee   *entities.Wei `json:"registrantFee" bson:"registrant_fee"`
+	CreatedAt       time.Time     `json:"createdAt" bson:"created_at"`
+	UpdatedAt       time.Time     `json:"updatedAt" bson:"updated_at"`
 }
 
 type PegInClaimRepository interface {
@@ -60,7 +67,17 @@ func (claim *PegInClaim) IsTerminal() bool {
 	if claim == nil {
 		return false
 	}
-	return claim.State == PegInClaimClaimed || claim.State == PegInClaimRaceLost
+	return claim.State == PegInClaimRaceLost ||
+		claim.State == PegInClaimResolved ||
+		claim.State == PegInClaimResolveFailed
+}
+
+func (claim *PegInClaim) IsClaimed() bool {
+	return claim != nil && claim.State == PegInClaimClaimed
+}
+
+func (claim *PegInClaim) IsResolvable() bool {
+	return claim.IsClaimed() && claim.PegInID != ""
 }
 
 func NewCandidatePegInClaim(entry PegInWatch, depositTxID string, existing *PegInClaim) PegInClaim {

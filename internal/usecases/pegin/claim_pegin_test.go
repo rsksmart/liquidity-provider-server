@@ -413,6 +413,32 @@ func TestClaimPegInUseCase_StoredCandidateAlreadyProcessedIsRaceLost(t *testing.
 	harness.pegin.AssertNumberOfCalls(t, "RequestPegIn", 1)
 }
 
+func TestClaimPegInUseCase_SaveConflictClaimedAlreadyProcessedKeepsClaim(t *testing.T) {
+	claims := mocks.NewPegInClaimRepositoryMock(t)
+	harness := newClaimHarness(t, claims)
+	stored := rootstock.PegInClaim{
+		RskAddress:    test.AnyRskAddress,
+		DepositTxID:   claimDepositTxID,
+		BtcAddress:    claimBtcAddress,
+		State:         rootstock.PegInClaimClaimed,
+		RequestTxHash: claimRskTxHash,
+		PegInID:       "0a1b",
+	}
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return((*rootstock.PegInClaim)(nil), nil).Once()
+	claims.On("Get", mock.Anything, test.AnyRskAddress, claimDepositTxID).
+		Return(&stored, nil).Once()
+	harness.expectGatesBeforeSpendable()
+	harness.pegin.On("SimulateRequestPegIn", mock.Anything).Return(blockchain.ErrPegInAlreadyProcessed).Once()
+
+	err := harness.useCase.Run(context.Background(), harness.entry, claimDepositTxID)
+	require.NoError(t, err)
+	claims.AssertNotCalled(t, "Insert", mock.Anything, mock.Anything)
+	claims.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	harness.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
+	harness.pegin.AssertNotCalled(t, "RequestPegIn", mock.Anything)
+}
+
 func TestLogPegInClaimSubmittingEmptyRequestTxHash(t *testing.T) {
 	msg := pegin.LogPegInClaimSubmittingEmptyRequestTxHash(test.AnyRskAddress, claimDepositTxID)
 	assert.Contains(t, msg, "follow incident-recovery")
@@ -508,6 +534,8 @@ func TestClaimPegInUseCase_TerminalStatesAreNoOp(t *testing.T) {
 	for _, state := range []rootstock.PegInClaimState{
 		rootstock.PegInClaimClaimed,
 		rootstock.PegInClaimRaceLost,
+		rootstock.PegInClaimResolved,
+		rootstock.PegInClaimResolveFailed,
 	} {
 		t.Run(string(state), func(t *testing.T) {
 			existing := rootstock.PegInClaim{

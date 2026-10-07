@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -83,6 +84,26 @@ func TestPegInClaimMongoRepository_Get(t *testing.T) {
 		result, err := repo.Get(context.Background(), claim.RskAddress, claim.DepositTxID)
 		require.NoError(t, err)
 		assert.Equal(t, &claim, result)
+		collection.AssertExpectations(t)
+	})
+
+	t.Run("loads a resolved claim with its resolve fields", func(t *testing.T) {
+		resolved := samplePegInClaim(rootstock.PegInClaimResolved)
+		resolved.RequestTxHash = "0xabc"
+		resolved.PegInID = "0a1b"
+		resolved.ResolveTxHash = "0xdef"
+		resolved.ResolveGasUsed = 150000
+		resolved.ResolveGasPrice = entities.NewWei(60000000)
+		resolved.ClaimerPayout = entities.NewWei(1000)
+		resolved.RegistrantFee = entities.NewWei(10)
+		client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+		collection.EXPECT().FindOne(mock.Anything, identity).
+			Return(mongoDb.NewSingleResultFromDocument(resolved, nil, nil)).Once()
+
+		repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+		result, err := repo.Get(context.Background(), resolved.RskAddress, resolved.DepositTxID)
+		require.NoError(t, err)
+		assert.Equal(t, &resolved, result)
 		collection.AssertExpectations(t)
 	})
 

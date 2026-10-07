@@ -95,7 +95,7 @@ func (useCase *ClaimPegInUseCase) runnableClaim(
 	if err != nil {
 		return nil, false, usecases.JoinInfrastructureUnavailable(err)
 	}
-	if existing != nil && (existing.IsTerminal() || existing.RequestTxHash != "") {
+	if existing != nil && (existing.IsTerminal() || existing.IsClaimed() || existing.RequestTxHash != "") {
 		return nil, false, nil
 	}
 	if existing != nil && existing.State == rootstock.PegInClaimSubmitting {
@@ -278,7 +278,7 @@ func (useCase *ClaimPegInUseCase) persistAlreadyProcessed(ctx context.Context, r
 	if err != nil {
 		return usecases.JoinInfrastructureUnavailable(err)
 	}
-	if alreadySubmitted && stored.IsTerminal() {
+	if alreadySubmitted && (stored.IsTerminal() || stored.IsClaimed()) {
 		return nil
 	}
 	return useCase.classifySubmitError(ctx, stored, blockchain.ErrPegInAlreadyProcessed)
@@ -344,7 +344,7 @@ func (useCase *ClaimPegInUseCase) refreshClaim(
 	claim rootstock.PegInClaim,
 	existing *rootstock.PegInClaim,
 ) (stored rootstock.PegInClaim, alreadySubmitted bool, err error) {
-	if existing.IsTerminal() || existing.State == rootstock.PegInClaimSubmitting {
+	if existing.IsTerminal() || existing.IsClaimed() || existing.State == rootstock.PegInClaimSubmitting {
 		return *existing, true, nil
 	}
 	claim.CreatedAt = existing.CreatedAt
