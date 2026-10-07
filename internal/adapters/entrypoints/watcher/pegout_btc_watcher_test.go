@@ -387,7 +387,9 @@ func TestPegoutBtcTransferWatcher_Step8_ConfirmationTierReadsConfig(t *testing.T
 	lp := new(mocks.ProviderMock)
 	lp.On("GeneralConfiguration", mock.Anything).Return(liquidity_provider.GeneralConfiguration{
 		BtcConfirmations: liquidity_provider.ConfirmationsPerAmount{
-			"5000": requiredConfirmations,
+			"1000":  2,
+			"5000":  requiredConfirmations,
+			"10000": 12,
 		},
 	})
 

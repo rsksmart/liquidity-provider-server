@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
@@ -137,7 +138,9 @@ func (wallet *DerivativeWallet) EstimateTxFees(toAddress string, value *entities
 	}
 
 	fundedTx, err := wallet.conn.client.FundRawTransaction(rawTx, opts, nil)
-	if err != nil {
+	if isInsufficientFundsError(err) {
+		return blockchain.BtcFeeEstimation{}, fmt.Errorf("%w: %w", blockchain.BtcInsufficientFundsError, err)
+	} else if err != nil {
 		return blockchain.BtcFeeEstimation{}, err
 	}
 	if err = validateBtcTxInputCount(len(fundedTx.Transaction.TxIn)); err != nil {
@@ -284,11 +287,22 @@ func (wallet *DerivativeWallet) ImportAddress(address string) error {
 	return errors.New("address importing is not supported in this type of wallet")
 }
 
+func (wallet *DerivativeWallet) RescanBlockchain(fromHeight int64) (blockchain.BitcoinRescanResult, error) {
+	return blockchain.BitcoinRescanResult{}, errors.New("address importing is not supported in this type of wallet")
+}
+
 func (wallet *DerivativeWallet) GetTransactions(address string) ([]blockchain.BitcoinTransactionInformation, error) {
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return nil, err
 	}
 	return getTransactionsToAddress(address, wallet.conn.NetworkParams, wallet.conn.client)
+}
+
+func (wallet *DerivativeWallet) GetTransaction(hash string) (blockchain.BitcoinTransactionInformation, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return blockchain.BitcoinTransactionInformation{}, err
+	}
+	return getWalletTransaction(hash, wallet.conn.client)
 }
 
 func (wallet *DerivativeWallet) Address() string {
@@ -426,4 +440,13 @@ func (wallet *DerivativeWallet) unlockUtxos(tx *wire.MsgTx) {
 		tx.TxHash(),
 		btcclient.WrapRPCError(btcclient.MethodLockUnspent, err),
 	)
+}
+
+func isInsufficientFundsError(err error) bool {
+	var rpcErr *btcjson.RPCError
+	if !errors.As(err, &rpcErr) {
+		return false
+	}
+	return rpcErr.Code == btcjson.ErrRPCWalletInsufficientFunds ||
+		(rpcErr.Code == btcjson.ErrRPCWallet && strings.Contains(strings.ToLower(rpcErr.Message), "insufficient funds"))
 }

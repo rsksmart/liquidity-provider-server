@@ -32,6 +32,7 @@ const (
 	PegoutStateBridgeTxFailed                 PegoutState = "BridgeTxFailed"
 	PegoutStateBtcReleased                    PegoutState = "BtcReleased"
 	PegoutStateClaimed                        PegoutState = "Claimed"
+	PegoutStateClaimPending                   PegoutState = "ClaimPending"
 )
 
 type PegoutQuoteRepository interface {
@@ -91,7 +92,7 @@ type PegoutQuote struct {
 	Value                 *entities.Wei `json:"value" bson:"value" validate:"required"`
 	AgreementTimestamp    uint32        `json:"agreementTimestamp" bson:"agreement_timestamp" validate:"required"`
 	DepositDateLimit      uint32        `json:"depositDateLimit" bson:"deposit_date_limit" validate:"required"`
-	DepositConfirmations  uint16        `json:"depositConfirmations" bson:"deposit_confirmations" validate:"required"`
+	DepositConfirmations  uint16        `json:"depositConfirmations" bson:"deposit_confirmations" validate:"omitempty"`
 	TransferConfirmations uint16        `json:"transferConfirmations" bson:"transfer_confirmations" validate:"required"`
 	TransferTime          uint32        `json:"transferTime" bson:"transfer_time" validate:"required"`
 	ExpireDate            uint32        `json:"expireDate" bson:"expire_date" validate:"required"`
