@@ -220,7 +220,6 @@ func (useCase *ClaimPegOutUseCase) availableLiveLiquidity(ctx context.Context) (
 		ctx,
 		quote.PegoutStateClaimPending,
 		quote.PegoutStateClaimed,
-		quote.PegoutStateWaitingForDeposit,
 		quote.PegoutStateWaitingForDepositConfirmations,
 	)
 	if err != nil {

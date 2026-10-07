@@ -182,7 +182,8 @@ func TestLocalLiquidityProvider_AvailablePegoutLiquidity(t *testing.T) {
 	t.Run("should return available pegout liquidity", func(t *testing.T) {
 		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-			quote.PegoutStateWaitingForDeposit,
+			quote.PegoutStateClaimPending,
+			quote.PegoutStateClaimed,
 			quote.PegoutStateWaitingForDepositConfirmations,
 		).Return([]quote.RetainedPegoutQuote{
 			{RequiredLiquidity: entities.NewWei(100)},
@@ -201,7 +202,8 @@ func TestLocalLiquidityProvider_AvailablePegoutLiquidity(t *testing.T) {
 	t.Run("should return 0 if the locked liquidity is higher than the available", func(t *testing.T) {
 		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-			quote.PegoutStateWaitingForDeposit,
+			quote.PegoutStateClaimPending,
+			quote.PegoutStateClaimed,
 			quote.PegoutStateWaitingForDepositConfirmations,
 		).Return([]quote.RetainedPegoutQuote{
 			{RequiredLiquidity: entities.NewWei(100)},
@@ -231,7 +233,8 @@ func TestLocalLiquidityProvider_AvailablePegoutLiquidity_ErrorHandling(t *testin
 	t.Run("Error getting pegout quotes from db when checking available pegout liquidity", func(t *testing.T) {
 		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-			quote.PegoutStateWaitingForDeposit,
+			quote.PegoutStateClaimPending,
+			quote.PegoutStateClaimed,
 			quote.PegoutStateWaitingForDepositConfirmations,
 		).Return(nil, assert.AnError).Once()
 		btcWallet := new(mocks.BitcoinWalletMock)
@@ -246,7 +249,8 @@ func TestLocalLiquidityProvider_AvailablePegoutLiquidity_ErrorHandling(t *testin
 func TestLocalLiquidityProvider_HasPegoutLiquidity(t *testing.T) {
 	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 	pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-		quote.PegoutStateWaitingForDeposit,
+		quote.PegoutStateClaimPending,
+		quote.PegoutStateClaimed,
 		quote.PegoutStateWaitingForDepositConfirmations,
 	).Return([]quote.RetainedPegoutQuote{
 		{RequiredLiquidity: entities.NewWei(100)},
@@ -293,7 +297,8 @@ func TestLocalLiquidityProvider_HasPegoutLiquidity_ErrorHandling(t *testing.T) {
 	t.Run("Error getting pegout quotes from db", func(t *testing.T) {
 		pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
 		pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
-			quote.PegoutStateWaitingForDeposit,
+			quote.PegoutStateClaimPending,
+			quote.PegoutStateClaimed,
 			quote.PegoutStateWaitingForDepositConfirmations,
 		).Return(nil, assert.AnError).Times(3)
 		btcWallet := new(mocks.BitcoinWalletMock)

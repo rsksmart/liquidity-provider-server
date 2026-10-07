@@ -124,7 +124,7 @@ func (f *claimFixtures) expectSigned() {
 	f.btcRpc.On("EncodeAddress", mock.Anything).Return(claimEncodedBtc, nil).Times(3)
 	f.btcWallet.On("GetBalance").Return(entities.NewWei(10_000_000), nil).Once()
 	f.repo.On("GetRetainedQuoteByState", mock.Anything,
-		quote.PegoutStateClaimPending, quote.PegoutStateClaimed, quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations,
+		quote.PegoutStateClaimPending, quote.PegoutStateClaimed, quote.PegoutStateWaitingForDepositConfirmations,
 	).Return([]quote.RetainedPegoutQuote{}, nil).Once()
 	eip712Hash := [32]byte{9, 8, 7}
 	f.pegout.EXPECT().HashPegoutQuoteEIP712(mock.Anything).Return(eip712Hash, nil).Once()
