@@ -222,6 +222,8 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegoutRepository,
 			rskRegistry.Contracts,
 			lpRegistry.LiquidityProvider,
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
 		),
 		sendPegoutUseCase: pegout.NewSendPegoutUseCase(
 			btcRegistry.PaymentWallet,

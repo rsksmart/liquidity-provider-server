@@ -2,7 +2,9 @@ package pegout
 
 import (
 	"context"
+	"errors"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
@@ -10,29 +12,40 @@ import (
 )
 
 type AcceptQuoteUseCase struct {
-	quoteRepository quote.PegoutQuoteRepository
-	contracts       blockchain.RskContracts
-	lp              liquidity_provider.LiquidityProvider
+	quoteRepository          quote.PegoutQuoteRepository
+	contracts                blockchain.RskContracts
+	lp                       liquidity_provider.LiquidityProvider
+	trustedAccountRepository liquidity_provider.TrustedAccountRepository
+	hashFunction             entities.HashFunction
 }
 
 func NewAcceptQuoteUseCase(
 	quoteRepository quote.PegoutQuoteRepository,
 	contracts blockchain.RskContracts,
 	lp liquidity_provider.LiquidityProvider,
+	trustedAccountRepository liquidity_provider.TrustedAccountRepository,
+	hashFunction entities.HashFunction,
 ) *AcceptQuoteUseCase {
 	return &AcceptQuoteUseCase{
-		quoteRepository: quoteRepository,
-		contracts:       contracts,
-		lp:              lp,
+		quoteRepository:          quoteRepository,
+		contracts:                contracts,
+		lp:                       lp,
+		trustedAccountRepository: trustedAccountRepository,
+		hashFunction:             hashFunction,
 	}
 }
 
-func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, _ string) (quote.AcceptedQuote, error) {
+func (useCase *AcceptQuoteUseCase) Run(ctx context.Context, quoteHash, signature string) (quote.AcceptedQuote, error) {
 	if err := usecases.CheckPauseState(useCase.contracts.PegOut); err != nil {
 		return quote.AcceptedQuote{}, usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, err)
 	}
 
-	if _, err := useCase.getQuote(ctx, quoteHash); err != nil {
+	pegoutQuote, err := useCase.getQuote(ctx, quoteHash)
+	if err != nil {
+		return quote.AcceptedQuote{}, err
+	}
+
+	if _, err = useCase.getTrustedAccount(ctx, signature, pegoutQuote); err != nil && !errors.Is(err, liquidity_provider.NoSignatureError) {
 		return quote.AcceptedQuote{}, err
 	}
 
@@ -75,4 +88,38 @@ func (useCase *AcceptQuoteUseCase) getQuote(ctx context.Context, quoteHash strin
 	}
 
 	return *pegoutQuote, nil
+}
+
+func (useCase *AcceptQuoteUseCase) getTrustedAccount(ctx context.Context, signature string, pegoutQuote quote.PegoutQuote) (liquidity_provider.TrustedAccountDetails, error) {
+	if signature == "" {
+		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.NoSignatureError
+	}
+	trustedAccount, err := useCase.recoverTrustedAccount(ctx, pegoutQuote, useCase.lp.GetSigner(), signature)
+	if err != nil {
+		return liquidity_provider.TrustedAccountDetails{}, err
+	}
+	return trustedAccount, nil
+}
+
+func (useCase *AcceptQuoteUseCase) recoverTrustedAccount(ctx context.Context, pegoutQuote quote.PegoutQuote, signer entities.Signer, signature string) (liquidity_provider.TrustedAccountDetails, error) {
+	address, err := usecases.RecoverSignerAddress(signature, func() ([]byte, error) {
+		if hash, err := useCase.contracts.PegOut.HashPegoutQuoteEIP712(pegoutQuote); err != nil {
+			return nil, err
+		} else {
+			return hash[:], nil
+		}
+	})
+	if err != nil {
+		return liquidity_provider.TrustedAccountDetails{}, err
+	}
+
+	trustedAccount, err := liquidity_provider.ValidateConfiguration(signer, useCase.hashFunction, func() (*entities.Signed[liquidity_provider.TrustedAccountDetails], error) {
+		return useCase.trustedAccountRepository.GetTrustedAccount(ctx, address)
+	})
+	if err != nil && errors.Is(err, liquidity_provider.TrustedAccountNotFoundError) {
+		return liquidity_provider.TrustedAccountDetails{}, err
+	} else if err != nil {
+		return liquidity_provider.TrustedAccountDetails{}, liquidity_provider.TamperedTrustedAccountError
+	}
+	return trustedAccount.Value, nil
 }
