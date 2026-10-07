@@ -102,11 +102,11 @@ func (h *resolveHarness) expectResolve(result blockchain.ResolvePegInResult, err
 	h.pegin.EXPECT().ResolvePegIn(resolveParams()).Return(result, err).Once()
 }
 
-func (h *resolveHarness) expectUpdate(t *testing.T, expected rootstock.PegInClaim, err error) {
+func (h *resolveHarness) expectUpdate(t *testing.T, expected rootstock.PegInClaim) {
 	h.claims.EXPECT().Update(test.AnyCtx, mock.MatchedBy(func(claim rootstock.PegInClaim) bool {
 		claim.UpdatedAt = expected.UpdatedAt
 		return assert.Equal(t, expected, claim)
-	})).Return(err).Once()
+	})).Return(nil).Once()
 }
 
 func (h *resolveHarness) assertLocked(t *testing.T) {
@@ -128,7 +128,7 @@ func TestResolvePegInUseCase_Run(t *testing.T) {
 	expected.ResolveGasPrice = entities.NewWei(60000000)
 	expected.ClaimerPayout = entities.NewWei(1000)
 	expected.RegistrantFee = entities.NewWei(10)
-	harness.expectUpdate(t, expected, nil)
+	harness.expectUpdate(t, expected)
 
 	err := harness.useCase.Run(context.Background(), resolvableClaim())
 	require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestResolvePegInUseCase_Run_AlreadyProcessed(t *testing.T) {
 	harness.expectResolve(blockchain.ResolvePegInResult{}, blockchain.ErrPegInAlreadyProcessed)
 	expected := resolvableClaim()
 	expected.State = rootstock.PegInClaimResolved
-	harness.expectUpdate(t, expected, nil)
+	harness.expectUpdate(t, expected)
 
 	err := harness.useCase.Run(context.Background(), resolvableClaim())
 	require.NoError(t, err)
@@ -189,7 +189,7 @@ func TestResolvePegInUseCase_Run_ResolveFailed(t *testing.T) {
 			harness.expectResolve(blockchain.ResolvePegInResult{}, tc.err)
 			expected := resolvableClaim()
 			expected.State = rootstock.PegInClaimResolveFailed
-			harness.expectUpdate(t, expected, nil)
+			harness.expectUpdate(t, expected)
 
 			err := harness.useCase.Run(context.Background(), resolvableClaim())
 			require.ErrorIs(t, err, tc.err)
@@ -217,7 +217,7 @@ func TestResolvePegInUseCase_Run_SentTxDidNotResolve(t *testing.T) {
 			expected.ResolveTxHash = resolveTxHash
 			expected.ResolveGasUsed = 150000
 			expected.ResolveGasPrice = entities.NewWei(60000000)
-			harness.expectUpdate(t, expected, nil)
+			harness.expectUpdate(t, expected)
 
 			err := harness.useCase.Run(context.Background(), resolvableClaim())
 			require.ErrorIs(t, err, tc.err)
