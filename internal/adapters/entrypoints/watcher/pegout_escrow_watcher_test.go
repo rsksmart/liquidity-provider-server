@@ -19,6 +19,7 @@ import (
 
 const (
 	escrowWatcherRequestHash = "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
+	escrowWatcherQuoteHash   = "1122334455667788990011223344556677889900112233445566778899001122"
 	escrowWatcherLpAddress   = "0x7c4890a0f1d4bbf2c669ac2d1effa185c505359b"
 )
 
@@ -191,7 +192,7 @@ func TestPegoutEscrowWatcher_Step5_DiscoversForeignRequest(t *testing.T) {
 	rskRpc.AssertExpectations(t)
 }
 
-func TestPegoutEscrowWatcher_Step5_DropsOnClaimedEvent(t *testing.T) {
+func TestPegoutEscrowWatcher_Step5_ClaimedEventDoesNotMatchCandidate(t *testing.T) {
 	escrow, repo, rskRpc, ticker, tickerChannel := newEscrowScanFixtures(t)
 	contracts := blockchain.RskContracts{PegOutEscrow: escrow}
 	rpc := blockchain.Rpc{Rsk: rskRpc}
@@ -205,12 +206,12 @@ func TestPegoutEscrowWatcher_Step5_DropsOnClaimedEvent(t *testing.T) {
 	escrow.EXPECT().GetPegOutRequestedEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutRequested{}, nil).Once()
 	escrow.EXPECT().GetPegOutClaimedEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutClaimed{{
 		LpAddress:   "0xlp",
-		RequestHash: escrowWatcherRequestHash,
+		RequestHash: escrowWatcherQuoteHash,
 		TxHash:      "0xclaim",
 		BlockNumber: 15,
 	}}, nil).Once()
 	escrow.EXPECT().GetPegOutCancelledEvents(mock.Anything, uint64(11), matchUint64Ptr(20)).Return([]blockchain.PegOutCancelled{}, nil).Once()
-	repo.On("DeleteCandidate", mock.Anything, escrowWatcherRequestHash).Return(nil).Once()
+	repo.On("DeleteCandidate", mock.Anything, escrowWatcherQuoteHash).Return(nil).Once()
 	repo.On("SetCheckpoint", mock.Anything, uint64(20)).Return(nil).Once()
 
 	w := watcher.NewPegoutEscrowWatcher(contracts, rpc, repo, nil, ticker, 0, 2000, time.Second)
@@ -221,14 +222,17 @@ func TestPegoutEscrowWatcher_Step5_DropsOnClaimedEvent(t *testing.T) {
 	tickerChannel <- time.Now()
 
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.Empty(c, w.GetCandidates())
 		assert.Equal(c, uint64(20), w.LastScannedBlock())
 	}, time.Second, 10*time.Millisecond)
+	candidates := w.GetCandidates()
+	require.Len(t, candidates, 1)
+	assert.Equal(t, escrowWatcherRequestHash, candidates[0].RequestHash)
 
 	closeCh := make(chan bool)
 	go w.Shutdown(closeCh)
 	<-closeCh
 	repo.AssertExpectations(t)
+	repo.AssertNotCalled(t, "DeleteCandidate", mock.Anything, escrowWatcherRequestHash)
 	escrow.AssertExpectations(t)
 }
 
@@ -282,7 +286,7 @@ func TestPegoutEscrowWatcher_Step5_ReconcilesStaleCandidateOnRestart(t *testing.
 
 	repo.On("GetCheckpoint", mock.Anything).Return(uint64(100), true, nil).Once()
 	repo.On("ListCandidates", mock.Anything).Return([]blockchain.PegOutRequested{stale, alive}, nil).Once()
-	escrow.EXPECT().GetPegOutState(stale.RequestHash).Return(blockchain.EscrowedPegOutStateClaimed, nil).Once()
+	escrow.EXPECT().GetPegOutState(stale.RequestHash).Return(blockchain.EscrowedPegOutStateNone, nil).Once()
 	escrow.EXPECT().GetPegOutState(alive.RequestHash).Return(blockchain.EscrowedPegOutStateRequested, nil).Once()
 	repo.On("DeleteCandidate", mock.Anything, stale.RequestHash).Return(nil).Once()
 
