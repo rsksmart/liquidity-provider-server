@@ -22,53 +22,29 @@ const (
 	escrowWatcherLpAddress   = "0x7c4890a0f1d4bbf2c669ac2d1effa185c505359b"
 )
 
-type escrowWatchRepositoryFake struct {
-	candidates []blockchain.PegOutRequested
-	deleted    []string
-}
-
-func (r *escrowWatchRepositoryFake) GetCheckpoint(context.Context) (uint64, bool, error) {
-	return 100, true, nil
-}
-
-func (r *escrowWatchRepositoryFake) SetCheckpoint(context.Context, uint64) error {
-	return nil
-}
-
-func (r *escrowWatchRepositoryFake) UpsertCandidate(context.Context, blockchain.PegOutRequested) error {
-	return nil
-}
-
-func (r *escrowWatchRepositoryFake) DeleteCandidate(_ context.Context, requestHash string) error {
-	r.deleted = append(r.deleted, requestHash)
-	return nil
-}
-
-func (r *escrowWatchRepositoryFake) ListCandidates(context.Context) ([]blockchain.PegOutRequested, error) {
-	return r.candidates, nil
-}
-
 type escrowWatcherFixtures struct {
 	escrow     *mocks.PegOutEscrowContractMock
 	pegout     *mocks.PegoutContractMock
 	quoteRepo  *mocks.PegoutQuoteRepositoryMock
 	lp         *mocks.ProviderMock
 	rskRpc     *mocks.RootstockRpcServerMock
-	repository *escrowWatchRepositoryFake
+	repository *mocks.PegOutEscrowWatchRepositoryMock
 	watcher    *watcher.PegoutEscrowWatcher
 }
 
 func newEscrowWatcherFixtures() *escrowWatcherFixtures {
 	f := &escrowWatcherFixtures{
-		escrow:    &mocks.PegOutEscrowContractMock{},
-		pegout:    &mocks.PegoutContractMock{},
-		quoteRepo: &mocks.PegoutQuoteRepositoryMock{},
-		lp:        &mocks.ProviderMock{},
-		rskRpc:    &mocks.RootstockRpcServerMock{},
-		repository: &escrowWatchRepositoryFake{candidates: []blockchain.PegOutRequested{
-			{RequestHash: escrowWatcherRequestHash, Amount: entities.NewWei(1)},
-		}},
+		escrow:     &mocks.PegOutEscrowContractMock{},
+		pegout:     &mocks.PegoutContractMock{},
+		quoteRepo:  &mocks.PegoutQuoteRepositoryMock{},
+		lp:         &mocks.ProviderMock{},
+		rskRpc:     &mocks.RootstockRpcServerMock{},
+		repository: &mocks.PegOutEscrowWatchRepositoryMock{},
 	}
+	f.repository.EXPECT().GetCheckpoint(mock.Anything).Return(uint64(100), true, nil).Once()
+	f.repository.EXPECT().ListCandidates(mock.Anything).Return([]blockchain.PegOutRequested{
+		{RequestHash: escrowWatcherRequestHash, Amount: entities.NewWei(1)},
+	}, nil).Once()
 	contracts := blockchain.RskContracts{PegOut: f.pegout, PegOutEscrow: f.escrow}
 	rpc := blockchain.Rpc{Rsk: f.rskRpc, Btc: &mocks.BtcRpcMock{}}
 	claimUseCase := pegout.NewClaimPegOutUseCase(
@@ -111,9 +87,10 @@ func TestPegoutEscrowWatcher_DropsClosedRequest(t *testing.T) {
 	f := newEscrowWatcherFixtures()
 	f.expectNotPaused()
 	f.escrow.EXPECT().GetPegOutState(escrowWatcherRequestHash).Return(blockchain.EscrowedPegOutStateNone, nil).Once()
+	f.repository.EXPECT().DeleteCandidate(mock.Anything, escrowWatcherRequestHash).Return(nil).Once()
 
 	require.NoError(t, f.watcher.Prepare(context.Background()))
-	assert.Equal(t, []string{escrowWatcherRequestHash}, f.repository.deleted)
+	f.repository.AssertExpectations(t)
 	assert.Empty(t, f.watcher.GetCandidates())
 }
 
@@ -126,7 +103,7 @@ func TestPegoutEscrowWatcher_KeepsSkippedRequest(t *testing.T) {
 	f.rskRpc.EXPECT().GetBlockByNumber(mock.Anything, mock.Anything).Return(blockchain.BlockInfo{Timestamp: time.Unix(10, 0)}, nil).Once()
 
 	require.NoError(t, f.watcher.Prepare(context.Background()))
-	assert.Empty(t, f.repository.deleted)
+	f.repository.AssertNotCalled(t, "DeleteCandidate", mock.Anything, mock.Anything)
 	assert.Len(t, f.watcher.GetCandidates(), 1)
 }
 
@@ -136,7 +113,7 @@ func TestPegoutEscrowWatcher_KeepsRequestOnClaimError(t *testing.T) {
 	f.escrow.EXPECT().GetPegOutState(escrowWatcherRequestHash).Return(blockchain.EscrowedPegOutStateNone, assert.AnError).Once()
 
 	require.NoError(t, f.watcher.Prepare(context.Background()))
-	assert.Empty(t, f.repository.deleted)
+	f.repository.AssertNotCalled(t, "DeleteCandidate", mock.Anything, mock.Anything)
 	assert.Len(t, f.watcher.GetCandidates(), 1)
 }
 
