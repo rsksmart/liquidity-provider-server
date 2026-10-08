@@ -317,3 +317,21 @@ func LogPegInClaimSettleAborted(rskAddress, depositTxID string, err error) strin
 func LogPegInClaimSettleError(rskAddress, depositTxID string, err error) string {
 	return fmt.Sprintf("PegInClaimWatcher: error settling claim %s/%s: %v", rskAddress, depositTxID, err)
 }
+
+const (
+	LogPegInResolveShutdown       = "PegInResolveWatcher shut down"
+	LogPegInResolveBtcHeightError = "PegInResolveWatcher: error getting Bitcoin chain height: %v"
+	LogPegInResolveWrongEvent     = "PegInResolveWatcher: trying to parse wrong event"
+)
+
+func LogPegInResolveNotReady(rskAddress, depositTxID string) string {
+	return fmt.Sprintf("PegInResolveWatcher: deposit %s for %s doesn't have enough confirmations yet", depositTxID, rskAddress)
+}
+
+func LogPegInResolveAborted(rskAddress, depositTxID string, err error) string {
+	return fmt.Sprintf("PegInResolveWatcher: aborted resolve pass at %s/%s: %v", rskAddress, depositTxID, err)
+}
+
+func LogPegInResolveError(rskAddress, depositTxID string, err error) string {
+	return fmt.Sprintf("PegInResolveWatcher: error resolving claim %s/%s: %v", rskAddress, depositTxID, err)
+}
