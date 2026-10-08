@@ -28,7 +28,7 @@ func TestGetQuoteUseCase_Run_Paused(t *testing.T) {
 	pegoutContract.EXPECT().GetAddress().Return("test-contract")
 	pegoutQuoteRepository := new(mocks.PegoutQuoteRepositoryMock)
 	btcWallet := new(mocks.BitcoinWalletMock)
-	btc := new(mocks.BtcRpcMock)
+	btc := new(mocks.BitcoinNetworkMock)
 	contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
 	useCase := pegout.NewGetQuoteUseCase(rpc, contracts, pegoutQuoteRepository, lp, lp, btcWallet)
@@ -72,7 +72,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 		Value:   entities.NewWei(1000000000000000),
 		FeeRate: utils.NewBigFloat64(25.333),
 	}, nil)
-	btc := new(mocks.BtcRpcMock)
+	btc := new(mocks.BitcoinNetworkMock)
 	btc.On("ValidateAddress", mock.Anything).Return(nil)
 	contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
@@ -118,7 +118,7 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	btcWallet := new(mocks.BitcoinWalletMock)
 	cases := getQuoteUseCaseErrorSetups()
 	for _, testCase := range cases {
-		btc := new(mocks.BtcRpcMock)
+		btc := new(mocks.BitcoinNetworkMock)
 		lp := new(mocks.ProviderMock)
 		contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
 		rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
@@ -130,11 +130,11 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	}
 }
 
-func getQuoteUseCaseErrorSetups() test.Table[func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest, error] {
+func getQuoteUseCaseErrorSetups() test.Table[func(btc *mocks.BitcoinNetworkMock, lp *mocks.ProviderMock) pegout.QuoteRequest, error] {
 	const wrongAddress = "wrong address"
-	return test.Table[func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest, error]{
+	return test.Table[func(btc *mocks.BitcoinNetworkMock, lp *mocks.ProviderMock) pegout.QuoteRequest, error]{
 		{
-			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressInvalidNetworkError).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
@@ -143,7 +143,7 @@ func getQuoteUseCaseErrorSetups() test.Table[func(btc *mocks.BtcRpcMock, lp *moc
 			Result: blockchain.BtcAddressInvalidNetworkError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", wrongAddress).Return(blockchain.BtcAddressNotSupportedError).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
@@ -151,21 +151,21 @@ func getQuoteUseCaseErrorSetups() test.Table[func(btc *mocks.BtcRpcMock, lp *moc
 			}, Result: blockchain.BtcAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
 				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", nil, "anything")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
 				return pegout.NewQuoteRequest("mvL2bVzGUeC9oqVyQWJ4PxQspFzKgjzAqe", entities.NewWei(100000000000000000), "0x79568c2989232dCa1840087D73d403602364c0D41")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock, lp *mocks.ProviderMock) pegout.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
 				btc.On("ValidateAddress", mock.Anything).Return(nil).Once()
 				lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
@@ -203,7 +203,7 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		pegoutContract.On("GetAddress").Return("0x1234")
 		lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 		lp.On("PegoutConfiguration", test.AnyCtx).Return(getPegoutConfiguration())
-		btc := new(mocks.BtcRpcMock)
+		btc := new(mocks.BitcoinNetworkMock)
 		btc.On("ValidateAddress", mock.Anything).Return(nil)
 		contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
 		rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}

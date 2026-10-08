@@ -164,7 +164,7 @@ func TestPeginDepositAddressWatcher_Start_HandleDepositedQuoteError(t *testing.T
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil).Once()
 	btcWallet := &mocks.BitcoinWalletMock{}
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}
 	acceptPeginChannel := make(chan entities.Event)
@@ -219,7 +219,7 @@ func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()
 	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil).Once()
 	btcWallet := &mocks.BitcoinWalletMock{}
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}
 	eventBus.On("Publish", mock.Anything).Return(nil).Twice()

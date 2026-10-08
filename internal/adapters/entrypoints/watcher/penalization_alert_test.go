@@ -20,7 +20,7 @@ import (
 
 func TestNewPenalizationAlertWatcher(t *testing.T) {
 	rpc := blockchain.Rpc{
-		Btc: &mocks.BtcRpcMock{},
+		Btc: &mocks.BitcoinNetworkMock{},
 		Rsk: &mocks.RootstockRpcServerMock{},
 	}
 	penalizationWatcher := watcher.NewPenalizationAlertWatcher(rpc, &liquidity_provider.PenalizationAlertUseCase{}, &mocks.TickerMock{}, time.Duration(1))

@@ -43,8 +43,8 @@ type resolveHarness struct {
 	pegin   *mocks.PeginContractMock
 	pause   *mocks.PauseRegistryContractMock
 	bridge  *mocks.BridgeMock
-	btc     *mocks.BtcRpcMock
-	mutex   *mocks.MutexMock
+	btc     *mocks.BitcoinNetworkMock
+	mutex   *mocks.LockerMock
 	useCase *pegin.ResolvePegInUseCase
 }
 
@@ -54,8 +54,8 @@ func newResolveHarness(t *testing.T) *resolveHarness {
 		pegin:  mocks.NewPeginContractMock(t),
 		pause:  mocks.NewPauseRegistryContractMock(t),
 		bridge: mocks.NewBridgeMock(t),
-		btc:    mocks.NewBtcRpcMock(t),
-		mutex:  new(mocks.MutexMock),
+		btc:    mocks.NewBitcoinNetworkMock(t),
+		mutex:  new(mocks.LockerMock),
 	}
 	harness.useCase = pegin.NewResolvePegInUseCase(
 		harness.claims,

@@ -102,7 +102,7 @@ func TestNodeReorgCheckUseCase_Run_Bitcoin(t *testing.T) {
 
 func testNodeReorgCheckUseCaseRunBitcoinGetBlockchainInfoError(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	btc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{}, assert.AnError).Once()
 	eventBus.On("Publish", mock.MatchedBy(matchNodeReorgCheckErrorEvent(entities.NodeTypeBitcoin))).Return().Once()
@@ -125,7 +125,7 @@ func testNodeReorgCheckUseCaseRunBitcoinGetBlockchainInfoError(t *testing.T) {
 func testNodeReorgCheckUseCaseRunBitcoinFirstRun(t *testing.T) {
 	t.Parallel()
 	const tipHeight = uint64(100)
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_tip",
@@ -160,7 +160,7 @@ func testNodeReorgCheckUseCaseRunBitcoinFirstRun(t *testing.T) {
 func testNodeReorgCheckUseCaseRunBitcoinSameTipNoExtraRPC(t *testing.T) {
 	t.Parallel()
 	const tipHeight = uint64(100)
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_tip",
@@ -196,7 +196,7 @@ func testNodeReorgCheckUseCaseRunBitcoinSameTipNoExtraRPC(t *testing.T) {
 
 func testNodeReorgCheckUseCaseRunBitcoinOneBlockAppend(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info1 := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_100",
@@ -244,7 +244,7 @@ func testNodeReorgCheckUseCaseRunBitcoinOneBlockAppend(t *testing.T) {
 //nolint:funlen
 func testNodeReorgCheckUseCaseRunBitcoinReorgWithinHistoryWindow(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info1 := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_100",
@@ -312,7 +312,7 @@ func testNodeReorgCheckUseCaseRunBitcoinReorgWithinHistoryWindow(t *testing.T) {
 
 func testNodeReorgCheckUseCaseRunBitcoinAdvanceBeyondHistoryWindow(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info1 := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_100",
@@ -366,7 +366,7 @@ func testNodeReorgCheckUseCaseRunBitcoinAdvanceBeyondHistoryWindow(t *testing.T)
 func testNodeReorgCheckUseCaseRunBitcoinFirstRunRefreshFailure(t *testing.T) {
 	t.Parallel()
 	const tipHeight = uint64(100)
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_tip",
@@ -394,7 +394,7 @@ func testNodeReorgCheckUseCaseRunBitcoinFirstRunRefreshFailure(t *testing.T) {
 
 func testNodeReorgCheckUseCaseRunBitcoinOneBlockAppendRefreshFailure(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info1 := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_100",
@@ -443,7 +443,7 @@ func testNodeReorgCheckUseCaseRunBitcoinOneBlockAppendRefreshFailure(t *testing.
 
 func testNodeReorgCheckUseCaseRunBitcoinDivergenceScanRPCFailure(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info1 := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_100",
@@ -492,7 +492,7 @@ func testNodeReorgCheckUseCaseRunBitcoinDivergenceScanRPCFailure(t *testing.T) {
 
 func testNodeReorgCheckUseCaseRunBitcoinAdvanceBeyondHistoryWindowRefreshFailure(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info1 := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_100",
@@ -542,7 +542,7 @@ func testNodeReorgCheckUseCaseRunBitcoinAdvanceBeyondHistoryWindowRefreshFailure
 //nolint:funlen
 func testNodeReorgCheckUseCaseRunBitcoinAboveThresholdReorgSendsAlert(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	alertSender := &mocks.AlertSenderMock{}
 	eventBus := &mocks.EventBusMock{}
 	info1 := blockchain.BitcoinBlockchainInfo{
@@ -624,7 +624,7 @@ func testNodeReorgCheckUseCaseRunBitcoinAboveThresholdReorgSendsAlert(t *testing
 
 func testNodeReorgCheckUseCaseRunBitcoinGetBlockHeaderVerboseError(t *testing.T) {
 	t.Parallel()
-	btc := &mocks.BtcRpcMock{}
+	btc := &mocks.BitcoinNetworkMock{}
 	eventBus := &mocks.EventBusMock{}
 	info1 := blockchain.BitcoinBlockchainInfo{
 		BestBlockHash:   "hash_100",

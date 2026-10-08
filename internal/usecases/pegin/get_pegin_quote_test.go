@@ -32,7 +32,7 @@ func TestGetQuoteUseCase_Run_Paused(t *testing.T) {
 	request := pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{}, entities.NewWei(1), getPeginTestUserAddress)
 	quoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	bridge := new(mocks.BridgeMock)
-	btc := new(mocks.BtcRpcMock)
+	btc := new(mocks.BitcoinNetworkMock)
 	lp := new(mocks.ProviderMock)
 	rsk := new(mocks.RootstockRpcServerMock)
 	peginContract := new(mocks.PeginContractMock)
@@ -89,7 +89,7 @@ func TestGetQuoteUseCase_Run(t *testing.T) {
 	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration()).Once()
 	lp.On("RskAddress").Return(lpRskAddress)
 	lp.On("BtcAddress").Return(lpBtcAddress)
-	btc := new(mocks.BtcRpcMock)
+	btc := new(mocks.BitcoinNetworkMock)
 	btc.On("NetworkName").Return(testnetNetworkName).Once()
 	contracts := blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -119,7 +119,7 @@ func TestGetQuoteUseCase_Run_ValidateRequest(t *testing.T) {
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	cases := validateRequestTestCases()
 	for _, testCase := range cases {
-		btc := new(mocks.BtcRpcMock)
+		btc := new(mocks.BitcoinNetworkMock)
 		contracts := blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}
 		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
 		useCase := pegin.NewGetQuoteUseCase(rpc, contracts, peginQuoteRepository, lp, lp)
@@ -142,7 +142,7 @@ func TestGetQuoteUseCase_Run_ValidateFedAddress(t *testing.T) {
 	bridge := new(mocks.BridgeMock)
 	bridge.On("GetFedAddress").Return("bcrt1qtmm4qallkmnd2vl5y3w3an3uvq6w5v2ahqvfqm0mfxny8cnsdrashv8fsr", nil)
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
-	btc := new(mocks.BtcRpcMock)
+	btc := new(mocks.BitcoinNetworkMock)
 	btc.On("ValidateAddress", mock.Anything).Return(nil)
 	contracts := blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -152,40 +152,40 @@ func TestGetQuoteUseCase_Run_ValidateFedAddress(t *testing.T) {
 	require.ErrorContains(t, err, "only P2SH addresses are supported for federation address")
 }
 
-func validateRequestTestCases() test.Table[func(btc *mocks.BtcRpcMock) pegin.QuoteRequest, error] {
-	return test.Table[func(btc *mocks.BtcRpcMock) pegin.QuoteRequest, error]{
+func validateRequestTestCases() test.Table[func(btc *mocks.BitcoinNetworkMock) pegin.QuoteRequest, error] {
+	return test.Table[func(btc *mocks.BitcoinNetworkMock) pegin.QuoteRequest, error]{
 		{
-			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest("any", []byte{1}, entities.NewWei(1000), getPeginTestUserAddress)
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(1000), "any")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(1000), getPeginTestUserAddress+"1")
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest(getPeginTestUserAddress+"1", []byte{1}, entities.NewWei(1000), getPeginTestUserAddress)
 			}, Result: usecases.RskAddressNotSupportedError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock) pegin.QuoteRequest {
 				btc.On("ValidateAddress", mock.Anything).Return(nil)
 				return pegin.NewQuoteRequest(getPeginTestUserAddress, []byte{1}, entities.NewWei(999), getPeginTestUserAddress)
 			}, Result: lpEntity.AmountOutOfRangeError,
 		},
 		{
-			Value: func(btc *mocks.BtcRpcMock) pegin.QuoteRequest {
+			Value: func(btc *mocks.BitcoinNetworkMock) pegin.QuoteRequest {
 				oversizedData := make([]byte, pegin.MaxPeginDataSize+1)
 				return pegin.NewQuoteRequest(getPeginTestUserAddress, oversizedData, entities.NewWei(1000), getPeginTestUserAddress)
 			}, Result: pegin.DataCapExceededError,
@@ -198,7 +198,7 @@ func TestGetQuoteUseCase_Run_BridgeMinimum(t *testing.T) {
 	peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 	rsk := new(mocks.RootstockRpcServerMock)
 	bridge := new(mocks.BridgeMock)
-	btc := new(mocks.BtcRpcMock)
+	btc := new(mocks.BitcoinNetworkMock)
 	peginContract := new(mocks.PeginContractMock)
 	contracts := blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -245,7 +245,7 @@ func TestGetQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 		peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil).Once()
 		peginQuoteRepository := new(mocks.PeginQuoteRepositoryMock)
 		lp := new(mocks.ProviderMock)
-		btc := new(mocks.BtcRpcMock)
+		btc := new(mocks.BitcoinNetworkMock)
 		btc.On("NetworkName").Return(mainnetNetworkName)
 
 		setup(rsk, bridge, peginContract, lp, peginQuoteRepository)
@@ -407,7 +407,7 @@ func TestGetQuoteUseCase_Run_RefundAddress(t *testing.T) {
 	lp.On("BtcAddress").Return(lpBtcAddress)
 
 	t.Run("Should use mainnet refund address", func(t *testing.T) {
-		btc := new(mocks.BtcRpcMock)
+		btc := new(mocks.BitcoinNetworkMock)
 		btc.On("NetworkName").Return(mainnetNetworkName).Once()
 		contracts := blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}
 		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}
@@ -418,7 +418,7 @@ func TestGetQuoteUseCase_Run_RefundAddress(t *testing.T) {
 		assert.Equal(t, blockchain.BitcoinMainnetP2PKHZeroAddress, result.PeginQuote.BtcRefundAddress)
 	})
 	t.Run("Should use testnet refund address", func(t *testing.T) {
-		btc := new(mocks.BtcRpcMock)
+		btc := new(mocks.BitcoinNetworkMock)
 		btc.On("NetworkName").Return(testnetNetworkName).Once()
 		contracts := blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}
 		rpc := blockchain.Rpc{Rsk: rsk, Btc: btc}

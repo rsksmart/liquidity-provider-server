@@ -142,7 +142,7 @@ func testBridgePegoutUseCaseSuccess(t *testing.T) {
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(matchBridgeTxConfig(entities.NewWei(558))), test.AnyAddress).
 		Return(sendRbtcReceipt, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -175,7 +175,7 @@ func testBridgePegoutUseCaseValueBelowMinimum(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -207,7 +207,7 @@ func testBridgePegoutUseCaseWalletBalanceError(t *testing.T) {
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
 	wallet.On("GetBalance", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -239,7 +239,7 @@ func testBridgePegoutUseCaseWalletWithoutBalance(t *testing.T) {
 	wallet := &mocks.RskWalletMock{}
 	walletBalance := new(entities.Wei).Add(entities.NewWei(500), entities.NewWei(pegout.BridgeConversionGasLimit*pegout.BridgeConversionGasPrice))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -273,7 +273,7 @@ func testBridgePegoutUseCaseTxFails(t *testing.T) {
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
 	emptyReceipt := blockchain.TransactionReceipt{}
 	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(emptyReceipt, assert.AnError).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -329,7 +329,7 @@ func testBridgePegoutUseCaseUpdateFails(t *testing.T) {
 		GasPrice:          entities.NewWei(pegout.BridgeConversionGasPrice),
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(successReceipt, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -393,7 +393,7 @@ func testBridgePegoutUseCaseBridgeRejected(t *testing.T) {
 		GasPrice:        entities.NewWei(pegout.BridgeConversionGasPrice),
 	}
 	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).Return(successReceipt, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -455,7 +455,7 @@ func TestBridgePegoutUseCase_UtxoSplit(t *testing.T) {
 	})
 }
 
-func setupUtxoSplitSuccess() (*mocks.PegoutQuoteRepositoryMock, *mocks.ProviderMock, *mocks.RskWalletMock, *mocks.MutexMock, *mocks.BridgeMock, *[]quote.RetainedPegoutQuote, []quote.WatchedPegoutQuote) {
+func setupUtxoSplitSuccess() (*mocks.PegoutQuoteRepositoryMock, *mocks.ProviderMock, *mocks.RskWalletMock, *mocks.LockerMock, *mocks.BridgeMock, *[]quote.RetainedPegoutQuote, []quote.WatchedPegoutQuote) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
@@ -478,7 +478,7 @@ func setupUtxoSplitSuccess() (*mocks.PegoutQuoteRepositoryMock, *mocks.ProviderM
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(200)) == 0
 	}), test.AnyAddress).Return(receipt2, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -551,7 +551,7 @@ func testUtxoSplitNoSplitWhenN1(t *testing.T) {
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(350)) == 0
 	}), test.AnyAddress).Return(receipt, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -579,7 +579,7 @@ func testUtxoSplitBelowMinimum(t *testing.T) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -616,7 +616,7 @@ func testUtxoSplitExactMultiple(t *testing.T) {
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(200)) == 0
 	}), test.AnyAddress).Return(receipt, nil).Times(3)
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -660,7 +660,7 @@ func testUtxoSplitFailMidSplit(t *testing.T) {
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(200)) == 0
 	}), test.AnyAddress).Return(emptyReceipt, assert.AnError).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -706,7 +706,7 @@ func testUtxoSplitInsufficientGas(t *testing.T) {
 	gasPerTx := int64(pegout.BridgeConversionGasLimit * pegout.BridgeConversionGasPrice)
 	walletBalance := new(entities.Wei).Add(entities.NewWei(558), entities.NewWei(gasPerTx))
 	wallet.On("GetBalance", mock.Anything).Return(walletBalance, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -778,7 +778,7 @@ func runAmountIntegritySubtest(t *testing.T, total, bridgeMin *big.Int, wantN in
 			sentAmounts = append(sentAmounts, config.Value.AsBigInt())
 			mu.Unlock()
 		}).Return(receipt, nil)
-	walletMutex := &mocks.MutexMock{}
+	walletMutex := &mocks.LockerMock{}
 	walletMutex.On("Lock").Return()
 	walletMutex.On("Unlock").Return()
 	bridge := &mocks.BridgeMock{}
@@ -878,7 +878,7 @@ func testUtxoSplitChunkSpansTwoQuotes(t *testing.T) {
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(700)) == 0
 	}), test.AnyAddress).Return(receipt, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -924,7 +924,7 @@ func testUtxoSplitChunkSpansTwoQuotes(t *testing.T) {
 	pegoutRepository.AssertExpectations(t)
 }
 
-func setupUtxoSplitQuoteSpansMultipleChunks() (*mocks.PegoutQuoteRepositoryMock, *mocks.ProviderMock, *mocks.RskWalletMock, *mocks.MutexMock, *mocks.BridgeMock, []quote.WatchedPegoutQuote, *[]quote.RetainedPegoutQuote) {
+func setupUtxoSplitQuoteSpansMultipleChunks() (*mocks.PegoutQuoteRepositoryMock, *mocks.ProviderMock, *mocks.RskWalletMock, *mocks.LockerMock, *mocks.BridgeMock, []quote.WatchedPegoutQuote, *[]quote.RetainedPegoutQuote) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
@@ -949,7 +949,7 @@ func setupUtxoSplitQuoteSpansMultipleChunks() (*mocks.PegoutQuoteRepositoryMock,
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(300)) == 0
 	}), test.AnyAddress).Return(receipt2, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -1022,7 +1022,7 @@ func testUtxoSplitDbUpdateFailure(t *testing.T) {
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(500)) == 0
 	}), test.AnyAddress).Return(receipt, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -1047,7 +1047,7 @@ func testUtxoSplitDbUpdateFailure(t *testing.T) {
 	pegoutRepository.AssertExpectations(t)
 }
 
-func setupUtxoSplitRetryWithRemaining() (*mocks.PegoutQuoteRepositoryMock, *mocks.RskWalletMock, *mocks.ProviderMock, *mocks.MutexMock, *mocks.BridgeMock, []quote.WatchedPegoutQuote, *[]quote.RetainedPegoutQuote) {
+func setupUtxoSplitRetryWithRemaining() (*mocks.PegoutQuoteRepositoryMock, *mocks.RskWalletMock, *mocks.ProviderMock, *mocks.LockerMock, *mocks.BridgeMock, []quote.WatchedPegoutQuote, *[]quote.RetainedPegoutQuote) {
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
 	pegoutLp := &mocks.ProviderMock{}
 	wallet := &mocks.RskWalletMock{}
@@ -1063,7 +1063,7 @@ func setupUtxoSplitRetryWithRemaining() (*mocks.PegoutQuoteRepositoryMock, *mock
 	wallet.On("SendRbtc", mock.Anything, mock.MatchedBy(func(config blockchain.TransactionConfig) bool {
 		return config.Value.Cmp(entities.NewWei(500)) == 0
 	}), test.AnyAddress).Return(receipt, nil).Once()
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}
@@ -1141,7 +1141,7 @@ func testUtxoSplitAllChunksFail(t *testing.T) {
 	emptyReceipt := blockchain.TransactionReceipt{}
 	wallet.On("SendRbtc", mock.Anything, mock.Anything, test.AnyAddress).
 		Return(emptyReceipt, assert.AnError)
-	mutex := &mocks.MutexMock{}
+	mutex := &mocks.LockerMock{}
 	mutex.On("Lock").Return().Once()
 	mutex.On("Unlock").Return().Once()
 	bridge := &mocks.BridgeMock{}

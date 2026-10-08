@@ -13,7 +13,7 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	rpc := &mocks.BtcRpcMock{}
+	rpc := &mocks.BitcoinNetworkMock{}
 	validArgs := cold_wallet.StaticColdWalletArgs{BtcAddress: test.AnyBtcAddress, RskAddress: test.AnyRskAddress}
 
 	validConfigBytes, err := json.Marshal(validArgs)

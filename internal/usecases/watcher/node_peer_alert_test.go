@@ -31,7 +31,7 @@ func TestNodePeerCheckUseCase_Run(t *testing.T) {
 
 func testNodePeerCheckNoAlertAboveThreshold(t *testing.T) {
 	const recipient = "alert@example.com"
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	alertSender := &mocks.AlertSenderMock{}
 	eventBus := &mocks.EventBusMock{}
 	btcRpc.On("GetConnectionCount").Return(int64(5), nil).Once()
@@ -49,7 +49,7 @@ func testNodePeerCheckNoAlertAboveThreshold(t *testing.T) {
 
 func testNodePeerCheckSendAlertBelowThreshold(t *testing.T) {
 	const recipient = "alert@example.com"
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	alertSender := &mocks.AlertSenderMock{}
 	eventBus := &mocks.EventBusMock{}
 	btcRpc.On("GetConnectionCount").Return(int64(1), nil).Once()
@@ -73,7 +73,7 @@ func testNodePeerCheckSendAlertBelowThreshold(t *testing.T) {
 
 func testNodePeerCheckPublishErrorOnRPCFailure(t *testing.T) {
 	const recipient = "alert@example.com"
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	alertSender := &mocks.AlertSenderMock{}
 	eventBus := &mocks.EventBusMock{}
 	btcRpc.On("GetConnectionCount").Return(int64(0), assert.AnError).Once()
@@ -91,7 +91,7 @@ func testNodePeerCheckPublishErrorOnRPCFailure(t *testing.T) {
 
 func testNodePeerCheckCooldownSuppressesAlert(t *testing.T) {
 	const recipient = "alert@example.com"
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	alertSender := &mocks.AlertSenderMock{}
 	eventBus := &mocks.EventBusMock{}
 	btcRpc.On("GetConnectionCount").Return(int64(1), nil).Twice()
@@ -115,7 +115,7 @@ func testNodePeerCheckCooldownSuppressesAlert(t *testing.T) {
 
 func testNodePeerCheckSendAlertFailure(t *testing.T) {
 	const recipient = "alert@example.com"
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	alertSender := &mocks.AlertSenderMock{}
 	eventBus := &mocks.EventBusMock{}
 	btcRpc.On("GetConnectionCount").Return(int64(1), nil).Once()

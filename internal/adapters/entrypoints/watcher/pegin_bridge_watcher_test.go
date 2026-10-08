@@ -167,7 +167,7 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 	}, nil)
 	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
 
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}
 	cfuChannel := make(chan entities.Event)

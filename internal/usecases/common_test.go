@@ -103,7 +103,7 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 	}
 	t.Run("Should return if tx does not have witness data", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
-		rpc := &mocks.BtcRpcMock{}
+		rpc := &mocks.BitcoinNetworkMock{}
 		txWithoutWitness := tx
 		txWithoutWitness.HasWitness = false
 		err := u.RegisterCoinbaseTransaction(rpc, bridge, txWithoutWitness)
@@ -113,7 +113,7 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 	})
 	t.Run("Should handle error fetching the coinbase information", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
-		rpc := &mocks.BtcRpcMock{}
+		rpc := &mocks.BitcoinNetworkMock{}
 		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(rootstock.BtcCoinbaseTransactionInformation{}, assert.AnError)
 		err := u.RegisterCoinbaseTransaction(rpc, bridge, tx)
 		require.Error(t, err)
@@ -122,7 +122,7 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 	})
 	t.Run("Should handle error registering the transaction", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
-		rpc := &mocks.BtcRpcMock{}
+		rpc := &mocks.BitcoinNetworkMock{}
 		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(coinbaseInfo, nil)
 		bridge.On("RegisterBtcCoinbaseTransaction", coinbaseInfo).Return("", assert.AnError)
 		err := u.RegisterCoinbaseTransaction(rpc, bridge, tx)
@@ -132,7 +132,7 @@ func TestRegisterCoinbaseTransaction(t *testing.T) {
 	})
 	t.Run("Should register a coinbase tx successfully", func(t *testing.T) {
 		bridge := &mocks.BridgeMock{}
-		rpc := &mocks.BtcRpcMock{}
+		rpc := &mocks.BitcoinNetworkMock{}
 		rpc.On("GetCoinbaseInformation", test.AnyHash).Return(coinbaseInfo, nil)
 		bridge.On("RegisterBtcCoinbaseTransaction", coinbaseInfo).Return(test.AnyHash, nil)
 		err := u.RegisterCoinbaseTransaction(rpc, bridge, tx)

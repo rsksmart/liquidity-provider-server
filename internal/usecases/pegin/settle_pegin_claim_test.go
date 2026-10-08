@@ -71,7 +71,7 @@ func newSettleUseCase(
 			PegIn:                 peginContract,
 			FlyoverConfigurations: mocks.NewFlyoverConfigurationsContractMock(t),
 		},
-		blockchain.Rpc{Btc: mocks.NewBtcRpcMock(t), Rsk: rsk},
+		blockchain.Rpc{Btc: mocks.NewBitcoinNetworkMock(t), Rsk: rsk},
 		claimEventBus(),
 		settleMaxReorgDepth,
 	)

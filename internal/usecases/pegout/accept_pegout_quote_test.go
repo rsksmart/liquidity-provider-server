@@ -65,7 +65,7 @@ func TestAcceptQuoteUseCase_Run_Paused(t *testing.T) {
 	bridge := new(mocks.BridgeMock)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	pegoutContract := new(mocks.PegoutContractMock)
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: true, Since: 5, Reason: "test"}, nil)
 	pegoutContract.EXPECT().GetAddress().Return("test-contract")
@@ -125,7 +125,7 @@ func TestAcceptQuoteUseCase_Run(t *testing.T) {
 		return assert.Equal(t, quoteMock, event.Quote) && assert.Equal(t, retainedQuote, event.RetainedQuote) &&
 			assert.Equal(t, quote.AcceptedPegoutQuoteEventId, event.Event.Id()) && assert.Equal(t, creationData, event.CreationData)
 	})).Once()
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	mutex.On("Lock").Once()
 	mutex.On("Unlock").Once()
 	contracts := blockchain.RskContracts{PegOut: pegoutContract}
@@ -166,7 +166,7 @@ func TestAcceptQuoteUseCase_Run_WithoutCaptcha(t *testing.T) {
 
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
 	eventBus := new(mocks.EventBusMock)
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	lp := new(mocks.ProviderMock)
 	lp.On("GetSigner").Return(signerMock)
 
@@ -524,7 +524,7 @@ func TestAcceptQuoteUseCase_Run_AlreadyAcceptedQuote(t *testing.T) {
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	mutex.On("Lock").Return()
 	mutex.On("Unlock").Return()
 	contracts := blockchain.RskContracts{PegOut: pegoutContract}
@@ -572,7 +572,7 @@ func TestAcceptQuoteUseCase_Run_ExpiredQuote(t *testing.T) {
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	contracts := blockchain.RskContracts{PegOut: pegoutContract}
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), quoteHash, "")
@@ -596,7 +596,7 @@ func TestAcceptQuoteUseCase_Run_QuoteNotFound(t *testing.T) {
 	pegoutContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
 	lp := new(mocks.ProviderMock)
 	eventBus := new(mocks.EventBusMock)
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	contracts := blockchain.RskContracts{PegOut: pegoutContract}
 	useCase := pegout.NewAcceptQuoteUseCase(quoteRepositoryMock, contracts, lp, lp, eventBus, mutex, trustedAccountRepository, signingHashFunction)
 	result, err := useCase.Run(context.Background(), quoteHash, "")
@@ -627,7 +627,7 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity(t *testing.T) {
 		Required:  entities.NewWei(65),
 	}).Once()
 	eventBus := new(mocks.EventBusMock)
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	mutex.On("Lock").Once()
 	mutex.On("Unlock").Once()
 	contracts := blockchain.RskContracts{PegOut: pegoutContract}
@@ -662,7 +662,7 @@ func TestAcceptQuoteUseCase_Run_NoLiquidity_preservesProviderErrorMessage(t *tes
 	lp := new(mocks.ProviderMock)
 	lp.On("HasPegoutLiquidity", test.AnyCtx, entities.NewWei(65)).Return(liquidityErr).Once()
 	eventBus := new(mocks.EventBusMock)
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	mutex.On("Lock").Once()
 	mutex.On("Unlock").Once()
 	contracts := blockchain.RskContracts{PegOut: pegoutContract}
@@ -717,7 +717,7 @@ func TestAcceptQuoteUseCase_Run_ErrorHandling(t *testing.T) {
 			assert.Equal(t, retainedQuote, event.RetainedQuote) &&
 			assert.Equal(t, quote.AcceptedPegoutQuoteEventId, event.Event.Id())
 	}))
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	mutex.On("Lock")
 	mutex.On("Unlock")
 
@@ -814,7 +814,7 @@ func TestAcceptQuoteUseCase_Run_RetainedQuoteValidation(t *testing.T) {
 	lp.On("SignPegoutQuote", mock.Anything, mock.Anything).Return(signature, nil).Once()
 	eventBus := new(mocks.EventBusMock)
 	eventBus.On("Publish").Once()
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	mutex.On("Lock").Once()
 	mutex.On("Unlock").Once()
 	quoteRepositoryMock := new(mocks.PegoutQuoteRepositoryMock)
