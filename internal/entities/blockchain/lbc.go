@@ -53,6 +53,44 @@ func (params RefundPegoutParams) String() string {
 	)
 }
 
+type RequestPegInParams struct {
+	RskAddress         string
+	BitcoinRawTx       []byte
+	BtcBlockHash       [32]byte
+	MerkleBranchPath   *big.Int
+	MerkleBranchHashes [][32]byte
+	Amount             *entities.Wei
+	Fee                *entities.Wei
+}
+
+func (params RequestPegInParams) String() string {
+	return fmt.Sprintf(
+		"RequestPegInParams { RskAddress: %s, BitcoinRawTx: %s, "+
+			"BtcBlockHash: %s, MerkleBranchPath: %v, MerkleBranchHashes: %v, Amount: %v, Fee: %v }",
+		params.RskAddress,
+		hex.EncodeToString(params.BitcoinRawTx),
+		hex.EncodeToString(params.BtcBlockHash[:]),
+		params.MerkleBranchPath,
+		params.MerkleBranchHashes,
+		params.Amount,
+		params.Fee,
+	)
+}
+
+type PegInRequestedEvent struct {
+	PegInId     [32]byte
+	Claimer     string
+	RskAddress  string
+	Amount      *entities.Wei
+	NetToUser   *entities.Wei
+	CallSuccess bool
+}
+
+type RequestPegInResult struct {
+	Receipt TransactionReceipt
+	Event   PegInRequestedEvent
+}
+
 type ProviderRegistrationParams struct {
 	Name       string                          `validate:"required"`
 	ApiBaseUrl string                          `validate:"required"`
@@ -112,6 +150,12 @@ type PeginContract interface {
 	HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error)
 	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
 	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
+	RequestPegIn(params RequestPegInParams) (RequestPegInResult, error)
+	// EstimateRequestPegInGas returns the padded gas limit RequestPegIn will use on send (estimate * 12 / 10).
+	EstimateRequestPegInGas(params RequestPegInParams) (uint64, error)
+	// SimulateRequestPegIn runs RequestPegIn as an eth_call and returns the typed revert error. It never sends a transaction.
+	SimulateRequestPegIn(params RequestPegInParams) error
+	UnpackPegInRequested(receipt TransactionReceipt) (PegInRequestedEvent, error)
 	Withdraw(amount *entities.Wei) error
 }
 

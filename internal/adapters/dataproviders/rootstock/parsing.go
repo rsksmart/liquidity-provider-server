@@ -57,6 +57,7 @@ func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.Trans
 		Value:             entities.NewBigWei(tx.Value()),
 		Logs:              convertReceiptLogs(receipt),
 		GasPrice:          entities.NewBigWei(receipt.EffectiveGasPrice),
+		Status:            receipt.Status,
 	}
 
 	return result, nil
