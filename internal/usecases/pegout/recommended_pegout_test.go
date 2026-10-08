@@ -52,7 +52,7 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 		Value:   entities.NewWei(67250000000000),
 		FeeRate: utils.NewBigFloat64(25),
 	}, nil)
-	btc := new(mocks.BtcRpcMock)
+	btc := new(mocks.BitcoinNetworkMock)
 	btc.On("ValidateAddress", mock.Anything).Return(nil)
 
 	contracts := blockchain.RskContracts{PegOut: pegoutContract, Bridge: bridge}
@@ -145,7 +145,7 @@ func TestRecommendedPegoutUseCase_Run(t *testing.T) {
 func TestRecommendedPegoutUseCase_Run_ErrorHandling(t *testing.T) {
 	for _, errorSetup := range recommendedPegoutErrorSetups() {
 		pegoutContract := new(mocks.PegoutContractMock)
-		btc := new(mocks.BtcRpcMock)
+		btc := new(mocks.BitcoinNetworkMock)
 		btcWallet := new(mocks.BitcoinWalletMock)
 		lp := new(mocks.ProviderMock)
 		lp.On("PegoutConfiguration", mock.Anything).Return(getPegoutConfiguration())
@@ -159,12 +159,12 @@ func TestRecommendedPegoutUseCase_Run_ErrorHandling(t *testing.T) {
 	}
 }
 
-func recommendedPegoutErrorSetups() []func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
-	return []func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock){
-		func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+func recommendedPegoutErrorSetups() []func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BitcoinNetworkMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+	return []func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BitcoinNetworkMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock){
+		func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BitcoinNetworkMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
 			btc.On("GetZeroAddress", mock.Anything).Return("", assert.AnError)
 		},
-		func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BtcRpcMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
+		func(pegoutContract *mocks.PegoutContractMock, btc *mocks.BitcoinNetworkMock, btcWallet *mocks.BitcoinWalletMock, lp *mocks.ProviderMock) {
 			btc.On("GetZeroAddress", mock.Anything).Return(blockchain.BitcoinTestnetP2PKHZeroAddress, nil)
 			btcWallet.On("EstimateTxFees", mock.Anything, mock.Anything).Return(blockchain.BtcFeeEstimation{}, assert.AnError)
 		},

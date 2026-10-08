@@ -73,6 +73,9 @@ packages:
       GetTrustedAccountsUseCase:
       ServerInfoUseCase:
       WithdrawCollateralUseCase:
+  github.com/rsksmart/liquidity-provider-server/internal/entities:
+    interfaces:
+      EventBus:
   github.com/rsksmart/liquidity-provider-server/internal/entities/cold_wallet:
     interfaces:
       ColdWallet:
@@ -92,6 +95,7 @@ packages:
     interfaces:
       Pausable:
       BitcoinWallet:
+      BitcoinNetwork:
       RootstockRpcServer:
       PeginContract:
       PegoutContract:
@@ -131,6 +135,7 @@ packages:
       NodePeerCheckUseCase:
       PegInClaimRunner:
       PegInClaimSettler:
+      PegInClaimResolver:
       PegInClaimsGetter:
       PegInWatchesGetter:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
@@ -144,3 +149,6 @@ packages:
       ContractTransactor:
       ContractCaller:
       ContractFilterer:
+  sync:
+    interfaces:
+      Locker:

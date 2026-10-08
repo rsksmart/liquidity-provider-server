@@ -35,7 +35,7 @@ func TestEclipseCheckUseCase_Run_Rootstock(t *testing.T) {
 	}
 	t.Run("should not trigger the alert if no eclipse attack is detected", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
-		btcRpc := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
 		eventBus := &mocks.EventBusMock{}
 		alertSender := &mocks.AlertSenderMock{}
 		rskExtra1 := &mocks.RootstockRpcServerMock{}
@@ -60,7 +60,7 @@ func TestEclipseCheckUseCase_Run_Rootstock(t *testing.T) {
 			Timestamp: timestamp,
 			Nonce:     nonce,
 		}, nil)
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 		mutex.On("Lock").Return()
 		mutex.On("Unlock").Return()
 		useCase := w.NewEclipseCheckUseCase(
@@ -88,7 +88,7 @@ func TestEclipseCheckUseCase_Run_Rootstock(t *testing.T) {
 	})
 	t.Run("should trigger the alert if eclipse attack is detected", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
-		btcRpc := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
 		eventBus := &mocks.EventBusMock{}
 		alertSender := &mocks.AlertSenderMock{}
 		rskExtra1 := &mocks.RootstockRpcServerMock{}
@@ -108,7 +108,7 @@ func TestEclipseCheckUseCase_Run_Rootstock(t *testing.T) {
 				Nonce:     nonce,
 			}, nil)
 		}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 		mutex.On("Lock").Return()
 		mutex.On("Unlock").Return()
 		alertSender.On(
@@ -148,7 +148,7 @@ func TestEclipseCheckUseCase_Run_Rootstock(t *testing.T) {
 	})
 	t.Run("should not trigger alert if the node syncs during the tolerance threshold", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
-		btcRpc := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
 		eventBus := &mocks.EventBusMock{}
 		alertSender := &mocks.AlertSenderMock{}
 		rskExtra1 := &mocks.RootstockRpcServerMock{}
@@ -180,7 +180,7 @@ func TestEclipseCheckUseCase_Run_Rootstock(t *testing.T) {
 				Nonce:     nonce,
 			}, nil)
 		}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 		mutex.On("Lock").Return()
 		mutex.On("Unlock").Return()
 		useCase := w.NewEclipseCheckUseCase(
@@ -226,12 +226,12 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 	}
 	t.Run("should not trigger the alert if no eclipse attack is detected", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
-		btcRpc := &mocks.BtcRpcMock{}
-		btcExtra1 := &mocks.BtcRpcMock{}
-		btcExtra2 := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
+		btcExtra1 := &mocks.BitcoinNetworkMock{}
+		btcExtra2 := &mocks.BitcoinNetworkMock{}
 		eventBus := &mocks.EventBusMock{}
 		alertSender := &mocks.AlertSenderMock{}
-		btcExtras := []*mocks.BtcRpcMock{btcExtra1, btcExtra2}
+		btcExtras := []*mocks.BitcoinNetworkMock{btcExtra1, btcExtra2}
 		btcRpc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{
 			NetworkName:      networkName,
 			ValidatedBlocks:  big.NewInt(blocks),
@@ -251,7 +251,7 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 			ValidatedHeaders: big.NewInt(101),
 			BestBlockHash:    "otherHash",
 		}, nil)
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 		mutex.On("Lock").Return()
 		mutex.On("Unlock").Return()
 		useCase := w.NewEclipseCheckUseCase(
@@ -279,12 +279,12 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 	})
 	t.Run("should trigger the alert if eclipse attack is detected", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
-		btcRpc := &mocks.BtcRpcMock{}
-		btcExtra1 := &mocks.BtcRpcMock{}
-		btcExtra2 := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
+		btcExtra1 := &mocks.BitcoinNetworkMock{}
+		btcExtra2 := &mocks.BitcoinNetworkMock{}
 		eventBus := &mocks.EventBusMock{}
 		alertSender := &mocks.AlertSenderMock{}
-		btcExtras := []*mocks.BtcRpcMock{btcExtra1, btcExtra2}
+		btcExtras := []*mocks.BitcoinNetworkMock{btcExtra1, btcExtra2}
 		btcRpc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{
 			NetworkName:      networkName,
 			ValidatedBlocks:  big.NewInt(blocks),
@@ -299,7 +299,7 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 				BestBlockHash:    "otherHash",
 			}, nil)
 		}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 		mutex.On("Lock").Return()
 		mutex.On("Unlock").Return()
 		alertSender.On(
@@ -339,12 +339,12 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 	})
 	t.Run("should not trigger alert if the node syncs during the tolerance threshold", func(t *testing.T) {
 		rskRpc := &mocks.RootstockRpcServerMock{}
-		btcRpc := &mocks.BtcRpcMock{}
-		btcExtra1 := &mocks.BtcRpcMock{}
-		btcExtra2 := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
+		btcExtra1 := &mocks.BitcoinNetworkMock{}
+		btcExtra2 := &mocks.BitcoinNetworkMock{}
 		eventBus := &mocks.EventBusMock{}
 		alertSender := &mocks.AlertSenderMock{}
-		btcExtras := []*mocks.BtcRpcMock{btcExtra1, btcExtra2}
+		btcExtras := []*mocks.BitcoinNetworkMock{btcExtra1, btcExtra2}
 		btcRpc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{
 			NetworkName:      networkName,
 			ValidatedBlocks:  big.NewInt(300),
@@ -365,7 +365,7 @@ func TestEclipseCheckUseCase_Run_Bitcoin(t *testing.T) {
 				BestBlockHash:    test.AnyHash,
 			}, nil)
 		}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 		mutex.On("Lock").Return()
 		mutex.On("Unlock").Return()
 		useCase := w.NewEclipseCheckUseCase(
@@ -402,7 +402,7 @@ func TestEclipseCheckUseCase_Run_ErrorCases(t *testing.T) {
 		useCase := w.NewEclipseCheckUseCase(
 			w.EclipseCheckConfig{},
 			blockchain.Rpc{
-				Btc: &mocks.BtcRpcMock{},
+				Btc: &mocks.BitcoinNetworkMock{},
 				Rsk: &mocks.RootstockRpcServerMock{},
 			},
 			[]blockchain.BitcoinNetwork{},
@@ -421,7 +421,7 @@ func TestEclipseCheckUseCase_Run_ErrorCases(t *testing.T) {
 		useCase := w.NewEclipseCheckUseCase(
 			w.EclipseCheckConfig{},
 			blockchain.Rpc{
-				Btc: &mocks.BtcRpcMock{},
+				Btc: &mocks.BitcoinNetworkMock{},
 				Rsk: rsk,
 			},
 			[]blockchain.BitcoinNetwork{},
@@ -436,7 +436,7 @@ func TestEclipseCheckUseCase_Run_ErrorCases(t *testing.T) {
 		rsk.AssertExpectations(t)
 	})
 	t.Run("should handle error getting block from main btc source", func(t *testing.T) {
-		btc := &mocks.BtcRpcMock{}
+		btc := &mocks.BitcoinNetworkMock{}
 		btc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{}, assert.AnError)
 		useCase := w.NewEclipseCheckUseCase(
 			w.EclipseCheckConfig{},
@@ -468,7 +468,7 @@ func TestEclipseCheckUseCase_Run_ErrorCases(t *testing.T) {
 		useCase := w.NewEclipseCheckUseCase(
 			w.EclipseCheckConfig{},
 			blockchain.Rpc{
-				Btc: &mocks.BtcRpcMock{},
+				Btc: &mocks.BitcoinNetworkMock{},
 				Rsk: rsk,
 			},
 			[]blockchain.BitcoinNetwork{},
@@ -485,14 +485,14 @@ func TestEclipseCheckUseCase_Run_ErrorCases(t *testing.T) {
 		extra.AssertExpectations(t)
 	})
 	t.Run("should handle error getting block from external btc source", func(t *testing.T) {
-		btc := &mocks.BtcRpcMock{}
+		btc := &mocks.BitcoinNetworkMock{}
 		btc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{
 			NetworkName:      "mainnet",
 			ValidatedBlocks:  big.NewInt(123),
 			ValidatedHeaders: big.NewInt(123),
 			BestBlockHash:    test.AnyHash,
 		}, nil)
-		extra := &mocks.BtcRpcMock{}
+		extra := &mocks.BitcoinNetworkMock{}
 		extra.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{}, assert.AnError)
 		useCase := w.NewEclipseCheckUseCase(
 			w.EclipseCheckConfig{},
@@ -514,14 +514,14 @@ func TestEclipseCheckUseCase_Run_ErrorCases(t *testing.T) {
 		extra.AssertExpectations(t)
 	})
 	t.Run("should handle error sending alert", func(t *testing.T) {
-		btc := &mocks.BtcRpcMock{}
+		btc := &mocks.BitcoinNetworkMock{}
 		btc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{
 			NetworkName:      "mainnet",
 			ValidatedBlocks:  big.NewInt(123),
 			ValidatedHeaders: big.NewInt(123),
 			BestBlockHash:    test.AnyHash,
 		}, nil)
-		extra := &mocks.BtcRpcMock{}
+		extra := &mocks.BitcoinNetworkMock{}
 		extra.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{}, assert.AnError)
 		alertSender := &mocks.AlertSenderMock{}
 		alertSender.On("SendAlert", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -554,7 +554,7 @@ func TestEclipseCheckUseCase_Run_ErrorCases(t *testing.T) {
 		eventBus.AssertExpectations(t)
 	})
 	t.Run("should run when no extra data sources are provided", func(t *testing.T) {
-		btc := &mocks.BtcRpcMock{}
+		btc := &mocks.BitcoinNetworkMock{}
 		btc.On("GetBlockchainInfo").Return(blockchain.BitcoinBlockchainInfo{
 			NetworkName:      "mainnet",
 			ValidatedBlocks:  big.NewInt(123),

@@ -54,7 +54,7 @@ type claimHarness struct {
 	pegin        *mocks.PeginContractMock
 	pause        *mocks.PauseRegistryContractMock
 	configs      *mocks.FlyoverConfigurationsContractMock
-	btc          *mocks.BtcRpcMock
+	btc          *mocks.BitcoinNetworkMock
 	rsk          *mocks.RootstockRpcServerMock
 	provider     *mocks.ProviderMock
 	eventBus     *mocks.EventBusMock
@@ -78,7 +78,7 @@ func newClaimHarness(t *testing.T, repo rootstock.PegInClaimRepository) *claimHa
 		pegin:        mocks.NewPeginContractMock(t),
 		pause:        mocks.NewPauseRegistryContractMock(t),
 		configs:      mocks.NewFlyoverConfigurationsContractMock(t),
-		btc:          mocks.NewBtcRpcMock(t),
+		btc:          mocks.NewBitcoinNetworkMock(t),
 		rsk:          mocks.NewRootstockRpcServerMock(t),
 		amount:       amount,
 		fee:          fee,
@@ -631,7 +631,7 @@ func TestClaimPegInUseCase_SaveAlreadySubmittedDoesNotSubmit(t *testing.T) {
 	peginContract := mocks.NewPeginContractMock(t)
 	pause := mocks.NewPauseRegistryContractMock(t)
 	configs := mocks.NewFlyoverConfigurationsContractMock(t)
-	btc := mocks.NewBtcRpcMock(t)
+	btc := mocks.NewBitcoinNetworkMock(t)
 	rsk := mocks.NewRootstockRpcServerMock(t)
 	amount := entities.NewWei(1_000_000_000_000_000_000)
 	fee := entities.NewWei(1_000_000_000_000_000)

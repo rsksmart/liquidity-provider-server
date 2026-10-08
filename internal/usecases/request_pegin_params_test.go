@@ -31,7 +31,7 @@ func requestPegInInput() u.RequestPegInInput {
 
 func TestBuildRequestPegInParams(t *testing.T) {
 	t.Run("maps the input, the raw transaction and the deposit proofs", func(t *testing.T) {
-		btc := mocks.NewBtcRpcMock(t)
+		btc := mocks.NewBitcoinNetworkMock(t)
 		block := blockchain.BitcoinBlockInformation{Hash: [32]byte{0x09}, Height: big.NewInt(500)}
 		merkle := blockchain.MerkleBranch{Path: big.NewInt(3), Hashes: [][32]byte{{0x0b}, {0x0c}}}
 		btc.On("GetRawTransaction", requestPegInDepositTxID).Return(requestPegInRawTx, nil).Once()
@@ -52,7 +52,7 @@ func TestBuildRequestPegInParams(t *testing.T) {
 		}, params)
 	})
 	t.Run("block info error skips the merkle branch", func(t *testing.T) {
-		btc := mocks.NewBtcRpcMock(t)
+		btc := mocks.NewBitcoinNetworkMock(t)
 		btc.On("GetRawTransaction", requestPegInDepositTxID).Return(requestPegInRawTx, nil).Once()
 		btc.On("GetTransactionBlockInfo", requestPegInDepositTxID).
 			Return(blockchain.BitcoinBlockInformation{}, assert.AnError).Once()
@@ -63,7 +63,7 @@ func TestBuildRequestPegInParams(t *testing.T) {
 		btc.AssertNotCalled(t, "BuildMerkleBranch", mock.Anything)
 	})
 	t.Run("merkle branch error", func(t *testing.T) {
-		btc := mocks.NewBtcRpcMock(t)
+		btc := mocks.NewBitcoinNetworkMock(t)
 		btc.On("GetRawTransaction", requestPegInDepositTxID).Return(requestPegInRawTx, nil).Once()
 		btc.On("GetTransactionBlockInfo", requestPegInDepositTxID).
 			Return(blockchain.BitcoinBlockInformation{Hash: [32]byte{0x09}}, nil).Once()
@@ -77,7 +77,7 @@ func TestBuildRequestPegInParams(t *testing.T) {
 
 func TestBuildRequestPegInParams_RawTransactionErrors(t *testing.T) {
 	t.Run("raw transaction error skips the proofs", func(t *testing.T) {
-		btc := mocks.NewBtcRpcMock(t)
+		btc := mocks.NewBitcoinNetworkMock(t)
 		btc.On("GetRawTransaction", requestPegInDepositTxID).Return([]byte(nil), assert.AnError).Once()
 
 		params, err := u.BuildRequestPegInParams(btc, requestPegInInput())
@@ -86,7 +86,7 @@ func TestBuildRequestPegInParams_RawTransactionErrors(t *testing.T) {
 		btc.AssertNotCalled(t, "GetTransactionBlockInfo", mock.Anything)
 	})
 	t.Run("witness-serialized raw transaction is rejected before the proofs", func(t *testing.T) {
-		btc := mocks.NewBtcRpcMock(t)
+		btc := mocks.NewBitcoinNetworkMock(t)
 		btc.On("GetRawTransaction", requestPegInDepositTxID).Return(requestPegInWitnessRawTx, nil).Once()
 
 		params, err := u.BuildRequestPegInParams(btc, requestPegInInput())

@@ -29,7 +29,7 @@ func TestNewPegoutRskDepositWatcher(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	providerMock := &mocks.ProviderMock{}
 	contracts := blockchain.RskContracts{PegOut: &mocks.PegoutContractMock{}}
-	rpc := blockchain.Rpc{Btc: &mocks.BtcRpcMock{}, Rsk: &mocks.RootstockRpcServerMock{}}
+	rpc := blockchain.Rpc{Btc: &mocks.BitcoinNetworkMock{}, Rsk: &mocks.RootstockRpcServerMock{}}
 	eventBus := &mocks.EventBusMock{}
 	useCases := watcher.NewPegoutRskDepositWatcherUseCases(
 		&w.GetWatchedPegoutQuoteUseCase{},

@@ -46,7 +46,7 @@ func TestRecommendedPeginUseCase_Run(t *testing.T) {
 	lp.On("GeneralConfiguration", test.AnyCtx).Return(getGeneralConfiguration())
 	lp.On("RskAddress").Return(test.AnyRskAddress)
 	lp.On("BtcAddress").Return(test.AnyBtcAddress)
-	btc := new(mocks.BtcRpcMock)
+	btc := new(mocks.BitcoinNetworkMock)
 	btc.On("NetworkName").Return(testnetNetworkName)
 	contracts := blockchain.RskContracts{PegIn: peginContract, Bridge: bridge}
 	rpc := blockchain.Rpc{Btc: btc, Rsk: rsk}
@@ -148,7 +148,7 @@ func TestRecommendedPeginUseCase_Run_ErrorHandling(t *testing.T) {
 	for _, errorSetup := range recommendedPeginErrorSetups() {
 		peginContract := new(mocks.PeginContractMock)
 		rsk := new(mocks.RootstockRpcServerMock)
-		btc := new(mocks.BtcRpcMock)
+		btc := new(mocks.BitcoinNetworkMock)
 		lp := new(mocks.ProviderMock)
 		lp.On("PeginConfiguration", mock.Anything).Return(getPeginConfiguration())
 		contracts := blockchain.RskContracts{PegIn: peginContract}

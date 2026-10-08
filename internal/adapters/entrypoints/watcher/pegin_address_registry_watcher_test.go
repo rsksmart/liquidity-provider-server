@@ -295,7 +295,7 @@ type pegInWatcherFixture struct {
 	chain             *watcherChainState
 	registry          *mocks.PegInAddressRegistryContractMock
 	rskRpc            *mocks.RootstockRpcServerMock
-	btcNetwork        *mocks.BtcRpcMock
+	btcNetwork        *mocks.BitcoinNetworkMock
 	wallet            *mocks.BitcoinWalletMock
 	eventBus          *mocks.EventBusMock
 	events            *eventRecorder
@@ -341,7 +341,7 @@ func newPegInWatcherFixtureWithPaging(
 	chain := &watcherChainState{roots: make(map[uint64][32]byte)}
 	registry := mocks.NewPegInAddressRegistryContractMock(t)
 	rskRpc := mocks.NewRootstockRpcServerMock(t)
-	btcNetwork := &mocks.BtcRpcMock{}
+	btcNetwork := &mocks.BitcoinNetworkMock{}
 	wallet := mocks.NewBitcoinWalletMock(t)
 	ticker := mocks.NewTickerMock(t)
 	rskRpc.EXPECT().GetHeight(mock.Anything).RunAndReturn(chain.height).Maybe()

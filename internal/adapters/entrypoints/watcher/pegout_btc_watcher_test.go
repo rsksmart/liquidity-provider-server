@@ -95,7 +95,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	testRetainedQuote := quote.RetainedPegoutQuote{QuoteHash: "070809", DepositAddress: test.AnyAddress, LpBtcTxHash: "030201", State: quote.PegoutStateSendPegoutSucceeded}
 	testPegoutQuote := quote.PegoutQuote{Nonce: 5, TransferConfirmations: 5}
 	pegoutRepository := &mocks.PegoutQuoteRepositoryMock{}
-	btcRpc := &mocks.BtcRpcMock{}
+	btcRpc := &mocks.BitcoinNetworkMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}
 	pegoutSentChannel := make(chan entities.Event)
@@ -105,7 +105,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	ticker := &mocks.TickerMock{}
 	ticker.EXPECT().C().Return(tickerChannel)
 	ticker.EXPECT().Stop().Return()
-	mutex := new(mocks.MutexMock)
+	mutex := new(mocks.LockerMock)
 	mutex.On("Lock").Return(nil)
 	mutex.On("Unlock").Return()
 	pegoutContract := &mocks.PegoutContractMock{}
@@ -336,7 +336,7 @@ func TestPegoutBtcTransferWatcher(t *testing.T) {
 		shutdownChannel := make(chan bool)
 		ticker.EXPECT().C().Return(tickerChannel)
 		ticker.EXPECT().Stop().Return()
-		btcRpc := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
 		rpc := blockchain.Rpc{Btc: btcRpc}
 		btcRpc.On("GetHeight").Return(big.NewInt(0), nil).Once()
 		quoteRepository := &mocks.PegoutQuoteRepositoryMock{}

@@ -23,6 +23,7 @@ type ApplicationTickers struct {
 	RootstockPeerWatcherTicker        utils.Ticker
 	PegInAddressRegistryWatcherTicker utils.Ticker
 	PegInClaimWatcherTicker           utils.Ticker
+	PegInResolveWatcherTicker         utils.Ticker
 }
 
 func NewApplicationTickers() *ApplicationTickers {
@@ -47,5 +48,6 @@ func NewApplicationTickers() *ApplicationTickers {
 		RootstockPeerWatcherTicker:        utils.NewTickerWrapper(rootstockPeerCheckInterval),
 		PegInAddressRegistryWatcherTicker: utils.NewTickerWrapper(peginAddressRegistryWatcherInterval),
 		PegInClaimWatcherTicker:           utils.NewTickerWrapper(peginClaimWatcherInterval),
+		PegInResolveWatcherTicker:         utils.NewTickerWrapper(peginResolveWatcherInterval),
 	}
 }

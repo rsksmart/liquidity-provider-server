@@ -13,7 +13,7 @@ import (
 
 func TestStaticColdWallet_Init(t *testing.T) {
 	t.Run("Should init successfully with valid addresses", func(t *testing.T) {
-		btcRpc := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
 		btcRpc.On("ValidateAddress", test.AnyBtcAddress).Return(nil)
 		args := cold_wallet.StaticColdWalletArgs{BtcAddress: test.AnyBtcAddress, RskAddress: test.AnyRskAddress}
 		wallet := cold_wallet.NewStaticColdWallet(blockchain.Rpc{Btc: btcRpc}, args)
@@ -24,7 +24,7 @@ func TestStaticColdWallet_Init(t *testing.T) {
 		require.Equal(t, "Address", wallet.GetLabel())
 	})
 	t.Run("Should fail to init with invalid rsk address", func(t *testing.T) {
-		btcRpc := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
 		btcRpc.On("ValidateAddress", test.AnyBtcAddress).Return(nil)
 		args := cold_wallet.StaticColdWalletArgs{BtcAddress: test.AnyBtcAddress, RskAddress: "not-an-address"}
 		wallet := cold_wallet.NewStaticColdWallet(blockchain.Rpc{Btc: btcRpc}, args)
@@ -32,7 +32,7 @@ func TestStaticColdWallet_Init(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("Should fail to init with invalid btc address", func(t *testing.T) {
-		btcRpc := &mocks.BtcRpcMock{}
+		btcRpc := &mocks.BitcoinNetworkMock{}
 		btcRpc.On("ValidateAddress", mock.Anything).Return(assert.AnError)
 		args := cold_wallet.StaticColdWalletArgs{BtcAddress: "not-an-address", RskAddress: test.AnyRskAddress}
 		wallet := cold_wallet.NewStaticColdWallet(blockchain.Rpc{Btc: btcRpc}, args)

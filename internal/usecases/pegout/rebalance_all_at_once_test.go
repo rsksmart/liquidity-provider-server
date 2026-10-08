@@ -103,7 +103,7 @@ func matchAllAtOnceRevertedQuotes(quotes []quote.RetainedPegoutQuote) bool {
 	return true
 }
 
-func newAllAtOnceHandler(repo quote.PegoutQuoteRepository, wallet blockchain.RootstockWallet, bridge rootstock.Bridge, mutex *mocks.MutexMock) *pegout.AllAtOnceHandler {
+func newAllAtOnceHandler(repo quote.PegoutQuoteRepository, wallet blockchain.RootstockWallet, bridge rootstock.Bridge, mutex *mocks.LockerMock) *pegout.AllAtOnceHandler {
 	return pegout.NewAllAtOnceHandler(repo, wallet, blockchain.RskContracts{Bridge: bridge}, mutex, noRejectionParser)
 }
 
@@ -113,7 +113,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		walletBalance := new(entities.Wei).Add(
 			entities.NewWei(allAtOnceTotal),
@@ -146,7 +146,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		mutex.On("Lock").Return().Once()
 		mutex.On("Unlock").Return().Once()
@@ -168,7 +168,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		wallet.On("GetBalance", mock.Anything).Return((*entities.Wei)(nil), assert.AnError).Once()
 		mutex.On("Lock").Return().Once()
@@ -191,7 +191,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		// balance covers gas but not the transfer amount
 		lowBalance := new(entities.Wei).Add(
@@ -219,7 +219,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		walletBalance := new(entities.Wei).Add(
 			entities.NewWei(allAtOnceTotal),
@@ -250,7 +250,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		walletBalance := new(entities.Wei).Add(
 			entities.NewWei(allAtOnceTotal),
@@ -283,7 +283,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		walletBalance := new(entities.Wei).Add(
 			entities.NewWei(allAtOnceTotal),
@@ -314,7 +314,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		walletBalance := new(entities.Wei).Add(
 			entities.NewWei(allAtOnceTotal),
@@ -348,7 +348,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		walletBalance := new(entities.Wei).Add(
 			entities.NewWei(allAtOnceTotal),
@@ -381,7 +381,7 @@ func TestAllAtOnceHandler_Execute(t *testing.T) {
 		repo := &mocks.PegoutQuoteRepositoryMock{}
 		wallet := &mocks.RskWalletMock{}
 		bridge := &mocks.BridgeMock{}
-		mutex := &mocks.MutexMock{}
+		mutex := &mocks.LockerMock{}
 
 		walletBalance := new(entities.Wei).Add(
 			entities.NewWei(allAtOnceTotal),
