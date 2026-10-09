@@ -1,6 +1,10 @@
 package watcher
 
-import "github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+import (
+	"time"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+)
 
 type ApplicationTickers struct {
 	LiquidityCheckTicker              utils.Ticker
@@ -25,7 +29,7 @@ type ApplicationTickers struct {
 	PegInClaimWatcherTicker           utils.Ticker
 }
 
-func NewApplicationTickers() *ApplicationTickers {
+func NewApplicationTickers(pegInAddressRegistryInterval, pegInClaimInterval time.Duration) *ApplicationTickers {
 	return &ApplicationTickers{
 		LiquidityCheckTicker:              utils.NewTickerWrapper(liquidityCheckInterval),
 		PeginBridgeWatcherTicker:          utils.NewTickerWrapper(peginBridgeWatcherInterval),
@@ -45,7 +49,7 @@ func NewApplicationTickers() *ApplicationTickers {
 		RootstockReorgWatcherTicker:       utils.NewTickerWrapper(rootstockReorgCheckInterval),
 		BitcoinPeerWatcherTicker:          utils.NewTickerWrapper(bitcoinPeerCheckInterval),
 		RootstockPeerWatcherTicker:        utils.NewTickerWrapper(rootstockPeerCheckInterval),
-		PegInAddressRegistryWatcherTicker: utils.NewTickerWrapper(peginAddressRegistryWatcherInterval),
-		PegInClaimWatcherTicker:           utils.NewTickerWrapper(peginClaimWatcherInterval),
+		PegInAddressRegistryWatcherTicker: utils.NewTickerWrapper(pegInAddressRegistryInterval),
+		PegInClaimWatcherTicker:           utils.NewTickerWrapper(pegInClaimInterval),
 	}
 }
