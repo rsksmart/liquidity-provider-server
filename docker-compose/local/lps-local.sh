@@ -47,7 +47,7 @@ fi
 ### Contract deployment ###
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
-  # LBC_IMAGE is a pinned digest that never changes between runs, so compose would
+  # LBC_COMMIT is a pinned commit that never changes between runs, so compose would
   # treat a previous run's "service_completed_successfully" as still satisfied and
   # skip re-running the deployer. After a chain reset (rm -rf volumes) that leaves the
   # contracts undeployed. Remove the one-shot containers so they always run fresh.
