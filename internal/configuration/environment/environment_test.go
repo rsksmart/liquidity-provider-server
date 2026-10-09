@@ -73,6 +73,24 @@ func TestPeginEnv_FillWithDefaults(t *testing.T) {
 		require.Equal(t, uint64(500), defaults.AddressRegistryWatcherStartBlock)
 		require.Equal(t, uint64(10), defaults.AddressRegistryWatcherPageSize)
 	})
+	t.Run("defaults zero watcher intervals", func(t *testing.T) {
+		env := &environment.PeginEnv{}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(60), defaults.AddressRegistryWatcherIntervalSeconds)
+		require.Equal(t, uint64(60), defaults.ClaimWatcherIntervalSeconds)
+		require.Equal(t, uint64(180), defaults.ResolveWatcherIntervalSeconds)
+	})
+	t.Run("keeps custom watcher intervals", func(t *testing.T) {
+		env := &environment.PeginEnv{
+			AddressRegistryWatcherIntervalSeconds: 2,
+			ClaimWatcherIntervalSeconds:           3,
+			ResolveWatcherIntervalSeconds:         4,
+		}
+		defaults := env.FillWithDefaults()
+		require.Equal(t, uint64(2), defaults.AddressRegistryWatcherIntervalSeconds)
+		require.Equal(t, uint64(3), defaults.ClaimWatcherIntervalSeconds)
+		require.Equal(t, uint64(4), defaults.ResolveWatcherIntervalSeconds)
+	})
 }
 
 func TestNodeReorgEnv_FillWithDefaults(t *testing.T) {
