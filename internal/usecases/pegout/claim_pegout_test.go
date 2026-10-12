@@ -287,7 +287,7 @@ func TestClaimPegOutUseCase_ClaimsWhenCapacityEqualsValue(t *testing.T) {
 	f.escrow.AssertExpectations(t)
 }
 
-func TestClaimPegOutUseCase_ClaimsWhenCallFeeExceedsCostByOneWei(t *testing.T) {
+func TestClaimPegOutUseCase_ClaimsWhenRevenueExceedsCostByOneWei(t *testing.T) {
 	f := newClaimFixtures()
 	q := claimEscrowQuote()
 	q.CallFee = new(entities.Wei).Sub(entities.NewWei(claimTotalCost+1), q.GasFee)
