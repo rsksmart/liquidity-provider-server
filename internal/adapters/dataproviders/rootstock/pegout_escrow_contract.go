@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -115,6 +116,9 @@ func (escrow *pegOutEscrowContractImpl) RestrictedUntil(lpAddress string) (uint6
 		})
 	if err != nil {
 		return 0, err
+	}
+	if result != nil && !result.IsUint64() {
+		return math.MaxUint64, nil
 	}
 	return bigIntToUint64(result), nil
 }
