@@ -180,7 +180,8 @@ func (useCase *ClaimPegOutUseCase) loadEncodedQuote(requestHash string) (quote.P
 	if pegoutQuote.LpBtcAddress, err = useCase.encodeHexAddress(pegoutQuote.LpBtcAddress); err != nil {
 		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
-	// EIP-712 binds the completed quote; request id / OP_RETURN stay the incomplete-quote hash.
+	// The LP signs the completed quote. Only requestHash is the incomplete-quote hash: claimPegOut
+	// rekeys the peg-out to the completed hash, and the OP_RETURN carries that hash.
 	pegoutQuote.LpRskAddress = useCase.lp.RskAddress()
 	return pegoutQuote, nil
 }
