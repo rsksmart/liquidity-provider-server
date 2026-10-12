@@ -100,7 +100,9 @@ func (flyover *Flyover) PegInAddress(t *testing.T, rskAddr common.Address) strin
 func (flyover *Flyover) MinDepositSats(t *testing.T) *big.Int {
 	t.Helper()
 	output := flyover.callMissing(t, flyover.contracts.PegInAddressRegistry, "getMinDepositSats")
-	return abi.ConvertType(output, new(big.Int)).(*big.Int)
+	minDepositSats, ok := abi.ConvertType(output, new(big.Int)).(*big.Int)
+	require.True(t, ok, "getMinDepositSats did not return a uint256")
+	return minDepositSats
 }
 
 func (flyover *Flyover) IsRegistered(t *testing.T, rskAddr common.Address) bool {
@@ -121,7 +123,9 @@ func (flyover *Flyover) RegisterAddress(t *testing.T, registrant Account, rskAdd
 func (flyover *Flyover) PegInConfiguration(t *testing.T) PegInConfiguration {
 	t.Helper()
 	output := flyover.callMissing(t, flyover.contracts.FlyoverConfigurations, "getPegInConfiguration")
-	return *abi.ConvertType(output, new(PegInConfiguration)).(*PegInConfiguration)
+	configuration, ok := abi.ConvertType(output, new(PegInConfiguration)).(*PegInConfiguration)
+	require.True(t, ok, "getPegInConfiguration did not return a PegConfiguration")
+	return *configuration
 }
 
 // PegInFee is the LP fee the configurations contract charges for amountWei.

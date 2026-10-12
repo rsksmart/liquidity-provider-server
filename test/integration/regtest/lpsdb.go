@@ -57,6 +57,20 @@ func (db *LpsDB) Claim(t *testing.T, rskAddr common.Address, depositTxID string)
 	return claim
 }
 
+// UnsettledClaims are the peg-ins the LPS has started and not finished: it may still front them
+// or be repaid for them, which moves the LP's balances.
+func (db *LpsDB) UnsettledClaims(t *testing.T) []rootstock.PegInClaim {
+	t.Helper()
+	claims, err := db.claims.ListByStates(t.Context(),
+		rootstock.PegInClaimCandidate,
+		rootstock.PegInClaimSubmitting,
+		rootstock.PegInClaimClaimed,
+		rootstock.PegInClaimRetryableFailure,
+	)
+	require.NoError(t, err)
+	return claims
+}
+
 // rskAddressKey is the checksummed hex the registry watcher stores RSK addresses as.
 func rskAddressKey(address common.Address) string {
 	return address.Hex()

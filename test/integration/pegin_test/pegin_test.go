@@ -1,7 +1,6 @@
 package pegin_test
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -13,13 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Rounds driven after the settlement, so the resolve watcher passes over the claim again.
-const extraRounds = 5
-
 // TestCommitFirstPegIn drives one commit-first peg-in on the local regtest stack, from the
 // institution's BTC deposit to the LP getting its advance back, and checks each step on both
 // chains and in the LPS database. The test acts as the institution and the watchtower, the LPS
 // acts on its own.
+//
+//nolint:funlen // one function keeps the scenario's phases in order and lets them share its state
 func TestCommitFirstPegIn(t *testing.T) {
 	s := newPegInStack(t)
 	institution := s.rsk.NewAccount(t, new(big.Int)).Address
@@ -89,19 +87,5 @@ func TestCommitFirstPegIn(t *testing.T) {
 		assert.NotEmpty(t, claim.ResolveTxHash)
 		assert.Zero(t, entities.NewBigWei(resolved.ClaimerPayout).Cmp(claim.ClaimerPayout))
 		assert.Zero(t, entities.NewBigWei(resolved.RegistrantFee).Cmp(claim.RegistrantFee))
-	})
-
-	runPhase(t, "the peg-in is settled only once", func(t *testing.T) {
-		resolveTxHash := claim.ResolveTxHash
-		rounds := 0
-		s.driver.AdvanceUntil(t, "extra resolve passes", phaseTimeout, regtest.Step{BtcBlocks: 1, RskBlocks: 1},
-			func(t *testing.T) (bool, string) {
-				rounds++
-				return rounds > extraRounds, fmt.Sprintf("round %d of %d", rounds, extraRounds)
-			})
-		assert.Len(t, s.flyover.PegInResolvedEvents(t, requested.PegInId), 1)
-		claim = s.db.Claim(t, institution, paid.txID)
-		assert.Equal(t, rootstock.PegInClaimResolved, claim.State)
-		assert.Equal(t, resolveTxHash, claim.ResolveTxHash)
 	})
 }

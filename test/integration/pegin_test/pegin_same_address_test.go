@@ -2,6 +2,7 @@ package pegin_test
 
 import (
 	"math/big"
+	"net/http"
 	"testing"
 	"time"
 
@@ -12,13 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// How long the institution waits between its two peg-ins. Nothing is mined meanwhile: only
-// time passes, while the LPS watchers keep running.
-const waitBetweenPegIns = 30 * time.Second
+const (
+	// Waited past the v2.6 quote's expiry, so the LPS has certainly closed its window.
+	expiryMargin = 5 * time.Second
+	// Longer deposit windows would make the test wait that long; the local stack uses 30 seconds.
+	maxDepositWindow = 10 * time.Minute
+)
 
 // TestTwoPegInsToTheSameAddress checks that an institution registers its address once and keeps
 // using it: a second peg-in, sent after a wait, pays the same deposit address with no new
 // registration, and both settle. The registration and the LPS watch outlive the wait.
+//
+// As a control, the wait outlasts the deposit window of a v2.6 quote taken at its start: once it
+// has passed, the LPS refuses that quote as expired, so a v2.6 user would need a new quote and a
+// new deposit address, while the institution keeps its commit-first address.
+//
+//nolint:funlen // one function keeps the scenario's phases in order and lets them share its state
 func TestTwoPegInsToTheSameAddress(t *testing.T) {
 	s := newPegInStack(t)
 	institution := s.rsk.NewAccount(t, new(big.Int)).Address
@@ -47,14 +57,24 @@ func TestTwoPegInsToTheSameAddress(t *testing.T) {
 		assert.Positive(t, firstResolved.RegistrantFee.Sign())
 	})
 
-	runPhase(t, "the registration outlives the wait", func(t *testing.T) {
-		start := time.Now()
-		s.driver.AdvanceUntil(t, "waiting", waitBetweenPegIns+phaseTimeout, regtest.Step{},
+	runPhase(t, "the registration outlives a v2.6 quote's deposit window", func(t *testing.T) {
+		quote := s.lps.PegInQuote(t, institution, new(big.Int).SetUint64(minQuoteValueWei))
+		window := time.Duration(quote.Quote.TimeForDeposit) * time.Second
+		require.LessOrEqualf(t, window, maxDepositWindow,
+			"the LPS gives v2.6 quotes %s to deposit; lower timeForDeposit in docker-compose/local/lps/configurations/requests.js", window)
+		waitUntil := regtest.PegInQuoteExpiry(quote).Add(expiryMargin)
+		t.Logf("v2.6 deposit window %s, waiting until %s", window, waitUntil.Format(time.TimeOnly))
+
+		s.driver.AdvanceUntil(t, "waiting", time.Until(waitUntil)+phaseTimeout, regtest.Step{},
 			func(t *testing.T) (bool, string) {
 				requireAddressStillWatched(t, s, institution, watch)
-				return time.Since(start) >= waitBetweenPegIns, "address registered and watch imported"
+				return time.Now().After(waitUntil), "address registered and watch imported"
 			})
 		assert.Equal(t, first.address, s.flyover.PegInAddress(t, institution), "the deposit address does not change")
+
+		expired := s.lps.AcceptPegInQuote(t, quote.QuoteHash)
+		assert.Equal(t, http.StatusGone, expired.StatusCode, "the v2.6 quote's window is closed: %s", expired.Body)
+		assert.Contains(t, expired.Body, "expired quote")
 	})
 
 	runPhase(t, "the second deposit reuses the address without a new registration", func(t *testing.T) {

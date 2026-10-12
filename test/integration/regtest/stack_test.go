@@ -16,6 +16,8 @@ import (
 
 // TestStackIsUp checks the helpers against the running stack, so a broken helper shows up here
 // rather than in the middle of a peg-in.
+//
+//nolint:funlen // one function checks every helper against the same running stack
 func TestStackIsUp(t *testing.T) {
 	stack := regtest.LoadStack(t)
 	stack.RequireLpsHealthy(t)

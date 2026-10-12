@@ -165,7 +165,7 @@ func moduleRoot(t *testing.T) string {
 // and unquoted values drop a trailing " # comment".
 func readEnvFile(t *testing.T, path string) map[string]string {
 	t.Helper()
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // the developer's own env file: REGTEST_ENV_FILE or the local stack's
 	require.NoErrorf(t, err, "cannot read %s. Run lps-local.sh first", path)
 	defer func() { require.NoError(t, file.Close()) }()
 

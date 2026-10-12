@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
@@ -53,6 +54,12 @@ func (lps *Lps) PegInQuote(t *testing.T, destination common.Address, value *big.
 	require.NoError(t, json.Unmarshal(body, &quotes))
 	require.Len(t, quotes, 1)
 	return quotes[0]
+}
+
+// PegInQuoteExpiry is when the quote's deposit window closes, computed as the LPS does
+// (PeginQuote.ExpireTime): an accept after it is refused as expired.
+func PegInQuoteExpiry(quote pkg.GetPeginQuoteResponse) time.Time {
+	return time.Unix(int64(quote.Quote.AgreementTimestamp)+int64(quote.Quote.TimeForDeposit), 0)
 }
 
 // AcceptPegInQuote accepts a v2.6 quote, which reserves its liquidity until the deposit arrives

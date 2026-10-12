@@ -21,9 +21,10 @@ type Condition func(t *testing.T) (done bool, observed string)
 // Driver advances both chains until the stack reaches a state. Neither regtest chain advances
 // by itself, so every wait in a test goes through it.
 type Driver struct {
-	btc      *Bitcoin
-	rsk      *Rootstock
-	interval time.Duration
+	btc       *Bitcoin
+	rsk       *Rootstock
+	interval  time.Duration
+	eachRound func(t *testing.T)
 }
 
 // NewDriver waits interval between rounds, which gives the LPS watchers time to run.
@@ -31,21 +32,30 @@ func NewDriver(btc *Bitcoin, rsk *Rootstock, interval time.Duration) *Driver {
 	return &Driver{btc: btc, rsk: rsk, interval: interval}
 }
 
-// AdvanceUntil checks condition and, until it holds, mines step and waits. It fails the test
-// when timeout passes, naming the phase and the last observed state.
+// WithEachRound returns a driver that runs action at the start of every round, before the
+// condition is checked, for something that has to keep happening while the stack advances.
+func (driver *Driver) WithEachRound(action func(t *testing.T)) *Driver {
+	copied := *driver
+	copied.eachRound = action
+	return &copied
+}
+
+// AdvanceUntil checks condition and, until it holds, mines step and waits. It logs the state it
+// reached once, unless that state already held, and fails the test when timeout passes, naming
+// the phase and the last observed state.
 func (driver *Driver) AdvanceUntil(t *testing.T, phase string, timeout time.Duration, step Step, condition Condition) {
 	t.Helper()
 	start := time.Now()
 	deadline := start.Add(timeout)
-	lastObserved := ""
-	for {
-		done, observed := condition(t)
-		if observed != lastObserved {
-			t.Logf("[%s] %s", phase, observed)
-			lastObserved = observed
+	for round := 0; ; round++ {
+		if driver.eachRound != nil {
+			driver.eachRound(t)
 		}
+		done, observed := condition(t)
 		if done {
-			t.Logf("[%s] done after %s", phase, time.Since(start).Round(100*time.Millisecond))
+			if round > 0 {
+				t.Logf("[%s] %s (after %s)", phase, observed, time.Since(start).Round(100*time.Millisecond))
+			}
 			return
 		}
 		if time.Now().After(deadline) {

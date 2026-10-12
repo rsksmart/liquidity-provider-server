@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +23,12 @@ const (
 	unlockedFunder = "0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826"
 	receiptTimeout = 30 * time.Second
 	receiptPolling = 100 * time.Millisecond
+	// rskj mines a block for each transaction it receives and answers this when that block does
+	// not include it, which happens when another sender's transaction races it (the LPS sends raw
+	// transactions concurrently). The transaction is still in the pool and goes into a later block.
+	minedInAnotherBlock = "transaction wasn't mined"
+	// How many empty blocks a funding transfer that raced may take to land.
+	racedTransferBlocks = 5
 )
 
 // Account is a test-owned Rootstock account that signs its own transactions.
@@ -107,7 +114,11 @@ func (rsk *Rootstock) Transact(t *testing.T, from Account, to common.Address, da
 		Nonce: nonce, GasPrice: gasPrice, Gas: gas, To: &to, Value: value, Data: data,
 	})
 	require.NoError(t, err)
-	require.NoError(t, rsk.client.SendTransaction(ctx, tx))
+	if err = rsk.client.SendTransaction(ctx, tx); err != nil {
+		require.Truef(t, raced(err), "cannot send %s from %s to %s: %v", tx.Hash(), from.Address, to, err)
+		t.Logf("[rskj] %s raced another transaction; mining a block to include it", tx.Hash())
+		rsk.Mine(t, 1)
+	}
 	receipt := rsk.WaitForReceipt(t, tx.Hash())
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		_, replayErr := rsk.client.CallContract(ctx, call, receipt.BlockNumber)
@@ -137,13 +148,40 @@ func (rsk *Rootstock) WaitForReceipt(t *testing.T, hash common.Hash) *types.Rece
 
 func (rsk *Rootstock) sendFromFunder(t *testing.T, to common.Address, value *big.Int) {
 	t.Helper()
+	var balanceBefore *big.Int
+	if value.Sign() > 0 {
+		balanceBefore = rsk.Balance(t, to)
+	}
 	var hash common.Hash
 	err := rsk.client.Client().CallContext(t.Context(), &hash, "eth_sendTransaction", map[string]string{
 		"from":  rsk.funder.Hex(),
 		"to":    to.Hex(),
 		"value": hexutil.EncodeBig(value),
 	})
-	require.NoError(t, err, "the unlocked funder cannot send")
-	receipt := rsk.WaitForReceipt(t, hash)
-	require.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
+	if err == nil {
+		receipt := rsk.WaitForReceipt(t, hash)
+		require.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
+		return
+	}
+	require.Truef(t, raced(err), "the unlocked funder cannot send: %v", err)
+	if value.Sign() == 0 {
+		// An empty transfer only has to make rskj mine, and the racing transaction did.
+		t.Log("[rskj] an empty transfer raced another transaction; a block was mined anyway")
+		return
+	}
+	t.Logf("[rskj] a transfer of %s wei to %s raced another transaction; mining until it lands", value, to)
+	expected := new(big.Int).Add(balanceBefore, value)
+	for range racedTransferBlocks {
+		rsk.Mine(t, 1)
+		if rsk.Balance(t, to).Cmp(expected) >= 0 {
+			return
+		}
+	}
+	require.FailNowf(t, "transfer not mined", "%s wei to %s did not land after %d blocks", value, to, racedTransferBlocks)
+}
+
+// raced tells whether rskj refused to confirm a transaction only because its block did not
+// include it.
+func raced(err error) bool {
+	return strings.Contains(err.Error(), minedInAnotherBlock)
 }
