@@ -180,6 +180,8 @@ func (useCase *ClaimPegOutUseCase) loadEncodedQuote(requestHash string) (quote.P
 	if pegoutQuote.LpBtcAddress, err = useCase.encodeHexAddress(pegoutQuote.LpBtcAddress); err != nil {
 		return quote.PegoutQuote{}, usecases.WrapUseCaseError(usecases.ClaimPegoutId, err)
 	}
+	// The LP signs the completed quote. Only requestHash is the incomplete-quote hash: claimPegOut
+	// rekeys the peg-out to the completed hash, and the OP_RETURN carries that hash.
 	pegoutQuote.LpRskAddress = useCase.lp.RskAddress()
 	return pegoutQuote, nil
 }
@@ -301,7 +303,9 @@ func (useCase *ClaimPegOutUseCase) checkProfitability(
 	totalGas := new(entities.Wei).Add(claimGas, entities.NewUWei(refundPegoutGasLimit))
 	rskCost := new(entities.Wei).Mul(totalGas, gasPrice)
 	totalCost := new(entities.Wei).Add(rskCost, btcFeeEstimation.Value)
-	if pegoutQuote.CallFee.Cmp(totalCost) > 0 {
+	// refundPegOut pays the LP value + callFee + gasFee; gasFee covers the BTC miner fee, so both fees count as revenue.
+	revenue := new(entities.Wei).Add(pegoutQuote.CallFee, pegoutQuote.GasFee)
+	if revenue.Cmp(totalCost) > 0 {
 		return false, nil
 	}
 	log.Debug(LogClaimPegoutProfitabilitySkip(requestHash))

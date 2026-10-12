@@ -29,16 +29,16 @@ const (
 	claimTxHash      = "0xclaimtx"
 	claimDateLimit   = uint32(1_700_000_000)
 
-	claimBreakEvenCallFee = 260_050_000
+	claimTotalCost = 260_050_000
 )
 
 func claimEscrowQuote() quote.PegoutQuote {
 	return quote.PegoutQuote{
 		LbcAddress:            "0xabcd01",
 		LpRskAddress:          blockchain.RskZeroAddress,
-		BtcRefundAddress:      "6f0011223344556677889900112233445566778899",
+		BtcRefundAddress:      "",
 		RskRefundAddress:      "0xabcd04",
-		LpBtcAddress:          "6f0011223344556677889900112233445566778899",
+		LpBtcAddress:          "",
 		CallFee:               entities.NewWei(10_000_000_000_000_000),
 		PenaltyFee:            entities.NewWei(1),
 		Nonce:                 1,
@@ -117,7 +117,6 @@ func (f *claimFixtures) expectPreChecks() {
 	f.repo.On("GetRetainedQuote", mock.Anything, claimRequestHash).Return(nil, nil).Once()
 	f.escrow.EXPECT().GetPegOutState(claimRequestHash).Return(blockchain.EscrowedPegOutStateRequested, nil).Once()
 	f.escrow.EXPECT().RestrictedUntil(claimLpAddress).Return(uint64(0), nil).Once()
-	f.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(100), nil).Once()
 }
 
 func (f *claimFixtures) expectSigned() {
@@ -131,13 +130,16 @@ func (f *claimFixtures) expectSignedQuote(q quote.PegoutQuote) {
 func (f *claimFixtures) expectSignedQuoteWithBalance(q quote.PegoutQuote, balance *entities.Wei) {
 	f.expectPreChecks()
 	f.escrow.EXPECT().GetPegOutQuote(claimRequestHash).Return(q, nil).Once()
-	f.btcRpc.On("EncodeAddress", mock.Anything).Return(claimEncodedBtc, nil).Times(3)
+	f.btcRpc.On("EncodeAddress", mock.Anything).Return(claimEncodedBtc, nil).Once()
 	f.btcWallet.On("GetBalance").Return(balance, nil).Once()
 	f.repo.On("GetRetainedQuoteByState", mock.Anything,
 		quote.PegoutStateClaimPending, quote.PegoutStateClaimed, quote.PegoutStateWaitingForDepositConfirmations,
 	).Return([]quote.RetainedPegoutQuote{}, nil).Once()
 	eip712Hash := [32]byte{9, 8, 7}
-	f.pegout.EXPECT().HashPegoutQuoteEIP712(mock.Anything).Return(eip712Hash, nil).Once()
+	f.pegout.EXPECT().HashPegoutQuoteEIP712(mock.MatchedBy(func(signed quote.PegoutQuote) bool {
+		return isCompletedClaimQuote(signed) && signed.DepositAddress == claimEncodedBtc &&
+			signed.BtcRefundAddress == "" && signed.LpBtcAddress == ""
+	})).Return(eip712Hash, nil).Once()
 	f.lp.On("GetSigner").Return(f.signer).Once()
 	f.signer.On("SignBytes", eip712Hash[:]).Return(make([]byte, 65), nil).Once()
 }
@@ -237,7 +239,7 @@ func TestClaimPegOutUseCase_SkipsWhenCapacityIsInsufficient(t *testing.T) {
 	f := newClaimFixtures()
 	f.expectPreChecks()
 	f.escrow.EXPECT().GetPegOutQuote(claimRequestHash).Return(claimEscrowQuote(), nil).Once()
-	f.btcRpc.On("EncodeAddress", mock.Anything).Return(claimEncodedBtc, nil).Times(3)
+	f.btcRpc.On("EncodeAddress", mock.Anything).Return(claimEncodedBtc, nil).Once()
 	f.btcWallet.On("GetBalance").Return(entities.NewWei(999_999), nil).Once()
 	f.repo.On("GetRetainedQuoteByState", mock.Anything,
 		quote.PegoutStateClaimPending, quote.PegoutStateClaimed, quote.PegoutStateWaitingForDepositConfirmations,
@@ -257,7 +259,7 @@ func TestClaimPegOutUseCase_SkipsWhenCapacityIsInsufficient(t *testing.T) {
 func TestClaimPegOutUseCase_SkipsWhenUnprofitable(t *testing.T) {
 	f := newClaimFixtures()
 	q := claimEscrowQuote()
-	q.CallFee = entities.NewWei(claimBreakEvenCallFee)
+	q.CallFee = new(entities.Wei).Sub(entities.NewWei(claimTotalCost), q.GasFee)
 	f.expectSignedQuote(q)
 	f.expectCosts(entities.NewWei(50_000), entities.NewWei(100))
 
@@ -284,10 +286,10 @@ func TestClaimPegOutUseCase_ClaimsWhenCapacityEqualsValue(t *testing.T) {
 	f.escrow.AssertExpectations(t)
 }
 
-func TestClaimPegOutUseCase_ClaimsWhenCallFeeExceedsCostByOneWei(t *testing.T) {
+func TestClaimPegOutUseCase_ClaimsWhenRevenueExceedsCostByOneWei(t *testing.T) {
 	f := newClaimFixtures()
 	q := claimEscrowQuote()
-	q.CallFee = entities.NewWei(claimBreakEvenCallFee + 1)
+	q.CallFee = new(entities.Wei).Sub(entities.NewWei(claimTotalCost+1), q.GasFee)
 	f.expectSignedQuote(q)
 	f.expectCosts(entities.NewWei(50_000), entities.NewWei(100))
 	f.expectClaimed()
@@ -297,6 +299,60 @@ func TestClaimPegOutUseCase_ClaimsWhenCallFeeExceedsCostByOneWei(t *testing.T) {
 	assert.Equal(t, pegout.ClaimOutcomeClaimed, outcome)
 	f.repo.AssertExpectations(t)
 	f.escrow.AssertExpectations(t)
+}
+
+func TestClaimPegOutUseCase_ClaimsWhenGasFeeCoversShortfall(t *testing.T) {
+	f := newClaimFixtures()
+	q := claimEscrowQuote()
+	q.GasFee = entities.NewWei(100_000_000)
+	q.CallFee = entities.NewWei(claimTotalCost - 50_000_000)
+	f.expectSignedQuote(q)
+	f.expectCosts(entities.NewWei(50_000), entities.NewWei(100))
+	f.expectClaimed()
+
+	outcome, err := f.run()
+	require.NoError(t, err)
+	assert.Equal(t, pegout.ClaimOutcomeClaimed, outcome)
+	f.escrow.AssertExpectations(t)
+}
+
+func TestClaimPegOutUseCase_SkipsWhenRestrictedUntilFuture(t *testing.T) {
+	f := newClaimFixtures()
+	f.pegout.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	f.repo.On("GetRetainedQuote", mock.Anything, claimRequestHash).Return(nil, nil).Once()
+	f.escrow.EXPECT().GetPegOutState(claimRequestHash).Return(blockchain.EscrowedPegOutStateRequested, nil).Once()
+	restrictedUntil := uint64(1_700_000_100)
+	f.escrow.EXPECT().RestrictedUntil(claimLpAddress).Return(restrictedUntil, nil).Once()
+	f.rskRpc.EXPECT().GetBlockByNumber(mock.Anything, (*big.Int)(nil)).
+		Return(blockchain.BlockInfo{Timestamp: time.Unix(1_700_000_000, 0)}, nil).Once()
+
+	log.SetLevel(log.DebugLevel)
+	t.Cleanup(func() { log.SetLevel(log.InfoLevel) })
+	checkLog := test.LogContains(t, pegout.LogClaimPegoutRestrictedSkip(claimRequestHash, restrictedUntil))
+	outcome, err := f.run()
+	require.NoError(t, err)
+	assert.Equal(t, pegout.ClaimOutcomeSkipped, outcome)
+	assert.True(t, checkLog())
+	f.escrow.AssertNotCalled(t, "GetPegOutQuote", mock.Anything)
+	f.escrow.AssertNotCalled(t, "ClaimPegOut", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestClaimPegOutUseCase_ProceedsWhenChainTimeEqualsRestrictedUntil(t *testing.T) {
+	f := newClaimFixtures()
+	f.pegout.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false}, nil)
+	f.repo.On("GetRetainedQuote", mock.Anything, claimRequestHash).Return(nil, nil).Once()
+	f.escrow.EXPECT().GetPegOutState(claimRequestHash).Return(blockchain.EscrowedPegOutStateRequested, nil).Once()
+	restrictedUntil := uint64(1_700_000_000)
+	f.escrow.EXPECT().RestrictedUntil(claimLpAddress).Return(restrictedUntil, nil).Once()
+	f.rskRpc.EXPECT().GetBlockByNumber(mock.Anything, (*big.Int)(nil)).
+		Return(blockchain.BlockInfo{Timestamp: time.Unix(int64(restrictedUntil), 0)}, nil).Once()
+	f.escrow.EXPECT().GetPegOutQuote(claimRequestHash).Return(quote.PegoutQuote{}, assert.AnError).Once()
+
+	outcome, err := f.run()
+	require.ErrorIs(t, err, assert.AnError)
+	assert.Equal(t, pegout.ClaimOutcomeSkipped, outcome)
+	f.escrow.AssertExpectations(t)
+	f.escrow.AssertNotCalled(t, "ClaimPegOut", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestClaimPegOutUseCase_QuoteHashErrorStopsBeforeClaim(t *testing.T) {

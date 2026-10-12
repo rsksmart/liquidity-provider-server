@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -99,26 +100,6 @@ func (escrow *pegOutEscrowContractImpl) GetPegOutQuote(requestHash string) (quot
 	return mapEscrowPegOutQuote(result), nil
 }
 
-func (escrow *pegOutEscrowContractImpl) GetMaxMinerFee(requestHash string) (*entities.Wei, error) {
-	hash, err := parseRequestHash(requestHash)
-	if err != nil {
-		return nil, err
-	}
-	opts := &bind.CallOpts{}
-	result, err := rskRetry(escrow.retryParams.Retries, escrow.retryParams.Sleep,
-		func() (*big.Int, error) {
-			callData, dataErr := escrow.binding.TryPackGetMaxMinerFee(hash)
-			if dataErr != nil {
-				return nil, dataErr
-			}
-			return bind.Call(escrow.contract, opts, callData, escrow.binding.UnpackGetMaxMinerFee)
-		})
-	if err != nil {
-		return nil, err
-	}
-	return bigIntToWei(result), nil
-}
-
 func (escrow *pegOutEscrowContractImpl) RestrictedUntil(lpAddress string) (uint64, error) {
 	var parsedAddress common.Address
 	if err := ParseAddress(&parsedAddress, lpAddress); err != nil {
@@ -135,6 +116,9 @@ func (escrow *pegOutEscrowContractImpl) RestrictedUntil(lpAddress string) (uint6
 		})
 	if err != nil {
 		return 0, err
+	}
+	if result != nil && !result.IsUint64() {
+		return math.MaxUint64, nil
 	}
 	return bigIntToUint64(result), nil
 }

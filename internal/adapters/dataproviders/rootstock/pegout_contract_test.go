@@ -239,6 +239,27 @@ func TestPegoutContractImpl_HashPegoutQuote_ParsingErrors(t *testing.T) {
 	})
 }
 
+func TestPegoutContractImpl_HashPegoutQuote_EmptyOptionalBtcAddresses(t *testing.T) {
+	hashContractMock := createBoundContractMock()
+	hashBinding := bindings.NewPegoutContract()
+	hashContract := rootstock.NewPegoutContractImpl(dummyClient, test.AnyAddress, hashContractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), hashBinding, Abis)
+	testQuote := pegoutQuote
+	testQuote.BtcRefundAddress = ""
+	testQuote.LpBtcAddress = ""
+	emptyParsed := parsedPegoutQuote
+	emptyParsed.BtcRefundAddress = []byte{}
+	emptyParsed.LpBtcAddress = []byte{}
+	hash := [32]byte{1, 2, 3}
+	hashContractMock.caller.EXPECT().CallContract(
+		mock.Anything,
+		matchCallData(hashBinding.PackHashPegOutQuote(emptyParsed)),
+		mock.Anything,
+	).Return(mustPackBytes32(t, hash), nil).Once()
+	result, err := hashContract.HashPegoutQuote(testQuote)
+	require.NoError(t, err)
+	assert.Equal(t, hex.EncodeToString(hash[:]), result)
+}
+
 func TestPegoutContractImpl_HashPegoutQuote_ZeroDepositConfirmations(t *testing.T) {
 	escrowQuote := pegoutQuote
 	escrowQuote.DepositConfirmations = 0
