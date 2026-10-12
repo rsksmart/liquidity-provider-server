@@ -19,6 +19,10 @@ const (
 	pollInterval  = 2 * time.Second
 	phaseTimeout  = 5 * time.Minute
 	weiPerSatoshi = 10_000_000_000
+	// The largest and smallest v2.6 peg-in quotes the local stack allows (maxValue and minValue in
+	// docker-compose/local/lps/configurations/requests.js).
+	maxQuoteValueWei = 10_000_000_000_000_000_000
+	minQuoteValueWei = 600_000_000_000_000_000
 )
 
 // pegInStack holds what every peg-in test drives and observes. The steps on it wait for the LPS;
@@ -42,7 +46,7 @@ func newPegInStack(t *testing.T) *pegInStack {
 	rsk := regtest.NewRootstock(t, stack)
 	flyover := regtest.NewFlyover(t, stack, rsk)
 	require.True(t, flyover.IsOperationalPegInProvider(t, stack.LiquidityProvider), "the LP must be registered and approved")
-	return &pegInStack{
+	s := &pegInStack{
 		btc:     btc,
 		rsk:     rsk,
 		flyover: flyover,
@@ -52,6 +56,20 @@ func newPegInStack(t *testing.T) *pegInStack {
 		driver:  regtest.NewDriver(btc, rsk, pollInterval),
 		lp:      stack.LiquidityProvider,
 	}
+	s.waitNoPegInsInFlight(t)
+	return s
+}
+
+// waitNoPegInsInFlight drives until the LPS has finished every peg-in it started, such as one
+// left behind by an interrupted run. Its settlement would otherwise move the LP's balances while
+// a test measures them.
+func (s *pegInStack) waitNoPegInsInFlight(t *testing.T) {
+	t.Helper()
+	s.driver.AdvanceUntil(t, "earlier peg-ins settled", phaseTimeout, regtest.Step{BtcBlocks: 1, RskBlocks: 3},
+		func(t *testing.T) (bool, string) {
+			unsettled := s.db.UnsettledClaims(t)
+			return len(unsettled) == 0, fmt.Sprintf("%d peg-ins still in flight", len(unsettled))
+		})
 }
 
 type deposit struct {
