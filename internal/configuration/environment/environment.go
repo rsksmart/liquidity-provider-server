@@ -216,13 +216,24 @@ func (env *ProviderEnv) ProviderType() liquidity_provider.ProviderType {
 }
 
 type PeginEnv struct {
-	AddressRegistryWatcherStartBlock uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"`
-	AddressRegistryWatcherPageSize   uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"`
+	AddressRegistryWatcherStartBlock      uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK"`
+	AddressRegistryWatcherPageSize        uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_PAGE_SIZE"`
+	AddressRegistryWatcherIntervalSeconds uint64 `env:"PEGIN_ADDRESS_REGISTRY_WATCHER_INTERVAL_SECONDS"`
+	ClaimWatcherIntervalSeconds           uint64 `env:"PEGIN_CLAIM_WATCHER_INTERVAL_SECONDS"`
+	ResolveWatcherIntervalSeconds         uint64 `env:"PEGIN_RESOLVE_WATCHER_INTERVAL_SECONDS"`
 }
 
 func (env *PeginEnv) FillWithDefaults() *PeginEnv {
-	const defaultPageSize uint64 = 1000
+	const (
+		defaultPageSize                              uint64 = 1000
+		defaultAddressRegistryWatcherIntervalSeconds uint64 = 60
+		defaultClaimWatcherIntervalSeconds           uint64 = 60
+		defaultResolveWatcherIntervalSeconds         uint64 = 180
+	)
 	env.AddressRegistryWatcherPageSize = utils.FirstNonZero(env.AddressRegistryWatcherPageSize, defaultPageSize)
+	env.AddressRegistryWatcherIntervalSeconds = utils.FirstNonZero(env.AddressRegistryWatcherIntervalSeconds, defaultAddressRegistryWatcherIntervalSeconds)
+	env.ClaimWatcherIntervalSeconds = utils.FirstNonZero(env.ClaimWatcherIntervalSeconds, defaultClaimWatcherIntervalSeconds)
+	env.ResolveWatcherIntervalSeconds = utils.FirstNonZero(env.ResolveWatcherIntervalSeconds, defaultResolveWatcherIntervalSeconds)
 	return env
 }
 

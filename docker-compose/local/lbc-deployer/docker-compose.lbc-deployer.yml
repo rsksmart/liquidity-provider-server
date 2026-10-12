@@ -1,7 +1,9 @@
 services:
   lbc-deployer:
-    image: "${LBC_IMAGE}"
-    pull_policy: always
+    build:
+      context: "https://github.com/rsksmart/liquidity-bridge-contract.git#${LBC_COMMIT}"
+    pull_policy: build
+    image: "lbc-deployer:${LBC_COMMIT}"
     volumes:
       - ./lbc-deployer/scripts:/scripts
       - ./${ENV_FILE}:/${ENV_FILE}
@@ -18,7 +20,7 @@ services:
     networks:
       - net_lps
   lps-approver:
-    image: "${LBC_IMAGE}"
+    image: "lbc-deployer:${LBC_COMMIT}"
     pull_policy: never
     volumes:
       - ./lbc-deployer/scripts:/scripts

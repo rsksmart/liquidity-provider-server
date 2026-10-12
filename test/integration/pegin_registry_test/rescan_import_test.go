@@ -5,23 +5,19 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcjson"
+	"github.com/rsksmart/liquidity-provider-server/test/integration/regtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfirmedDepositIsDiscoverableOnlyAfterARescanImport(t *testing.T) {
-	env := btcEnvironment(t)
-	nodeClient := newRpcClient(t, env, "")
-	fundingClient := openFundingWallet(t, env, nodeClient)
-	// Registered before the wallets below so that LIFO cleanup unloads them while the node client
-	// is still connected.
-	t.Cleanup(nodeClient.Shutdown)
-	t.Cleanup(fundingClient.Shutdown)
+	stack := regtest.LoadStack(t)
+	btc := regtest.NewBitcoin(t, stack)
 
-	depositAddress, depositTxID := fundConfirmedDeposit(t, nodeClient, fundingClient)
+	depositAddress, depositTxID := fundConfirmedDeposit(t, btc)
 	t.Logf("deposit %s confirmed at %s before any import", depositTxID, depositAddress)
 
-	withoutRescan := newWatchOnlyWallet(t, env, nodeClient, "pegin-registry-norescan")
+	withoutRescan := newWatchOnlyWallet(t, stack, btc, "pegin-registry-norescan")
 	require.NoError(t, withoutRescan.ImportAddress(depositAddress))
 
 	deposits, err := withoutRescan.GetTransactions(depositAddress)
@@ -36,11 +32,9 @@ func TestConfirmedDepositIsDiscoverableOnlyAfterARescanImport(t *testing.T) {
 		err,
 	)
 
-	withRescan := newWatchOnlyWallet(t, env, nodeClient, "pegin-registry-rescan")
+	withRescan := newWatchOnlyWallet(t, stack, btc, "pegin-registry-rescan")
 	require.NoError(t, withRescan.ImportAddress(depositAddress))
-	tip, err := nodeClient.GetBlockCount()
-	require.NoError(t, err)
-	fromHeight := max(tip-100, 0)
+	fromHeight := max(btc.Height(t)-100, 0)
 	_, err = withRescan.RescanBlockchain(fromHeight)
 	require.NoError(t, err)
 

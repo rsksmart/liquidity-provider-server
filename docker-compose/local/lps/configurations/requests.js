@@ -45,7 +45,9 @@ const CONFIG_REQUESTS = {
         method: 'POST',
         body: {
             configuration: {
-                timeForDeposit: 3600,
+                // Short so the integration tests can wait past a v2.6 quote's deposit window, and
+                // so the quotes they leave accepted expire within a minute.
+                timeForDeposit: 30,
                 callTime: 7200,
                 penaltyFee: "1000000000000000",
                 maxValue: "10000000000000000000",

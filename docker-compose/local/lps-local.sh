@@ -36,18 +36,24 @@ set +a
 set_defaults
 
 ### Create base (always runs) ###
-docker compose --progress plain --env-file "$ENV_FILE" up -d --wait
+if ! docker compose --progress plain --env-file "$ENV_FILE" up -d --wait; then
+  echo "ERROR: Base services failed to start"
+  exit 1
+fi
 
 ### Funding wallets ###
 if [[ "$FUND_WALLETS" == "true" ]]; then
   echo "Funding wallets..."
-  docker compose -f docker-compose.yml -f wallet-funder/docker-compose.funder.yml --env-file "$ENV_FILE" up --wait
+  if ! docker compose -f docker-compose.yml -f wallet-funder/docker-compose.funder.yml --env-file "$ENV_FILE" up --wait; then
+    echo "ERROR: Wallet funding failed"
+    exit 1
+  fi
 fi
 
 ### Contract deployment ###
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
-  # LBC_IMAGE is a pinned digest that never changes between runs, so compose would
+  # LBC_COMMIT is a pinned commit that never changes between runs, so compose would
   # treat a previous run's "service_completed_successfully" as still satisfied and
   # skip re-running the deployer. After a chain reset (rm -rf volumes) that leaves the
   # contracts undeployed. Remove the one-shot containers so they always run fresh.
@@ -71,7 +77,11 @@ fi
 
 ### Powpeg ###
 if [[ "$CREATE_POWPEG" == "true" ]]; then
-  docker compose -f docker-compose.yml -f powpeg/docker-compose.powpeg.yml --env-file "$ENV_FILE" up -d
+  # Without powpeg the bridge gets no Bitcoin headers, so peg-ins can never be registered or settled.
+  if ! docker compose -f docker-compose.yml -f powpeg/docker-compose.powpeg.yml --env-file "$ENV_FILE" up -d; then
+    echo "ERROR: Powpeg failed to build or start"
+    exit 1
+  fi
 
   ### Federation segwit migration ###
   if [[ "$MIGRATE_FEDERATION" == "true" ]]; then
@@ -95,7 +105,10 @@ fi
 # On first boot, lps01 exits cleanly (code 0) while the BTC wallet rescan is in progress.
 # Docker restarts it automatically (unless-stopped policy) until the rescan completes and
 # the server boots normally. lps-configurer polls /health and signals readiness via its exit code.
-docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d
+if ! docker compose --progress plain -f docker-compose.yml -f lps/docker-compose.lps-local.yml --env-file "$ENV_FILE" up -d; then
+  echo "ERROR: LPS failed to build or start"
+  exit 1
+fi
 echo "Configuring LPS..."
 EXIT_CODE=$(docker wait lps-configurer)
 if [ "$EXIT_CODE" != "0" ]; then
@@ -105,7 +118,10 @@ fi
 echo "LPS configured"
 
 if [[ "$CREATE_MONITORING" == "true" ]]; then
-  docker compose -f docker-compose.yml -f monitoring/docker-compose.monitoring.yml --env-file "$ENV_FILE" up --wait
+  if ! docker compose -f docker-compose.yml -f monitoring/docker-compose.monitoring.yml --env-file "$ENV_FILE" up --wait; then
+    echo "ERROR: Monitoring failed to start"
+    exit 1
+  fi
 fi
 
 echo ""

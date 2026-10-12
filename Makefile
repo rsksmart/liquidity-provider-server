@@ -1,4 +1,4 @@
-.PHONY: test all clean utils test-integration-db generate-fixtures ensure-gotestsum
+.PHONY: test all clean utils test-integration-db test-integration-regtest generate-fixtures ensure-gotestsum
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
@@ -100,6 +100,11 @@ monitoring:
 
 test-integration-db:
 	./test/mongodb/scripts/run-tests.sh
+
+# Needs the local stack (docker-compose/local/lps-local.sh). The packages share one regtest chain
+# and one funding wallet, so they run one at a time.
+test-integration-regtest:
+	go test -p 1 -count=1 -v -timeout 30m ./test/integration/regtest/... ./test/integration/pegin_registry_test/... ./test/integration/pegin_test/...
 
 generate-fixtures:
 	./test/mongodb/scripts/generate-fixtures.sh

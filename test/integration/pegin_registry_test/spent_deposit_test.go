@@ -6,7 +6,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/rsksmart/liquidity-provider-server/test/integration/regtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,21 +16,14 @@ import (
 const spendFeeBtc = 0.0001
 
 func TestSpentDepositStaysVisibleInWalletHistory(t *testing.T) {
-	env := btcEnvironment(t)
-	nodeClient := newRpcClient(t, env, "")
-	fundingClient := openFundingWallet(t, env, nodeClient)
-	// Registered before the wallet below so that LIFO cleanup unloads it while the node client is
-	// still connected.
-	t.Cleanup(nodeClient.Shutdown)
-	t.Cleanup(fundingClient.Shutdown)
+	stack := regtest.LoadStack(t)
+	btc := regtest.NewBitcoin(t, stack)
 
-	depositAddress, depositTxID := fundConfirmedDeposit(t, nodeClient, fundingClient)
-	monitoringWallet := newWatchOnlyWallet(t, env, nodeClient, "pegin-registry-spent")
+	depositAddress, depositTxID := fundConfirmedDeposit(t, btc)
+	monitoringWallet := newWatchOnlyWallet(t, stack, btc, "pegin-registry-spent")
 	require.NoError(t, monitoringWallet.ImportAddress(depositAddress))
-	tip, err := nodeClient.GetBlockCount()
-	require.NoError(t, err)
-	fromHeight := max(tip-100, 0)
-	_, err = monitoringWallet.RescanBlockchain(fromHeight)
+	fromHeight := max(btc.Height(t)-100, 0)
+	_, err := monitoringWallet.RescanBlockchain(fromHeight)
 	require.NoError(t, err)
 
 	deposits, err := monitoringWallet.GetTransactions(depositAddress)
@@ -38,7 +31,7 @@ func TestSpentDepositStaysVisibleInWalletHistory(t *testing.T) {
 	require.Len(t, deposits, 1, "the imported address must hold the confirmed deposit before it is spent")
 	require.Equal(t, depositTxID, deposits[0].Hash)
 
-	spendDepositOutput(t, nodeClient, fundingClient, depositAddress, depositTxID)
+	spendDepositOutput(t, btc, depositAddress, depositTxID)
 
 	deposits, err = monitoringWallet.GetTransactions(depositAddress)
 	require.NoError(t, err)
@@ -54,10 +47,11 @@ func TestSpentDepositStaysVisibleInWalletHistory(t *testing.T) {
 // assertions that follow about that output rather than about the wallet's coin selection.
 func spendDepositOutput(
 	t *testing.T,
-	nodeClient, fundingClient *rpcclient.Client,
+	btc *regtest.Bitcoin,
 	depositAddress, depositTxID string,
 ) {
 	t.Helper()
+	fundingClient := btc.Wallet()
 	hash, err := chainhash.NewHashFromStr(depositTxID)
 	require.NoError(t, err)
 	deposit, err := fundingClient.GetTransaction(hash)
@@ -87,6 +81,5 @@ func spendDepositOutput(
 	require.True(t, complete, "the funding wallet must be able to sign its own deposit output")
 	_, err = fundingClient.SendRawTransaction(signed, false)
 	require.NoError(t, err)
-	_, err = nodeClient.GenerateToAddress(1, destination, nil)
-	require.NoError(t, err)
+	btc.Mine(t, 1)
 }

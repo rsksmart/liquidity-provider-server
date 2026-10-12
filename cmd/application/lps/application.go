@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest/server"
@@ -85,7 +86,8 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	if err != nil {
 		log.Fatal("Error creating use case registry:", err)
 	}
-	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, dbRegistry, watcher.NewApplicationTickers(), timeouts)
+	tickers := watcher.NewApplicationTickers(NewPegInWatcherIntervals(env.Pegin))
+	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, dbRegistry, tickers, timeouts)
 	return &Application{
 		env: env, timeouts: timeouts,
 		lpRegistry: lpRegistry, useCaseRegistry: useCaseRegistry,
@@ -113,6 +115,15 @@ func createExternalRpc(ctx context.Context, env environment.Environment) (regist
 		RskExternalRpc: externalRskSources,
 		BtcExternalRpc: externalBtcSources,
 	}, nil
+}
+
+func NewPegInWatcherIntervals(env environment.PeginEnv) watcher.PegInWatcherIntervals {
+	env.FillWithDefaults()
+	return watcher.PegInWatcherIntervals{
+		AddressRegistry: time.Duration(env.AddressRegistryWatcherIntervalSeconds) * time.Second,
+		Claim:           time.Duration(env.ClaimWatcherIntervalSeconds) * time.Second,
+		Resolve:         time.Duration(env.ResolveWatcherIntervalSeconds) * time.Second,
+	}
 }
 
 func NewBitcoinRegistry(walletFactory wallet.AbstractFactory, btcConnection *bitcoin.Connection, exitFn func(int)) *registry.Bitcoin {
