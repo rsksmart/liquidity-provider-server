@@ -303,7 +303,7 @@ func (useCase *ClaimPegOutUseCase) checkProfitability(
 	totalGas := new(entities.Wei).Add(claimGas, entities.NewUWei(refundPegoutGasLimit))
 	rskCost := new(entities.Wei).Mul(totalGas, gasPrice)
 	totalCost := new(entities.Wei).Add(rskCost, btcFeeEstimation.Value)
-	// GasFee is the snapshotted miner-fee cap prepaid by the user; it covers BTC fee variance.
+	// refundPegOut pays the LP value + callFee + gasFee; gasFee covers the BTC miner fee, so both fees count as revenue.
 	revenue := new(entities.Wei).Add(pegoutQuote.CallFee, pegoutQuote.GasFee)
 	if revenue.Cmp(totalCost) > 0 {
 		return false, nil
