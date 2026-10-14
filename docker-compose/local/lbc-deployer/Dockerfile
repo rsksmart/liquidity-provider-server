@@ -13,7 +13,7 @@ ARG FOUNDRY_VERSION=v1.7.1
 RUN curl -L https://foundry.paradigm.xyz | bash && \
     /home/node/.foundry/bin/foundryup --install "${FOUNDRY_VERSION}"
 
-ARG LBC_GIT_REF=c6db31618d7f919277f53311f67848bb366c2cb2
+ARG LBC_GIT_REF=25f16a9b07f8b86ecb9dd944cc81e01866fa161e
 ARG LBC_GIT_URL=https://github.com/rsksmart/liquidity-bridge-contract.git
 ARG LBC_GIT_SHA=
 

@@ -48,11 +48,13 @@ fi
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
   # TODO: remove this ref resolution once the deployer pulls a published liquidity-bridge-contract image again
-  LBC_GIT_REF="${LBC_GIT_REF:-c6db31618d7f919277f53311f67848bb366c2cb2}"
+  LBC_GIT_REF="${LBC_GIT_REF:-25f16a9b07f8b86ecb9dd944cc81e01866fa161e}"
   if [[ "$LBC_GIT_REF" =~ ^[0-9a-f]{40}$ ]]; then
     LBC_GIT_SHA="$LBC_GIT_REF"
   else
-    LBC_GIT_SHA=$(git ls-remote https://github.com/rsksmart/liquidity-bridge-contract.git "refs/heads/$LBC_GIT_REF" "refs/tags/$LBC_GIT_REF" | head -1 | cut -f1)
+    LBC_GIT_REFS=$(git ls-remote https://github.com/rsksmart/liquidity-bridge-contract.git "refs/heads/$LBC_GIT_REF" "refs/tags/$LBC_GIT_REF" "refs/tags/$LBC_GIT_REF^{}")
+    LBC_GIT_SHA=$(echo "$LBC_GIT_REFS" | grep -m1 '\^{}$' | cut -f1)
+    LBC_GIT_SHA=${LBC_GIT_SHA:-$(echo "$LBC_GIT_REFS" | head -1 | cut -f1)}
   fi
   if [ -z "$LBC_GIT_SHA" ]; then
     echo "ERROR: LBC_GIT_REF $LBC_GIT_REF not found in liquidity-bridge-contract"
