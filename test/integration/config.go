@@ -32,6 +32,14 @@ type InterfacesConfig struct {
 type TestConfig struct {
 	Mempool struct {
 	} `json:"mempool"`
+	Pegin struct {
+		Value              *big.Int `json:"value"`
+		DestinationAddress string   `json:"destinationAddress"`
+		RefundAddress      string   `json:"refundAddress"`
+		Data               string   `json:"data"`
+		CallForUserWait    int64    `json:"callForUserWait"`
+		RegisterPeginWait  int64    `json:"registerPeginWait"`
+	} `json:"pegin"`
 	Pegout struct {
 		Value              *big.Int `json:"value"`
 		DestinationAddress string   `json:"destinationAddress"`

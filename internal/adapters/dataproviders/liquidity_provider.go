@@ -55,6 +55,27 @@ func (lp *LocalLiquidityProvider) BtcAddress() string {
 	return lp.btc.Address()
 }
 
+func (lp *LocalLiquidityProvider) SignPeginQuote(ctx context.Context, quoteHash string) (string, error) {
+	var peginQuote *quote.PeginQuote
+	var err error
+	if peginQuote, err = lp.peginRepository.GetQuote(ctx, quoteHash); err != nil {
+		return "", err
+	} else if peginQuote == nil {
+		return "", usecases.QuoteNotFoundError
+	}
+	hash, err := lp.contracts.PegIn.HashPeginQuoteEIP712(*peginQuote)
+	if err != nil {
+		return "", err
+	}
+
+	signatureBytes, err := lp.signer.SignBytes(hash[:])
+	if err != nil {
+		return "", err
+	}
+	signatureBytes[len(signatureBytes)-1] += 27 // v must be 27 or 28
+	return hex.EncodeToString(signatureBytes), nil
+}
+
 func (lp *LocalLiquidityProvider) SignPegoutQuote(ctx context.Context, quoteHash string) (string, error) {
 	var pegoutQuote *quote.PegoutQuote
 	var err error

@@ -12,15 +12,6 @@ import (
 	"testing"
 )
 
-var retainedQuotes = []quote.RetainedPeginQuote{
-	{QuoteHash: "01", State: quote.PeginStateWaitingForDeposit},
-	{QuoteHash: "02", State: quote.PeginStateCallForUserSucceeded},
-	{QuoteHash: "04", State: quote.PeginStateCallForUserSucceeded},
-	{QuoteHash: "03", State: quote.PeginStateWaitingForDeposit},
-	{QuoteHash: "05", State: quote.PeginStateCallForUserFailed},
-	{QuoteHash: "07", State: quote.PeginStateWaitingForDepositConfirmations},
-}
-
 func TestCleanExpiredQuotesUseCase_Run(t *testing.T) {
 	peginExpiredQuotes := []quote.RetainedPeginQuote{
 		{QuoteHash: "peginHash1", State: quote.PeginStateTimeForDepositElapsed},

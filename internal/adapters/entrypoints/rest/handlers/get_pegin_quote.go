@@ -1,0 +1,72 @@
+package handlers
+
+import (
+	"context"
+	"errors"
+	"net/http"
+
+	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/rest"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
+	"github.com/rsksmart/liquidity-provider-server/pkg"
+)
+
+type GetPeginQuoteUseCase interface {
+	Run(ctx context.Context, request pegin.QuoteRequest) (pegin.GetPeginQuoteResult, error)
+}
+
+// NewGetPeginQuoteHandler
+// @Title Pegin GetQuote
+// @Description Gets Pegin Quote
+// @Param PeginQuoteRequest  body pkg.PeginQuoteRequest true "Interface with parameters for computing possible quotes for the service"
+// @Success 200 array pkg.GetPeginQuoteResponse The quote structure defines the conditions of a service, and acts as a contract between users and LPs
+// @Route /pegin/getQuote [post]
+func NewGetPeginQuoteHandler(useCase GetPeginQuoteUseCase) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		var err error
+		var result pegin.GetPeginQuoteResult
+		var callArgument []byte
+		quoteRequest := pkg.PeginQuoteRequest{}
+		if err = rest.DecodeRequest(w, req, &quoteRequest); err != nil {
+			return
+		} else if err = rest.ValidateRequest(w, &quoteRequest); err != nil {
+			return
+		}
+
+		if callArgument, err = blockchain.DecodeStringTrimPrefix(quoteRequest.CallContractArguments); err != nil {
+			jsonErr := rest.NewErrorResponse(err.Error(), true)
+			rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+			return
+		}
+
+		peginRequest := pegin.NewQuoteRequest(
+			quoteRequest.CallEoaOrContractAddress,
+			callArgument,
+			entities.NewBigWei(quoteRequest.ValueToTransfer),
+			quoteRequest.RskRefundAddress,
+		)
+
+		result, err = useCase.Run(req.Context(), peginRequest)
+		if err != nil {
+			handleGetPeginQuoteError(w, err)
+			return
+		}
+		quoteDto := pkg.ToPeginQuoteDTO(result.PeginQuote)
+		responseBody := []pkg.GetPeginQuoteResponse{{
+			Quote:     quoteDto,
+			QuoteHash: result.Hash,
+		}} // to keep compatibility with legacy API
+		rest.JsonResponseWithBody(w, http.StatusOK, &responseBody)
+	}
+}
+
+func handleGetPeginQuoteError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, pegin.DataCapExceededError):
+		jsonErr := rest.NewErrorResponseWithDetails("invalid request", rest.DetailsFromError(err), true)
+		rest.JsonErrorResponse(w, http.StatusBadRequest, jsonErr)
+	default:
+		handleGetQuoteError(w, err)
+	}
+}

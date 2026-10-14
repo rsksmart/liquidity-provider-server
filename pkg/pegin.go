@@ -6,6 +6,13 @@ import (
 	"math/big"
 )
 
+type PeginQuoteRequest struct {
+	CallEoaOrContractAddress string   `json:"callEoaOrContractAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"Contract address or EOA address"`
+	CallContractArguments    string   `json:"callContractArguments" required:"" validate:"omitempty,max=8194" example:"0x0" description:"Contract data"`
+	ValueToTransfer          *big.Int `json:"valueToTransfer" required:"" validate:"required" example:"0x0" description:"Value to send in the call"`
+	RskRefundAddress         string   `json:"rskRefundAddress" required:"" validate:"required,eth_addr" example:"0x0" description:"User RSK refund address"`
+}
+
 type PeginQuoteDTO struct {
 	FedBTCAddr         string   `json:"fedBTCAddr" required:"" description:"The BTC address of the PowPeg"`
 	LBCAddr            string   `json:"lbcAddr" required:"" description:"The address of the LBC"`
@@ -50,6 +57,16 @@ type PeginQuoteStatusDTO struct {
 	Detail       PeginQuoteDTO         `json:"detail" required:"" description:"Agreed specification of the quote"`
 	Status       RetainedPeginQuoteDTO `json:"status" required:"" description:"Current status of the quote"`
 	CreationData PeginCreationDataDTO  `json:"creationData" required:"" description:"Values used to compute some fields of the quote"`
+}
+
+type GetPeginQuoteResponse struct {
+	Quote     PeginQuoteDTO `json:"quote" required:"" description:"Detail of the quote"`
+	QuoteHash string        `json:"quoteHash" required:"" description:"This is a 64 digit number that derives from a quote object"`
+}
+
+type AcceptPeginRespose struct {
+	Signature                 string `json:"signature" required:"" example:"0x0" description:"Signature of the quote"`
+	BitcoinDepositAddressHash string `json:"bitcoinDepositAddressHash" required:"" example:"0x0" description:"Hash of the deposit BTC address"`
 }
 
 type GetPeginReportResponse struct {

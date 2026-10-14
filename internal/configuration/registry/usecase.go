@@ -24,7 +24,13 @@ var registryRootHashFunction = crypto.Keccak256
 const nodePeerAlertCooldown = 30 * time.Minute
 
 type UseCaseRegistry struct {
+	getPeginQuoteUseCase                      *pegin.GetQuoteUseCase
 	registerProviderUseCase                   *liquidity_provider.RegistrationUseCase
+	callForUserUseCase                        *pegin.CallForUserUseCase
+	registerPeginUseCase                      *pegin.RegisterPeginUseCase
+	acceptPeginQuoteUseCase                   *pegin.AcceptQuoteUseCase
+	getWatchedPeginQuoteUseCase               *watcher.GetWatchedPeginQuoteUseCase
+	expiredPeginQuoteUseCase                  *pegin.ExpiredPeginQuoteUseCase
 	cleanExpiredQuotesUseCase                 *watcher.CleanExpiredQuotesUseCase
 	getProviderDetailUseCase                  *liquidity_provider.GetDetailUseCase
 	getWatchedPegoutQuoteUseCase              *watcher.GetWatchedPegoutQuoteUseCase
@@ -58,6 +64,7 @@ type UseCaseRegistry struct {
 	peginStatusUseCase                        *pegin.StatusUseCase
 	pegoutStatusUseCase                       *pegout.StatusUseCase
 	availableLiquidityUseCase                 *liquidity_provider.GetAvailableLiquidityUseCase
+	updatePeginDepositUseCase                 *watcher.UpdatePeginDepositUseCase
 	getServerInfoUseCase                      *liquidity_provider.ServerInfoUseCase
 	summariesUseCase                          *reports.SummariesUseCase
 	getPeginReportUseCase                     *reports.GetPeginReportUseCase
@@ -74,6 +81,7 @@ type UseCaseRegistry struct {
 	rskEclipseCheckUseCase                    *watcher.EclipseCheckUseCase
 	updateBtcReleaseUseCase                   *pegout.UpdateBtcReleaseUseCase
 	recommendedPegoutUseCase                  *pegout.RecommendedPegoutUseCase
+	recommendedPeginUseCase                   *pegin.RecommendedPeginUseCase
 	transferExcessToColdWalletUseCase         *liquidity_provider.TransferExcessToColdWalletUseCase
 	checkColdWalletAddressChangeUseCase       *liquidity_provider.CheckColdWalletAddressChangeUseCase
 	lowLiquidityAlertUseCase                  *liquidity_provider.LowLiquidityAlertUseCase
@@ -137,14 +145,49 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegoutRepository,
 			databaseRegistry.PenalizedEventRepository,
 		),
+		getPeginQuoteUseCase: pegin.NewGetQuoteUseCase(
+			messaging.Rpc,
+			rskRegistry.Contracts,
+			databaseRegistry.PeginRepository,
+			lpRegistry.LiquidityProvider,
+			lpRegistry.LiquidityProvider,
+		),
 		registerProviderUseCase: liquidity_provider.NewRegistrationUseCase(
 			rskRegistry.Contracts,
 			lpRegistry.LiquidityProvider,
 		),
+		callForUserUseCase: pegin.NewCallForUserUseCase(
+			rskRegistry.Contracts,
+			databaseRegistry.PeginRepository,
+			messaging.Rpc,
+			lpRegistry.LiquidityProvider,
+			messaging.EventBus,
+			mutexes.RskWalletMutex(),
+		),
+		registerPeginUseCase: pegin.NewRegisterPeginUseCase(
+			rskRegistry.Contracts,
+			databaseRegistry.PeginRepository,
+			messaging.EventBus,
+			messaging.Rpc,
+			mutexes.RskWalletMutex(),
+		),
+		acceptPeginQuoteUseCase: pegin.NewAcceptQuoteUseCase(
+			databaseRegistry.PeginRepository,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			lpRegistry.LiquidityProvider,
+			lpRegistry.LiquidityProvider,
+			messaging.EventBus,
+			mutexes.PeginLiquidityMutex(),
+			databaseRegistry.TrustedAccountRepository,
+			signingHashFunction,
+		),
+		getWatchedPeginQuoteUseCase:               watcher.NewGetWatchedPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		discoverRegisteredAddressUseCase:          discoverRegisteredAddressUseCase,
 		getPendingRegisteredAddressImportsUseCase: getPendingRegisteredAddressImportsUseCase,
 		replayRegisteredAddressesUseCase:          replayRegisteredAddressesUseCase,
 		finalizeRegisteredAddressImportUseCase:    finalizeRegisteredAddressImportUseCase,
+		expiredPeginQuoteUseCase:                  pegin.NewExpiredPeginQuoteUseCase(databaseRegistry.PeginRepository),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
@@ -292,9 +335,10 @@ func NewUseCaseRegistry(
 			lpRegistry.LiquidityProvider,
 			lpRegistry.LiquidityProvider,
 		),
-		getServerInfoUseCase:   liquidity_provider.NewServerInfoUseCase(),
-		getPeginReportUseCase:  reports.NewGetPeginReportUseCase(databaseRegistry.PeginRepository),
-		getPegoutReportUseCase: reports.NewGetPegoutReportUseCase(databaseRegistry.PegoutRepository),
+		updatePeginDepositUseCase: watcher.NewUpdatePeginDepositUseCase(databaseRegistry.PeginRepository),
+		getServerInfoUseCase:      liquidity_provider.NewServerInfoUseCase(),
+		getPeginReportUseCase:     reports.NewGetPeginReportUseCase(databaseRegistry.PeginRepository),
+		getPegoutReportUseCase:    reports.NewGetPegoutReportUseCase(databaseRegistry.PegoutRepository),
 		getRevenueReportUseCase: reports.NewGetRevenueReportUseCase(
 			databaseRegistry.PeginRepository,
 			databaseRegistry.PegoutRepository,
@@ -395,6 +439,12 @@ func NewUseCaseRegistry(
 			btcRegistry.PaymentWallet,
 			utils.Scale,
 		),
+		recommendedPeginUseCase: pegin.NewRecommendedPeginUseCase(
+			lpRegistry.LiquidityProvider,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			utils.Scale,
+		),
 		transferExcessToColdWalletUseCase: liquidity_provider.NewTransferExcessToColdWalletUseCase(
 			lpRegistry.LiquidityProvider,
 			lpRegistry.LiquidityProvider,
@@ -443,8 +493,16 @@ func NewUseCaseRegistry(
 	}, nil
 }
 
+func (registry *UseCaseRegistry) GetPeginQuoteUseCase() *pegin.GetQuoteUseCase {
+	return registry.getPeginQuoteUseCase
+}
+
 func (registry *UseCaseRegistry) GetRegistrationUseCase() *liquidity_provider.RegistrationUseCase {
 	return registry.registerProviderUseCase
+}
+
+func (registry *UseCaseRegistry) GetAcceptPeginQuoteUseCase() *pegin.AcceptQuoteUseCase {
+	return registry.acceptPeginQuoteUseCase
 }
 
 func (registry *UseCaseRegistry) GetProviderDetailUseCase() *liquidity_provider.GetDetailUseCase {
@@ -597,6 +655,10 @@ func (registry *UseCaseRegistry) DeleteTrustedAccountUseCase() *liquidity_provid
 
 func (registry *UseCaseRegistry) RecommendedPegoutUseCase() *pegout.RecommendedPegoutUseCase {
 	return registry.recommendedPegoutUseCase
+}
+
+func (registry *UseCaseRegistry) RecommendedPeginUseCase() *pegin.RecommendedPeginUseCase {
+	return registry.recommendedPeginUseCase
 }
 
 func (registry *UseCaseRegistry) TransferExcessToColdWalletUseCase() *liquidity_provider.TransferExcessToColdWalletUseCase {

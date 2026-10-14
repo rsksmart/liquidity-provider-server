@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -126,6 +127,36 @@ func TestPegin_GetRetainedQuote_NotFound(t *testing.T) {
 	assert.Nil(t, got)
 }
 
+func TestPegin_UpdateRetainedQuote(t *testing.T) {
+	cleanCollections(t)
+	ctx := context.Background()
+
+	hash := utils.RandomHash()
+	retained := utils.NewTestRetainedPeginQuote(hash, quote.PeginStateWaitingForDeposit)
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, retained))
+
+	retained.State = quote.PeginStateCallForUserSucceeded
+	retained.CallForUserTxHash = "0xupdatedcalltx"
+	retained.CallForUserGasUsed = 75000
+	require.NoError(t, peginRepo.UpdateRetainedQuote(ctx, retained))
+
+	got, err := peginRepo.GetRetainedQuote(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, quote.PeginStateCallForUserSucceeded, got.State)
+	assert.Equal(t, "0xupdatedcalltx", got.CallForUserTxHash)
+	assert.Equal(t, uint64(75000), got.CallForUserGasUsed)
+}
+
+func TestPegin_UpdateRetainedQuote_NotFound(t *testing.T) {
+	cleanCollections(t)
+	ctx := context.Background()
+
+	retained := utils.NewTestRetainedPeginQuote(utils.RandomHash(), quote.PeginStateCallForUserSucceeded)
+	err := peginRepo.UpdateRetainedQuote(ctx, retained)
+	require.ErrorIs(t, err, usecases.QuoteNotFoundError)
+}
+
 func TestPegin_GetRetainedQuoteByState(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()
@@ -225,6 +256,36 @@ func TestPegin_ListQuotesByDateRange(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, count)
 	assert.Len(t, results, 1)
+}
+
+func TestPegin_GetRetainedQuotesForAddress(t *testing.T) {
+	cleanCollections(t)
+	ctx := context.Background()
+
+	addr := "0x1234567890abcdef1234567890abcdef12345678"
+	otherAddr := "0xaaaa567890abcdef1234567890abcdef12345678"
+
+	h1 := utils.RandomHash()
+	h2 := utils.RandomHash()
+	h3 := utils.RandomHash()
+
+	r1 := utils.NewTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)
+	r1.OwnerAccountAddress = addr
+	r2 := utils.NewTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)
+	r2.OwnerAccountAddress = addr
+	r3 := utils.NewTestRetainedPeginQuote(h3, quote.PeginStateWaitingForDeposit)
+	r3.OwnerAccountAddress = otherAddr
+
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, r1))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, r2))
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, r3))
+
+	results, err := peginRepo.GetRetainedQuotesForAddress(ctx, addr, quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserSucceeded)
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+	for _, r := range results {
+		assert.Equal(t, addr, r.OwnerAccountAddress)
+	}
 }
 
 func TestPegin_GetQuotesWithRetainedByStateAndDate(t *testing.T) {

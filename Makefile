@@ -7,6 +7,7 @@ filter_coverage_file = grep -v "internal/adapters/dataproviders/rootstock/bindin
 
 define utils_build
 	CGO_ENABLED=0 go build -v -o ./utils/update_provider_url ./cmd/utils/update_provider_url/update_provider_url.go
+  	CGO_ENABLED=0 go build -v -o ./utils/register_pegin ./cmd/utils/register_pegin/register_pegin.go
   	CGO_ENABLED=0 go build -v -o ./utils/refund_user_pegout ./cmd/utils/refund_user_pegout/refund_user_pegout.go
   	CGO_ENABLED=0 go build -v -o ./utils/key_conversion ./cmd/utils/key_conversion/key_conversion.go
  	CGO_ENABLED=0 go build -v -o ./utils/resign_utils ./cmd/utils/resign_utils/resign_utils.go

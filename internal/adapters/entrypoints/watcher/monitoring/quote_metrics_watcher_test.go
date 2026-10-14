@@ -225,6 +225,105 @@ func TestQuoteMetricsWatcher_Start_PegoutMetrics(t *testing.T) {
 }
 
 // nolint:funlen
+func TestQuoteMetricsWatcher_Start_PeginMetrics(t *testing.T) {
+	t.Run("should increment accepted pegin quotes metric", func(t *testing.T) {
+		appMetrics := createTestMetrics()
+		eventBus := &mocks.EventBusMock{}
+		serverInfo := liquidity_provider.NewServerInfoUseCase()
+
+		acceptedPeginChannel := make(chan entities.Event, 1)
+		eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return((<-chan entities.Event)(acceptedPeginChannel))
+		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
+
+		watcher := monitoring.NewQuoteMetricsWatcher(appMetrics, eventBus, serverInfo)
+
+		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
+		assert.Equal(t, 0, int(initialValue))
+
+		go func() {
+			watcher.Start()
+		}()
+
+		acceptedPeginChannel <- entities.BaseEvent{}
+		acceptedPeginChannel <- entities.BaseEvent{}
+		time.Sleep(10 * time.Millisecond)
+
+		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
+		assert.Equal(t, 2, int(finalValue))
+
+		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "accepted")
+		assert.Equal(t, "accepted", labels["state"], "State label should be 'accepted'")
+
+		watcher.Shutdown(make(chan bool, 1))
+		eventBus.AssertExpectations(t)
+	})
+
+	t.Run("should increment call for user completed pegin quotes metric", func(t *testing.T) {
+		appMetrics := createTestMetrics()
+		eventBus := &mocks.EventBusMock{}
+		serverInfo := liquidity_provider.NewServerInfoUseCase()
+
+		callForUserChannel := make(chan entities.Event, 1)
+		eventBus.On("Subscribe", quote.CallForUserCompletedEventId).Return((<-chan entities.Event)(callForUserChannel))
+		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
+
+		watcher := monitoring.NewQuoteMetricsWatcher(appMetrics, eventBus, serverInfo)
+
+		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
+		assert.Equal(t, 0, int(initialValue))
+
+		go func() {
+			watcher.Start()
+		}()
+
+		callForUserChannel <- entities.BaseEvent{}
+		callForUserChannel <- entities.BaseEvent{}
+		callForUserChannel <- entities.BaseEvent{}
+
+		time.Sleep(10 * time.Millisecond)
+
+		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
+		assert.Equal(t, 3, int(finalValue))
+
+		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "paid")
+		assert.Equal(t, "paid", labels["state"], "State label should be 'paid'")
+
+		watcher.Shutdown(make(chan bool, 1))
+		eventBus.AssertExpectations(t)
+	})
+
+	t.Run("should increment register pegin completed quotes metric", func(t *testing.T) {
+		appMetrics := createTestMetrics()
+		eventBus := &mocks.EventBusMock{}
+		serverInfo := liquidity_provider.NewServerInfoUseCase()
+
+		registerPeginChannel := make(chan entities.Event, 1)
+		eventBus.On("Subscribe", quote.RegisterPeginCompletedEventId).Return((<-chan entities.Event)(registerPeginChannel))
+		eventBus.On("Subscribe", mock.AnythingOfType("entities.EventId")).Return(make(<-chan entities.Event))
+
+		watcher := monitoring.NewQuoteMetricsWatcher(appMetrics, eventBus, serverInfo)
+
+		initialValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
+		assert.Equal(t, 0, int(initialValue))
+
+		go func() {
+			watcher.Start()
+		}()
+
+		registerPeginChannel <- entities.BaseEvent{}
+		time.Sleep(10 * time.Millisecond)
+
+		finalValue := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
+		assert.Equal(t, 1, int(finalValue))
+
+		labels := getCounterVecLabels(appMetrics.PeginQuotesMetric, "lp_refunded")
+		assert.Equal(t, "lp_refunded", labels["state"], "State label should be 'lp_refunded'")
+
+		watcher.Shutdown(make(chan bool, 1))
+		eventBus.AssertExpectations(t)
+	})
+}
+
 // nolint:funlen
 func TestQuoteMetricsWatcher_Start_MultipleEvents(t *testing.T) {
 	t.Run("should handle multiple events simultaneously", func(t *testing.T) {
@@ -236,11 +335,17 @@ func TestQuoteMetricsWatcher_Start_MultipleEvents(t *testing.T) {
 		acceptedPegoutChannel := make(chan entities.Event, 5)
 		sendPegoutChannel := make(chan entities.Event, 5)
 		pegoutRefundChannel := make(chan entities.Event, 5)
+		acceptedPeginChannel := make(chan entities.Event, 5)
+		callForUserChannel := make(chan entities.Event, 5)
+		registerPeginChannel := make(chan entities.Event, 5)
 
 		// Mock all Subscribe calls
 		eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return((<-chan entities.Event)(acceptedPegoutChannel))
 		eventBus.On("Subscribe", quote.PegoutBtcSentEventId).Return((<-chan entities.Event)(sendPegoutChannel))
 		eventBus.On("Subscribe", quote.PegoutQuoteCompletedEventId).Return((<-chan entities.Event)(pegoutRefundChannel))
+		eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return((<-chan entities.Event)(acceptedPeginChannel))
+		eventBus.On("Subscribe", quote.CallForUserCompletedEventId).Return((<-chan entities.Event)(callForUserChannel))
+		eventBus.On("Subscribe", quote.RegisterPeginCompletedEventId).Return((<-chan entities.Event)(registerPeginChannel))
 
 		watcher := monitoring.NewQuoteMetricsWatcher(appMetrics, eventBus, serverInfo)
 
@@ -248,10 +353,16 @@ func TestQuoteMetricsWatcher_Start_MultipleEvents(t *testing.T) {
 		initialPegoutAccepted := getCounterVecValue(appMetrics.PegoutQuotesMetric, "accepted")
 		initialPegoutPaid := getCounterVecValue(appMetrics.PegoutQuotesMetric, "paid")
 		initialPegoutRefunded := getCounterVecValue(appMetrics.PegoutQuotesMetric, "lp_refunded")
+		initialPeginAccepted := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
+		initialPeginPaid := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
+		initialPeginRefunded := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
 
 		assert.Equal(t, 0, int(initialPegoutAccepted))
 		assert.Equal(t, 0, int(initialPegoutPaid))
 		assert.Equal(t, 0, int(initialPegoutRefunded))
+		assert.Equal(t, 0, int(initialPeginAccepted))
+		assert.Equal(t, 0, int(initialPeginPaid))
+		assert.Equal(t, 0, int(initialPeginRefunded))
 
 		go func() {
 			watcher.Start()
@@ -260,25 +371,38 @@ func TestQuoteMetricsWatcher_Start_MultipleEvents(t *testing.T) {
 		// Send mixed events in different order - some channels get multiple events, others get none
 		// This will test that counters accumulate properly and some remain at 0
 		acceptedPegoutChannel <- entities.BaseEvent{}
+		callForUserChannel <- entities.BaseEvent{}
 		acceptedPegoutChannel <- entities.BaseEvent{}
+		acceptedPeginChannel <- entities.BaseEvent{}
 		acceptedPegoutChannel <- entities.BaseEvent{}
+		callForUserChannel <- entities.BaseEvent{}
+		callForUserChannel <- entities.BaseEvent{}
+		acceptedPeginChannel <- entities.BaseEvent{}
 		sendPegoutChannel <- entities.BaseEvent{}
+		callForUserChannel <- entities.BaseEvent{}
 
 		// Intentionally DO NOT send events to:
 		// - pegoutRefundChannel (should remain at 0)
+		// - registerPeginChannel (should remain at 0)
 
 		time.Sleep(10 * time.Millisecond)
 
 		finalPegoutAccepted := getCounterVecValue(appMetrics.PegoutQuotesMetric, "accepted")
 		finalPegoutPaid := getCounterVecValue(appMetrics.PegoutQuotesMetric, "paid")
 		finalPegoutRefunded := getCounterVecValue(appMetrics.PegoutQuotesMetric, "lp_refunded")
+		finalPeginAccepted := getCounterVecValue(appMetrics.PeginQuotesMetric, "accepted")
+		finalPeginPaid := getCounterVecValue(appMetrics.PeginQuotesMetric, "paid")
+		finalPeginRefunded := getCounterVecValue(appMetrics.PeginQuotesMetric, "lp_refunded")
 
 		// Verify counters that received events
 		assert.Equal(t, 3, int(finalPegoutAccepted))
 		assert.Equal(t, 1, int(finalPegoutPaid))
+		assert.Equal(t, 2, int(finalPeginAccepted))
+		assert.Equal(t, 4, int(finalPeginPaid))
 
 		// Verify counters that received NO events (should remain at 0)
 		assert.Equal(t, 0, int(finalPegoutRefunded))
+		assert.Equal(t, 0, int(finalPeginRefunded))
 
 		watcher.Shutdown(make(chan bool, 1))
 		eventBus.AssertExpectations(t)
@@ -294,6 +418,9 @@ func TestQuoteMetricsWatcher_Shutdown(t *testing.T) {
 		eventBus.On("Subscribe", quote.AcceptedPegoutQuoteEventId).Return(make(<-chan entities.Event))
 		eventBus.On("Subscribe", quote.PegoutBtcSentEventId).Return(make(<-chan entities.Event))
 		eventBus.On("Subscribe", quote.PegoutQuoteCompletedEventId).Return(make(<-chan entities.Event))
+		eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return(make(<-chan entities.Event))
+		eventBus.On("Subscribe", quote.CallForUserCompletedEventId).Return(make(<-chan entities.Event))
+		eventBus.On("Subscribe", quote.RegisterPeginCompletedEventId).Return(make(<-chan entities.Event))
 
 		watcher := monitoring.NewQuoteMetricsWatcher(appMetrics, eventBus, serverInfo)
 

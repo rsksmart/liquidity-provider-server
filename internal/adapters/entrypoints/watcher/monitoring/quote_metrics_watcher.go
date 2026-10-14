@@ -49,6 +49,9 @@ func (watcher *QuoteMetricsWatcher) Start() {
 	acceptedPegoutChannel := watcher.eventBus.Subscribe(quote.AcceptedPegoutQuoteEventId)
 	sendPegoutChannel := watcher.eventBus.Subscribe(quote.PegoutBtcSentEventId)
 	pegoutRefundChannel := watcher.eventBus.Subscribe(quote.PegoutQuoteCompletedEventId)
+	acceptedPeginChannel := watcher.eventBus.Subscribe(quote.AcceptedPeginQuoteEventId)
+	callForUserChannel := watcher.eventBus.Subscribe(quote.CallForUserCompletedEventId)
+	registerPeginChannel := watcher.eventBus.Subscribe(quote.RegisterPeginCompletedEventId)
 
 metricLoop:
 	for {
@@ -59,6 +62,12 @@ metricLoop:
 			watcher.appMetrics.PegoutQuotesMetric.WithLabelValues("paid").Inc()
 		case <-pegoutRefundChannel:
 			watcher.appMetrics.PegoutQuotesMetric.WithLabelValues("lp_refunded").Inc()
+		case <-acceptedPeginChannel:
+			watcher.appMetrics.PeginQuotesMetric.WithLabelValues("accepted").Inc()
+		case <-callForUserChannel:
+			watcher.appMetrics.PeginQuotesMetric.WithLabelValues("paid").Inc()
+		case <-registerPeginChannel:
+			watcher.appMetrics.PeginQuotesMetric.WithLabelValues("lp_refunded").Inc()
 		case <-watcher.closeChannel:
 			close(watcher.closeChannel)
 			break metricLoop
