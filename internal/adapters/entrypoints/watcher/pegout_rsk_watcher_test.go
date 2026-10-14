@@ -142,7 +142,7 @@ func TestPegoutRskDepositWatcher_Start_Claimed(t *testing.T) {
 	})
 	t.Run("handle incorrect event", func(t *testing.T) {
 		checkFunction := test.LogContains(t, watcher.LogPegoutRskWrongEvent)
-		claimedChannel <- quote.AcceptedPeginQuoteEvent{Event: entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId)}
+		claimedChannel <- quote.PegoutQuoteCompletedEvent{Event: entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId)}
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 

@@ -12,14 +12,12 @@ func TestNewApplicationMutexes(t *testing.T) {
 	t.Run("should create every mutex", func(t *testing.T) {
 		assert.NotNil(t, mutexes.RskWalletMutex())
 		assert.NotNil(t, mutexes.BtcWalletMutex())
-		assert.NotNil(t, mutexes.PeginLiquidityMutex())
 		assert.NotNil(t, mutexes.PegoutLiquidityMutex())
 	})
 	t.Run("every mutex should be different", func(t *testing.T) {
 		mutexArray := []*sync.Mutex{
 			mutexes.RskWalletMutex(),
 			mutexes.BtcWalletMutex(),
-			mutexes.PeginLiquidityMutex(),
 			mutexes.PegoutLiquidityMutex(),
 		}
 		seen := make(map[*sync.Mutex]bool)
