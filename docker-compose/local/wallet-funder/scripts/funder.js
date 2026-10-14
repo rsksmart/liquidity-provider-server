@@ -11,6 +11,8 @@ const RSK_FUNDER = "0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826";
 const btcFunderPassword = "test-password";
 const btcFunderName = "main";
 const btcFundingBlocks = 500;
+const feeSeedBlocks = 15;
+const feeSeedTxsPerBlock = 3;
 
 async function createBitcoinFunderWallet({name, password, fundingBlocks}) {
     const created = await fetch(BTC_URL+"/wallet/"+name, {
@@ -173,20 +175,62 @@ function fundBtcAddress({funderPassword, funderName, address, amount}) {
     })
 }
 
-try {
-    await createBitcoinFunderWallet({name: btcFunderName, password: btcFunderPassword, fundingBlocks: btcFundingBlocks});
-    for (const [address, amount] of Object.entries(fundedRskWallets)) {
-        await fundRskWallet(address, amount);
-        console.log(`Funded wallet ${address} with ${amount} wei`);
+async function btcWalletRpc(walletName, method, params) {
+    const response = await fetch(BTC_URL+"/wallet/"+walletName, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': BTC_AUTH,
+        },
+        body: JSON.stringify({
+            jsonrpc: '1.0',
+            method,
+            params,
+            id: 1
+        })
+    });
+    if (!response.ok) {
+        throw new Error(`Error calling ${method} on Bitcoin wallet ${walletName}! status: ${response.status}`);
     }
-    for (const [address, amount] of Object.entries(fundedBtcWallets)) {
-        await fundBtcAddress({
+    return (await response.json()).result;
+}
+
+async function seedBtcFeeEstimation({funderPassword, funderName, blocks, txsPerBlock}) {
+    const miningAddress = await btcWalletRpc(funderName, 'getnewaddress', []);
+    for (let block = 0; block < blocks; block++) {
+        await btcWalletRpc(funderName, 'walletpassphrase', [funderPassword, 60]);
+        for (let tx = 0; tx < txsPerBlock; tx++) {
+            const address = await btcWalletRpc(funderName, 'getnewaddress', []);
+            await btcWalletRpc(funderName, 'sendtoaddress', { address, amount: 0.01, fee_rate: 25 });
+        }
+        await btcWalletRpc(funderName, 'generatetoaddress', [1, miningAddress]);
+    }
+}
+
+try {
+    if (process.argv.includes('--seed-fees')) {
+        await seedBtcFeeEstimation({
             funderPassword: btcFunderPassword,
             funderName: btcFunderName,
-            address,
-            amount
+            blocks: feeSeedBlocks,
+            txsPerBlock: feeSeedTxsPerBlock
         });
-        console.log(`Funded Bitcoin address ${address} with ${amount} btc`);
+        console.log(`Seeded Bitcoin fee estimation with ${feeSeedBlocks * feeSeedTxsPerBlock} transactions over ${feeSeedBlocks} blocks`);
+    } else {
+        await createBitcoinFunderWallet({name: btcFunderName, password: btcFunderPassword, fundingBlocks: btcFundingBlocks});
+        for (const [address, amount] of Object.entries(fundedRskWallets)) {
+            await fundRskWallet(address, amount);
+            console.log(`Funded wallet ${address} with ${amount} wei`);
+        }
+        for (const [address, amount] of Object.entries(fundedBtcWallets)) {
+            await fundBtcAddress({
+                funderPassword: btcFunderPassword,
+                funderName: btcFunderName,
+                address,
+                amount
+            });
+            console.log(`Funded Bitcoin address ${address} with ${amount} btc`);
+        }
     }
 } catch (error) {
     console.error(error);
