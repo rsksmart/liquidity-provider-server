@@ -74,7 +74,9 @@ describe('AddCollateralForm', () => {
     ['0.123456789012345678', 123456789012345678n],
     // 1000 rBTC and above serialized as 1e+21, which the server rejected with a 400.
     ['1000', 1000000000000000000000n],
-    ['1234.567891234567891', 1234567891234567891000n],
+    // Past 20 significant digits, where decimal.js arithmetic rounded.
+    ['100.000000000000000001', 100000000000000000001n],
+    ['1234.567891234567891234', 1234567891234567891234n],
   ])('posts %s rBTC as an exact wei amount', async (amountEther, expectedWei) => {
     const user = userEvent.setup()
     render(<AddCollateralForm kind="pegin" />)
@@ -157,7 +159,12 @@ describe('add-collateral validation', () => {
     expect(apiFetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('shows error toast for sub-wei fractional amount without POST', async () => {
+  it.each([
+    // Less than 1 wei.
+    '0.0000000000000000001',
+    // A number input accepts exponent notation, but only plain decimals convert exactly.
+    '1e3',
+  ])('shows error toast for %s rBTC without POST', async (amount) => {
     const user = userEvent.setup()
     render(<AddCollateralForm kind="pegin" />)
 
@@ -165,9 +172,6 @@ describe('add-collateral validation', () => {
       expect(screen.getByTestId('pegin-collateral-balance')).toBeInTheDocument()
     })
 
-    // Sub-wei ether (1e-19) yields a non-integral wei string; BigInt would throw
-    // if left outside the validation try/catch (silent no-op regression).
-    const amount = '0.0000000000000000001'
     const input = screen.getByTestId('pegin-collateral-amount')
     await user.clear(input)
     // HTML number inputs may normalize on type; set value directly.
