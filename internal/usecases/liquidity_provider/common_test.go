@@ -66,10 +66,9 @@ func TestReadDefaultPassword_ErroHandling(t *testing.T) {
 	})
 	t.Run("Wrong event", func(t *testing.T) {
 		passwordChannel := make(chan entities.Event, 1)
-		passwordChannel <- quote.AcceptedPeginQuoteEvent{
-			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-			Quote:         quote.PeginQuote{},
-			RetainedQuote: quote.RetainedPeginQuote{},
+		passwordChannel <- quote.PegoutQuoteCompletedEvent{
+			Event:         entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
+			RetainedQuote: quote.RetainedPegoutQuote{},
 		}
 		passwordProvider := &mocks.DefaultCredentialsProviderMock{}
 		passwordProvider.On("DefaultCredentials").Return(nil).Once()
