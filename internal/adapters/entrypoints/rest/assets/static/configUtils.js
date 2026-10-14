@@ -2,25 +2,30 @@ function weiToEther(wei) {
     if (wei === null || wei === undefined) return '0';
     try {
         const decimalValue = new Decimal(wei);
-        return decimalValue.dividedBy(new Decimal(1e18)).toString();
+        // toFixed, not toString: toString writes exponent notation below 1e-7, and the
+        // config inputs filled from this value go back through etherToWei on save.
+        return decimalValue.dividedBy(new Decimal(1e18)).toFixed();
     } catch (error) {
         throw new Error(`Failed to convert wei to ether. Input: "${wei}". Error: ${error.message}`);
     }
 }
 
+// Plain string math, not Decimal: Decimal arithmetic rounds to 20 significant digits,
+// which drops wei from any amount of 100 rBTC or more written to 18 decimals.
 function etherToWei(ether) {
-    if (typeof ether !== 'string' && typeof ether !== 'number') {
-        throw new TypeError(`Invalid input type for ether: ${typeof ether}. Expected a number or string.`);
+    if (typeof ether !== 'string') {
+        throw new TypeError(`Invalid input type for ether: ${typeof ether}. Expected a string.`);
     }
-    try {
-        const num = new Decimal(ether);
-        if (num.isNegative()) {
-            throw new RangeError(`The input "${ether}" is not a valid number.`);
-        }
-        return num.times(new Decimal(1e18)).toFixed();
-    } catch (error) {
-        throw new Error(`Failed to convert ether to wei. Input: "${ether}". Error: ${error.message}`);
+    const match = /^(\d*)(?:\.(\d*))?$/.exec(ether);
+    const whole = match ? match[1] : '';
+    const fraction = match && match[2] ? match[2] : '';
+    if (whole === '' && fraction === '') {
+        throw new Error(`Failed to convert ether to wei. Input: "${ether}". Error: not a valid number.`);
     }
+    if (fraction.length > 18) {
+        throw new Error(`Failed to convert ether to wei. Input: "${ether}". Error: more than 18 decimal places is a fraction of a wei.`);
+    }
+    return BigInt(whole + fraction.padEnd(18, '0')).toString();
 }
 
 function isFeeKey(key) {
