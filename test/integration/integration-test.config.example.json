@@ -20,14 +20,6 @@
   },
   "tests": {
     "mempool": {},
-    "pegin": {
-      "value": 700000000000000000,
-      "destinationAddress": "0x79568c2989232dCa1840087D73d403602364c0D4",
-      "refundAddress": "0x79568c2989232dCa1840087D73d403602364c0D4",
-      "data": "",
-      "callForUserWait": 600,
-      "registerPeginWait": 600
-    },
     "pegout": {
       "value": 700000000000000000,
       "destinationAddress": "mwPaRkHM1CpNVz7UGddNeyAJry5z1rvqv5",
