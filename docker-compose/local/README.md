@@ -5,8 +5,8 @@ The provided docker-compose files can be used to quickly spin up an environment 
 
 * Use scripts located in the `local` directory while being inside that directory. Using them from other directories might cause issues with the relative paths defined in the different compose files.
 * Create an env file and export it as an environment variable `export ENV_FILE=regtest`. If you don't want to create it, the script will use by default the `sample-config.env` file located at the root directory.
-* The local contract deployer pulls a prebuilt LBC image from GHCR using `LBC_IMAGE` from your env file. Keep this value pinned to an immutable digest (`ghcr.io/rsksmart/liquidity-bridge-contract@sha256:...`).
-* If your environment is not already authenticated to GHCR, run `docker login ghcr.io` before starting the stack.
+* The local contract deployer builds `liquidity-bridge-contract` from source at `LBC_GIT_REF` (a commit SHA, branch, or tag) from your env file. `sample-config.env` pins a commit that matches the LPS bindings. For a branch or tag, `lps-local.sh` resolves it to a commit, so the image rebuilds when the ref moves. The first build takes a few minutes and needs access to GitHub.
+* The deployer writes every deployed proxy address into your env file, including `FLYOVER_CONFIGURATIONS_ADDRESS`, `PEGIN_ADDRESS_REGISTRY_ADDRESS` and `PEGOUT_ESCROW_ADDRESS`, so the LPS starts with the commit-first peg-out escrow watcher enabled.
 * Run the following command to create the environment:
 ```bash
     ./lps-local.sh
@@ -14,7 +14,7 @@ The provided docker-compose files can be used to quickly spin up an environment 
 
 ## Configurations
 The `sample-config.env` file contains a set of flags at the end of the file that can be used to enable or disable certain features of the Liquidity Provider Server. These flags are:
-* `FUND_WALLETS`: if enabled, the wallet-funder script will be executed every time the local script is executed. This script is responsible for funding the wallets with the necessary funds (as configured in the env file) to operate in the regtest environment. This script is not idempotent.
+* `FUND_WALLETS`: if enabled, the wallet-funder script will be executed every time the local script is executed. This script is responsible for funding the wallets with the necessary funds (as configured in the env file) to operate in the regtest environment. This script is not idempotent. It also seeds the Bitcoin fee history right before the LPS starts, so the LPS can estimate fees for BTC payments on a fresh chain.
 * `DEPLOY_CONTRACTS`: if enabled, the deploy-contracts script will be executed every time the local script is executed. This script is responsible for deploying the necessary contracts to operate in the regtest environment. This script is not idempotent.
 * `CREATE_POWPEG`: if enabled, the regtest federation nodes will be created and the powpeg will be set up. This script is idempotent.
 * `CREATE_MONITORING`: if enabled, the monitoring stack will be created. This script is idempotent.
