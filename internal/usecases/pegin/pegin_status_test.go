@@ -12,7 +12,31 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
+
+var testPeginQuote = quote.PeginQuote{
+	FedBtcAddress:      "2N4qmbZNDMyHDBEBKTCP218HV1LhxCMRMti",
+	LbcAddress:         "0x79568c2989232dCa1840087D73d403602364c0D4",
+	LpRskAddress:       "0x0D8Fb5d32704DB2931e05DB91F64BcA6f76Ce573",
+	BtcRefundAddress:   "2N58BH8rEq9Ku7HuJbZvKX6WRywdNmoVrnA",
+	RskRefundAddress:   "0xd5f00ABfbEA7A0B193836CAc6833c2Ad9D06cEa8",
+	LpBtcAddress:       "mnYcQxCZBbmLzNfE9BhV7E8E2u7amdz5y6",
+	CallFee:            entities.NewWei(1),
+	PenaltyFee:         entities.NewWei(1),
+	ContractAddress:    "0xd5f00ABfbEA7A0B193836CAc6833c2Ad9D06cEa8",
+	Data:               "",
+	GasLimit:           5000,
+	Nonce:              654321,
+	Value:              entities.NewWei(30000),
+	AgreementTimestamp: uint32(time.Now().Unix()),
+	TimeForDeposit:     600,
+	LpCallTime:         600,
+	Confirmations:      10,
+	CallOnRegister:     false,
+	GasFee:             entities.NewWei(1),
+	ChainId:            31,
+}
 
 func TestStatusUseCase_Run(t *testing.T) {
 	const quoteHash = "quoteHash"
