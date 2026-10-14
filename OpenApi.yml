@@ -15,20 +15,6 @@ components:
       - quoteHash
       - signature
       type: object
-    AcceptPeginRespose:
-      properties:
-        bitcoinDepositAddressHash:
-          description: Hash of the deposit BTC address
-          example: "0x0"
-          type: string
-        signature:
-          description: Signature of the quote
-          example: "0x0"
-          type: string
-      required:
-      - signature
-      - bitcoinDepositAddressHash
-      type: object
     AcceptPegoutResponse:
       properties:
         lbcAddress:
@@ -197,19 +183,6 @@ components:
           $ref: '#/components/schemas/'
       required:
       - collateral
-      type: object
-    GetPeginQuoteResponse:
-      properties:
-        quote:
-          $ref: '#/components/schemas/PeginQuoteDTO'
-          description: Detail of the quote
-          type: object
-        quoteHash:
-          description: This is a 64 digit number that derives from a quote object
-          type: string
-      required:
-      - quote
-      - quoteHash
       type: object
     GetPegoutQuoteResponse:
       properties:
@@ -490,29 +463,6 @@ components:
       - callOnRegister
       - gasFee
       - chainId
-      type: object
-    PeginQuoteRequest:
-      properties:
-        callContractArguments:
-          description: Contract data
-          example: "0x0"
-          type: string
-        callEoaOrContractAddress:
-          description: Contract address or EOA address
-          example: "0x0"
-          type: string
-        rskRefundAddress:
-          description: User RSK refund address
-          example: "0x0"
-          type: string
-        valueToTransfer:
-          description: Value to send in the call
-          example: "0x0"
-      required:
-      - callEoaOrContractAddress
-      - callContractArguments
-      - valueToTransfer
-      - rskRefundAddress
       type: object
     PeginQuoteStatusDTO:
       properties:
@@ -919,34 +869,6 @@ components:
         rbtcLockingCap:
           $ref: '#/components/schemas/'
       type: object
-    pkg.AcceptAuthenticatedQuoteRequest:
-      properties:
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-        signature:
-          description: Signature from a trusted account
-          example: "0x0"
-          type: string
-      required:
-      - quoteHash
-      - signature
-      type: object
-    pkg.AcceptPeginRespose:
-      properties:
-        bitcoinDepositAddressHash:
-          description: Hash of the deposit BTC address
-          example: "0x0"
-          type: string
-        signature:
-          description: Signature of the quote
-          example: "0x0"
-          type: string
-      required:
-      - signature
-      - bitcoinDepositAddressHash
-      type: object
     pkg.AcceptPegoutResponse:
       properties:
         lbcAddress:
@@ -960,15 +882,6 @@ components:
       required:
       - signature
       - lbcAddress
-      type: object
-    pkg.AcceptQuoteRequest:
-      properties:
-        quoteHash:
-          description: QuoteHash
-          example: "0x0"
-          type: string
-      required:
-      - quoteHash
       type: object
     pkg.AddCollateralRequest:
       properties:
@@ -990,24 +903,6 @@ components:
           $ref: '#/components/schemas/'
       required:
       - collateral
-      type: object
-    pkg.RecommendedOperationDTO:
-      properties:
-        estimatedCallFee:
-          description: Estimated call fee if a quote is created with the recommended
-            amount
-          example: "100000"
-        estimatedGasFee:
-          description: Estimated gas fee if a quote is created with the recommended
-            amount
-          example: "100000"
-        recommendedQuoteValue:
-          description: Recommended quote value for the input amount
-          example: "100000"
-      required:
-      - recommendedQuoteValue
-      - estimatedCallFee
-      - estimatedGasFee
       type: object
     pkg.TrustedAccountRequest:
       properties:
@@ -1183,40 +1078,6 @@ paths:
         "200":
           description: ""
       summary: Metrics
-  /pegin/acceptAuthenticatedQuote:
-    post:
-      description: ' Accepts Quote with trusted account signature'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AcceptAuthenticatedQuoteRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AcceptPeginRespose'
-          description: ""
-      summary: Accept authenticated quote
-  /pegin/acceptQuote:
-    post:
-      description: ' Accepts Quote'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AcceptQuoteRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AcceptPeginRespose'
-          description: ""
-      summary: Accept Quote
   /pegin/addCollateral:
     post:
       description: ' Adds PegIn Collateral'
@@ -1259,62 +1120,6 @@ paths:
         "204":
           description: ""
       summary: Set Pegin Config
-  /pegin/getQuote:
-    post:
-      description: ' Gets Pegin Quote'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PeginQuoteRequest'
-        required: true
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetPeginQuoteResponse'
-          description: ""
-      summary: Pegin GetQuote
-  /pegin/recommended:
-    get:
-      description: ' Returns the recommended quote value to create a quote whose total
-        payment is the input amount'
-      parameters:
-      - description: Amount in wei expected to use as total payment for the quote
-        in: query
-        name: amount
-        required: true
-        schema:
-          description: Amount in wei expected to use as total payment for the quote
-          format: string
-          type: string
-      - description: Destination address for the pegin. Is optional, but if provided,
-          it will increase the estimation accuracy.
-        in: query
-        name: destination_address
-        schema:
-          description: Destination address for the pegin. Is optional, but if provided,
-            it will increase the estimation accuracy.
-          format: string
-          type: string
-      - description: Hex-encoded data payload to include in the pegin transaction.
-          Is optional, but if provided, it will increase the estimation accuracy.
-        in: query
-        name: data
-        schema:
-          description: Hex-encoded data payload to include in the pegin transaction.
-            Is optional, but if provided, it will increase the estimation accuracy.
-          format: string
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RecommendedOperationDTO'
-          description: Recommended operation object
-      summary: Recommended pegin
   /pegin/status:
     get:
       description: ' Returns the status of an accepted pegin quote'
