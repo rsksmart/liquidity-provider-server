@@ -317,3 +317,11 @@ func LogPegInClaimSettleAborted(rskAddress, depositTxID string, err error) strin
 func LogPegInClaimSettleError(rskAddress, depositTxID string, err error) string {
 	return fmt.Sprintf("PegInClaimWatcher: error settling claim %s/%s: %v", rskAddress, depositTxID, err)
 }
+
+func LogPegoutEscrowClaimError(requestHash string, err error) string {
+	return fmt.Sprintf(LogPegoutEscrowPrefix+"error claiming peg-out %s: %v", requestHash, err)
+}
+
+func LogPegoutEscrowReconcileError(err error) string {
+	return fmt.Sprintf(LogPegoutEscrowPrefix+"error reconciling pending claims: %v", err)
+}

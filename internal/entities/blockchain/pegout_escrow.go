@@ -50,8 +50,8 @@ type PegOutEscrowContract interface {
 	GetAddress() string
 	GetPegOutState(requestHash string) (EscrowedPegOutState, error)
 	GetPegOutQuote(requestHash string) (quote.PegoutQuote, error)
-	GetMaxMinerFee(requestHash string) (*entities.Wei, error)
 	RestrictedUntil(lpAddress string) (uint64, error)
+	EstimateClaimPegOut(requestHash string, signature []byte) (*entities.Wei, error)
 	ClaimPegOut(txConfig TransactionConfig, requestHash string, signature []byte) (TransactionReceipt, error)
 	// GetPegOutRequestedEvents returns PegOutRequested logs in [fromBlock, toBlock].
 	// A nil toBlock reads up to the latest block.

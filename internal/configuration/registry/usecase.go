@@ -34,10 +34,8 @@ type UseCaseRegistry struct {
 	cleanExpiredQuotesUseCase              *watcher.CleanExpiredQuotesUseCase
 	getProviderDetailUseCase               *liquidity_provider.GetDetailUseCase
 	getWatchedPegoutQuoteUseCase           *watcher.GetWatchedPegoutQuoteUseCase
-	expiredPegoutUseCase                   *pegout.ExpiredPegoutQuoteUseCase
 	sendPegoutUseCase                      *pegout.SendPegoutUseCase
-	updatePegoutDepositUseCase             *watcher.UpdatePegoutQuoteDepositUseCase
-	initPegoutDepositCacheUseCase          *pegout.InitPegoutDepositCacheUseCase
+	claimPegOutUseCase                     *pegout.ClaimPegOutUseCase
 	refundPegoutUseCase                    *pegout.RefundPegoutUseCase
 	getPegoutQuoteUseCase                  *pegout.GetQuoteUseCase
 	acceptPegoutQuoteUseCase               *pegout.AcceptQuoteUseCase
@@ -221,18 +219,12 @@ func NewUseCaseRegistry(
 		getWatchedPegoutQuoteUseCase: watcher.NewGetWatchedPegoutQuoteUseCase(
 			databaseRegistry.PegoutRepository,
 		),
-		expiredPegoutUseCase:       pegout.NewExpiredPegoutQuoteUseCase(databaseRegistry.PegoutRepository),
-		updatePegoutDepositUseCase: watcher.NewUpdatePegoutQuoteDepositUseCase(databaseRegistry.PegoutRepository),
-		initPegoutDepositCacheUseCase: pegout.NewInitPegoutDepositCacheUseCase(
-			databaseRegistry.PegoutRepository,
-			rskRegistry.Contracts,
-			messaging.Rpc,
-		),
 		refundPegoutUseCase: pegout.NewRefundPegoutUseCase(
 			databaseRegistry.PegoutRepository,
 			rskRegistry.Contracts,
 			messaging.EventBus,
 			messaging.Rpc,
+			lpRegistry.LiquidityProvider,
 			mutexes.RskWalletMutex(),
 		),
 		getPegoutQuoteUseCase: pegout.NewGetQuoteUseCase(
@@ -247,9 +239,6 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegoutRepository,
 			rskRegistry.Contracts,
 			lpRegistry.LiquidityProvider,
-			lpRegistry.LiquidityProvider,
-			messaging.EventBus,
-			mutexes.PegoutLiquidityMutex(),
 			databaseRegistry.TrustedAccountRepository,
 			signingHashFunction,
 		),
@@ -261,6 +250,15 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			mutexes.BtcWalletMutex(),
 			rootstock.ParseDepositEventByQuoteHash,
+		),
+		claimPegOutUseCase: pegout.NewClaimPegOutUseCase(
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			btcRegistry.PaymentWallet,
+			lpRegistry.LiquidityProvider,
+			databaseRegistry.PegoutRepository,
+			messaging.EventBus,
+			mutexes.RskWalletMutex(),
 		),
 		getUserDepositsUseCase: pegout.NewGetUserDepositsUseCase(databaseRegistry.PegoutRepository),
 		liquidityCheckUseCase: liquidity_provider.NewCheckLiquidityUseCase(
