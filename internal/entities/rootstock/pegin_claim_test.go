@@ -82,9 +82,11 @@ func TestPegInClaim_IsTerminal(t *testing.T) {
 	}{
 		{rootstock.PegInClaimCandidate, false},
 		{rootstock.PegInClaimSubmitting, false},
-		{rootstock.PegInClaimClaimed, true},
+		{rootstock.PegInClaimClaimed, false},
 		{rootstock.PegInClaimRaceLost, true},
 		{rootstock.PegInClaimRetryableFailure, false},
+		{rootstock.PegInClaimResolved, true},
+		{rootstock.PegInClaimResolveFailed, true},
 		{rootstock.PegInClaimState(""), false},
 	}
 	for _, tc := range cases {
@@ -98,6 +100,63 @@ func TestPegInClaim_IsTerminal(t *testing.T) {
 func TestPegInClaim_IsTerminal_NilReceiver(t *testing.T) {
 	var claim *rootstock.PegInClaim
 	assert.False(t, claim.IsTerminal())
+}
+
+func TestPegInClaim_IsClaimed(t *testing.T) {
+	cases := []struct {
+		state   rootstock.PegInClaimState
+		claimed bool
+	}{
+		{rootstock.PegInClaimCandidate, false},
+		{rootstock.PegInClaimSubmitting, false},
+		{rootstock.PegInClaimClaimed, true},
+		{rootstock.PegInClaimRaceLost, false},
+		{rootstock.PegInClaimRetryableFailure, false},
+		{rootstock.PegInClaimResolved, false},
+		{rootstock.PegInClaimResolveFailed, false},
+		{rootstock.PegInClaimState(""), false},
+	}
+	for _, tc := range cases {
+		t.Run(string(tc.state), func(t *testing.T) {
+			claim := &rootstock.PegInClaim{State: tc.state}
+			assert.Equal(t, tc.claimed, claim.IsClaimed())
+		})
+	}
+}
+
+func TestPegInClaim_IsClaimed_NilReceiver(t *testing.T) {
+	var claim *rootstock.PegInClaim
+	assert.False(t, claim.IsClaimed())
+}
+
+func TestPegInClaim_IsResolvable(t *testing.T) {
+	cases := []struct {
+		name       string
+		state      rootstock.PegInClaimState
+		pegInID    string
+		resolvable bool
+	}{
+		{"claimed with peg-in id", rootstock.PegInClaimClaimed, "0a1b", true},
+		{"claimed without peg-in id", rootstock.PegInClaimClaimed, "", false},
+		{"candidate", rootstock.PegInClaimCandidate, "0a1b", false},
+		{"submitting", rootstock.PegInClaimSubmitting, "0a1b", false},
+		{"race lost", rootstock.PegInClaimRaceLost, "0a1b", false},
+		{"retryable failure", rootstock.PegInClaimRetryableFailure, "0a1b", false},
+		{"resolved", rootstock.PegInClaimResolved, "0a1b", false},
+		{"resolve failed", rootstock.PegInClaimResolveFailed, "0a1b", false},
+		{"empty state", rootstock.PegInClaimState(""), "0a1b", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			claim := &rootstock.PegInClaim{State: tc.state, PegInID: tc.pegInID}
+			assert.Equal(t, tc.resolvable, claim.IsResolvable())
+		})
+	}
+}
+
+func TestPegInClaim_IsResolvable_NilReceiver(t *testing.T) {
+	var claim *rootstock.PegInClaim
+	assert.False(t, claim.IsResolvable())
 }
 
 func TestNewCandidatePegInClaim_UsesUTCTimestamps(t *testing.T) {

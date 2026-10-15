@@ -1,10 +1,14 @@
 package pegin
 
-import "fmt"
+import (
+	"fmt"
 
-func LogPegInClaimEmptyTxHash(rskAddress, depositTxID string) string {
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+)
+
+func LogPegInClaimEmptyRequestTxHash(rskAddress, depositTxID string) string {
 	return fmt.Sprintf(
-		"PegInClaimWatcher: submitting claim %s/%s has empty TxHash; follow incident-recovery; not resubmitting",
+		"PegInClaimWatcher: submitting claim %s/%s has empty RequestTxHash; follow incident-recovery; not resubmitting",
 		rskAddress,
 		depositTxID,
 	)
@@ -19,9 +23,9 @@ func LogPegInClaimMissingReceipt(txHash, rskAddress, depositTxID string) string 
 	)
 }
 
-func LogPegInClaimSubmittingEmptyTxHash(rskAddress, depositTxID string) string {
+func LogPegInClaimSubmittingEmptyRequestTxHash(rskAddress, depositTxID string) string {
 	return fmt.Sprintf(
-		"PegInClaim: submitting claim %s/%s has empty TxHash; follow incident-recovery; not resubmitting",
+		"PegInClaim: submitting claim %s/%s has empty RequestTxHash; follow incident-recovery; not resubmitting",
 		rskAddress,
 		depositTxID,
 	)
@@ -51,6 +55,57 @@ func LogPegInClaimMissingEvent(txHash, rskAddress, depositTxID string, err error
 		txHash,
 		rskAddress,
 		depositTxID,
+		err,
+	)
+}
+
+func LogPegInResolved(claim rootstock.PegInClaim) string {
+	return fmt.Sprintf(
+		"PegInResolve: resolved %s/%s (pegInId %s, resolveTxHash %s, claimerPayout %v wei, registrantFee %v wei)",
+		claim.RskAddress,
+		claim.DepositTxID,
+		claim.PegInID,
+		claim.ResolveTxHash,
+		claim.ClaimerPayout,
+		claim.RegistrantFee,
+	)
+}
+
+func LogPegInResolveAlreadyProcessed(claim rootstock.PegInClaim) string {
+	return fmt.Sprintf(
+		"PegInResolve: %s/%s (pegInId %s) was already resolved on-chain; marking it resolved",
+		claim.RskAddress,
+		claim.DepositTxID,
+		claim.PegInID,
+	)
+}
+
+func LogPegInResolveWaitingForBridge(claim rootstock.PegInClaim) string {
+	return fmt.Sprintf(
+		"PegInResolve: bridge rejected %s/%s (pegInId %s) with code -303 after the confirmation check passed; will retry",
+		claim.RskAddress,
+		claim.DepositTxID,
+		claim.PegInID,
+	)
+}
+
+func LogPegInResolveFailed(claim rootstock.PegInClaim, err error) string {
+	return fmt.Sprintf(
+		"PegInResolve: resolve failed for %s/%s (pegInId %s); not retrying: %v",
+		claim.RskAddress,
+		claim.DepositTxID,
+		claim.PegInID,
+		err,
+	)
+}
+
+func LogPegInResolveTxNotResolved(claim rootstock.PegInClaim, err error) string {
+	return fmt.Sprintf(
+		"PegInResolve: resolve tx %s for %s/%s (pegInId %s) did not resolve the peg-in; will retry: %v",
+		claim.ResolveTxHash,
+		claim.RskAddress,
+		claim.DepositTxID,
+		claim.PegInID,
 		err,
 	)
 }

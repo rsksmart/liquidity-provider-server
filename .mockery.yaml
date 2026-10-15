@@ -104,6 +104,7 @@ packages:
       PegOutEscrowWatchRepository:
   github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
     interfaces:
+      Bridge:
       BatchPegOutRepository:
       PegInWatchRepository:
       PegInClaimRepository:
