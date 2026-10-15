@@ -101,6 +101,7 @@ packages:
       PauseRegistryContract:
       FlyoverConfigurationsContract:
       PegOutEscrowContract:
+      PegOutEscrowWatchRepository:
   github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock:
     interfaces:
       BatchPegOutRepository:

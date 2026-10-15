@@ -292,3 +292,11 @@ func LogPegoutEscrowChecking(fromBlock, toBlock uint64, requestedCount int) stri
 func LogPegoutEscrowStateError(requestHash string, err error) string {
 	return fmt.Sprintf(LogPegoutEscrowPrefix+"error reading peg-out state for %s: %v", requestHash, err)
 }
+
+func LogPegoutEscrowClaimError(requestHash string, err error) string {
+	return fmt.Sprintf(LogPegoutEscrowPrefix+"error claiming peg-out %s: %v", requestHash, err)
+}
+
+func LogPegoutEscrowReconcileError(err error) string {
+	return fmt.Sprintf(LogPegoutEscrowPrefix+"error reconciling pending claims: %v", err)
+}
