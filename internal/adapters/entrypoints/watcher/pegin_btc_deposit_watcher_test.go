@@ -109,7 +109,7 @@ func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("handle accepted pegin quote", func(t *testing.T) {
-		defer test.AssertNoLog(t)
+		defer test.AssertNoLog(t)()
 		btcWallet.Calls = []mock.Call{}
 		btcWallet.ExpectedCalls = []*mock.Call{}
 		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
