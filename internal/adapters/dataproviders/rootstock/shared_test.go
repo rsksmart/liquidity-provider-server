@@ -2,12 +2,17 @@ package rootstock_test
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"encoding/hex"
+	"math/big"
+	"testing"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	discoveryBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
 	pegoutBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
@@ -15,8 +20,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
 )
 
 var Abis = rootstock.MustLoadFlyoverABIs()
@@ -41,7 +44,23 @@ func (r RskRpcError) ErrorData() interface{} {
 	return r.data
 }
 
-var parsedAddress = common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
+// testSignerKeyHex is a well-known development key. It exists only to produce
+// signatures inside these tests and must never hold value on any network.
+const testSignerKeyHex = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
+// testSignerKey returns the key the signer mock signs with. Each call returns a
+// new value, so no test can change the key another test uses.
+func testSignerKey() *ecdsa.PrivateKey {
+	key, err := crypto.HexToECDSA(testSignerKeyHex)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+// parsedAddress is the address of testSignerKey. The receipt parser recovers the
+// sender from the signature, so the signer mock address must match the key.
+var parsedAddress = crypto.PubkeyToAddress(testSignerKey().PublicKey)
 
 type boundContractMock struct {
 	contract   *bind.BoundContract
@@ -61,9 +80,6 @@ func prepareTxMocks(
 	mockClient.ExpectedCalls = []*mock.Call{}
 	signerMock.Calls = []mock.Call{}
 	signerMock.ExpectedCalls = []*mock.Call{}
-	signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, transaction *geth.Transaction) (*geth.Transaction, error) {
-		return transaction, nil
-	}).Once()
 	receipt := &geth.Receipt{
 		TxHash:            common.HexToHash(test.AnyHash),
 		BlockNumber:       big.NewInt(123),
@@ -78,14 +94,43 @@ func prepareTxMocks(
 	}
 	mockClient.On("TransactionReceipt", mock.Anything, mock.Anything).Return(receipt, nil).Once()
 	signerMock.On("Address").Return(parsedAddress)
+	key := testSignerKey()
+	signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(_ common.Address, transaction *geth.Transaction) (*geth.Transaction, error) {
+		chainID := transaction.ChainId()
+		var signer geth.Signer = geth.HomesteadSigner{}
+		if chainID != nil && chainID.Sign() > 0 {
+			signer = geth.LatestSignerForChainID(chainID)
+		}
+		return geth.SignTx(transaction, signer, key)
+	}).Once()
 	contractMock.transactor.EXPECT().PendingCodeAt(mock.Anything, mock.Anything).Return([]byte{1}, nil).Maybe()
 	contractMock.caller.EXPECT().CodeAt(mock.Anything, mock.Anything, mock.Anything).Return([]byte{1}, nil).Maybe()
 	contractMock.transactor.EXPECT().EstimateGas(mock.Anything, mock.Anything).Return(uint64(1), nil).Maybe()
 }
 
+// matchCallData matches the call data of a non-payable call. It ignores From and
+// Value, so it must not be used for payable calls.
 func matchCallData(expected []byte) any {
 	return mock.MatchedBy(func(msg ethereum.CallMsg) bool {
 		return bytes.Equal(msg.Data, expected)
+	})
+}
+
+// matchRequestPegInCall matches the data, sender, recipient, and value of a
+// payable dry-run message. A nil value means the message must carry no value at
+// all, which is not the same as a message that carries zero.
+func matchRequestPegInCall(expectedData []byte, from, to common.Address, value *big.Int) any {
+	return mock.MatchedBy(func(msg ethereum.CallMsg) bool {
+		if !bytes.Equal(msg.Data, expectedData) ||
+			msg.From != from ||
+			msg.To == nil ||
+			*msg.To != to {
+			return false
+		}
+		if value == nil {
+			return msg.Value == nil
+		}
+		return msg.Value != nil && value.Cmp(msg.Value) == 0
 	})
 }
 
@@ -283,4 +328,13 @@ func createBoundContractMock() boundContractMock {
 		transactor: transactorMock,
 		filterer:   filtererMock,
 	}
+}
+
+func mustPackAddress(t *testing.T, addr common.Address) []byte {
+	t.Helper()
+	addressType, err := abi.NewType("address", "", nil)
+	require.NoError(t, err)
+	out, err := abi.Arguments{{Type: addressType}}.Pack(addr)
+	require.NoError(t, err)
+	return out
 }
