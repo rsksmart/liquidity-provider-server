@@ -16,24 +16,26 @@ export function weiToEther(wei: string | number | null | undefined): string {
   }
 }
 
-export function etherToWei(ether: string | number): string {
-  if (typeof ether !== 'string' && typeof ether !== 'number') {
-    throw new TypeError(`Invalid input type for ether: ${typeof ether}. Expected a number or string.`)
+const WEI_DECIMALS = 18
+
+// Plain string math, not decimal.js: Decimal arithmetic rounds to 20 significant
+// digits, which drops wei from any amount of 100 ether or more written to 18 decimals.
+export function etherToWei(ether: string): string {
+  if (typeof ether !== 'string') {
+    throw new TypeError(`Invalid input type for ether: ${typeof ether}. Expected a string.`)
   }
 
-  try {
-    const num = new Decimal(ether)
-    if (num.isNegative()) {
-      throw new RangeError(`The input "${String(ether)}" is not a valid number.`)
-    }
-    return num.times(WEI_PER_ETHER).toFixed()
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`Failed to convert ether to wei. Input: "${String(ether)}". Error: ${message}`)
+  const match = /^(\d*)(?:\.(\d*))?$/.exec(ether)
+  const whole = match?.[1] ?? ''
+  const fraction = match?.[2] ?? ''
+  if (whole === '' && fraction === '') {
+    throw new Error(`Failed to convert ether to wei. Input: "${ether}". Error: not a valid number.`)
   }
-}
+  if (fraction.length > WEI_DECIMALS) {
+    throw new Error(
+      `Failed to convert ether to wei. Input: "${ether}". Error: more than 18 decimal places is a fraction of a wei.`,
+    )
+  }
 
-/** Wei as JSON number for pkg.AddCollateralRequest (legacy management.js parity). */
-export function weiToApiAmount(wei: string): number {
-  return Number(wei)
+  return BigInt(whole + fraction.padEnd(WEI_DECIMALS, '0')).toString()
 }

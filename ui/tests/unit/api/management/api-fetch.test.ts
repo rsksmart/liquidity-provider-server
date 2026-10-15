@@ -227,11 +227,34 @@ describe('apiFetch', () => {
     seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
     const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
 
-    await apiFetch.post('/pegin/addCollateral', { amount: 1_000_000_000_000_000_000 })
+    await apiFetch.post('/pegin/addCollateral', { amount: 1000000000000000000n })
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(init.method).toBe('POST')
-    expect(init.body).toBe(JSON.stringify({ amount: 1_000_000_000_000_000_000 }))
+    expect(init.body).toBe('{"amount":1000000000000000000}')
+  })
+
+  it('writes a bigint amount as an exact integer literal', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    // 1.000000000000000001 rBTC: the last digit is unrepresentable as a float64.
+    await apiFetch.post('/pegout/addCollateral', { amount: 1000000000000000001n })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.body).toBe('{"amount":1000000000000000001}')
+  })
+
+  it('writes 1000 rBTC and above without exponent notation', async () => {
+    seedInitialData(loggedOutFixture, { csrfToken: 'csrf-token' })
+    const fetchMock = vi.mocked(fetch).mockResolvedValue(new Response('ok', { status: 200 }))
+
+    // JSON.stringify of the equivalent number yields 1e+21, which Go's big.Int rejects.
+    await apiFetch.post('/pegin/addCollateral', { amount: 1000000000000000000000n })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(init.body).toBe('{"amount":1000000000000000000000}')
+    expect(init.body).not.toContain('e+')
   })
 
   it('fetches via apiFetch.get', async () => {

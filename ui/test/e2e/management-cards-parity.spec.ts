@@ -77,6 +77,22 @@ test.describe('management cards parity (AC-5)', () => {
     expect(barStyles.width).not.toBe('0px')
   })
 
+  test('submits a fractional amount as exact wei', async ({ page }) => {
+    let postBody: string | null = null
+    await page.route('**/pegin/addCollateral', async (route) => {
+      postBody = route.request().postData()
+      await route.fulfill({ status: 200, body: '{}' })
+    })
+
+    await page.goto('management')
+    // 22 significant digits: needs step="any" to pass browser validation, and
+    // exact string math to reach the server without rounding.
+    await page.getByTestId('pegin-collateral-amount').fill('1234.567891234567891234')
+    await page.getByTestId('pegin-add-collateral-button').click()
+
+    await expect.poll(() => postBody).toBe('{"amount":1234567891234567891234}')
+  })
+
   test('validation blocks non-positive amount without loading bar', async ({ page }) => {
     let postCount = 0
     await page.route('**/pegin/addCollateral', async (route) => {

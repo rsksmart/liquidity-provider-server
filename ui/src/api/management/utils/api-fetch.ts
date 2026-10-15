@@ -1,5 +1,6 @@
 import { ApiFetchError, CsrfTokenMissingError } from '@api/management/types/errors'
 import type { ManagementPostBodies } from '@api/management/types/post-bodies'
+import { stringifyJsonBody } from '@api/management/utils/json-body'
 import { getInitialData } from '@shared/utils/initial-data'
 import { toast } from 'sonner'
 
@@ -13,7 +14,10 @@ const LOGIN_PATH = '/management/login'
 const LOGOUT_PATH = '/management/logout'
 
 export type ApiFetchInit = Omit<RequestInit, 'body'> & {
-  /** JSON payload — stringified automatically; defaults method to POST when method is omitted. */
+  /**
+   * JSON payload — serialized automatically (bigint fields become bare integer
+   * literals, see stringifyJsonBody); defaults method to POST when method is omitted.
+   */
   json?: unknown
 }
 
@@ -122,7 +126,7 @@ function handleSessionExpired(): void {
 async function apiFetchImpl(input: string, init: ApiFetchInit = {}): Promise<Response> {
   const { json, ...requestInit } = init
   const method = (requestInit.method ?? (json !== undefined ? 'POST' : 'GET')).toUpperCase()
-  const body = json !== undefined ? JSON.stringify(json) : undefined
+  const body = json !== undefined ? stringifyJsonBody(json) : undefined
   const headers = new Headers(requestInit.headers)
 
   if (MUTATING_METHODS.has(method)) {

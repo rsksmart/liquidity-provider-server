@@ -58,7 +58,7 @@ describe('AddCollateralForm', () => {
 
     await waitFor(() => {
       expect(apiFetchMock.post).toHaveBeenCalledWith('/pegin/addCollateral', {
-        amount: 1000000000000000000,
+        amount: 1000000000000000000n,
       })
     })
 
@@ -66,6 +66,53 @@ describe('AddCollateralForm', () => {
       expect(screen.getByTestId('pegin-collateral-balance')).toHaveTextContent('2 rBTC')
     })
     expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    // A full 18-decimal amount: float64 silently dropped the last digit.
+    ['1.000000000000000001', 1000000000000000001n],
+    ['0.123456789012345678', 123456789012345678n],
+    // 1000 rBTC and above serialized as 1e+21, which the server rejected with a 400.
+    ['1000', 1000000000000000000000n],
+    // Past 20 significant digits, where decimal.js arithmetic rounded.
+    ['100.000000000000000001', 100000000000000000001n],
+    ['1234.567891234567891234', 1234567891234567891234n],
+  ])('posts %s rBTC as an exact wei amount', async (amountEther, expectedWei) => {
+    const user = userEvent.setup()
+    render(<AddCollateralForm kind="pegin" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pegin-collateral-balance')).toHaveTextContent('1 rBTC')
+    })
+
+    apiFetchMock.mockResolvedValueOnce(new Response('', { status: 200 }))
+    mockGetBalance('1000000000000000000')
+
+    // HTML number inputs normalize as they are typed; set the value directly.
+    fireEvent.change(screen.getByTestId('pegin-collateral-amount'), {
+      target: { value: amountEther },
+    })
+    await user.click(screen.getByTestId('pegin-add-collateral-button'))
+
+    await waitFor(() => {
+      expect(apiFetchMock.post).toHaveBeenCalledWith('/pegin/addCollateral', {
+        amount: expectedWei,
+      })
+    })
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  // jsdom skips step validation, so the browser case lives in the Playwright
+  // parity spec. Without step="any" a number input steps by 1 and the browser
+  // blocks submit for any fractional amount.
+  it('allows fractional amounts in the number input', async () => {
+    render(<AddCollateralForm kind="pegin" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pegin-collateral-balance')).toHaveTextContent('1 rBTC')
+    })
+
+    expect(screen.getByTestId('pegin-collateral-amount')).toHaveAttribute('step', 'any')
   })
 
   it('disables submit while request is in flight', async () => {
@@ -125,7 +172,12 @@ describe('add-collateral validation', () => {
     expect(apiFetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('shows error toast for sub-wei fractional amount without POST', async () => {
+  it.each([
+    // Less than 1 wei.
+    '0.0000000000000000001',
+    // A number input accepts exponent notation, but only plain decimals convert exactly.
+    '1e3',
+  ])('shows error toast for %s rBTC without POST', async (amount) => {
     const user = userEvent.setup()
     render(<AddCollateralForm kind="pegin" />)
 
@@ -133,9 +185,6 @@ describe('add-collateral validation', () => {
       expect(screen.getByTestId('pegin-collateral-balance')).toBeInTheDocument()
     })
 
-    // Sub-wei ether (1e-19) yields a non-integral wei string; BigInt would throw
-    // if left outside the validation try/catch (silent no-op regression).
-    const amount = '0.0000000000000000001'
     const input = screen.getByTestId('pegin-collateral-amount')
     await user.clear(input)
     // HTML number inputs may normalize on type; set value directly.

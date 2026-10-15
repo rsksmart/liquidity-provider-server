@@ -10,7 +10,7 @@ import {
   managementFieldTitleClass,
   managementLoadingBarClass,
 } from '@feature/management/management-styles'
-import { etherToWei, weiToApiAmount } from '@shared/utils/wei'
+import { etherToWei } from '@shared/utils/wei'
 import { type ChangeEvent, type SubmitEvent, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -65,24 +65,23 @@ export function AddCollateralForm({ kind }: AddCollateralFormProps) {
 
   const submit = useCallback(
     async (amountEther: string) => {
-      let weiStr: string
+      let weiAmount: bigint
       try {
-        weiStr = etherToWei(amountEther)
-        // etherToWei can return a non-integral string for sub-wei ether inputs
-        // (Decimal.times(1e18).toFixed() keeps fractional wei). BigInt throws on
-        // those; keep the guard in this try so submit never silently no-ops.
-        if (!/^\d+$/.test(weiStr) || BigInt(weiStr) <= 0n) {
-          toast.error(invalidAmountMessage(amountEther))
-          return
-        }
+        // etherToWei throws on anything that is not a whole number of wei, so
+        // this catch also covers sub-wei and malformed input.
+        weiAmount = BigInt(etherToWei(amountEther))
       } catch {
+        toast.error(invalidAmountMessage(amountEther))
+        return
+      }
+      if (weiAmount <= 0n) {
         toast.error(invalidAmountMessage(amountEther))
         return
       }
 
       setSubmitting(true)
       try {
-        await apiFetch.post(config.addEndpoint, { amount: weiToApiAmount(weiStr) })
+        await apiFetch.post(config.addEndpoint, { amount: weiAmount })
 
         setAmount('')
         await refresh()
@@ -129,6 +128,8 @@ export function AddCollateralForm({ kind }: AddCollateralFormProps) {
         <Input
           id={`${config.testIdPrefix}-collateral-amount`}
           type="number"
+          // The default step of 1 makes the browser block submit for any fractional amount.
+          step="any"
           placeholder="Enter amount in rBTC"
           value={amount}
           onChange={onAmountChange}
