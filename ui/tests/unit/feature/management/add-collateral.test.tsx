@@ -102,6 +102,19 @@ describe('AddCollateralForm', () => {
     expect(toastErrorMock).not.toHaveBeenCalled()
   })
 
+  // jsdom skips step validation, so the browser case lives in the Playwright
+  // parity spec. Without step="any" a number input steps by 1 and the browser
+  // blocks submit for any fractional amount.
+  it('allows fractional amounts in the number input', async () => {
+    render(<AddCollateralForm kind="pegin" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pegin-collateral-balance')).toHaveTextContent('1 rBTC')
+    })
+
+    expect(screen.getByTestId('pegin-collateral-amount')).toHaveAttribute('step', 'any')
+  })
+
   it('disables submit while request is in flight', async () => {
     const user = userEvent.setup()
     let resolvePost: (value: Response) => void = () => undefined

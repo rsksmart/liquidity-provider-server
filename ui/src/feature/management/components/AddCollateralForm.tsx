@@ -128,6 +128,8 @@ export function AddCollateralForm({ kind }: AddCollateralFormProps) {
         <Input
           id={`${config.testIdPrefix}-collateral-amount`}
           type="number"
+          // The default step of 1 makes the browser block submit for any fractional amount.
+          step="any"
           placeholder="Enter amount in rBTC"
           value={amount}
           onChange={onAmountChange}
