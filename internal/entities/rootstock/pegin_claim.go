@@ -11,7 +11,11 @@ import (
 var (
 	ErrPegInClaimAlreadyExists = errors.New("pegin claim already exists")
 	ErrPegInClaimNotFound      = errors.New("pegin claim not found")
+	// Owned here so payable-value and the adapter share ErrorIs. blockchain aliases this var.
+	ErrIncorrectFronting = errors.New("incorrect fronting")
 )
+
+const PegInClaimCompletedEventId entities.EventId = "PegInClaimCompleted"
 
 type PegInClaimState string
 
@@ -29,10 +33,10 @@ type PegInClaim struct {
 	BtcAddress  string          `json:"btcAddress" bson:"btc_address"`
 	State       PegInClaimState `json:"state" bson:"state"`
 	TxHash      string          `json:"txHash" bson:"tx_hash"`
-	PegInID     string          `json:"pegInId" bson:"peg_in_id"`
-	ReservedWei *entities.Wei   `json:"reservedWei" bson:"reserved_wei"`
-	CreatedAt   time.Time       `json:"createdAt" bson:"created_at"`
-	UpdatedAt   time.Time       `json:"updatedAt" bson:"updated_at"`
+	// Empty when a successful receipt has no PegInRequested event to unpack.
+	PegInID   string    `json:"pegInId" bson:"peg_in_id"`
+	CreatedAt time.Time `json:"createdAt" bson:"created_at"`
+	UpdatedAt time.Time `json:"updatedAt" bson:"updated_at"`
 }
 
 type PegInClaimRepository interface {
@@ -40,4 +44,49 @@ type PegInClaimRepository interface {
 	Get(ctx context.Context, rskAddress, depositTxID string) (*PegInClaim, error)
 	Update(context.Context, PegInClaim) error
 	ListByStates(ctx context.Context, states ...PegInClaimState) ([]PegInClaim, error)
+}
+
+func CalculatePegInClaimPayableValue(amount, fee *entities.Wei) (*entities.Wei, error) {
+	if amount == nil || fee == nil {
+		return nil, ErrIncorrectFronting
+	}
+	if amount.Cmp(fee) < 0 {
+		return nil, ErrIncorrectFronting
+	}
+	return new(entities.Wei).Sub(amount, fee), nil
+}
+
+func (claim *PegInClaim) IsTerminal() bool {
+	if claim == nil {
+		return false
+	}
+	return claim.State == PegInClaimClaimed || claim.State == PegInClaimRaceLost
+}
+
+func NewCandidatePegInClaim(entry PegInWatch, depositTxID string, existing *PegInClaim) PegInClaim {
+	now := time.Now().UTC()
+	claim := PegInClaim{
+		RskAddress:  entry.RskAddress,
+		DepositTxID: depositTxID,
+		BtcAddress:  entry.BtcAddress,
+		State:       PegInClaimCandidate,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if existing != nil {
+		claim.CreatedAt = existing.CreatedAt
+	}
+	return claim
+}
+
+type PegInClaimCompletedEvent struct {
+	entities.Event
+	Claim PegInClaim
+}
+
+func NewPegInClaimCompletedEvent(claim PegInClaim) PegInClaimCompletedEvent {
+	return PegInClaimCompletedEvent{
+		Event: entities.NewBaseEvent(PegInClaimCompletedEventId),
+		Claim: claim,
+	}
 }

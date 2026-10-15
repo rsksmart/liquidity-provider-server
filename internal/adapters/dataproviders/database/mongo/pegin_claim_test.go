@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,7 +21,6 @@ func samplePegInClaim(state rootstock.PegInClaimState) rootstock.PegInClaim {
 		DepositTxID: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
 		BtcAddress:  "bcrt1qexample",
 		State:       state,
-		ReservedWei: entities.NewWei(1_000_000_000_000_000_000),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -186,4 +184,16 @@ func TestPegInClaimMongoRepository_ListByStates(t *testing.T) {
 		assert.Nil(t, result)
 		collection.AssertExpectations(t)
 	})
+}
+
+func TestPegInClaimMongoRepository_ListByStatesEmptyFilter(t *testing.T) {
+	client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+	collection.EXPECT().Find(mock.Anything, bson.M{}).
+		Return(mongoDb.NewCursorFromDocuments([]any{}, nil, nil)).Once()
+
+	repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+	result, err := repo.ListByStates(context.Background())
+	require.NoError(t, err)
+	assert.Empty(t, result)
+	collection.AssertExpectations(t)
 }

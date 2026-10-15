@@ -91,6 +91,30 @@ type RequestPegInResult struct {
 	Event   PegInRequestedEvent
 }
 
+type ResolvePegInParams struct {
+	RskAddress            string
+	BitcoinRawTransaction []byte
+	PartialMerkleTree     []byte
+	BlockHeight           *big.Int
+}
+
+func (params ResolvePegInParams) String() string {
+	return fmt.Sprintf(
+		"ResolvePegInParams { RskAddress: %s, BitcoinRawTransaction: %s, "+
+			"PartialMerkleTree: %s, BlockHeight: %v }",
+		params.RskAddress,
+		hex.EncodeToString(params.BitcoinRawTransaction),
+		hex.EncodeToString(params.PartialMerkleTree),
+		params.BlockHeight,
+	)
+}
+
+type ResolvePegInResult struct {
+	Receipt       TransactionReceipt
+	ClaimerPayout *entities.Wei
+	RegistrantFee *entities.Wei
+}
+
 type ProviderRegistrationParams struct {
 	Name       string                          `validate:"required"`
 	ApiBaseUrl string                          `validate:"required"`
@@ -156,6 +180,7 @@ type PeginContract interface {
 	// SimulateRequestPegIn runs RequestPegIn as an eth_call and returns the typed revert error. It never sends a transaction.
 	SimulateRequestPegIn(params RequestPegInParams) error
 	UnpackPegInRequested(receipt TransactionReceipt) (PegInRequestedEvent, error)
+	ResolvePegIn(params ResolvePegInParams) (ResolvePegInResult, error)
 	Withdraw(amount *entities.Wei) error
 }
 

@@ -29,8 +29,13 @@ var (
 	ErrAddressNotRegistered           = errors.New("address not registered")
 	ErrDepositOutputNotFound          = errors.New("deposit output not found")
 	ErrInsufficientConfirmations      = errors.New("insufficient confirmations")
-	ErrIncorrectFronting              = errors.New("incorrect fronting")
+	ErrPegInBelowMinimum              = errors.New("peg-in below minimum")
+	ErrIncorrectFronting              = rootstock.ErrIncorrectFronting
 	ErrWitnessSerializedTxNotAccepted = errors.New("witness-serialized tx not accepted")
+	ErrTransactionReceiptNotFound     = errors.New("transaction receipt not found")
+	ErrPegInNotClaimed                = errors.New("peg-in not claimed")
+	ErrPegInNotResolved               = errors.New("peg-in not resolved")
+	ErrBridgeRejectedPegIn            = errors.New("bridge rejected peg-in")
 )
 
 type RskContracts struct {
@@ -79,6 +84,10 @@ type TransactionReceipt struct {
 	GasPrice          *entities.Wei
 	Status            uint64
 	Logs              []TransactionLog
+}
+
+func (receipt TransactionReceipt) IsFinal(height, maxReorgDepth uint64) bool {
+	return receipt.BlockNumber+maxReorgDepth <= height
 }
 
 type TransactionLog struct {

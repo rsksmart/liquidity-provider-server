@@ -108,6 +108,9 @@ func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string
 		func() (*types.Receipt, error) {
 			return rpc.client.TransactionReceipt(ctx, common.HexToHash(hash))
 		})
+	if errors.Is(err, ethereum.NotFound) {
+		return blockchain.TransactionReceipt{}, blockchain.ErrTransactionReceiptNotFound
+	}
 	if err != nil {
 		return blockchain.TransactionReceipt{}, err
 	}
