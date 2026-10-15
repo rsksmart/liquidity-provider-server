@@ -120,7 +120,9 @@ func (lp *LocalLiquidityProvider) AvailablePegoutLiquidity(ctx context.Context) 
 	}
 	log.Debugf("Liquidity: %s satoshi", liquidity.ToSatoshi().String())
 	quotes, err := lp.pegoutRepository.GetRetainedQuoteByState(ctx,
-		quote.PegoutStateWaitingForDeposit, quote.PegoutStateWaitingForDepositConfirmations,
+		quote.PegoutStateClaimPending,
+		quote.PegoutStateClaimed,
+		quote.PegoutStateWaitingForDepositConfirmations,
 	)
 	if err != nil {
 		return nil, err

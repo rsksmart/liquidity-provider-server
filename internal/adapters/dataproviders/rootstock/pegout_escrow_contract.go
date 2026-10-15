@@ -5,10 +5,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
 	"github.com/ethereum/go-ethereum/common"
 	geth "github.com/ethereum/go-ethereum/core/types"
@@ -98,26 +100,6 @@ func (escrow *pegOutEscrowContractImpl) GetPegOutQuote(requestHash string) (quot
 	return mapEscrowPegOutQuote(result), nil
 }
 
-func (escrow *pegOutEscrowContractImpl) GetMaxMinerFee(requestHash string) (*entities.Wei, error) {
-	hash, err := parseRequestHash(requestHash)
-	if err != nil {
-		return nil, err
-	}
-	opts := &bind.CallOpts{}
-	result, err := rskRetry(escrow.retryParams.Retries, escrow.retryParams.Sleep,
-		func() (*big.Int, error) {
-			callData, dataErr := escrow.binding.TryPackGetMaxMinerFee(hash)
-			if dataErr != nil {
-				return nil, dataErr
-			}
-			return bind.Call(escrow.contract, opts, callData, escrow.binding.UnpackGetMaxMinerFee)
-		})
-	if err != nil {
-		return nil, err
-	}
-	return bigIntToWei(result), nil
-}
-
 func (escrow *pegOutEscrowContractImpl) RestrictedUntil(lpAddress string) (uint64, error) {
 	var parsedAddress common.Address
 	if err := ParseAddress(&parsedAddress, lpAddress); err != nil {
@@ -135,7 +117,35 @@ func (escrow *pegOutEscrowContractImpl) RestrictedUntil(lpAddress string) (uint6
 	if err != nil {
 		return 0, err
 	}
+	if result != nil && !result.IsUint64() {
+		return math.MaxUint64, nil
+	}
 	return bigIntToUint64(result), nil
+}
+
+func (escrow *pegOutEscrowContractImpl) EstimateClaimPegOut(requestHash string, signature []byte) (*entities.Wei, error) {
+	hash, err := parseRequestHash(requestHash)
+	if err != nil {
+		return nil, err
+	}
+	callData, dataErr := escrow.binding.TryPackClaimPegOut(hash, signature)
+	if dataErr != nil {
+		return nil, dataErr
+	}
+	destination := common.HexToAddress(escrow.address)
+	tx := ethereum.CallMsg{
+		From: escrow.signer.Address(),
+		To:   &destination,
+		Data: callData,
+	}
+	result, err := rskRetry(escrow.retryParams.Retries, escrow.retryParams.Sleep,
+		func() (uint64, error) {
+			return escrow.client.EstimateGas(context.Background(), tx)
+		})
+	if err != nil {
+		return nil, err
+	}
+	return entities.NewUWei(result), nil
 }
 
 func (escrow *pegOutEscrowContractImpl) ClaimPegOut(

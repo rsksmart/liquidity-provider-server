@@ -3,16 +3,18 @@ package watcher
 import (
 	"context"
 	"errors"
+	"math/big"
+	"sync"
+
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
-	"math/big"
-	"sync"
 )
 
 type PegoutBtcTransferWatcher struct {
@@ -20,6 +22,7 @@ type PegoutBtcTransferWatcher struct {
 	quotesMutex                  sync.RWMutex
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase
 	refundPegoutUseCase          *pegout.RefundPegoutUseCase
+	lp                           liquidity_provider.LiquidityProvider
 	rpc                          blockchain.Rpc
 	ticker                       utils.Ticker
 	eventBus                     entities.EventBus
@@ -31,6 +34,7 @@ type PegoutBtcTransferWatcher struct {
 func NewPegoutBtcTransferWatcher(
 	getWatchedPegoutQuoteUseCase *w.GetWatchedPegoutQuoteUseCase,
 	refundPegoutUseCase *pegout.RefundPegoutUseCase,
+	lp liquidity_provider.LiquidityProvider,
 	rpc blockchain.Rpc,
 	eventBus entities.EventBus,
 	ticker utils.Ticker,
@@ -43,6 +47,7 @@ func NewPegoutBtcTransferWatcher(
 		quotesMutex:                  sync.RWMutex{},
 		getWatchedPegoutQuoteUseCase: getWatchedPegoutQuoteUseCase,
 		refundPegoutUseCase:          refundPegoutUseCase,
+		lp:                           lp,
 		rpc:                          rpc,
 		eventBus:                     eventBus,
 		watcherStopChannel:           watcherStopChannel,
@@ -163,6 +168,9 @@ func (watcher *PegoutBtcTransferWatcher) GetCurrentBlock() *big.Int {
 }
 
 func (watcher *PegoutBtcTransferWatcher) validateQuote(watchedQuote quote.WatchedPegoutQuote, tx blockchain.BitcoinTransactionInformation) bool {
+	requiredConfirmations := watcher.lp.GeneralConfiguration(context.Background()).BtcConfirmations.ForValue(
+		watchedQuote.RetainedQuote.RequiredLiquidity,
+	)
 	return watchedQuote.RetainedQuote.State == quote.PegoutStateSendPegoutSucceeded &&
-		tx.Confirmations >= uint64(watchedQuote.PegoutQuote.TransferConfirmations)
+		tx.Confirmations >= uint64(requiredConfirmations)
 }
