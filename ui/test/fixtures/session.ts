@@ -4,16 +4,35 @@ import { fileURLToPath } from 'node:url'
 
 import type { APIRequestContext, BrowserContext } from '@playwright/test'
 
-const AUTH_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.auth')
-export const MANAGEMENT_STORAGE_STATE_PATH = path.join(AUTH_DIR, 'management.json')
+const AUTH_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '.auth',
+)
+export const MANAGEMENT_STORAGE_STATE_PATH = path.join(
+  AUTH_DIR,
+  'management.json',
+)
 
 export function getServerOrigin(): string {
-  const baseUrl = process.env.LPS_E2E_BASE_URL ?? 'http://localhost:8080/management/next'
+  const baseUrl =
+    process.env.LPS_E2E_BASE_URL ?? 'http://localhost:8080/management/next'
   return new URL(baseUrl).origin
 }
 
+/** Legacy Bootstrap management UI origin (always LPS — not the Vite next shell). */
+export function getLegacyOrigin(): string {
+  const configured =
+    process.env.LPS_E2E_LEGACY_ORIGIN ?? process.env.LPS_DEV_TARGET
+  if (configured?.trim()) {
+    return configured.replace(/\/$/, '')
+  }
+  return 'http://127.0.0.1:8080'
+}
+
 export function getShellUrl(): string {
-  const baseUrl = process.env.LPS_E2E_BASE_URL ?? 'http://localhost:8080/management/next'
+  const baseUrl =
+    process.env.LPS_E2E_BASE_URL ?? 'http://localhost:8080/management/next'
   return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
 }
 
@@ -25,21 +44,28 @@ export function extractCsrfFromResponseHtml(html: string): string {
   return match[1].replaceAll('&#43;', '+')
 }
 
-export async function seedManagementSession(request: APIRequestContext): Promise<void> {
+export async function seedManagementSession(
+  request: APIRequestContext,
+): Promise<void> {
   const user = process.env.LPS_E2E_USER
   const password = process.env.LPS_E2E_PASSWORD
   if (!user?.trim() || !password?.trim()) {
-    throw new Error('LPS_E2E_USER and LPS_E2E_PASSWORD env vars are required for authenticated E2E')
+    throw new Error(
+      'LPS_E2E_USER and LPS_E2E_PASSWORD env vars are required for authenticated E2E',
+    )
   }
 
-  const origin = getServerOrigin()
-  const shellResponse = await request.get(getShellUrl())
+  // Authenticate against LPS directly so legacy + Vite share the same session cookie host.
+  const loginOrigin = getLegacyOrigin()
+  const shellResponse = await request.get(`${loginOrigin}/management/next/`)
   if (!shellResponse.ok()) {
-    throw new Error(`Failed to GET next UI shell: ${shellResponse.status()}`)
+    throw new Error(
+      `Failed to GET LPS next UI shell: ${shellResponse.status()}`,
+    )
   }
 
   const csrfToken = extractCsrfFromResponseHtml(await shellResponse.text())
-  const loginResponse = await request.post(`${origin}/management/login`, {
+  const loginResponse = await request.post(`${loginOrigin}/management/login`, {
     headers: {
       'Content-Type': 'application/json',
       'X-CSRF-Token': csrfToken,
@@ -62,17 +88,23 @@ export async function applyFreshManagementSession(
   context: BrowserContext,
 ): Promise<void> {
   await seedManagementSession(request)
-  const state = JSON.parse(fs.readFileSync(MANAGEMENT_STORAGE_STATE_PATH, 'utf8')) as {
+  const state = JSON.parse(
+    fs.readFileSync(MANAGEMENT_STORAGE_STATE_PATH, 'utf8'),
+  ) as {
     cookies: Parameters<BrowserContext['addCookies']>[0]
   }
   await context.clearCookies()
   await context.addCookies(state.cookies)
 }
 
-export async function clearSessionCookie(context: BrowserContext): Promise<void> {
+export async function clearSessionCookie(
+  context: BrowserContext,
+): Promise<void> {
   const cookies = await context.cookies()
   await context.clearCookies()
-  const withoutSession = cookies.filter((cookie) => cookie.name !== 'lp-session')
+  const withoutSession = cookies.filter(
+    (cookie) => cookie.name !== 'lp-session',
+  )
   if (withoutSession.length > 0) {
     await context.addCookies(withoutSession)
   }
