@@ -47,9 +47,24 @@ fi
 ### Contract deployment ###
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
-  # LBC_IMAGE is a pinned digest that never changes between runs, so compose would
-  # treat a previous run's "service_completed_successfully" as still satisfied and
-  # skip re-running the deployer. After a chain reset (rm -rf volumes) that leaves the
+  # TODO: remove this ref resolution once the deployer pulls a published liquidity-bridge-contract image again
+  LBC_GIT_REF="${LBC_GIT_REF:-$(sed -n 's/^LBC_GIT_REF=//p' ../../sample-config.env)}"
+  if [[ "$LBC_GIT_REF" =~ ^[0-9a-f]{40}$ ]]; then
+    LBC_GIT_SHA="$LBC_GIT_REF"
+  else
+    LBC_GIT_REFS=$(git ls-remote https://github.com/rsksmart/liquidity-bridge-contract.git "refs/heads/$LBC_GIT_REF" "refs/tags/$LBC_GIT_REF" "refs/tags/$LBC_GIT_REF^{}")
+    LBC_GIT_SHA=$(echo "$LBC_GIT_REFS" | grep -m1 '\^{}$' | cut -f1)
+    LBC_GIT_SHA=${LBC_GIT_SHA:-$(echo "$LBC_GIT_REFS" | head -1 | cut -f1)}
+  fi
+  if [ -z "$LBC_GIT_SHA" ]; then
+    echo "ERROR: LBC_GIT_REF $LBC_GIT_REF not found in liquidity-bridge-contract"
+    exit 1
+  fi
+  export LBC_GIT_REF LBC_GIT_SHA
+  echo "Deploying LBC $LBC_GIT_REF at $LBC_GIT_SHA"
+  # The deployer image does not change between runs, so compose would treat a
+  # previous run's "service_completed_successfully" as still satisfied and skip
+  # re-running the deployer. After a chain reset (rm -rf volumes) that leaves the
   # contracts undeployed. Remove the one-shot containers so they always run fresh.
   docker rm -f lbc-deployer lps-approver >/dev/null 2>&1 || true
   docker compose -f docker-compose.yml -f wallet-funder/docker-compose.funder.yml -f lbc-deployer/docker-compose.lbc-deployer.yml --env-file "$ENV_FILE" up -d --wait
@@ -84,11 +99,17 @@ if [[ "$CREATE_POWPEG" == "true" ]]; then
     fi
     echo "Federation migrated to segwit"
     set -a
-    
+    # shellcheck disable=SC1090
     source "$ENV_FILE"
     set +a
     set_defaults
   fi
+fi
+
+### Bitcoin fee estimation ###
+if [[ "$FUND_WALLETS" == "true" ]]; then
+  echo "Seeding Bitcoin fee estimation..."
+  docker compose -f docker-compose.yml -f wallet-funder/docker-compose.funder.yml --env-file "$ENV_FILE" run --rm wallet-funder node /scripts/funder.js --seed-fees
 fi
 
 ### LPS (always runs) ###
