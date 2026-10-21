@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -9,10 +8,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/pkg"
 )
-
-type AcceptQuoteUseCase interface {
-	Run(ctx context.Context, quoteHash, signature string) (quote.AcceptedQuote, error)
-}
 
 // NewAcceptPegoutAuthenticatedQuoteHandler
 // @Title Accept authenticated quote

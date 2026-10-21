@@ -51,6 +51,7 @@ packages:
       GetManagementUiDataUseCase:
       HealthUseCase:
       GetPeginCollateralUseCase:
+      GetPeginQuoteUseCase:
       GetPegoutCollateralUseCase:
       GetPegoutQuoteUseCase:
       GetProvidersUseCase:
@@ -65,6 +66,7 @@ packages:
       GetPegoutReportUseCase:
       GetPeginReportUseCase:
       RecommendedPegoutUseCase:
+      RecommendedPeginUseCase:
       GetRevenueReportUseCase:
       GetLiquidityRatioUseCase:
       GetSummariesReportUseCase:

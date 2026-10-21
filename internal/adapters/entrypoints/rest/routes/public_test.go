@@ -17,9 +17,14 @@ import (
 )
 
 func TestGetPublicEndpoints(t *testing.T) {
+	// Create a shared AcceptQuoteUseCase instance to ensure consistency
+	acceptQuoteUseCase := &pegin.AcceptQuoteUseCase{}
+
 	registryMock := &mocks.UseCaseRegistryMock{}
 	registryMock.EXPECT().HealthUseCase().Return(&usecases.HealthUseCase{})
 	registryMock.EXPECT().GetProvidersUseCase().Return(&liquidity_provider.GetProvidersUseCase{})
+	registryMock.EXPECT().GetPeginQuoteUseCase().Return(&pegin.GetQuoteUseCase{})
+	registryMock.EXPECT().GetAcceptPeginQuoteUseCase().Return(acceptQuoteUseCase)
 	registryMock.EXPECT().GetPegoutQuoteUseCase().Return(&pegout.GetQuoteUseCase{})
 	registryMock.EXPECT().GetAcceptPegoutQuoteUseCase().Return(&pegout.AcceptQuoteUseCase{})
 	registryMock.EXPECT().GetUserDepositsUseCase().Return(&pegout.GetUserDepositsUseCase{})
@@ -29,6 +34,7 @@ func TestGetPublicEndpoints(t *testing.T) {
 	registryMock.EXPECT().GetAvailableLiquidityUseCase().Return(&liquidity_provider.GetAvailableLiquidityUseCase{})
 	registryMock.EXPECT().GetServerInfoUseCase().Return(&liquidity_provider.ServerInfoUseCase{})
 	registryMock.EXPECT().RecommendedPegoutUseCase().Return(&pegout.RecommendedPegoutUseCase{})
+	registryMock.EXPECT().RecommendedPeginUseCase().Return(&pegin.RecommendedPeginUseCase{})
 
 	endpoints := routes.GetPublicEndpoints(registryMock)
 	specBytes := test.ReadFile(t, "OpenApi.yml")
@@ -37,7 +43,7 @@ func TestGetPublicEndpoints(t *testing.T) {
 	err := yaml.Unmarshal(specBytes, spec)
 	require.NoError(t, err)
 
-	assert.Len(t, endpoints, 13)
+	assert.Len(t, endpoints, 17)
 	for _, endpoint := range endpoints {
 		lowerCaseMethod := strings.ToLower(endpoint.Method)
 		assert.NotNilf(t, spec.Paths[endpoint.Path][lowerCaseMethod], "Handler not found for path %s and verb %s", endpoint.Path, endpoint.Method)

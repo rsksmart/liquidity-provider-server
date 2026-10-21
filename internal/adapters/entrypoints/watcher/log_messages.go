@@ -210,6 +210,71 @@ func LogPegoutRskParseError(quoteHash string, err error) string {
 	return fmt.Sprintf(LogPegoutRskPrefix+"Error parsing deposit event for quote %s: %v", quoteHash, err)
 }
 
+// Log message templates for pegin_bridge_watcher.go
+const (
+	LogPeginBridgePrefix         = "Pegin Bridge watcher: "
+	LogPeginBridgeShutdown       = LogPeginBridgePrefix + "shut down"
+	LogPeginBridgeBtcChainHeight = LogPeginBridgePrefix + "error getting Bitcoin chain height: %v"
+	LogPeginBridgeWrongEvent     = LogPeginBridgePrefix + "Trying to parse wrong event"
+)
+
+func LogPeginBridgeAlreadyWatched(quoteHash string) string {
+	return fmt.Sprintf(LogPeginBridgePrefix+"Quote %s is already watched", quoteHash)
+}
+
+func LogPeginBridgeBtcTxInfo(txHash string, err error) string {
+	return fmt.Sprintf(LogPeginBridgePrefix+"error getting Bitcoin transaction information (%s): %v", txHash, err)
+}
+
+func LogPeginBridgeRegisterError(quoteHash string, err error) string {
+	return fmt.Sprintf(LogPeginBridgePrefix+"Error executing register pegin on quote %s: %v", quoteHash, err)
+}
+
+// Log message templates for pegin_btc_deposit_watcher.go
+const (
+	LogPeginBtcPrefix      = "PeginDepositAddressWatcher: "
+	LogPeginBtcChainHeight = LogPeginBtcPrefix + "error getting Bitcoin chain height: %v"
+	LogPeginBtcShutdown    = LogPeginBtcPrefix + "shut down"
+	LogPeginBtcWrongEvent  = LogPeginBtcPrefix + "trying to parse wrong event"
+)
+
+func LogPeginBtcAlreadyWatched(quoteHash string) string {
+	return fmt.Sprintf(LogPeginBtcPrefix+"Quote %s is already watched", quoteHash)
+}
+
+func LogPeginBtcExpired(quoteHash string, expirationTime int64) string {
+	return fmt.Sprintf(LogPeginBtcPrefix+"Quote %s expired at %d", quoteHash, expirationTime)
+}
+
+func LogPeginBtcCheckingTx(txHash, quoteHash string) string {
+	return fmt.Sprintf(LogPeginBtcPrefix+"Checking transaction %s for quote %s", txHash, quoteHash)
+}
+
+// Fragments composed at runtime into the reject reason in logRejectReason (LogPeginBtcPrefix is prepended at log time).
+func LogPeginBtcRejectReason(quoteHash string) string {
+	return fmt.Sprintf("Rejecting quote %s for the following reason: ", quoteHash)
+}
+
+func LogPeginBtcRejectExpired(expirationTime, secondsLate, blockTime int64) string {
+	return fmt.Sprintf("quote expired at %d, %d seconds before its first confirmation at %d;", expirationTime, secondsLate, blockTime)
+}
+
+func LogPeginBtcRejectAmount(paidAmount, expectedAmount string) string {
+	return fmt.Sprintf("transaction amount %s is less than expected %s;", paidAmount, expectedAmount)
+}
+
+func LogPeginBtcImportAddress(depositAddress string, err error) string {
+	return fmt.Sprintf(LogPeginBtcPrefix+"error while importing deposit address (%s): %v", depositAddress, err)
+}
+
+func LogPeginBtcCallForUserError(quoteHash string, err error) string {
+	return fmt.Sprintf(LogPeginBtcPrefix+"Error executing call for user on quote %s: %v", quoteHash, err)
+}
+
+func LogPeginBtcUpdateExpiredError(quoteHash string, err error) string {
+	return fmt.Sprintf(LogPeginBtcPrefix+"Error updating expired quote (%s): %v", quoteHash, err)
+}
+
 const (
 	LogPegoutEscrowPrefix   = "PegoutEscrowWatcher: "
 	LogPegoutEscrowError    = LogPegoutEscrowPrefix + "error checking escrowed peg-outs: %v"

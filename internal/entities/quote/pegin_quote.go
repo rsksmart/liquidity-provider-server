@@ -8,6 +8,12 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
 
+const (
+	AcceptedPeginQuoteEventId     entities.EventId = "AcceptedPeginQuote"
+	CallForUserCompletedEventId   entities.EventId = "CallForUserCompleted"
+	RegisterPeginCompletedEventId entities.EventId = "RegisterPeginCompleted"
+)
+
 type PeginState string
 
 const (
@@ -27,11 +33,13 @@ type PeginQuoteRepository interface {
 	GetQuotesByHashesAndDate(ctx context.Context, hashes []string, startDate, endDate time.Time) ([]PeginQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPeginQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
+	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
 	GetQuotesByState(ctx context.Context, states ...PeginState) ([]PeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PeginQuoteWithRetained, int, error)
+	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PeginState) ([]RetainedPeginQuote, error)
 	GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []PeginState, startDate, endDate time.Time) ([]PeginQuoteWithRetained, error)
 }
 
@@ -143,4 +151,25 @@ type WatchedPeginQuote struct {
 
 func NewWatchedPeginQuote(peginQuote PeginQuote, retainedQuote RetainedPeginQuote, creationData PeginCreationData) WatchedPeginQuote {
 	return WatchedPeginQuote{PeginQuote: peginQuote, RetainedQuote: retainedQuote, CreationData: creationData}
+}
+
+type AcceptedPeginQuoteEvent struct {
+	entities.Event
+	Quote         PeginQuote
+	RetainedQuote RetainedPeginQuote
+	CreationData  PeginCreationData
+}
+
+type CallForUserCompletedEvent struct {
+	entities.Event
+	PeginQuote    PeginQuote
+	RetainedQuote RetainedPeginQuote
+	CreationData  PeginCreationData
+	Error         error
+}
+
+type RegisterPeginCompletedEvent struct {
+	entities.Event
+	RetainedQuote RetainedPeginQuote
+	Error         error
 }

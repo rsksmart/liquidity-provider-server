@@ -61,6 +61,8 @@ The full details of the endpoints and how to call them can be found in the [Open
 | `/health`                     | GET        | ANY            | Health check                                         |
 | `/getProviders`               | GET        | PUBLIC         | Get list of registered LPs                           |
 | `/providers/details`          | GET        | PUBLIC         | Get details of the LP that owns this LPS             |
+| `/pegin/getQuote`             | POST       | PUBLIC         | Get pegin quote terms                                |
+| `/pegin/acceptQuote`          | POST       | PUBLIC         | Accept pegin quote terms                             |
 | `/pegout/getQuotes`           | POST       | PUBLIC         | Get pegout quote terms                               |
 | `/pegout/acceptQuote`         | POST       | PUBLIC         | Accept pegout quote terms                            |
 | `/pegin/status`               | GET        | PUBLIC         | Get details and status of an accepted pegin quote    |

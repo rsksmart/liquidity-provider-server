@@ -70,6 +70,7 @@ func ToProviderType(value int) (ProviderType, error) {
 type LiquidityProvider interface {
 	RskAddress() string
 	BtcAddress() string
+	SignPeginQuote(ctx context.Context, quoteHash string) (string, error)
 	SignPegoutQuote(ctx context.Context, quoteHash string) (string, error)
 	GeneralConfiguration(ctx context.Context) GeneralConfiguration
 	StateConfiguration(ctx context.Context) (StateConfiguration, error)

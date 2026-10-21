@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -192,6 +193,26 @@ func (repo *peginMongoRepository) InsertRetainedQuote(ctx context.Context, retai
 	}
 }
 
+func (repo *peginMongoRepository) UpdateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
+	filter := bson.D{bson.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
+	updateStatement := bson.D{bson.E{Key: "$set", Value: retainedQuote}}
+
+	result, err := collection.UpdateOne(dbCtx, filter, updateStatement)
+	if err != nil {
+		return err
+	} else if result.ModifiedCount == 0 {
+		return usecases.QuoteNotFoundError
+	} else if result.ModifiedCount > 1 {
+		return errors.New("multiple documents updated")
+	}
+	logDbInteraction(Update, retainedQuote)
+	return nil
+}
+
 func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
 	result := make([]quote.RetainedPeginQuote, 0)
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
@@ -375,6 +396,33 @@ func buildPeginListByDateRangePipeline(startDate, endDate time.Time, page, perPa
 			{Key: "data", Value: pagedRowsPipeline},
 		}}},
 	}
+}
+
+func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
+	result := make([]quote.RetainedPeginQuote, 0)
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
+	filter := bson.D{
+		bson.E{Key: "owner_account_address", Value: address},
+		bson.E{Key: "state", Value: bson.D{
+			bson.E{Key: "$in", Value: states},
+		}},
+	}
+
+	rows, err := collection.Find(dbCtx, filter)
+	if err != nil {
+		return nil, err
+	}
+	if err = rows.All(ctx, &result); err != nil {
+		return nil, err
+	}
+	for i := range result {
+		result[i].FillZeroValues()
+	}
+	logDbInteraction(Read, result)
+	return result, nil
 }
 
 // GetQuotesWithRetainedByStateAndDate retrieves pegin quotes filtered by state and date range,

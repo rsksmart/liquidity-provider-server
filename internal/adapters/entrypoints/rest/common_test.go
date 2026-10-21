@@ -161,9 +161,9 @@ func TestValidateRequest(t *testing.T) {
 		assert.Contains(t, response.Message, "Error validating request")
 	})
 	t.Run("handle validation error", func(t *testing.T) {
-		req := pkg.PegoutQuoteRequest{
-			ValueToTransfer:  big.NewInt(1),
-			RskRefundAddress: test.AnyHash,
+		req := pkg.PeginQuoteRequest{
+			CallEoaOrContractAddress: test.AnyHash,
+			ValueToTransfer:          big.NewInt(1),
 		}
 		var response rest.ErrorResponse
 		w := httptest.NewRecorder()

@@ -32,6 +32,28 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 		},
 		{
 			Endpoint: Endpoint{
+				Path:    "/pegin/getQuote",
+				Method:  http.MethodPost,
+				Handler: handlers.NewGetPeginQuoteHandler(useCaseRegistry.GetPeginQuoteUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegin/acceptQuote",
+				Method:  http.MethodPost,
+				Handler: handlers.NewAcceptPeginQuoteHandler(useCaseRegistry.GetAcceptPeginQuoteUseCase()),
+			},
+			RequiresCaptcha: true,
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegin/acceptAuthenticatedQuote",
+				Method:  http.MethodPost,
+				Handler: handlers.NewAcceptPeginAuthenticatedQuoteHandler(useCaseRegistry.GetAcceptPeginQuoteUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
 				Path:    "/pegout/getQuotes",
 				Method:  http.MethodPost,
 				Handler: handlers.NewGetPegoutQuoteHandler(useCaseRegistry.GetPegoutQuoteUseCase()),
@@ -100,6 +122,13 @@ func GetPublicEndpoints(useCaseRegistry registry.UseCaseRegistry) []PublicEndpoi
 				Path:    "/pegout/recommended",
 				Method:  http.MethodGet,
 				Handler: handlers.NewRecommendedPegoutHandler(useCaseRegistry.RecommendedPegoutUseCase()),
+			},
+		},
+		{
+			Endpoint: Endpoint{
+				Path:    "/pegin/recommended",
+				Method:  http.MethodGet,
+				Handler: handlers.NewRecommendedPeginHandler(useCaseRegistry.RecommendedPeginUseCase()),
 			},
 		},
 		{

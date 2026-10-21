@@ -310,6 +310,53 @@ func (_c *UseCaseRegistryMock_GenerateDefaultCredentialsUseCase_Call) RunAndRetu
 	return _c
 }
 
+// GetAcceptPeginQuoteUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetAcceptPeginQuoteUseCase() *pegin.AcceptQuoteUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAcceptPeginQuoteUseCase")
+	}
+
+	var r0 *pegin.AcceptQuoteUseCase
+	if rf, ok := ret.Get(0).(func() *pegin.AcceptQuoteUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pegin.AcceptQuoteUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAcceptPeginQuoteUseCase'
+type UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call struct {
+	*mock.Call
+}
+
+// GetAcceptPeginQuoteUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetAcceptPeginQuoteUseCase() *UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call {
+	return &UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call{Call: _e.mock.On("GetAcceptPeginQuoteUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call) Return(_a0 *pegin.AcceptQuoteUseCase) *UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call) RunAndReturn(run func() *pegin.AcceptQuoteUseCase) *UseCaseRegistryMock_GetAcceptPeginQuoteUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAcceptPegoutQuoteUseCase provides a mock function with no fields
 func (_m *UseCaseRegistryMock) GetAcceptPegoutQuoteUseCase() *pegout.AcceptQuoteUseCase {
 	ret := _m.Called()
@@ -635,6 +682,53 @@ func (_c *UseCaseRegistryMock_GetPeginCollateralUseCase_Call) Return(_a0 *pegin.
 }
 
 func (_c *UseCaseRegistryMock_GetPeginCollateralUseCase_Call) RunAndReturn(run func() *pegin.GetCollateralUseCase) *UseCaseRegistryMock_GetPeginCollateralUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPeginQuoteUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) GetPeginQuoteUseCase() *pegin.GetQuoteUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPeginQuoteUseCase")
+	}
+
+	var r0 *pegin.GetQuoteUseCase
+	if rf, ok := ret.Get(0).(func() *pegin.GetQuoteUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pegin.GetQuoteUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_GetPeginQuoteUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPeginQuoteUseCase'
+type UseCaseRegistryMock_GetPeginQuoteUseCase_Call struct {
+	*mock.Call
+}
+
+// GetPeginQuoteUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) GetPeginQuoteUseCase() *UseCaseRegistryMock_GetPeginQuoteUseCase_Call {
+	return &UseCaseRegistryMock_GetPeginQuoteUseCase_Call{Call: _e.mock.On("GetPeginQuoteUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_GetPeginQuoteUseCase_Call) Run(run func()) *UseCaseRegistryMock_GetPeginQuoteUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetPeginQuoteUseCase_Call) Return(_a0 *pegin.GetQuoteUseCase) *UseCaseRegistryMock_GetPeginQuoteUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_GetPeginQuoteUseCase_Call) RunAndReturn(run func() *pegin.GetQuoteUseCase) *UseCaseRegistryMock_GetPeginQuoteUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1340,6 +1434,53 @@ func (_c *UseCaseRegistryMock_LoginUseCase_Call) Return(_a0 *liquidity_provider.
 }
 
 func (_c *UseCaseRegistryMock_LoginUseCase_Call) RunAndReturn(run func() *liquidity_provider.LoginUseCase) *UseCaseRegistryMock_LoginUseCase_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RecommendedPeginUseCase provides a mock function with no fields
+func (_m *UseCaseRegistryMock) RecommendedPeginUseCase() *pegin.RecommendedPeginUseCase {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecommendedPeginUseCase")
+	}
+
+	var r0 *pegin.RecommendedPeginUseCase
+	if rf, ok := ret.Get(0).(func() *pegin.RecommendedPeginUseCase); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pegin.RecommendedPeginUseCase)
+		}
+	}
+
+	return r0
+}
+
+// UseCaseRegistryMock_RecommendedPeginUseCase_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecommendedPeginUseCase'
+type UseCaseRegistryMock_RecommendedPeginUseCase_Call struct {
+	*mock.Call
+}
+
+// RecommendedPeginUseCase is a helper method to define mock.On call
+func (_e *UseCaseRegistryMock_Expecter) RecommendedPeginUseCase() *UseCaseRegistryMock_RecommendedPeginUseCase_Call {
+	return &UseCaseRegistryMock_RecommendedPeginUseCase_Call{Call: _e.mock.On("RecommendedPeginUseCase")}
+}
+
+func (_c *UseCaseRegistryMock_RecommendedPeginUseCase_Call) Run(run func()) *UseCaseRegistryMock_RecommendedPeginUseCase_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_RecommendedPeginUseCase_Call) Return(_a0 *pegin.RecommendedPeginUseCase) *UseCaseRegistryMock_RecommendedPeginUseCase_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *UseCaseRegistryMock_RecommendedPeginUseCase_Call) RunAndReturn(run func() *pegin.RecommendedPeginUseCase) *UseCaseRegistryMock_RecommendedPeginUseCase_Call {
 	_c.Call.Return(run)
 	return _c
 }

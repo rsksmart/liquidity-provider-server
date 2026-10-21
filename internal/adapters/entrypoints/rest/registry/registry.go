@@ -9,6 +9,8 @@ import (
 )
 
 type UseCaseRegistry interface {
+	GetPeginQuoteUseCase() *pegin.GetQuoteUseCase
+	GetAcceptPeginQuoteUseCase() *pegin.AcceptQuoteUseCase
 	GetProviderDetailUseCase() *liquidity_provider.GetDetailUseCase
 	GetPegoutQuoteUseCase() *pegout.GetQuoteUseCase
 	GetAcceptPegoutQuoteUseCase() *pegout.AcceptQuoteUseCase
@@ -45,6 +47,7 @@ type UseCaseRegistry interface {
 	AddTrustedAccountUseCase() *liquidity_provider.AddTrustedAccountUseCase
 	DeleteTrustedAccountUseCase() *liquidity_provider.DeleteTrustedAccountUseCase
 	RecommendedPegoutUseCase() *pegout.RecommendedPegoutUseCase
+	RecommendedPeginUseCase() *pegin.RecommendedPeginUseCase
 	TransferExcessToColdWalletUseCase() *liquidity_provider.TransferExcessToColdWalletUseCase
 	GetLiquidityRatioUseCase() *liquidity_provider.GetLiquidityRatioUseCase
 	SetLiquidityRatioUseCase() *liquidity_provider.SetLiquidityRatioUseCase

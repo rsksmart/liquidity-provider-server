@@ -10,6 +10,8 @@ import (
 // Watchers intervals
 const (
 	quoteCleanInterval               = 10 * time.Minute
+	peginDepositWatcherInterval      = 1 * time.Minute
+	peginBridgeWatcherInterval       = 3 * time.Minute
 	pegoutDepositWatcherInterval     = 1 * time.Minute
 	pegoutEscrowWatcherInterval      = 1 * time.Minute
 	pegoutBtcTransferWatcherInterval = 3 * time.Minute
