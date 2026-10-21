@@ -1,4 +1,4 @@
-.PHONY: test all clean utils test-integration-db generate-fixtures
+.PHONY: test all clean utils test-integration-db generate-fixtures fireblocks-csr
 
 COVER_FILE = coverage/cover.out
 TEMPORAL_COVER_FILE =$(shell pwd)/coverage/cover.out.temp
@@ -97,3 +97,7 @@ generate-fixtures:
 
 bindings:
 	./scripts/create-bindings.sh $(IMAGE) && echo "Bindings generated successfully"
+
+# Usage: make fireblocks-csr [OUT_DIR=<dir>] [FORCE=true]
+fireblocks-csr:
+	FORCE="$(FORCE)" ./scripts/generate-fireblocks-csr.sh $(OUT_DIR)
