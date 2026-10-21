@@ -48,7 +48,7 @@ fi
 if [[ "$DEPLOY_CONTRACTS" == "true" ]]; then
   echo "Deploying contracts..."
   # TODO: remove this ref resolution once the deployer pulls a published liquidity-bridge-contract image again
-  LBC_GIT_REF="${LBC_GIT_REF:-25f16a9b07f8b86ecb9dd944cc81e01866fa161e}"
+  LBC_GIT_REF="${LBC_GIT_REF:-$(sed -n 's/^LBC_GIT_REF=//p' ../../sample-config.env)}"
   if [[ "$LBC_GIT_REF" =~ ^[0-9a-f]{40}$ ]]; then
     LBC_GIT_SHA="$LBC_GIT_REF"
   else
@@ -99,7 +99,7 @@ if [[ "$CREATE_POWPEG" == "true" ]]; then
     fi
     echo "Federation migrated to segwit"
     set -a
-    
+    # shellcheck disable=SC1090
     source "$ENV_FILE"
     set +a
     set_defaults

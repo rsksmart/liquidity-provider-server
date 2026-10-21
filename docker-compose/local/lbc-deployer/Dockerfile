@@ -13,13 +13,13 @@ ARG FOUNDRY_VERSION=v1.7.1
 RUN curl -L https://foundry.paradigm.xyz | bash && \
     /home/node/.foundry/bin/foundryup --install "${FOUNDRY_VERSION}"
 
-ARG LBC_GIT_REF=25f16a9b07f8b86ecb9dd944cc81e01866fa161e
+ARG LBC_GIT_REF
 ARG LBC_GIT_URL=https://github.com/rsksmart/liquidity-bridge-contract.git
 ARG LBC_GIT_SHA=
 
 RUN git init -q /home/node/lbc && \
     git -C /home/node/lbc remote add origin "${LBC_GIT_URL}" && \
-    git -C /home/node/lbc fetch -q --depth 1 origin "${LBC_GIT_REF}" && \
+    git -C /home/node/lbc fetch -q --depth 1 origin "${LBC_GIT_REF:?LBC_GIT_REF is required}" && \
     git -C /home/node/lbc checkout -q FETCH_HEAD && \
     git -C /home/node/lbc submodule update -q --init --recursive --depth 1 && \
     HEAD_SHA="$(git -C /home/node/lbc rev-parse HEAD)" && \
