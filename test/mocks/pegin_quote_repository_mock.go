@@ -514,80 +514,6 @@ func (_c *PeginQuoteRepositoryMock_GetRetainedQuoteByState_Call) RunAndReturn(ru
 	return _c
 }
 
-// GetRetainedQuotesForAddress provides a mock function with given fields: ctx, address, states
-func (_m *PeginQuoteRepositoryMock) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
-	_va := make([]interface{}, len(states))
-	for _i := range states {
-		_va[_i] = states[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, address)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetRetainedQuotesForAddress")
-	}
-
-	var r0 []quote.RetainedPeginQuote
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...quote.PeginState) ([]quote.RetainedPeginQuote, error)); ok {
-		return rf(ctx, address, states...)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...quote.PeginState) []quote.RetainedPeginQuote); ok {
-		r0 = rf(ctx, address, states...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]quote.RetainedPeginQuote)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, ...quote.PeginState) error); ok {
-		r1 = rf(ctx, address, states...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRetainedQuotesForAddress'
-type PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call struct {
-	*mock.Call
-}
-
-// GetRetainedQuotesForAddress is a helper method to define mock.On call
-//   - ctx context.Context
-//   - address string
-//   - states ...quote.PeginState
-func (_e *PeginQuoteRepositoryMock_Expecter) GetRetainedQuotesForAddress(ctx interface{}, address interface{}, states ...interface{}) *PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call {
-	return &PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call{Call: _e.mock.On("GetRetainedQuotesForAddress",
-		append([]interface{}{ctx, address}, states...)...)}
-}
-
-func (_c *PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call) Run(run func(ctx context.Context, address string, states ...quote.PeginState)) *PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]quote.PeginState, len(args)-2)
-		for i, a := range args[2:] {
-			if a != nil {
-				variadicArgs[i] = a.(quote.PeginState)
-			}
-		}
-		run(args[0].(context.Context), args[1].(string), variadicArgs...)
-	})
-	return _c
-}
-
-func (_c *PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call) Return(_a0 []quote.RetainedPeginQuote, _a1 error) *PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call) RunAndReturn(run func(context.Context, string, ...quote.PeginState) ([]quote.RetainedPeginQuote, error)) *PeginQuoteRepositoryMock_GetRetainedQuotesForAddress_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // InsertQuote provides a mock function with given fields: ctx, _a1
 func (_m *PeginQuoteRepositoryMock) InsertQuote(ctx context.Context, _a1 quote.CreatedPeginQuote) error {
 	ret := _m.Called(ctx, _a1)
@@ -747,53 +673,6 @@ func (_c *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call) Return(_a0 []quot
 }
 
 func (_c *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call) RunAndReturn(run func(context.Context, time.Time, time.Time, int, int) ([]quote.PeginQuoteWithRetained, int, error)) *PeginQuoteRepositoryMock_ListQuotesByDateRange_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateRetainedQuote provides a mock function with given fields: ctx, _a1
-func (_m *PeginQuoteRepositoryMock) UpdateRetainedQuote(ctx context.Context, _a1 quote.RetainedPeginQuote) error {
-	ret := _m.Called(ctx, _a1)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateRetainedQuote")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, quote.RetainedPeginQuote) error); ok {
-		r0 = rf(ctx, _a1)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// PeginQuoteRepositoryMock_UpdateRetainedQuote_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateRetainedQuote'
-type PeginQuoteRepositoryMock_UpdateRetainedQuote_Call struct {
-	*mock.Call
-}
-
-// UpdateRetainedQuote is a helper method to define mock.On call
-//   - ctx context.Context
-//   - _a1 quote.RetainedPeginQuote
-func (_e *PeginQuoteRepositoryMock_Expecter) UpdateRetainedQuote(ctx interface{}, _a1 interface{}) *PeginQuoteRepositoryMock_UpdateRetainedQuote_Call {
-	return &PeginQuoteRepositoryMock_UpdateRetainedQuote_Call{Call: _e.mock.On("UpdateRetainedQuote", ctx, _a1)}
-}
-
-func (_c *PeginQuoteRepositoryMock_UpdateRetainedQuote_Call) Run(run func(ctx context.Context, _a1 quote.RetainedPeginQuote)) *PeginQuoteRepositoryMock_UpdateRetainedQuote_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(quote.RetainedPeginQuote))
-	})
-	return _c
-}
-
-func (_c *PeginQuoteRepositoryMock_UpdateRetainedQuote_Call) Return(_a0 error) *PeginQuoteRepositoryMock_UpdateRetainedQuote_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *PeginQuoteRepositoryMock_UpdateRetainedQuote_Call) RunAndReturn(run func(context.Context, quote.RetainedPeginQuote) error) *PeginQuoteRepositoryMock_UpdateRetainedQuote_Call {
 	_c.Call.Return(run)
 	return _c
 }

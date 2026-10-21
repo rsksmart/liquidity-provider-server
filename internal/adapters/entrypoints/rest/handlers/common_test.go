@@ -115,7 +115,7 @@ func TestHandleAuthenticatedAcceptQuoteError(t *testing.T) {
 
 	t.Run("should handle wrapped errors correctly", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
-		wrappedError := usecases.WrapUseCaseError(usecases.AcceptPeginQuoteId, usecases.ExpiredQuoteError)
+		wrappedError := usecases.WrapUseCaseError(usecases.AcceptPegoutQuoteId, usecases.ExpiredQuoteError)
 
 		handlers.HandleAuthenticatedAcceptQuoteError(recorder, wrappedError)
 
