@@ -35,3 +35,7 @@ build/
 /.claude/
 docker-compose/local/lps/lps_configuration_data/*
 !docker-compose/local/lps/lps_configuration_data/.gitkeep
+
+# Fireblocks API user credentials, generated per developer with make fireblocks-csr
+/docker-compose/local/localstack/fireblocks_secret.key
+/docker-compose/local/localstack/fireblocks.csr

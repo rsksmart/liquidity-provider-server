@@ -17,8 +17,8 @@ type DerivativeWalletSecrets struct {
 }
 
 type FireBlocksWalletSecrets struct {
-	// TODO complete with fireblocks integration
-	// TBD
+	ApiKey    string
+	SecretKey string
 }
 
 func GetSecretLoader(ctx context.Context, environment environment.Environment) (SecretLoader, error) {

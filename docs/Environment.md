@@ -31,6 +31,8 @@ These are the environment variables required by the liquidity provider server (L
 | `PASSWORD_SECRET` | Name of the secret of AWS secrets manager that contains the password of the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `aws`. | `FlyoverTestEnv/LPS-PASSWORD` | NO |
 | `KEYSTORE_FILE` | Name of the file that contains the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `env`. | `geth_keystore/UTC--2024-01-29T16-36-09.688642000Z--9d93929a9099be4355fc2389fbf253982f9df47c` | NO |
 | `KEYSTORE_PWD` | The password of the encrypted json of the liquidity provider RSK account. Only required if `SECRET_SRC` is `env`. | `<any password>` | NO |
+| `FIREBLOCKS_API_KEY_SECRET` | Name of the secret of AWS secrets manager that contains the API key of the Fireblocks API user. Only required if `SECRET_SRC` is `aws` and `WALLET` is `fireblocks`. | `FlyoverTestEnv/LPS-FIREBLOCKS-API-KEY` | NO |
+| `FIREBLOCKS_SECRET_KEY_SECRET` | Name of the secret of AWS secrets manager that contains the RSA private key (PEM) of the Fireblocks API user. It can be generated with `make fireblocks-csr`. Only required if `SECRET_SRC` is `aws` and `WALLET` is `fireblocks`. | `FlyoverTestEnv/LPS-FIREBLOCKS-SECRET-KEY` | NO |
 | `BTC_NETWORK` | Network to use when connecting to the Bitcoin node. | One of the following: `regtest`, `testnet`, `mainnet` | YES |
 | `BTC_USERNAME` | Username for the bitcoind rpc server. | `user` | YES |
 | `BTC_PASSWORD` | Password for the bitcoind rpc server. | `password` | YES |
