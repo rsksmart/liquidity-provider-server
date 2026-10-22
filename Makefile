@@ -100,4 +100,4 @@ bindings:
 
 # Usage: make fireblocks-csr [OUT_DIR=<dir>] [FORCE=true]
 fireblocks-csr:
-	FORCE="$(FORCE)" ./scripts/generate-fireblocks-csr.sh $(OUT_DIR)
+	FORCE="$(FORCE)" ./scripts/generate-fireblocks-csr.sh "$(OUT_DIR)"
