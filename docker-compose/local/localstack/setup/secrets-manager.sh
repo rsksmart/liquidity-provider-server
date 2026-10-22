@@ -2,7 +2,6 @@
 
 BTC_WALLET_PASSWORD=test-password
 RSK_ENCRYPTED_JSON_PASSWORD="test"
-FIREBLOCKS_API_KEY=fireblocks-api-key-placeholder
 
 awslocal secretsmanager create-secret --name FlyoverTestEnv/LPS-LOCAL-BTC-WALLET-PASSWORD --secret-string $BTC_WALLET_PASSWORD
 awslocal secretsmanager create-secret --name FlyoverTestEnv/LPS-LOCAL-PASSWORD --secret-string $RSK_ENCRYPTED_JSON_PASSWORD

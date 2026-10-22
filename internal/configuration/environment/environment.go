@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/go-playground/validator/v10"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
@@ -23,6 +24,7 @@ type Environment struct {
 	Mongo            MongoEnv
 	Rsk              RskEnv
 	Btc              BtcEnv
+	Fireblocks       FireblocksEnv
 	Provider         ProviderEnv
 	Pegout           PegoutEnv
 	Captcha          CaptchaEnv
@@ -90,6 +92,11 @@ func (env *BtcEnv) FillWithDefaults() *BtcEnv {
 	env.MaxReorgDepth = utils.FirstNonZero(env.MaxReorgDepth, defaultMaxReorgDepth)
 	env.MinPeers = utils.FirstNonZero(env.MinPeers, defaultBitcoinMinPeers)
 	return env
+}
+
+type FireblocksEnv struct {
+	ApiKeySecret    string `env:"FIREBLOCKS_API_KEY_SECRET"`
+	SecretKeySecret string `env:"FIREBLOCKS_SECRET_KEY_SECRET"`
 }
 
 type TimeoutEnv struct {
