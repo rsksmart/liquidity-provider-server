@@ -80,6 +80,11 @@ function getCsrfToken(cookies) {
            },
            body: JSON.stringify(value.body)
        })
+       // The configurer updates the password, so the generated one only works on a fresh LPS
+       if (key === 'login' && res.status === 401) {
+           console.log('Login with the generated password failed, LPS already configured, skipping');
+           return;
+       }
        if (!res.ok) {
            console.error(`Failed to send ${key} request: ${res.status} ${res.statusText}`);
            const errorText = await res.text();
