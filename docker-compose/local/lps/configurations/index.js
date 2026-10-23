@@ -84,6 +84,7 @@ function getCsrfToken(cookies) {
            console.error(`Failed to send ${key} request: ${res.status} ${res.statusText}`);
            const errorText = await res.text();
            console.error("Response body:", errorText);
+           process.exitCode = 1;
        } else {
            console.log(`${key} request successful`);
        }
