@@ -50,6 +50,23 @@ func (loader *AwsSecretsLoader) LoadDerivativeSecrets(ctx context.Context) (Deri
 }
 
 func (loader *AwsSecretsLoader) LoadFireBlocksSecrets(ctx context.Context) (FireBlocksWalletSecrets, error) {
-	// TODO complete with fireblocks integration
-	panic("feature unavailable")
+	if loader.env.Fireblocks.ApiKeySecret == "" || loader.env.Fireblocks.SecretKeySecret == "" {
+		return FireBlocksWalletSecrets{}, errors.New("missing fireblocks api key or secret key secret")
+	}
+	apiKeyInput := &secretsmanager.GetSecretValueInput{SecretId: &loader.env.Fireblocks.ApiKeySecret}
+	apiKey, err := loader.secretsManager.GetSecretValue(ctx, apiKeyInput)
+	if err != nil {
+		return FireBlocksWalletSecrets{}, fmt.Errorf("error loading fireblocks api key: %w", err)
+	}
+
+	secretKeyInput := &secretsmanager.GetSecretValueInput{SecretId: &loader.env.Fireblocks.SecretKeySecret}
+	secretKey, err := loader.secretsManager.GetSecretValue(ctx, secretKeyInput)
+	if err != nil {
+		return FireBlocksWalletSecrets{}, fmt.Errorf("error loading fireblocks secret key: %w", err)
+	}
+
+	return FireBlocksWalletSecrets{
+		ApiKey:    *apiKey.SecretString,
+		SecretKey: *secretKey.SecretString,
+	}, nil
 }

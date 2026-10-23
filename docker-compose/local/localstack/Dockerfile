@@ -4,6 +4,8 @@ ARG BTC_WALLET_PASSWORD=test
 ARG RSK_ENCRYPTED_JSON_PASSWORD=test
 
 COPY local-key.json /tmp/local-key.json
+# Optional: only needed when running with WALLET=fireblocks (generate it with make fireblocks-csr)
+COPY --chown=localstack fireblocks_secret.ke[y] /tmp/
 COPY setup/ /etc/localstack/init/ready.d/
 
 USER localstack
