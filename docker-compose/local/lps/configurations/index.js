@@ -90,6 +90,7 @@ function getCsrfToken(cookies) {
            const errorText = await res.text();
            console.error("Response body:", errorText);
            process.exitCode = 1;
+           return;
        } else {
            console.log(`${key} request successful`);
        }
