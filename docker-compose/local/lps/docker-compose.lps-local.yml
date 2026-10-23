@@ -114,7 +114,7 @@ services:
     command: ["node", "/configurations/index.js"]
     depends_on:
       lps:
-        condition: service_healthy
+        condition: service_started
     restart: "no"
     container_name: lps-configurer
     environment:

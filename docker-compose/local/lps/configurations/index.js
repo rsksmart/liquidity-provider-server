@@ -1,6 +1,24 @@
 const { CONSTANTS } = require('./constants');
-const { CONFIG_REQUESTS } = require('./requests');
 
+const HEALTH_RETRIES = 80;
+const HEALTH_INTERVAL_MS = 5000;
+
+async function waitForHealth() {
+    for (let i = 0; i < HEALTH_RETRIES; i++) {
+        try {
+            const res = await fetch(`${CONSTANTS.LPS_URL}/health`);
+            if (res.ok) {
+                console.log('LPS is healthy');
+                return;
+            }
+        } catch (_) {
+            // just swallow the error
+        }
+        console.log(`Waiting for LPS to be healthy... (${i + 1}/${HEALTH_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, HEALTH_INTERVAL_MS));
+    }
+    throw new Error('LPS did not become healthy in time');
+}
 
 const cookieJar = {};
 
@@ -48,6 +66,9 @@ function getCsrfToken(cookies) {
 }
 
 (async function(){
+   await waitForHealth();
+   // Require requests only after LPS is healthy so readPassword() has more changes of succeeding
+   const { CONFIG_REQUESTS } = require('./requests');
    const csrf = await getCsrfToken(cookieJar)
    for (const [key, value] of Object.entries(CONFIG_REQUESTS)) {
        console.log(`Sending ${key} request...`)

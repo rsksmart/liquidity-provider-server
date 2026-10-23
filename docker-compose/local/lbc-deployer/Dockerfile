@@ -5,11 +5,12 @@ ARG DEPLOYER_MNEMONIC
 ARG LBC_COMMIT
 
 # Install Foundry and required tools
+# Foundry is pinned because 1.8.x sends EIP-1898 block params that rskj rejects (error -32603)
 RUN apt-get update -y && \
     apt-get install -y -qq --no-install-recommends jq make curl && \
     apt-get clean && \
     curl -L https://foundry.paradigm.xyz | bash && \
-    /root/.foundry/bin/foundryup && \
+    /root/.foundry/bin/foundryup --install v1.7.1 && \
     cp -r /root/.foundry /home/node/.foundry && \
     chown -R node:node /home/node/.foundry
 
