@@ -156,14 +156,14 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	})
 	t.Run("should handle error getting height", func(t *testing.T) {
 		resetMocks()
-		checkFunction := test.AssertLogContains(t, "error getting Bitcoin chain height")
+		checkFunction := test.LogContains(t, "error getting Bitcoin chain height")
 		btcRpc.On("GetHeight").Return(nil, assert.AnError).Once()
 		tickerChannel <- time.Now()
 		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 			mt := newMockCollectT(collect)
 			btcRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	pegoutSentChannel <- quote.PegoutBtcSentToUserEvent{
 		Event:       entities.NewBaseEvent(quote.PegoutBtcSentEventId),
@@ -171,7 +171,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 	}
 	t.Run("should handle error getting tx info", func(t *testing.T) {
 		resetMocks()
-		checkFunction := test.AssertLogContains(t, "error getting Bitcoin transaction information (030201)")
+		checkFunction := test.LogContains(t, "error getting Bitcoin transaction information (030201)")
 		btcRpc.On("GetHeight").Return(big.NewInt(8), nil).Once()
 		btcRpc.On("GetTransactionInfo", testRetainedQuote.LpBtcTxHash).Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
 		tickerChannel <- time.Now()
@@ -179,7 +179,7 @@ func TestPegoutBtcTransferWatcher_Start_BlockchainCheck(t *testing.T) {
 			mt := newMockCollectT(collect)
 			btcRpc.AssertExpectations(mt)
 		}, time.Second, 10*time.Millisecond)
-		assert.True(t, checkFunction())
+		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 	t.Run("shouldn't refund pegout if transaction is not mature enough", func(t *testing.T) {
 		resetMocks()
