@@ -40,5 +40,6 @@ type EventBus interface {
 type ApplicationMutexes interface {
 	RskWalletMutex() *sync.Mutex
 	BtcWalletMutex() *sync.Mutex
+	PeginLiquidityMutex() *sync.Mutex
 	PegoutLiquidityMutex() *sync.Mutex
 }
