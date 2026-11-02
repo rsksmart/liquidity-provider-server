@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	log "github.com/sirupsen/logrus"
@@ -273,6 +274,63 @@ func TestPeginMongoRepository_InsertRetainedQuote(t *testing.T) {
 		err := repo.InsertRetainedQuote(context.Background(), testRetainedPeginQuote)
 		collection.AssertExpectations(t)
 		require.Error(t, err)
+	})
+}
+
+func TestPeginMongoRepository_UpdateRetainedQuote(t *testing.T) {
+	const updated = "updated value"
+	t.Run("Update retained pegin quote successfully", func(t *testing.T) {
+		const expectedLog = "UPDATE interaction with db: {QuoteHash:8d1ba2cb559a6ebe41f19131602467e1d939682d651b2a91e55b86bc664a6819 DepositAddress:updated value Signature:updated value RequiredLiquidity:200 State:CallForUserFailed UserBtcTxHash:updated value CallForUserTxHash:updated value RegisterPeginTxHash:updated value CallForUserGasUsed:85000 CallForUserGasPrice:21000000000 RegisterPeginGasUsed:65000 RegisterPeginGasPrice:21000000000 OwnerAccountAddress:updated value}"
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
+		updatedQuote := testRetainedPeginQuote
+		updatedQuote.State = quote.PeginStateCallForUserFailed
+		updatedQuote.Signature = updated
+		updatedQuote.RegisterPeginTxHash = updated
+		updatedQuote.CallForUserTxHash = updated
+		updatedQuote.DepositAddress = updated
+		updatedQuote.UserBtcTxHash = updated
+		updatedQuote.OwnerAccountAddress = updated
+		updatedQuote.RequiredLiquidity = entities.NewWei(200)
+		collection.On("UpdateOne", mock.Anything,
+			bson.D{bson.E{Key: "quote_hash", Value: testRetainedPeginQuote.QuoteHash}},
+			bson.D{bson.E{Key: "$set", Value: updatedQuote}},
+		).Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPeginMongoRepository(conn)
+		defer assertDbInteractionLog(t, expectedLog)()
+		err := repo.UpdateRetainedQuote(context.Background(), updatedQuote)
+		collection.AssertExpectations(t)
+		require.NoError(t, err)
+	})
+	t.Run("Db error when updating retained pegin quote", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).
+			Return(nil, assert.AnError).Once()
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPeginMongoRepository(conn)
+		err := repo.UpdateRetainedQuote(context.Background(), testRetainedPeginQuote)
+		collection.AssertExpectations(t)
+		require.Error(t, err)
+	})
+	t.Run("Retained pegin quote to update not found", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).
+			Return(&mongoDb.UpdateResult{ModifiedCount: 0}, nil).Once()
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPeginMongoRepository(conn)
+		err := repo.UpdateRetainedQuote(context.Background(), testRetainedPeginQuote)
+		collection.AssertExpectations(t)
+		require.ErrorIs(t, err, usecases.QuoteNotFoundError)
+	})
+	t.Run("Update more than one retained pegin quote", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.RetainedPeginQuoteCollection)
+		collection.On("UpdateOne", mock.Anything, mock.Anything, mock.Anything).
+			Return(&mongoDb.UpdateResult{ModifiedCount: 2}, nil).Once()
+		conn := mongo.NewConnection(client, time.Duration(1))
+		repo := mongo.NewPeginMongoRepository(conn)
+		err := repo.UpdateRetainedQuote(context.Background(), testRetainedPeginQuote)
+		collection.AssertExpectations(t)
+		require.ErrorContains(t, err, "multiple documents updated")
 	})
 }
 
@@ -738,6 +796,7 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 	})
 }
 
+// nolint:funlen
 // nolint: cyclop, funlen, gocognit, gocyclo
 func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.PeginState, startDate, endDate time.Time) bool {
 	// Verify the pipeline structure

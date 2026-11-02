@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	"github.com/rsksmart/liquidity-provider-server/test/mongodb/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -124,6 +125,36 @@ func TestPegin_GetRetainedQuote_NotFound(t *testing.T) {
 	got, err := peginRepo.GetRetainedQuote(ctx, utils.RandomHash())
 	require.NoError(t, err)
 	assert.Nil(t, got)
+}
+
+func TestPegin_UpdateRetainedQuote(t *testing.T) {
+	cleanCollections(t)
+	ctx := context.Background()
+
+	hash := utils.RandomHash()
+	retained := utils.NewTestRetainedPeginQuote(hash, quote.PeginStateWaitingForDeposit)
+	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, retained))
+
+	retained.State = quote.PeginStateCallForUserSucceeded
+	retained.CallForUserTxHash = "0xupdatedcalltx"
+	retained.CallForUserGasUsed = 75000
+	require.NoError(t, peginRepo.UpdateRetainedQuote(ctx, retained))
+
+	got, err := peginRepo.GetRetainedQuote(ctx, hash)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, quote.PeginStateCallForUserSucceeded, got.State)
+	assert.Equal(t, "0xupdatedcalltx", got.CallForUserTxHash)
+	assert.Equal(t, uint64(75000), got.CallForUserGasUsed)
+}
+
+func TestPegin_UpdateRetainedQuote_NotFound(t *testing.T) {
+	cleanCollections(t)
+	ctx := context.Background()
+
+	retained := utils.NewTestRetainedPeginQuote(utils.RandomHash(), quote.PeginStateCallForUserSucceeded)
+	err := peginRepo.UpdateRetainedQuote(ctx, retained)
+	require.ErrorIs(t, err, usecases.QuoteNotFoundError)
 }
 
 func TestPegin_GetRetainedQuoteByState(t *testing.T) {

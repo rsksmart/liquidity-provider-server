@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -190,6 +191,26 @@ func (repo *peginMongoRepository) InsertRetainedQuote(ctx context.Context, retai
 		logDbInteraction(Insert, retainedQuote)
 		return nil
 	}
+}
+
+func (repo *peginMongoRepository) UpdateRetainedQuote(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
+	filter := bson.D{bson.E{Key: "quote_hash", Value: retainedQuote.QuoteHash}}
+	updateStatement := bson.D{bson.E{Key: "$set", Value: retainedQuote}}
+
+	result, err := collection.UpdateOne(dbCtx, filter, updateStatement)
+	if err != nil {
+		return err
+	} else if result.ModifiedCount == 0 {
+		return usecases.QuoteNotFoundError
+	} else if result.ModifiedCount > 1 {
+		return errors.New("multiple documents updated")
+	}
+	logDbInteraction(Update, retainedQuote)
+	return nil
 }
 
 func (repo *peginMongoRepository) GetRetainedQuoteByState(ctx context.Context, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {

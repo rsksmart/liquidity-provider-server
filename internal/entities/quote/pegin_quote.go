@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	AcceptedPeginQuoteEventId   entities.EventId = "AcceptedPeginQuote"
 	CallForUserCompletedEventId entities.EventId = "CallForUserCompleted"
 )
 
@@ -31,6 +32,7 @@ type PeginQuoteRepository interface {
 	GetQuotesByHashesAndDate(ctx context.Context, hashes []string, startDate, endDate time.Time) ([]PeginQuote, error)
 	GetRetainedQuote(ctx context.Context, hash string) (*RetainedPeginQuote, error)
 	InsertRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
+	UpdateRetainedQuote(ctx context.Context, quote RetainedPeginQuote) error
 	GetRetainedQuoteByState(ctx context.Context, states ...PeginState) ([]RetainedPeginQuote, error)
 	GetQuotesByState(ctx context.Context, states ...PeginState) ([]PeginQuote, error)
 	// DeleteQuotes deletes both regular and retained quotes
@@ -147,6 +149,13 @@ type WatchedPeginQuote struct {
 
 func NewWatchedPeginQuote(peginQuote PeginQuote, retainedQuote RetainedPeginQuote, creationData PeginCreationData) WatchedPeginQuote {
 	return WatchedPeginQuote{PeginQuote: peginQuote, RetainedQuote: retainedQuote, CreationData: creationData}
+}
+
+type AcceptedPeginQuoteEvent struct {
+	entities.Event
+	Quote         PeginQuote
+	RetainedQuote RetainedPeginQuote
+	CreationData  PeginCreationData
 }
 
 type CallForUserCompletedEvent struct {
