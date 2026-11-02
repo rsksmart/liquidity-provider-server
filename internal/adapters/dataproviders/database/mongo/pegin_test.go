@@ -796,7 +796,6 @@ func TestPeginMongoRepository_ListQuotesByDateRange(t *testing.T) {
 	})
 }
 
-// nolint:funlen
 // nolint: cyclop, funlen, gocognit, gocyclo
 func validatePeginPipelineStructure(pipeline mongoDb.Pipeline, states []quote.PeginState, startDate, endDate time.Time) bool {
 	// Verify the pipeline structure
