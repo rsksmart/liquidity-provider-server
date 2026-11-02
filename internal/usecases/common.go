@@ -40,6 +40,7 @@ const (
 	ClaimPegoutId                        UseCaseId = "ClaimPegout"
 	RefundPegoutId                       UseCaseId = "RefundPegout"
 	ProviderRegistrationId               UseCaseId = "ProviderRegistration"
+	GetWatchedPeginQuoteId               UseCaseId = "GetWatchedPeginQuote"
 	GetWatchedPegoutQuoteId              UseCaseId = "GetWatchedPegoutQuote"
 	DiscoverRegisteredAddressId          UseCaseId = "DiscoverRegisteredAddress"
 	GetPendingRegisteredAddressImportsId UseCaseId = "GetPendingRegisteredAddressImports"

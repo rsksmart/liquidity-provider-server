@@ -85,7 +85,7 @@ func TestPegoutBtcTransferWatcher_Start_SentPegout(t *testing.T) {
 	})
 	t.Run("handle incorrect event sent to bus", func(t *testing.T) {
 		checkFunction := test.AssertLogContains(t, watcher.LogPegoutBtcWrongEvent)
-		pegoutSentChannel <- quote.PegoutQuoteCompletedEvent{Event: entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId)}
+		pegoutSentChannel <- quote.CallForUserCompletedEvent{Event: entities.NewBaseEvent(quote.CallForUserCompletedEventId)}
 		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
 	})
 

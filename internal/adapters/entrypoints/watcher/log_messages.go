@@ -210,6 +210,26 @@ func LogPegoutRskParseError(quoteHash string, err error) string {
 	return fmt.Sprintf(LogPegoutRskPrefix+"Error parsing deposit event for quote %s: %v", quoteHash, err)
 }
 
+// Log message templates for pegin_bridge_watcher.go
+const (
+	LogPeginBridgePrefix         = "Pegin Bridge watcher: "
+	LogPeginBridgeShutdown       = LogPeginBridgePrefix + "shut down"
+	LogPeginBridgeBtcChainHeight = LogPeginBridgePrefix + "error getting Bitcoin chain height: %v"
+	LogPeginBridgeWrongEvent     = LogPeginBridgePrefix + "Trying to parse wrong event"
+)
+
+func LogPeginBridgeAlreadyWatched(quoteHash string) string {
+	return fmt.Sprintf(LogPeginBridgePrefix+"Quote %s is already watched", quoteHash)
+}
+
+func LogPeginBridgeBtcTxInfo(txHash string, err error) string {
+	return fmt.Sprintf(LogPeginBridgePrefix+"error getting Bitcoin transaction information (%s): %v", txHash, err)
+}
+
+func LogPeginBridgeRegisterError(quoteHash string, err error) string {
+	return fmt.Sprintf(LogPeginBridgePrefix+"Error executing register pegin on quote %s: %v", quoteHash, err)
+}
+
 const (
 	LogPegoutEscrowPrefix   = "PegoutEscrowWatcher: "
 	LogPegoutEscrowError    = LogPegoutEscrowPrefix + "error checking escrowed peg-outs: %v"

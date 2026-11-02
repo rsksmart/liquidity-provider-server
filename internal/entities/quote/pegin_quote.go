@@ -8,6 +8,10 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 )
 
+const (
+	CallForUserCompletedEventId entities.EventId = "CallForUserCompleted"
+)
+
 type PeginState string
 
 const (
@@ -143,4 +147,12 @@ type WatchedPeginQuote struct {
 
 func NewWatchedPeginQuote(peginQuote PeginQuote, retainedQuote RetainedPeginQuote, creationData PeginCreationData) WatchedPeginQuote {
 	return WatchedPeginQuote{PeginQuote: peginQuote, RetainedQuote: retainedQuote, CreationData: creationData}
+}
+
+type CallForUserCompletedEvent struct {
+	entities.Event
+	PeginQuote    PeginQuote
+	RetainedQuote RetainedPeginQuote
+	CreationData  PeginCreationData
+	Error         error
 }
