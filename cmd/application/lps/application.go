@@ -219,7 +219,6 @@ func (app *Application) enabledWatchers() []watcher.Watcher {
 		app.watcherRegistry.BitcoinReorgWatcher,
 		app.watcherRegistry.RootstockReorgWatcher,
 		app.watcherRegistry.ReorgMetricsWatcher,
-		app.watcherRegistry.PegInAddressRegistryMetricsWatcher,
 	}
 
 	if app.env.Eclipse.Enabled {
