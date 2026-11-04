@@ -48,12 +48,7 @@ type rskBoundContracts struct {
 }
 
 // nolint:funlen
-func NewRootstockRegistry(
-	env environment.Environment,
-	client *rootstock.RskClient,
-	walletFactory wallet.AbstractFactory,
-	timeouts environment.ApplicationTimeouts,
-) (*Rootstock, error) {
+func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClient, walletFactory wallet.AbstractFactory, timeouts environment.ApplicationTimeouts) (*Rootstock, error) {
 	contractBindings := createContractBindings()
 
 	boundContracts, err := createBoundContracts(env, contractBindings, client)
