@@ -104,8 +104,6 @@ type PegInWatchRepository interface {
 	Get(ctx context.Context, rskAddress string) (*PegInWatch, error)
 	List(ctx context.Context) ([]PegInWatch, error)
 	Update(ctx context.Context, watch PegInWatch) error
-	GetCursor(ctx context.Context) (lastScannedBlock uint64, found bool, err error)
-	SetCursor(ctx context.Context, lastScannedBlock uint64) error
 	GetCheckpoint(ctx context.Context) (checkpoint PegInWatchCheckpoint, found bool, err error)
 	SaveVerifiedRegistrations(ctx context.Context, watches []PegInWatch, checkpoint PegInWatchCheckpoint) error
 }
