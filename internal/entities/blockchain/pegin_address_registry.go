@@ -2,9 +2,14 @@ package blockchain
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
+
+var InvalidRootHashFunctionError = errors.New("invalid PegIn address registry root hash function")
 
 // PegInAddressRegistryEncoding is the on-chain IPegInAddressRegistry.Encoding enum.
 type PegInAddressRegistryEncoding = rootstock.PegInAddressRegistryEncoding
@@ -69,4 +74,39 @@ type PegInAddressRegistryContract interface {
 	// GetAddressRegisteredEvents returns the AddressRegistered events in [fromBlock, toBlock].
 	// A nil toBlock reads up to the latest block.
 	GetAddressRegisteredEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]AddressRegistered, error)
+}
+
+func FoldPegInAddressRegistryRoot(
+	hashFunction entities.HashFunction,
+	previousRoot [32]byte,
+	rskAddress string,
+) ([32]byte, error) {
+	if hashFunction == nil {
+		return [32]byte{}, fmt.Errorf("%w: hash function is nil", InvalidRootHashFunctionError)
+	}
+	normalizedAddress, err := NormalizeRskAddress(rskAddress)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	addressBytes, err := DecodeStringTrimPrefix(normalizedAddress)
+	if err != nil {
+		return [32]byte{}, fmt.Errorf("%w: %w", InvalidAddressError, err)
+	}
+	if len(addressBytes) != 20 {
+		return [32]byte{}, fmt.Errorf("%w: decoded RSK address length %d", InvalidAddressError, len(addressBytes))
+	}
+
+	var preimage [52]byte
+	copy(preimage[:32], previousRoot[:])
+	copy(preimage[32:], addressBytes)
+
+	hash := hashFunction(preimage[:])
+	if len(hash) != 32 {
+		return [32]byte{}, fmt.Errorf(
+			"%w: hash function returned %d bytes, want 32",
+			InvalidRootHashFunctionError,
+			len(hash),
+		)
+	}
+	return [32]byte(hash), nil
 }
