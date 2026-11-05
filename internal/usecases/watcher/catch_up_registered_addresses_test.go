@@ -87,6 +87,10 @@ func chainedRegistrations(t *testing.T, previousRoot [32]byte, events ...blockch
 	return events
 }
 
+func (fixture *catchUpFixture) withContractRoot(block uint64, root [32]byte) {
+	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, block).Return(root, nil).Once()
+}
+
 func blockPointer(expected uint64) interface{} {
 	return mock.MatchedBy(func(actual *uint64) bool {
 		return actual != nil && *actual == expected
@@ -112,6 +116,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		)
 		root := events[1].RegistrationRoot
 		fixture.withPage(200, 100, 109, events)
+		fixture.withContractRoot(109, root)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(
 			mock.Anything,
 			mock.MatchedBy(func(watches []rootstock.PegInWatch) bool {
@@ -138,6 +143,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 			blockchain.AddressRegistered{TxHash: "0x03", RskAddress: catchUpAddress(3), BlockNumber: 152, LogIndex: 1},
 		)
 		fixture.withPage(155, 151, 153, events)
+		fixture.withContractRoot(153, events[0].RegistrationRoot)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(
 			mock.Anything,
 			mock.Anything,
@@ -154,6 +160,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 120})
 		fixture.withPage(200, 121, 130, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(130, [32]byte{9})
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 130}).
 			Return(nil).Once()
 
@@ -167,6 +174,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 150}
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(160, 151, 158, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(158, stored.Root)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(
 			mock.Anything,
 			[]rootstock.PegInWatch{},
@@ -188,6 +196,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 			blockchain.AddressRegistered{TxHash: "0xlast", RskAddress: catchUpAddress(3), BlockNumber: 105, LogIndex: 4},
 		)
 		fixture.withPage(107, 100, 105, []blockchain.AddressRegistered{chain[2], chain[0], chain[1]})
+		fixture.withContractRoot(105, chain[2].RegistrationRoot)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(
 			mock.Anything,
 			mock.Anything,
@@ -204,6 +213,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 150}
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(160, 151, 158, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(158, stored.Root)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: 158}).
 			Return(nil).Once()
 
@@ -220,6 +230,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		higher := blockchain.AddressRegistered{TxHash: "0x0000", RskAddress: "0x00000000000000000000000000000000000000a2", BlockNumber: 105, LogIndex: 4}
 		pinned := [32]byte(common.HexToHash("0x95bdcbc864b6248af173e5feb03f5830479e972a492e705c3c2a2bddcb8ca643"))
 		fixture.withPage(107, 100, 105, []blockchain.AddressRegistered{higher, lower})
+		fixture.withContractRoot(105, pinned)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: pinned, Block: 105}).
 			Return(nil).Once()
 
@@ -237,6 +248,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 			blockchain.AddressRegistered{TxHash: "0xaaaa", RskAddress: catchUpAddress(2), BlockNumber: 103, LogIndex: 7},
 		)
 		fixture.withPage(105, 100, 103, []blockchain.AddressRegistered{chain[1], chain[0]})
+		fixture.withContractRoot(103, chain[1].RegistrationRoot)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(
 			mock.Anything,
 			mock.Anything,
@@ -313,6 +325,7 @@ func TestCatchUpRegisteredAddressesUseCase_RunErrors(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(153, stored.Root)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
@@ -332,6 +345,7 @@ func TestCatchUpRegisteredAddressesUseCase_SavesRegistrationsInChainOrder(t *tes
 		blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 103, LogIndex: 0},
 	)
 	fixture.withPage(105, 100, 103, []blockchain.AddressRegistered{chain[3], chain[2], chain[1], chain[0]})
+	fixture.withContractRoot(103, chain[3].RegistrationRoot)
 	fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 	result, err := fixture.useCase.Run(context.Background())
@@ -365,6 +379,7 @@ func TestCatchUpRegisteredAddressesUseCase_PageRange(t *testing.T) {
 			expected := checkpoint
 			if testCase.hasPage {
 				fixture.withPage(testCase.finalizedHead+catchUpFinalityDepth, testCase.storedBlock+1, testCase.toBlock, []blockchain.AddressRegistered{})
+				fixture.withContractRoot(testCase.toBlock, stored.Root)
 				expected = rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: testCase.toBlock}
 				fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, []rootstock.PegInWatch{}, expected).Return(nil).Once()
 			} else {

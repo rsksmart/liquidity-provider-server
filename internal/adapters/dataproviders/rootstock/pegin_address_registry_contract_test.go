@@ -221,9 +221,9 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
 			matchCallData(registryBinding.PackGetRegistrationRoot()),
-			mock.Anything,
+			big.NewInt(123),
 		).Return(mustPackBytes32(t, root), nil).Once()
-		result, err := registry.GetRegistrationRoot()
+		result, err := registry.GetRegistrationRoot(context.Background(), 123)
 		require.NoError(t, err)
 		assert.Equal(t, root, result)
 		contractMock.caller.AssertExpectations(t)
@@ -232,9 +232,9 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
 			matchCallData(registryBinding.PackGetRegistrationRoot()),
-			mock.Anything,
+			big.NewInt(123),
 		).Return(nil, assert.AnError).Once()
-		result, err := registry.GetRegistrationRoot()
+		result, err := registry.GetRegistrationRoot(context.Background(), 123)
 		require.Error(t, err)
 		assert.Equal(t, [32]byte{}, result)
 		contractMock.caller.AssertExpectations(t)

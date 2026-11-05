@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
 )
 
 type CatchUpRegisteredAddressesUseCase struct {
@@ -71,7 +72,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) Run(ctx context.Context) (Catc
 			fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err),
 		)
 	}
-	root, watches, err := useCase.foldPage(checkpoint.Root, events)
+	root, watches, err := useCase.verifyPage(ctx, checkpoint.Root, events, toBlock)
 	if err != nil {
 		return CatchUpRegisteredAddressesResult{}, useCase.wrap(err)
 	}
@@ -96,9 +97,11 @@ func (useCase *CatchUpRegisteredAddressesUseCase) finalizedHead(ctx context.Cont
 	return height - useCase.finalityDepth, true, nil
 }
 
-func (useCase *CatchUpRegisteredAddressesUseCase) foldPage(
+func (useCase *CatchUpRegisteredAddressesUseCase) verifyPage(
+	ctx context.Context,
 	root [32]byte,
 	events []blockchain.AddressRegistered,
+	toBlock uint64,
 ) ([32]byte, []rootstock.PegInWatch, error) {
 	useCase.sortAddressRegisteredEvents(events)
 	watches := make([]rootstock.PegInWatch, 0, len(events))
@@ -106,6 +109,9 @@ func (useCase *CatchUpRegisteredAddressesUseCase) foldPage(
 	for _, event := range events {
 		if root, err = blockchain.FoldPegInAddressRegistryRoot(useCase.hashFunction, root, event.RskAddress); err != nil {
 			return [32]byte{}, nil, fmt.Errorf("fold AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
+		}
+		if root != event.RegistrationRoot {
+			log.Warn(registryRootMismatch(event.BlockNumber, root, "event", event.RegistrationRoot))
 		}
 		watches = append(watches, rootstock.NewPegInWatch(
 			event.TxHash,
@@ -115,6 +121,14 @@ func (useCase *CatchUpRegisteredAddressesUseCase) foldPage(
 			event.Registrant,
 			event.RegistrationRoot,
 		))
+	}
+
+	contractRoot, err := useCase.registry.GetRegistrationRoot(ctx, toBlock)
+	if err != nil {
+		return [32]byte{}, nil, fmt.Errorf("get PegIn address registry root at block %d: %w", toBlock, err)
+	}
+	if root != contractRoot {
+		log.Warn(registryRootMismatch(toBlock, root, "contract", contractRoot))
 	}
 	return root, watches, nil
 }
@@ -140,4 +154,14 @@ func (useCase *CatchUpRegisteredAddressesUseCase) sortAddressRegisteredEvents(ev
 		}
 		return cmp.Compare(first.LogIndex, second.LogIndex)
 	})
+}
+
+func registryRootMismatch(block uint64, localRoot [32]byte, source string, expectedRoot [32]byte) string {
+	return fmt.Sprintf(
+		"PegIn address registry root mismatch at block %d: local root 0x%x, %s root 0x%x",
+		block,
+		localRoot,
+		source,
+		expectedRoot,
+	)
 }
