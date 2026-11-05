@@ -562,6 +562,41 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenCatchUpFails(t *testing.T) {
 	fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 }
 
+func TestPegInWatcher_RetriesDiscoveredEntriesWhenCatchUpReportsMismatch(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, 100, 1, 2)
+	entry := rootstock.PegInWatch{
+		TxHash:      "pending-import",
+		LogIndex:    1,
+		BlockNumber: 90,
+		RskAddress:  rskAddress(7),
+		State:       rootstock.PegInWatchDiscovered,
+	}
+	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{entry}, nil).Once()
+	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).
+		Return(rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105}, true, nil).Once()
+	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Once()
+	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
+		Return([]blockchain.AddressRegistered{}, nil).Once()
+	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return([32]byte{2}, nil).Once()
+	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
+	deposit := depositAddressFixture(0)
+	fixture.registry.EXPECT().GetPegInAddress(entry.RskAddress).
+		Return(blockchain.PegInAddress{
+			Payload:  deposit.payload,
+			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
+		}, nil).
+		Once()
+	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
+	fixture.expectBoundedRescan()
+	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
+		return updated.TxHash == entry.TxHash && updated.State == rootstock.PegInWatchImported
+	})).Return(nil).Once()
+
+	fixture.runScan()
+
+	fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
+}
+
 func uint64Pointer(expected uint64) interface{} {
 	return mock.MatchedBy(func(actual *uint64) bool {
 		return actual != nil && *actual == expected
