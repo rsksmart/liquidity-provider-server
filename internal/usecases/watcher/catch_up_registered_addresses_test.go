@@ -10,7 +10,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
-	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -230,7 +229,8 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		lower := blockchain.AddressRegistered{TxHash: "0xffff", RskAddress: "0x00000000000000000000000000000000000000a1", BlockNumber: 105, LogIndex: 1}
 		higher := blockchain.AddressRegistered{TxHash: "0x0000", RskAddress: "0x00000000000000000000000000000000000000a2", BlockNumber: 105, LogIndex: 4}
 		pinned := [32]byte(common.HexToHash("0x95bdcbc864b6248af173e5feb03f5830479e972a492e705c3c2a2bddcb8ca643"))
-		fixture.withPage(107, 100, 105, []blockchain.AddressRegistered{higher, lower})
+		chain := chainedRegistrations(t, [32]byte{}, lower, higher)
+		fixture.withPage(107, 100, 105, []blockchain.AddressRegistered{chain[1], chain[0]})
 		fixture.withContractRoot(105, pinned)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: pinned, Block: 105}).
 			Return(nil).Once()
@@ -294,39 +294,33 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 }
 
 func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
-	t.Run("warns about a mismatch with an event root", func(t *testing.T) {
+	t.Run("reports a mismatch with an event root and saves nothing", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 150}
 		fixture.withCheckpoint(&stored)
 		events := chainedRegistrations(t, [32]byte{2},
 			blockchain.AddressRegistered{TxHash: "0x04", RskAddress: catchUpAddress(4), BlockNumber: 151},
 		)
-		localRoot, err := blockchain.FoldPegInAddressRegistryRoot(crypto.Keccak256, stored.Root, catchUpAddress(4))
-		require.NoError(t, err)
 		fixture.withPage(155, 151, 153, events)
-		fixture.withContractRoot(153, localRoot)
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: localRoot, Block: 153}).
-			Return(nil).Once()
-		logged := test.AssertLogContains(t, watcher.LogRegistryEventRootMismatch(151, localRoot, events[0].RegistrationRoot))
 
-		_, err = fixture.useCase.Run(context.Background())
+		result, err := fixture.useCase.Run(context.Background())
 
-		require.NoError(t, err)
-		assert.True(t, logged())
+		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
+		assert.Contains(t, err.Error(), "at block 151")
+		assert.Empty(t, result.Watches)
 	})
-	t.Run("warns when the contract root moved without events", func(t *testing.T) {
+	t.Run("reports a mismatch when the contract root moved without events and saves nothing", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 150}
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(153, [32]byte{2})
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-		logged := test.AssertLogContains(t, watcher.LogRegistryContractRootMismatch(153, stored.Root, [32]byte{2}))
 
-		_, err := fixture.useCase.Run(context.Background())
+		result, err := fixture.useCase.Run(context.Background())
 
-		require.NoError(t, err)
-		assert.True(t, logged())
+		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
+		assert.Contains(t, err.Error(), "at block 153")
+		assert.Empty(t, result.Watches)
 	})
 }
 
