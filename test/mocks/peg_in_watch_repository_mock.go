@@ -81,6 +81,69 @@ func (_c *PegInWatchRepositoryMock_Get_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// GetCheckpoint provides a mock function with given fields: ctx
+func (_m *PegInWatchRepositoryMock) GetCheckpoint(ctx context.Context) (rootstock.PegInWatchCheckpoint, bool, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCheckpoint")
+	}
+
+	var r0 rootstock.PegInWatchCheckpoint
+	var r1 bool
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context) (rootstock.PegInWatchCheckpoint, bool, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) rootstock.PegInWatchCheckpoint); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(rootstock.PegInWatchCheckpoint)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) bool); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context) error); ok {
+		r2 = rf(ctx)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// PegInWatchRepositoryMock_GetCheckpoint_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCheckpoint'
+type PegInWatchRepositoryMock_GetCheckpoint_Call struct {
+	*mock.Call
+}
+
+// GetCheckpoint is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *PegInWatchRepositoryMock_Expecter) GetCheckpoint(ctx interface{}) *PegInWatchRepositoryMock_GetCheckpoint_Call {
+	return &PegInWatchRepositoryMock_GetCheckpoint_Call{Call: _e.mock.On("GetCheckpoint", ctx)}
+}
+
+func (_c *PegInWatchRepositoryMock_GetCheckpoint_Call) Run(run func(ctx context.Context)) *PegInWatchRepositoryMock_GetCheckpoint_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_GetCheckpoint_Call) Return(checkpoint rootstock.PegInWatchCheckpoint, found bool, err error) *PegInWatchRepositoryMock_GetCheckpoint_Call {
+	_c.Call.Return(checkpoint, found, err)
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_GetCheckpoint_Call) RunAndReturn(run func(context.Context) (rootstock.PegInWatchCheckpoint, bool, error)) *PegInWatchRepositoryMock_GetCheckpoint_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetCursor provides a mock function with given fields: ctx
 func (_m *PegInWatchRepositoryMock) GetCursor(ctx context.Context) (uint64, bool, error) {
 	ret := _m.Called(ctx)
@@ -198,6 +261,54 @@ func (_c *PegInWatchRepositoryMock_List_Call) Return(_a0 []rootstock.PegInWatch,
 }
 
 func (_c *PegInWatchRepositoryMock_List_Call) RunAndReturn(run func(context.Context) ([]rootstock.PegInWatch, error)) *PegInWatchRepositoryMock_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveVerifiedRegistrations provides a mock function with given fields: ctx, watches, checkpoint
+func (_m *PegInWatchRepositoryMock) SaveVerifiedRegistrations(ctx context.Context, watches []rootstock.PegInWatch, checkpoint rootstock.PegInWatchCheckpoint) error {
+	ret := _m.Called(ctx, watches, checkpoint)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveVerifiedRegistrations")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []rootstock.PegInWatch, rootstock.PegInWatchCheckpoint) error); ok {
+		r0 = rf(ctx, watches, checkpoint)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveVerifiedRegistrations'
+type PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call struct {
+	*mock.Call
+}
+
+// SaveVerifiedRegistrations is a helper method to define mock.On call
+//   - ctx context.Context
+//   - watches []rootstock.PegInWatch
+//   - checkpoint rootstock.PegInWatchCheckpoint
+func (_e *PegInWatchRepositoryMock_Expecter) SaveVerifiedRegistrations(ctx interface{}, watches interface{}, checkpoint interface{}) *PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call {
+	return &PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call{Call: _e.mock.On("SaveVerifiedRegistrations", ctx, watches, checkpoint)}
+}
+
+func (_c *PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call) Run(run func(ctx context.Context, watches []rootstock.PegInWatch, checkpoint rootstock.PegInWatchCheckpoint)) *PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]rootstock.PegInWatch), args[2].(rootstock.PegInWatchCheckpoint))
+	})
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call) Return(_a0 error) *PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call) RunAndReturn(run func(context.Context, []rootstock.PegInWatch, rootstock.PegInWatchCheckpoint) error) *PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call {
 	_c.Call.Return(run)
 	return _c
 }
