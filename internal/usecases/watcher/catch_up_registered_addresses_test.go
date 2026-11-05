@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
@@ -25,6 +26,7 @@ type catchUpFixture struct {
 	repository *mocks.PegInWatchRepositoryMock
 	registry   *mocks.PegInAddressRegistryContractMock
 	rskRpc     *mocks.RootstockRpcServerMock
+	hashCalls  int
 	useCase    *watcher.CatchUpRegisteredAddressesUseCase
 }
 
@@ -35,11 +37,15 @@ func newCatchUpFixture(t *testing.T) *catchUpFixture {
 		registry:   mocks.NewPegInAddressRegistryContractMock(t),
 		rskRpc:     mocks.NewRootstockRpcServerMock(t),
 	}
+	countingHash := func(data ...[]byte) []byte {
+		fixture.hashCalls++
+		return crypto.Keccak256(data...)
+	}
 	fixture.useCase = watcher.NewCatchUpRegisteredAddressesUseCase(
 		fixture.repository,
 		fixture.registry,
 		fixture.rskRpc,
-		crypto.Keccak256,
+		countingHash,
 		catchUpStartBlock,
 		catchUpPageSize,
 		catchUpFinalityDepth,
@@ -188,6 +194,64 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"0xfirst", "0xmiddle", "0xlast"}, savedTxHashes(result.Watches))
 	})
+	t.Run("hashes nothing when there are no new registrations", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 150}
+		fixture.withCheckpoint(&stored)
+		fixture.withPage(160, 151, 158, []blockchain.AddressRegistered{})
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: 158}).
+			Return(nil).Once()
+
+		_, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assert.Zero(t, fixture.hashCalls)
+		fixture.repository.AssertNotCalled(t, "List", mock.Anything)
+	})
+	t.Run("folds registrations in one block by log index, whatever their transaction hashes", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		fixture.withCheckpoint(nil)
+		lower := blockchain.AddressRegistered{TxHash: "0xffff", RskAddress: "0x00000000000000000000000000000000000000a1", BlockNumber: 105, LogIndex: 1}
+		higher := blockchain.AddressRegistered{TxHash: "0x0000", RskAddress: "0x00000000000000000000000000000000000000a2", BlockNumber: 105, LogIndex: 4}
+		pinned := [32]byte(common.HexToHash("0x95bdcbc864b6248af173e5feb03f5830479e972a492e705c3c2a2bddcb8ca643"))
+		fixture.withPage(107, 100, 105, []blockchain.AddressRegistered{higher, lower})
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: pinned, Block: 105}).
+			Return(nil).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assert.Equal(t, pinned, result.Checkpoint.Root)
+		assert.Equal(t, []string{"0xffff", "0x0000"}, savedTxHashes(result.Watches))
+	})
+	t.Run("folds registrations in one transaction by log index", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		fixture.withCheckpoint(nil)
+		chain := chainedRegistrations(t, [32]byte{},
+			blockchain.AddressRegistered{TxHash: "0xaaaa", RskAddress: catchUpAddress(1), BlockNumber: 103, LogIndex: 2},
+			blockchain.AddressRegistered{TxHash: "0xaaaa", RskAddress: catchUpAddress(2), BlockNumber: 103, LogIndex: 7},
+		)
+		fixture.withPage(105, 100, 103, []blockchain.AddressRegistered{chain[1], chain[0]})
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(
+			mock.Anything,
+			mock.Anything,
+			rootstock.PegInWatchCheckpoint{Root: chain[1].RegistrationRoot, Block: 103},
+		).Return(nil).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assert.Equal(t, chain[1].RegistrationRoot, result.Checkpoint.Root)
+	})
+	t.Run("rejects an event with an invalid address and saves nothing", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		fixture.withCheckpoint(nil)
+		fixture.withPage(105, 100, 103, []blockchain.AddressRegistered{{TxHash: "0x05", RskAddress: "0x1234", BlockNumber: 101}})
+
+		_, err := fixture.useCase.Run(context.Background())
+
+		require.ErrorIs(t, err, blockchain.InvalidAddressError)
+	})
 	t.Run("does nothing while the chain is shorter than the finality depth", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(nil)
@@ -251,6 +315,31 @@ func TestCatchUpRegisteredAddressesUseCase_RunErrors(t *testing.T) {
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Empty(t, result.Watches)
 	})
+}
+
+func TestNextRegistryPage(t *testing.T) {
+	cases := []struct {
+		name          string
+		fromBlock     uint64
+		finalizedHead uint64
+		pageSize      uint64
+		toBlock       uint64
+		hasPage       bool
+	}{
+		{name: "nothing to read past the finalized head", fromBlock: 11, finalizedHead: 10, pageSize: 5},
+		{name: "a single block", fromBlock: 10, finalizedHead: 10, pageSize: 5, toBlock: 10, hasPage: true},
+		{name: "stops at the finalized head", fromBlock: 10, finalizedHead: 13, pageSize: 5, toBlock: 13, hasPage: true},
+		{name: "a full page ends at the finalized head", fromBlock: 10, finalizedHead: 14, pageSize: 5, toBlock: 14, hasPage: true},
+		{name: "stops at the page size", fromBlock: 10, finalizedHead: 100, pageSize: 5, toBlock: 14, hasPage: true},
+		{name: "a zero page size reads to the finalized head", fromBlock: 10, finalizedHead: 100, toBlock: 100, hasPage: true},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			toBlock, hasPage := watcher.NextRegistryPage(testCase.fromBlock, testCase.finalizedHead, testCase.pageSize)
+			assert.Equal(t, testCase.hasPage, hasPage)
+			assert.Equal(t, testCase.toBlock, toBlock)
+		})
+	}
 }
 
 func TestSortAddressRegisteredEvents(t *testing.T) {
