@@ -110,6 +110,7 @@ func (fixture *pegInAddressRegistryWatcherFixture) expectCatchUp(
 	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(expected.head, nil).Once()
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, expected.fromBlock, uint64Pointer(expected.toBlock)).
 		Return(expected.events, nil).Once()
+	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, expected.toBlock).Return(root, nil).Once()
 	saveCall := fixture.repository.EXPECT().SaveVerifiedRegistrations(
 		mock.Anything,
 		mock.Anything,

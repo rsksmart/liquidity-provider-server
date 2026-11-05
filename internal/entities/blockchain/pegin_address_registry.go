@@ -70,7 +70,7 @@ type PegInAddressRegistryContract interface {
 	GetPegInAddresses(rskAddrs []string) (PegInAddressBatch, error)
 	IsRegistered(rskAddr string) (bool, error)
 	GetRegistration(rskAddr string) (PegInRegistration, error)
-	GetRegistrationRoot() ([32]byte, error)
+	GetRegistrationRoot(ctx context.Context, blockNumber uint64) ([32]byte, error)
 	// GetAddressRegisteredEvents returns the AddressRegistered events in [fromBlock, toBlock].
 	// A nil toBlock reads up to the latest block.
 	GetAddressRegisteredEvents(ctx context.Context, fromBlock uint64, toBlock *uint64) ([]AddressRegistered, error)
