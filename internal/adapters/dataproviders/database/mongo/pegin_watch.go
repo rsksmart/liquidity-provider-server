@@ -11,8 +11,10 @@ import (
 )
 
 const (
-	PegInWatchCollection = "peginWatch"
-	peginWatchCursorId   = "scanCursor"
+	PegInWatchCollection           = "peginWatch"
+	PegInWatchCheckpointCollection = "peginWatchCheckpoint"
+	peginWatchCursorId             = "scanCursor"
+	peginWatchCheckpointId         = "verified"
 )
 
 type peginWatchMongoRepository struct {
@@ -145,6 +147,66 @@ func (repo *peginWatchMongoRepository) SetCursor(
 		bson.M{"$set": bson.M{"last_scanned_block": lastScannedBlock}},
 		options.UpdateOne().SetUpsert(true),
 	)
+	return err
+}
+
+func (repo *peginWatchMongoRepository) GetCheckpoint(
+	ctx context.Context,
+) (rootstock.PegInWatchCheckpoint, bool, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	var checkpoint rootstock.PegInWatchCheckpoint
+	err := repo.conn.Collection(PegInWatchCheckpointCollection).
+		FindOne(dbCtx, bson.M{"_id": peginWatchCheckpointId}).
+		Decode(&checkpoint)
+	if errors.Is(err, mongoDb.ErrNoDocuments) {
+		return rootstock.PegInWatchCheckpoint{}, false, nil
+	}
+	if err != nil {
+		return rootstock.PegInWatchCheckpoint{}, false, err
+	}
+	return checkpoint, true, nil
+}
+
+func (repo *peginWatchMongoRepository) SaveVerifiedRegistrations(
+	ctx context.Context,
+	watches []rootstock.PegInWatch,
+	checkpoint rootstock.PegInWatchCheckpoint,
+) error {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	session, err := repo.conn.client.StartSession()
+	defer func() {
+		if session != nil {
+			session.EndSession(dbCtx)
+		}
+	}()
+	if err != nil {
+		return err
+	}
+
+	_, err = session.WithTransaction(dbCtx, func(sessionContext context.Context) (any, error) {
+		watchCollection := repo.conn.Collection(PegInWatchCollection)
+		for _, watch := range watches {
+			if _, upsertErr := watchCollection.UpdateOne(
+				sessionContext,
+				rskAddressIdentity(watch.RskAddress),
+				bson.M{"$setOnInsert": watch},
+				options.UpdateOne().SetUpsert(true),
+			); upsertErr != nil {
+				return nil, upsertErr
+			}
+		}
+		_, checkpointErr := repo.conn.Collection(PegInWatchCheckpointCollection).UpdateOne(
+			sessionContext,
+			bson.M{"_id": peginWatchCheckpointId},
+			bson.M{"$set": checkpoint},
+			options.UpdateOne().SetUpsert(true),
+		)
+		return nil, checkpointErr
+	})
 	return err
 }
 
