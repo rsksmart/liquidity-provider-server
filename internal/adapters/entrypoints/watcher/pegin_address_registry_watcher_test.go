@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/ethereum/go-ethereum/crypto"
 	watcherAdapter "github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
@@ -20,6 +21,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type pegInAddressRegistryWatcherFixture struct {
@@ -57,6 +59,7 @@ func newPegInWatcherFixture(
 			fixture.repository,
 			fixture.registry,
 			fixture.rskRpc,
+			crypto.Keccak256,
 			startBlock,
 			pageSize,
 			finalityDepth,
@@ -103,7 +106,7 @@ func (fixture *pegInAddressRegistryWatcherFixture) expectCatchUp(
 		fixture.repository.EXPECT().GetCheckpoint(mock.Anything).
 			Return(*expected.checkpoint, true, nil).Once()
 	}
-	root := chainRoots(previousRoot, expected.events)
+	root := foldRegistrations(fixture.t, previousRoot, expected.events)
 	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(expected.head, nil).Once()
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, expected.fromBlock, uint64Pointer(expected.toBlock)).
 		Return(expected.events, nil).Once()
@@ -116,7 +119,8 @@ func (fixture *pegInAddressRegistryWatcherFixture) expectCatchUp(
 	return saveCall
 }
 
-func chainRoots(previousRoot [32]byte, events []blockchain.AddressRegistered) [32]byte {
+func foldRegistrations(t *testing.T, previousRoot [32]byte, events []blockchain.AddressRegistered) [32]byte {
+	t.Helper()
 	order := make([]int, len(events))
 	for index := range order {
 		order[index] = index
@@ -128,8 +132,10 @@ func chainRoots(previousRoot [32]byte, events []blockchain.AddressRegistered) [3
 		return cmp.Compare(events[first].LogIndex, events[second].LogIndex)
 	})
 	root := previousRoot
-	for position, index := range order {
-		root = [32]byte{0xa0, byte(position + 1)}
+	for _, index := range order {
+		var err error
+		root, err = blockchain.FoldPegInAddressRegistryRoot(crypto.Keccak256, root, events[index].RskAddress)
+		require.NoError(t, err)
 		events[index].RegistrationRoot = root
 	}
 	return root
@@ -186,7 +192,7 @@ func TestPegInWatcher_ContinuesFromStoredCheckpoint(t *testing.T) {
 	fixture.expectCatchUp(catchUpExpectation{
 		checkpoint: &rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105},
 		head:       112,
-		fromBlock:  104,
+		fromBlock:  106,
 		toBlock:    108,
 	})
 
@@ -394,7 +400,7 @@ func TestPegInWatcher_RetriesPersistedDiscoveredEntry(t *testing.T) {
 	fixture.expectCatchUp(catchUpExpectation{
 		checkpoint: &rootstock.PegInWatchCheckpoint{Block: 105},
 		head:       108,
-		fromBlock:  104,
+		fromBlock:  106,
 		toBlock:    106,
 	})
 	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
@@ -435,7 +441,7 @@ func TestPegInWatcher_SuppressesRepeatedIdenticalEntryErrors(t *testing.T) {
 	fixture.expectCatchUp(catchUpExpectation{
 		checkpoint: &rootstock.PegInWatchCheckpoint{Block: 105},
 		head:       108,
-		fromBlock:  104,
+		fromBlock:  106,
 		toBlock:    106,
 	})
 	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
@@ -499,7 +505,7 @@ func TestPegInWatcher_RecordsUnencodablePayload(t *testing.T) {
 	fixture.expectCatchUp(catchUpExpectation{
 		checkpoint: &rootstock.PegInWatchCheckpoint{Block: 105},
 		head:       108,
-		fromBlock:  104,
+		fromBlock:  106,
 		toBlock:    106,
 	})
 	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
