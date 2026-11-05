@@ -19,8 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type registrationRootContextKey struct{}
-
 // mustPackWithEncoding ABI-encodes a payload of the given Solidity type followed by the uint8
 // encoding tag, which is the return shape of both registry address reads.
 func mustPackWithEncoding(t *testing.T, solidityType string, payload any, encoding uint8) []byte {
@@ -220,14 +218,12 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 	var root [32]byte
 	root[31] = 0x2b
 	t.Run("Success", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), registrationRootContextKey{}, "registration-root")
-		const blockNumber = uint64(778899)
 		contractMock.caller.EXPECT().CallContract(
-			ctx,
+			mock.Anything,
 			matchCallData(registryBinding.PackGetRegistrationRoot()),
-			new(big.Int).SetUint64(blockNumber),
+			mock.Anything,
 		).Return(mustPackBytes32(t, root), nil).Once()
-		result, err := registry.GetRegistrationRoot(ctx, blockNumber)
+		result, err := registry.GetRegistrationRoot()
 		require.NoError(t, err)
 		assert.Equal(t, root, result)
 		contractMock.caller.AssertExpectations(t)
@@ -238,18 +234,7 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 			matchCallData(registryBinding.PackGetRegistrationRoot()),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
-		result, err := registry.GetRegistrationRoot(context.Background(), 778899)
-		require.Error(t, err)
-		assert.Equal(t, [32]byte{}, result)
-		contractMock.caller.AssertExpectations(t)
-	})
-	t.Run("Error handling on decode fail", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(registryBinding.PackGetRegistrationRoot()),
-			mock.Anything,
-		).Return([]byte{0x01}, nil).Once()
-		result, err := registry.GetRegistrationRoot(context.Background(), 778899)
+		result, err := registry.GetRegistrationRoot()
 		require.Error(t, err)
 		assert.Equal(t, [32]byte{}, result)
 		contractMock.caller.AssertExpectations(t)

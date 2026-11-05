@@ -22,7 +22,6 @@ type Database struct {
 }
 
 func NewDatabaseRegistry(connection *mongo.Connection) *Database {
-	peginWatchRepository := mongo.NewPegInWatchMongoRepository(connection)
 	return &Database{
 		PeginRepository:             mongo.NewPeginMongoRepository(connection),
 		PegoutRepository:            mongo.NewPegoutMongoRepository(connection),
@@ -30,7 +29,7 @@ func NewDatabaseRegistry(connection *mongo.Connection) *Database {
 		PenalizedEventRepository:    mongo.NewPenalizedEventRepository(connection),
 		TrustedAccountRepository:    mongo.NewTrustedAccountRepository(connection),
 		BatchPegOutRepository:       mongo.NewBatchPegOutMongoRepository(connection),
-		PegInWatchRepository:        peginWatchRepository,
+		PegInWatchRepository:        mongo.NewPegInWatchMongoRepository(connection),
 		PegOutEscrowWatchRepository: mongo.NewPegOutEscrowWatchMongoRepository(connection),
 		Connection:                  connection,
 	}
