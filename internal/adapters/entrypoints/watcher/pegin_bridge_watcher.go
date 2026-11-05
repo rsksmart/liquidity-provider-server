@@ -8,19 +8,22 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	log "github.com/sirupsen/logrus"
 	"math/big"
 	"sync"
 )
 
+type RegisterPeginUseCase interface {
+	Run(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error
+}
+
 // PeginBridgeWatcher is a watcher that checks the state of the pegin quotes and registers
 // the pegin on the bridge when the conditions are met
 type PeginBridgeWatcher struct {
 	quotes                      map[string]quote.WatchedPeginQuote
 	quotesMutex                 sync.RWMutex
-	registerPeginUseCase        *pegin.RegisterPeginUseCase
+	registerPeginUseCase        RegisterPeginUseCase
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
 	contracts                   blockchain.RskContracts
 	rpc                         blockchain.Rpc
@@ -32,7 +35,7 @@ type PeginBridgeWatcher struct {
 }
 
 func NewPeginBridgeWatcher(
-	registerPeginUseCase *pegin.RegisterPeginUseCase,
+	registerPeginUseCase RegisterPeginUseCase,
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase,
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,

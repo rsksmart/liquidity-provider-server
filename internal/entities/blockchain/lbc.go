@@ -13,26 +13,6 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 )
 
-type RegisterPeginParams struct {
-	QuoteSignature        []byte
-	BitcoinRawTransaction []byte
-	PartialMerkleTree     []byte
-	BlockHeight           *big.Int
-	Quote                 quote.PeginQuote
-}
-
-func (params RegisterPeginParams) String() string {
-	return fmt.Sprintf(
-		"RegisterPeginParams { QuoteSignature: %s, BitcoinRawTransaction: %s, "+
-			"PartialMerkleTree: %s, BlockHeight: %v, Quote: %+v }",
-		hex.EncodeToString(params.QuoteSignature),
-		hex.EncodeToString(params.BitcoinRawTransaction),
-		hex.EncodeToString(params.PartialMerkleTree),
-		params.BlockHeight,
-		params.Quote,
-	)
-}
-
 type RefundPegoutParams struct {
 	QuoteHash          [32]byte
 	BtcRawTx           []byte
@@ -108,10 +88,6 @@ type PeginContract interface {
 	Pausable
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
-	HashPeginQuote(peginQuote quote.PeginQuote) (string, error)
-	HashPeginQuoteEIP712(peginQuote quote.PeginQuote) ([32]byte, error)
-	CallForUser(txConfig TransactionConfig, peginQuote quote.PeginQuote) (TransactionReceipt, error)
-	RegisterPegin(params RegisterPeginParams) (TransactionReceipt, error)
 	Withdraw(amount *entities.Wei) error
 }
 

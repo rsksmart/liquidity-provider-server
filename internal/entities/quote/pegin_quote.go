@@ -9,9 +9,8 @@ import (
 )
 
 const (
-	AcceptedPeginQuoteEventId     entities.EventId = "AcceptedPeginQuote"
-	CallForUserCompletedEventId   entities.EventId = "CallForUserCompleted"
-	RegisterPeginCompletedEventId entities.EventId = "RegisterPeginCompleted"
+	AcceptedPeginQuoteEventId   entities.EventId = "AcceptedPeginQuote"
+	CallForUserCompletedEventId entities.EventId = "CallForUserCompleted"
 )
 
 type PeginState string
@@ -39,7 +38,6 @@ type PeginQuoteRepository interface {
 	// DeleteQuotes deletes both regular and retained quotes
 	DeleteQuotes(ctx context.Context, quotes []string) (uint, error)
 	ListQuotesByDateRange(ctx context.Context, startDate, endDate time.Time, page, perPage int) ([]PeginQuoteWithRetained, int, error)
-	GetRetainedQuotesForAddress(ctx context.Context, address string, states ...PeginState) ([]RetainedPeginQuote, error)
 	GetQuotesWithRetainedByStateAndDate(ctx context.Context, states []PeginState, startDate, endDate time.Time) ([]PeginQuoteWithRetained, error)
 }
 
@@ -165,11 +163,5 @@ type CallForUserCompletedEvent struct {
 	PeginQuote    PeginQuote
 	RetainedQuote RetainedPeginQuote
 	CreationData  PeginCreationData
-	Error         error
-}
-
-type RegisterPeginCompletedEvent struct {
-	entities.Event
-	RetainedQuote RetainedPeginQuote
 	Error         error
 }

@@ -245,12 +245,8 @@ func assertHasCsrfMiddleware(t *testing.T, router *mux.Router, endpoint routes.E
 
 // nolint:funlen
 func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
-	acceptQuoteUseCase := &pegin.AcceptQuoteUseCase{}
-
 	registryMock.EXPECT().HealthUseCase().Return(&usecases.HealthUseCase{})
 	registryMock.EXPECT().GetProvidersUseCase().Return(&liquidity_provider.GetProvidersUseCase{})
-	registryMock.EXPECT().GetPeginQuoteUseCase().Return(&pegin.GetQuoteUseCase{})
-	registryMock.EXPECT().GetAcceptPeginQuoteUseCase().Return(acceptQuoteUseCase)
 	registryMock.EXPECT().GetPegoutQuoteUseCase().Return(&pegout.GetQuoteUseCase{})
 	registryMock.EXPECT().GetAcceptPegoutQuoteUseCase().Return(&pegout.AcceptQuoteUseCase{})
 	registryMock.EXPECT().GetUserDepositsUseCase().Return(&pegout.GetUserDepositsUseCase{})
@@ -286,7 +282,6 @@ func setupRegistryMock(registryMock *mocks.UseCaseRegistryMock) {
 	registryMock.EXPECT().AddTrustedAccountUseCase().Return(&liquidity_provider.AddTrustedAccountUseCase{})
 	registryMock.EXPECT().DeleteTrustedAccountUseCase().Return(&liquidity_provider.DeleteTrustedAccountUseCase{})
 	registryMock.EXPECT().RecommendedPegoutUseCase().Return(&pegout.RecommendedPegoutUseCase{})
-	registryMock.EXPECT().RecommendedPeginUseCase().Return(&pegin.RecommendedPeginUseCase{})
 	registryMock.EXPECT().GetLiquidityRatioUseCase().Return(&liquidity_provider.GetLiquidityRatioUseCase{})
 	registryMock.EXPECT().SetLiquidityRatioUseCase().Return(&liquidity_provider.SetLiquidityRatioUseCase{})
 }

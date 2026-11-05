@@ -398,33 +398,6 @@ func buildPeginListByDateRangePipeline(startDate, endDate time.Time, page, perPa
 	}
 }
 
-func (repo *peginMongoRepository) GetRetainedQuotesForAddress(ctx context.Context, address string, states ...quote.PeginState) ([]quote.RetainedPeginQuote, error) {
-	result := make([]quote.RetainedPeginQuote, 0)
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-
-	collection := repo.conn.Collection(RetainedPeginQuoteCollection)
-	filter := bson.D{
-		bson.E{Key: "owner_account_address", Value: address},
-		bson.E{Key: "state", Value: bson.D{
-			bson.E{Key: "$in", Value: states},
-		}},
-	}
-
-	rows, err := collection.Find(dbCtx, filter)
-	if err != nil {
-		return nil, err
-	}
-	if err = rows.All(ctx, &result); err != nil {
-		return nil, err
-	}
-	for i := range result {
-		result[i].FillZeroValues()
-	}
-	logDbInteraction(Read, result)
-	return result, nil
-}
-
 // GetQuotesWithRetainedByStateAndDate retrieves pegin quotes filtered by state and date range,
 // optionally joined with their retained data.
 //

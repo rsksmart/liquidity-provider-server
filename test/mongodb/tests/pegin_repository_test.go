@@ -258,36 +258,6 @@ func TestPegin_ListQuotesByDateRange(t *testing.T) {
 	assert.Len(t, results, 1)
 }
 
-func TestPegin_GetRetainedQuotesForAddress(t *testing.T) {
-	cleanCollections(t)
-	ctx := context.Background()
-
-	addr := "0x1234567890abcdef1234567890abcdef12345678"
-	otherAddr := "0xaaaa567890abcdef1234567890abcdef12345678"
-
-	h1 := utils.RandomHash()
-	h2 := utils.RandomHash()
-	h3 := utils.RandomHash()
-
-	r1 := utils.NewTestRetainedPeginQuote(h1, quote.PeginStateWaitingForDeposit)
-	r1.OwnerAccountAddress = addr
-	r2 := utils.NewTestRetainedPeginQuote(h2, quote.PeginStateCallForUserSucceeded)
-	r2.OwnerAccountAddress = addr
-	r3 := utils.NewTestRetainedPeginQuote(h3, quote.PeginStateWaitingForDeposit)
-	r3.OwnerAccountAddress = otherAddr
-
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, r1))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, r2))
-	require.NoError(t, peginRepo.InsertRetainedQuote(ctx, r3))
-
-	results, err := peginRepo.GetRetainedQuotesForAddress(ctx, addr, quote.PeginStateWaitingForDeposit, quote.PeginStateCallForUserSucceeded)
-	require.NoError(t, err)
-	assert.Len(t, results, 2)
-	for _, r := range results {
-		assert.Equal(t, addr, r.OwnerAccountAddress)
-	}
-}
-
 func TestPegin_GetQuotesWithRetainedByStateAndDate(t *testing.T) {
 	cleanCollections(t)
 	ctx := context.Background()

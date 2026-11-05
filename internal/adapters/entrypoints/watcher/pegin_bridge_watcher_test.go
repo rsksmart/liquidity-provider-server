@@ -9,13 +9,11 @@ import (
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
-	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -81,9 +79,8 @@ func TestPeginBridgeWatcher_Start_CfuCompleted(t *testing.T) {
 	eventBus := &mocks.EventBusMock{}
 	cfuChannel := make(chan entities.Event)
 	eventBus.On("Subscribe", quote.CallForUserCompletedEventId).Return((<-chan entities.Event)(cfuChannel))
-	appMutexes := environment.NewApplicationMutexes()
 	getUseCase := w.NewGetWatchedPeginQuoteUseCase(quoteRepository)
-	registerUseCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, appMutexes.RskWalletMutex())
+	registerUseCase := &mocks.RegisterPeginUseCaseMock{}
 	ticker := &mocks.TickerMock{}
 	ticker.EXPECT().C().Return(make(chan time.Time))
 	ticker.EXPECT().Stop().Return()
@@ -152,30 +149,15 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 	quoteRepository := &mocks.PeginQuoteRepositoryMock{}
 	quoteRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateCallForUserSucceeded).Return([]quote.RetainedPeginQuote{}, nil)
 	bridge := &mocks.BridgeMock{}
-	peginContract := &mocks.PeginContractMock{}
-	contracts := blockchain.RskContracts{Bridge: bridge, PegIn: peginContract}
-	peginContract.On("RegisterPegin", mock.Anything).Return(blockchain.TransactionReceipt{
-		TransactionHash:   test.AnyHash,
-		BlockHash:         "0xblock123",
-		BlockNumber:       uint64(1000),
-		From:              "0x1234",
-		To:                "0x5678",
-		CumulativeGasUsed: big.NewInt(21000),
-		GasUsed:           big.NewInt(21000),
-		Value:             entities.NewWei(0),
-		GasPrice:          entities.NewWei(1000000000),
-	}, nil)
-	peginContract.EXPECT().PausedStatus().Return(blockchain.PauseStatus{IsPaused: false, Reason: "", Since: 0}, nil)
+	contracts := blockchain.RskContracts{Bridge: bridge}
 
 	btcRpc := &mocks.BtcRpcMock{}
 	rpc := blockchain.Rpc{Btc: btcRpc}
 	eventBus := &mocks.EventBusMock{}
 	cfuChannel := make(chan entities.Event)
 	eventBus.On("Subscribe", quote.CallForUserCompletedEventId).Return((<-chan entities.Event)(cfuChannel))
-	eventBus.On("Publish", mock.Anything).Return()
-	appMutexes := environment.NewApplicationMutexes()
 	getUseCase := w.NewGetWatchedPeginQuoteUseCase(quoteRepository)
-	registerUseCase := pegin.NewRegisterPeginUseCase(contracts, quoteRepository, eventBus, rpc, appMutexes.RskWalletMutex())
+	registerUseCase := &mocks.RegisterPeginUseCaseMock{}
 	ticker := &mocks.TickerMock{}
 	tickerChannel := make(chan time.Time)
 	ticker.EXPECT().C().Return(tickerChannel)
@@ -188,6 +170,8 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 		bridge.Calls = []mock.Call{}
 		quoteRepository.ExpectedCalls = []*mock.Call{}
 		quoteRepository.Calls = []mock.Call{}
+		registerUseCase.ExpectedCalls = []*mock.Call{}
+		registerUseCase.Calls = []mock.Call{}
 	}
 
 	prepareErr := peginWatcher.Prepare(context.Background())
@@ -257,13 +241,13 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 				Hash:          userTx,
 				Confirmations: 10,
 			}, nil).Once()
-			quoteRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(nil, assert.AnError).Once()
+			registerUseCase.EXPECT().Run(mock.Anything, testRetainedQuote).Return(assert.AnError).Once()
 			tickerChannel <- time.Now()
 			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 				mt := newMockCollectT(collect)
 				btcRpc.AssertExpectations(mt)
 				bridge.AssertExpectations(mt)
-				quoteRepository.AssertExpectations(mt)
+				registerUseCase.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
 			watchedQuote, ok = peginWatcher.GetWatchedQuote(quoteHash)
 			assert.True(t, ok)
@@ -288,13 +272,13 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 				Hash:          test.AnyHash,
 				Confirmations: 10,
 			}, nil).Once()
-			quoteRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(nil, errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
+			registerUseCase.EXPECT().Run(mock.Anything, testRetainedQuote).Return(errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
 			tickerChannel <- time.Now()
 			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 				mt := newMockCollectT(collect)
 				btcRpc.AssertExpectations(mt)
 				bridge.AssertExpectations(mt)
-				quoteRepository.AssertExpectations(mt)
+				registerUseCase.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
 			watchedQuote, ok = peginWatcher.GetWatchedQuote(quoteHash)
 			assert.False(t, ok)
@@ -315,23 +299,19 @@ func TestPeginBridgeWatcher_Start_BlockchainCheck(t *testing.T) {
 				PeginQuote:    testPeginQuote,
 				RetainedQuote: testRetainedQuote,
 			}, watchedQuote)
-			bridge.On("GetRequiredTxConfirmations").Return(uint64(10)).Twice()
+			bridge.On("GetRequiredTxConfirmations").Return(uint64(10)).Once()
 			btcRpc.On("GetHeight").Return(big.NewInt(14), nil).Once()
 			btcRpc.On("GetTransactionInfo", testRetainedQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{
 				Hash:          userTx,
 				Confirmations: 10,
-			}, nil).Twice()
-			btcRpc.On("GetRawTransaction", mock.Anything).Return([]byte{0x01}, nil).Once()
-			btcRpc.On("GetPartialMerkleTree", mock.Anything).Return([]byte{0x01}, nil).Once()
-			btcRpc.On("GetTransactionBlockInfo", mock.Anything).Return(blockchain.BitcoinBlockInformation{}, nil).Once()
-			quoteRepository.EXPECT().GetQuote(mock.Anything, quoteHash).Return(&testPeginQuote, nil).Once()
-			quoteRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
+			}, nil).Once()
+			registerUseCase.EXPECT().Run(mock.Anything, testRetainedQuote).Return(nil).Once()
 			tickerChannel <- time.Now()
 			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 				mt := newMockCollectT(collect)
 				btcRpc.AssertExpectations(mt)
 				bridge.AssertExpectations(mt)
-				quoteRepository.AssertExpectations(mt)
+				registerUseCase.AssertExpectations(mt)
 			}, time.Second, 10*time.Millisecond)
 			watchedQuote, ok = peginWatcher.GetWatchedQuote(quoteHash)
 			assert.False(t, ok)

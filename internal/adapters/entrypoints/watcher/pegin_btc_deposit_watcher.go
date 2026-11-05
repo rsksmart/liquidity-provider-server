@@ -16,12 +16,16 @@ import (
 	"sync"
 )
 
+type CallForUserUseCase interface {
+	Run(ctx context.Context, retainedQuote quote.RetainedPeginQuote) error
+}
+
 type PeginDepositAddressWatcher struct {
 	quotes                      map[string]quote.WatchedPeginQuote
 	quotesMutex                 sync.RWMutex
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
 	updatePeginDepositUseCase   *w.UpdatePeginDepositUseCase
-	callForUserUseCase          *pegin.CallForUserUseCase
+	callForUserUseCase          CallForUserUseCase
 	expiredUseCase              *pegin.ExpiredPeginQuoteUseCase
 	btcWallet                   blockchain.BitcoinWallet
 	rpc                         blockchain.Rpc
@@ -33,14 +37,14 @@ type PeginDepositAddressWatcher struct {
 }
 
 type PeginDepositAddressWatcherUseCases struct {
-	callForUserUseCase          *pegin.CallForUserUseCase
+	callForUserUseCase          CallForUserUseCase
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase
 	updatePeginDepositUseCase   *w.UpdatePeginDepositUseCase
 	expiredUseCase              *pegin.ExpiredPeginQuoteUseCase
 }
 
 func NewPeginDepositAddressWatcherUseCases(
-	callForUserUseCase *pegin.CallForUserUseCase,
+	callForUserUseCase CallForUserUseCase,
 	getWatchedPeginQuoteUseCase *w.GetWatchedPeginQuoteUseCase,
 	updatePeginDepositUseCase *w.UpdatePeginDepositUseCase,
 	expiredUseCase *pegin.ExpiredPeginQuoteUseCase,

@@ -201,9 +201,7 @@ func (app *Application) prepareWatchers(ctx context.Context) ([]watcher.Watcher,
 
 func (app *Application) enabledWatchers() []watcher.Watcher {
 	watchers := []watcher.Watcher{
-		app.watcherRegistry.PeginDepositAddressWatcher,
 		app.watcherRegistry.PegInAddressRegistryWatcher,
-		app.watcherRegistry.PeginBridgeWatcher,
 		app.watcherRegistry.PegoutRskDepositWatcher,
 		app.watcherRegistry.PegoutBtcTransferWatcher,
 		app.watcherRegistry.LiquidityCheckWatcher,

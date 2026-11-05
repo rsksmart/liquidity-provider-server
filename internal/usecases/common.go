@@ -23,9 +23,7 @@ type UseCaseId string
 const EthereumSignedMessagePrefix = "\x19Ethereum Signed Message:\n32"
 
 const (
-	GetPeginQuoteId                      UseCaseId = "GetPeginQuote"
 	GetPegoutQuoteId                     UseCaseId = "GetPegoutQuote"
-	AcceptPeginQuoteId                   UseCaseId = "AcceptPeginQuote"
 	AcceptPegoutQuoteId                  UseCaseId = "AcceptPegoutQuote"
 	ProviderDetailId                     UseCaseId = "ProviderDetail"
 	GetProvidersId                       UseCaseId = "GetProviders"
@@ -38,8 +36,6 @@ const (
 	AddPegoutCollateralId                UseCaseId = "AddPegoutCollateral"
 	WithdrawCollateralId                 UseCaseId = "WithdrawCollateral"
 	WithdrawPegoutCollateralId           UseCaseId = "WithdrawPegoutCollateral"
-	CallForUserId                        UseCaseId = "CallForUser"
-	RegisterPeginId                      UseCaseId = "RegisterPegin"
 	SendPegoutId                         UseCaseId = "SendPegout"
 	ClaimPegoutId                        UseCaseId = "ClaimPegout"
 	RefundPegoutId                       UseCaseId = "RefundPegout"
@@ -81,7 +77,6 @@ const (
 	EclipseCheckId                       UseCaseId = "EclipseCheck"
 	UpdateBtcReleaseId                   UseCaseId = "UpdateBtcRelease"
 	RecommendedPegoutId                  UseCaseId = "RecommendedPegout"
-	RecommendedPeginId                   UseCaseId = "RecommendedPegin"
 	TransferExcessToColdWalletId         UseCaseId = "TransferExcessToColdWallet"
 	CheckColdWalletAddressChangeId       UseCaseId = "CheckColdWalletAddressChange"
 	LowLiquidityAlertId                  UseCaseId = "LowLiquidityAlert"

@@ -81,7 +81,7 @@ func TestRskClient_Shutdown(t *testing.T) {
 	clientBindingMock.AssertCalled(t, "Close")
 }
 
-// Since the function is private, it will be tested through HashPeginQuote
+// Since the function is private, it will be tested through GetBalance
 func TestRskRetry(t *testing.T) {
 	const retries = 3
 	contractMock := createBoundContractMock()
@@ -99,11 +99,11 @@ func TestRskRetry(t *testing.T) {
 	t.Run("Error on every attempt", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(peginBinding.PackHashPegInQuote(parsedPeginQuote)),
+			matchCallData(peginBinding.PackGetBalance(parsedAddress)),
 			mock.Anything,
 		).Return(nil, assert.AnError).Times(retries)
 		start := time.Now()
-		result, err := contract.HashPeginQuote(peginQuote)
+		result, err := contract.GetBalance(parsedAddress.String())
 		end := time.Now()
 		assert.WithinRange(t, end, start, start.Add(3*time.Second).Add(500*time.Millisecond))
 		require.Error(t, err)
@@ -113,15 +113,15 @@ func TestRskRetry(t *testing.T) {
 	t.Run("Error first attempt", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(peginBinding.PackHashPegInQuote(parsedPeginQuote)),
+			matchCallData(peginBinding.PackGetBalance(parsedAddress)),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(peginBinding.PackHashPegInQuote(parsedPeginQuote)),
+			matchCallData(peginBinding.PackGetBalance(parsedAddress)),
 			mock.Anything,
-		).Return(mustPackBytes32(t, [32]byte{1, 2, 3}), nil).Once()
-		result, err := contract.HashPeginQuote(peginQuote)
+		).Return(mustPackUint256(t, big.NewInt(600)), nil).Once()
+		result, err := contract.GetBalance(parsedAddress.String())
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
 		contractMock.caller.AssertExpectations(t)
