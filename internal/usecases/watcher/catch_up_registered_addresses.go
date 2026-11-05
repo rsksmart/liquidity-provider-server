@@ -3,6 +3,7 @@ package watcher
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -10,8 +11,9 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	log "github.com/sirupsen/logrus"
 )
+
+var RegistryRootMismatchError = errors.New("PegIn address registry root mismatch")
 
 type CatchUpRegisteredAddressesUseCase struct {
 	repository    rootstock.PegInWatchRepository
@@ -108,7 +110,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) verifyPage(
 			return [32]byte{}, nil, fmt.Errorf("fold AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
 		}
 		if root != event.RegistrationRoot {
-			log.Warn(registryRootMismatch(event.BlockNumber, root, "event", event.RegistrationRoot))
+			return [32]byte{}, nil, registryRootMismatch(event.BlockNumber, root, "event", event.RegistrationRoot)
 		}
 		watches = append(watches, rootstock.NewPegInWatch(
 			event.TxHash,
@@ -125,7 +127,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) verifyPage(
 		return [32]byte{}, nil, fmt.Errorf("get PegIn address registry root at block %d: %w", toBlock, err)
 	}
 	if root != contractRoot {
-		log.Warn(registryRootMismatch(toBlock, root, "contract", contractRoot))
+		return [32]byte{}, nil, registryRootMismatch(toBlock, root, "contract", contractRoot)
 	}
 	return root, watches, nil
 }
@@ -153,9 +155,10 @@ func SortAddressRegisteredEvents(events []blockchain.AddressRegistered) {
 	})
 }
 
-func registryRootMismatch(block uint64, localRoot [32]byte, source string, expectedRoot [32]byte) string {
-	return fmt.Sprintf(
-		"PegIn address registry root mismatch at block %d: local root 0x%x, %s root 0x%x",
+func registryRootMismatch(block uint64, localRoot [32]byte, source string, expectedRoot [32]byte) error {
+	return fmt.Errorf(
+		"%w at block %d: local root 0x%x, %s root 0x%x",
+		RegistryRootMismatchError,
 		block,
 		localRoot,
 		source,
