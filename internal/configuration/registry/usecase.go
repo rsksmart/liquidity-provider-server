@@ -82,8 +82,7 @@ type UseCaseRegistry struct {
 	rskReorgCheckUseCase                     *watcher.NodeReorgCheckUseCase
 	nodePeerCheckUseCase                     *watcher.NodePeerCheckUseCase
 	getWatchedRegisteredAddressesUseCase     *watcher.GetWatchedRegisteredAddressesUseCase
-	getRegistryWatchCursorUseCase            *watcher.GetRegistryWatchCursorUseCase
-	setRegistryWatchCursorUseCase            *watcher.SetRegistryWatchCursorUseCase
+	catchUpRegisteredAddressesUseCase        *watcher.CatchUpRegisteredAddressesUseCase
 	discoverRegisteredAddressUseCase         *watcher.DiscoverRegisteredAddressUseCase
 	markRegisteredAddressImportedUseCase     *watcher.MarkRegisteredAddressImportedUseCase
 	recordRegisteredAddressWatchErrorUseCase *watcher.RecordRegisteredAddressWatchErrorUseCase
@@ -101,6 +100,7 @@ func NewUseCaseRegistry(
 	mutexes entities.ApplicationMutexes,
 ) *UseCaseRegistry {
 	env.ColdWallet.FillWithDefaults()
+	peginEnv := env.Pegin.FillWithDefaults()
 
 	getLiquidityRatio := liquidity_provider.NewGetLiquidityRatioUseCase(
 		lpRegistry.LiquidityProvider,
@@ -121,11 +121,13 @@ func NewUseCaseRegistry(
 		getWatchedRegisteredAddressesUseCase: watcher.NewGetWatchedRegisteredAddressesUseCase(
 			databaseRegistry.PegInWatchRepository,
 		),
-		getRegistryWatchCursorUseCase: watcher.NewGetRegistryWatchCursorUseCase(
+		catchUpRegisteredAddressesUseCase: watcher.NewCatchUpRegisteredAddressesUseCase(
 			databaseRegistry.PegInWatchRepository,
-		),
-		setRegistryWatchCursorUseCase: watcher.NewSetRegistryWatchCursorUseCase(
-			databaseRegistry.PegInWatchRepository,
+			rskRegistry.Contracts.PegInAddressRegistry,
+			messaging.Rpc.Rsk,
+			peginEnv.AddressRegistryWatcherStartBlock,
+			peginEnv.AddressRegistryWatcherPageSize,
+			env.Rsk.FillWithDefaults().MaxReorgDepth,
 		),
 		discoverRegisteredAddressUseCase: watcher.NewDiscoverRegisteredAddressUseCase(
 			databaseRegistry.PegInWatchRepository,

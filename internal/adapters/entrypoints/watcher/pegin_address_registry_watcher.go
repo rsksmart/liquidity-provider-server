@@ -2,9 +2,9 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
-	"sort"
 	"sync"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -16,8 +16,7 @@ import (
 
 type PegInWatcherUseCases struct {
 	getWatchedUseCase   *w.GetWatchedRegisteredAddressesUseCase
-	getCursorUseCase    *w.GetRegistryWatchCursorUseCase
-	setCursorUseCase    *w.SetRegistryWatchCursorUseCase
+	catchUpUseCase      *w.CatchUpRegisteredAddressesUseCase
 	discoverUseCase     *w.DiscoverRegisteredAddressUseCase
 	markImportedUseCase *w.MarkRegisteredAddressImportedUseCase
 	recordErrorUseCase  *w.RecordRegisteredAddressWatchErrorUseCase
@@ -25,16 +24,14 @@ type PegInWatcherUseCases struct {
 
 func NewPegInWatcherUseCases(
 	getWatchedUseCase *w.GetWatchedRegisteredAddressesUseCase,
-	getCursorUseCase *w.GetRegistryWatchCursorUseCase,
-	setCursorUseCase *w.SetRegistryWatchCursorUseCase,
+	catchUpUseCase *w.CatchUpRegisteredAddressesUseCase,
 	discoverUseCase *w.DiscoverRegisteredAddressUseCase,
 	markImportedUseCase *w.MarkRegisteredAddressImportedUseCase,
 	recordErrorUseCase *w.RecordRegisteredAddressWatchErrorUseCase,
 ) *PegInWatcherUseCases {
 	return &PegInWatcherUseCases{
 		getWatchedUseCase:   getWatchedUseCase,
-		getCursorUseCase:    getCursorUseCase,
-		setCursorUseCase:    setCursorUseCase,
+		catchUpUseCase:      catchUpUseCase,
 		discoverUseCase:     discoverUseCase,
 		markImportedUseCase: markImportedUseCase,
 		recordErrorUseCase:  recordErrorUseCase,
@@ -43,53 +40,34 @@ func NewPegInWatcherUseCases(
 
 type PegInWatcher struct {
 	getWatchedUseCase   *w.GetWatchedRegisteredAddressesUseCase
-	getCursorUseCase    *w.GetRegistryWatchCursorUseCase
-	setCursorUseCase    *w.SetRegistryWatchCursorUseCase
+	catchUpUseCase      *w.CatchUpRegisteredAddressesUseCase
 	discoverUseCase     *w.DiscoverRegisteredAddressUseCase
 	markImportedUseCase *w.MarkRegisteredAddressImportedUseCase
 	recordErrorUseCase  *w.RecordRegisteredAddressWatchErrorUseCase
-	registry            blockchain.PegInAddressRegistryContract
-	rskRpc              blockchain.RootstockRpcServer
 	btcNetwork          blockchain.BitcoinNetwork
 	wallet              blockchain.BitcoinWallet
 	ticker              utils.Ticker
 	watcherStopChannel  chan struct{}
-	startBlock          uint64
-	pageSize            uint64
-	finalityDepth       uint64
-	lastScannedBlock    uint64
-	hasCursor           bool
 	watches             []rootstock.PegInWatch
 	stateMutex          sync.RWMutex
 }
 
 func NewPegInWatcher(
 	useCases *PegInWatcherUseCases,
-	registry blockchain.PegInAddressRegistryContract,
-	rskRpc blockchain.RootstockRpcServer,
 	btcNetwork blockchain.BitcoinNetwork,
 	wallet blockchain.BitcoinWallet,
 	ticker utils.Ticker,
-	startBlock uint64,
-	pageSize uint64,
-	finalityDepth uint64,
 ) *PegInWatcher {
 	return &PegInWatcher{
 		getWatchedUseCase:   useCases.getWatchedUseCase,
-		getCursorUseCase:    useCases.getCursorUseCase,
-		setCursorUseCase:    useCases.setCursorUseCase,
+		catchUpUseCase:      useCases.catchUpUseCase,
 		discoverUseCase:     useCases.discoverUseCase,
 		markImportedUseCase: useCases.markImportedUseCase,
 		recordErrorUseCase:  useCases.recordErrorUseCase,
-		registry:            registry,
-		rskRpc:              rskRpc,
 		btcNetwork:          btcNetwork,
 		wallet:              wallet,
 		ticker:              ticker,
 		watcherStopChannel:  make(chan struct{}, 1),
-		startBlock:          startBlock,
-		pageSize:            pageSize,
-		finalityDepth:       finalityDepth,
 	}
 }
 
@@ -98,16 +76,10 @@ func (watcher *PegInWatcher) Prepare(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("load PegIn address registry watch set: %w", err)
 	}
-	lastScannedBlock, found, err := watcher.getCursorUseCase.Run(ctx)
-	if err != nil {
-		return fmt.Errorf("load PegIn address registry scan cursor: %w", err)
-	}
 
 	watcher.stateMutex.Lock()
 	defer watcher.stateMutex.Unlock()
 	watcher.watches = watches
-	watcher.lastScannedBlock = lastScannedBlock
-	watcher.hasCursor = found
 	return nil
 }
 
@@ -134,68 +106,15 @@ func (watcher *PegInWatcher) Shutdown(closeChannel chan<- bool) {
 }
 
 func (watcher *PegInWatcher) scan(ctx context.Context) error {
-	pending := []rootstock.PegInWatch{}
-	pending, err := watcher.retryDiscoveredWatches(ctx, pending)
-	if err != nil {
-		return err
+	result, catchUpErr := watcher.catchUpUseCase.Run(ctx)
+	for _, watch := range result.Watches {
+		watcher.rememberWatch(watch)
 	}
-	head, err := watcher.rskRpc.GetHeight(ctx)
-	if err != nil {
-		return fmt.Errorf("get RSK height: %w", err)
+	pending, err := watcher.retryDiscoveredWatches(ctx, []rootstock.PegInWatch{})
+	if err == nil {
+		err = watcher.rescanPendingImports(ctx, pending)
 	}
-	if head < watcher.finalityDepth {
-		return watcher.rescanPendingImports(ctx, pending)
-	}
-
-	watcher.stateMutex.RLock()
-	fromBlock, toBlock := watcher.nextRange(head - watcher.finalityDepth)
-	watcher.stateMutex.RUnlock()
-	if fromBlock > toBlock {
-		return watcher.rescanPendingImports(ctx, pending)
-	}
-
-	events, err := watcher.registry.GetAddressRegisteredEvents(ctx, fromBlock, &toBlock)
-	if err != nil {
-		return fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err)
-	}
-	pending, err = watcher.processEvents(ctx, events, pending)
-	if err != nil {
-		return err
-	}
-	if err = watcher.rescanPendingImports(ctx, pending); err != nil {
-		return err
-	}
-	if err = watcher.setCursorUseCase.Run(ctx, toBlock); err != nil {
-		return fmt.Errorf("persist PegIn address registry scan cursor: %w", err)
-	}
-
-	watcher.stateMutex.Lock()
-	watcher.lastScannedBlock = toBlock
-	watcher.hasCursor = true
-	watcher.stateMutex.Unlock()
-	return nil
-}
-
-func (watcher *PegInWatcher) processEvents(
-	ctx context.Context,
-	events []blockchain.AddressRegistered,
-	pending []rootstock.PegInWatch,
-) ([]rootstock.PegInWatch, error) {
-	sort.Slice(events, func(firstIndex, secondIndex int) bool {
-		if events[firstIndex].BlockNumber == events[secondIndex].BlockNumber {
-			return events[firstIndex].LogIndex < events[secondIndex].LogIndex
-		}
-		return events[firstIndex].BlockNumber < events[secondIndex].BlockNumber
-	})
-
-	var err error
-	for _, event := range events {
-		pending, err = watcher.discoverEvent(ctx, event, pending)
-		if err != nil {
-			return pending, err
-		}
-	}
-	return pending, nil
+	return errors.Join(catchUpErr, err)
 }
 
 func (watcher *PegInWatcher) retryDiscoveredWatches(
@@ -291,27 +210,4 @@ func (watcher *PegInWatcher) rememberWatch(watch rootstock.PegInWatch) {
 		}
 	}
 	watcher.watches = append(watcher.watches, watch)
-}
-
-func (watcher *PegInWatcher) nextRange(finalizedHead uint64) (uint64, uint64) {
-	// This is the first scan
-	if !watcher.hasCursor {
-		if watcher.startBlock > finalizedHead ||
-			watcher.pageSize-1 > finalizedHead-watcher.startBlock {
-			return watcher.startBlock, finalizedHead
-		}
-		return watcher.startBlock, watcher.startBlock + watcher.pageSize - 1
-	}
-
-	fromBlock := watcher.startBlock
-	if watcher.lastScannedBlock+1 > watcher.finalityDepth {
-		fromBlock = max(watcher.startBlock, watcher.lastScannedBlock+1-watcher.finalityDepth)
-	}
-	if fromBlock > finalizedHead {
-		return fromBlock, finalizedHead
-	}
-	if watcher.lastScannedBlock >= finalizedHead || watcher.pageSize > finalizedHead-watcher.lastScannedBlock {
-		return fromBlock, finalizedHead
-	}
-	return fromBlock, watcher.lastScannedBlock + watcher.pageSize
 }

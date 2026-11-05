@@ -13,17 +13,11 @@ import (
 const (
 	PegInWatchCollection           = "peginWatch"
 	PegInWatchCheckpointCollection = "peginWatchCheckpoint"
-	peginWatchCursorId             = "scanCursor"
 	peginWatchCheckpointId         = "verified"
 )
 
 type peginWatchMongoRepository struct {
 	conn *Connection
-}
-
-type peginWatchCursor struct {
-	Id               string `bson:"_id"`
-	LastScannedBlock uint64 `bson:"last_scanned_block"`
 }
 
 func NewPegInWatchMongoRepository(conn *Connection) rootstock.PegInWatchRepository {
@@ -113,41 +107,6 @@ func (repo *peginWatchMongoRepository) Update(
 		return errors.New("pegin watch not found")
 	}
 	return nil
-}
-
-func (repo *peginWatchMongoRepository) GetCursor(
-	ctx context.Context,
-) (uint64, bool, error) {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-
-	var cursor peginWatchCursor
-	err := repo.conn.Collection(PegInWatchCollection).
-		FindOne(dbCtx, bson.M{"_id": peginWatchCursorId}).
-		Decode(&cursor)
-	if errors.Is(err, mongoDb.ErrNoDocuments) {
-		return 0, false, nil
-	}
-	if err != nil {
-		return 0, false, err
-	}
-	return cursor.LastScannedBlock, true, nil
-}
-
-func (repo *peginWatchMongoRepository) SetCursor(
-	ctx context.Context,
-	lastScannedBlock uint64,
-) error {
-	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
-	defer cancel()
-
-	_, err := repo.conn.Collection(PegInWatchCollection).UpdateOne(
-		dbCtx,
-		bson.M{"_id": peginWatchCursorId},
-		bson.M{"$set": bson.M{"last_scanned_block": lastScannedBlock}},
-		options.UpdateOne().SetUpsert(true),
-	)
-	return err
 }
 
 func (repo *peginWatchMongoRepository) GetCheckpoint(

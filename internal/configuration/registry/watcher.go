@@ -46,7 +46,7 @@ func NewWatcherRegistry(
 	timeouts environment.ApplicationTimeouts,
 ) *WatcherRegistry {
 	appMetrics := monitoring.NewMetrics(prometheus.DefaultRegisterer)
-	peginWatcher := newPegInWatcher(env, useCaseRegistry, rskRegistry, btcRegistry, messaging, tickers)
+	peginWatcher := newPegInWatcher(useCaseRegistry, btcRegistry, messaging, tickers)
 
 	return &WatcherRegistry{
 		PegInAddressRegistryWatcher: peginWatcher,
@@ -171,30 +171,21 @@ func NewWatcherRegistry(
 }
 
 func newPegInWatcher(
-	env environment.Environment,
 	useCaseRegistry *UseCaseRegistry,
-	rskRegistry *Rootstock,
 	btcRegistry *Bitcoin,
 	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 ) *watcher.PegInWatcher {
-	pegin := env.Pegin.FillWithDefaults()
 	return watcher.NewPegInWatcher(
 		watcher.NewPegInWatcherUseCases(
 			useCaseRegistry.getWatchedRegisteredAddressesUseCase,
-			useCaseRegistry.getRegistryWatchCursorUseCase,
-			useCaseRegistry.setRegistryWatchCursorUseCase,
+			useCaseRegistry.catchUpRegisteredAddressesUseCase,
 			useCaseRegistry.discoverRegisteredAddressUseCase,
 			useCaseRegistry.markRegisteredAddressImportedUseCase,
 			useCaseRegistry.recordRegisteredAddressWatchErrorUseCase,
 		),
-		rskRegistry.Contracts.PegInAddressRegistry,
-		messaging.Rpc.Rsk,
 		messaging.Rpc.Btc,
 		btcRegistry.MonitoringWallet,
 		tickers.PegInAddressRegistryWatcherTicker,
-		pegin.AddressRegistryWatcherStartBlock,
-		pegin.AddressRegistryWatcherPageSize,
-		env.Rsk.FillWithDefaults().MaxReorgDepth,
 	)
 }
