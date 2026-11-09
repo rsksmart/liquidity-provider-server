@@ -86,6 +86,7 @@ const (
 	NodeReorgAlertId                    UseCaseId = "NodeReorgAlert"
 	NodePeerAlertId                     UseCaseId = "NodePeerAlert"
 	GetTrustedAccountId                 UseCaseId = "GetTrustedAccountUseCase"
+	ClaimPegInId                        UseCaseId = "ClaimPegIn"
 )
 
 var (
