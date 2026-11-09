@@ -255,7 +255,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		require.ErrorIs(t, err, watcher.RegistryOldBlockReadError)
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "old block 150")
-		assertCatchUpResult(t, expectedCatchUpResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("changes no data when the node cannot read a searched block", func(t *testing.T) {
@@ -270,7 +270,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 
 		require.ErrorIs(t, err, watcher.RegistryOldBlockReadError)
 		assert.Contains(t, err.Error(), "old block 125")
-		assertCatchUpResult(t, expectedCatchUpResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("changes no data when the stored root read fails", func(t *testing.T) {
@@ -283,7 +283,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.ErrorIs(t, err, assert.AnError)
-		assertCatchUpResult(t, expectedCatchUpResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("changes no data when the stored root before the first bad block cannot be read", func(t *testing.T) {
@@ -313,7 +313,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Contains(t, err.Error(), "stored PegIn watch root at block 100")
-		assertCatchUpResult(t, expectedCatchUpResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stale150}, result)
 		assert.Equal(t, 2, readsOfBlock100)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
@@ -325,7 +325,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.ErrorIs(t, err, assert.AnError)
-		assertCatchUpResult(t, expectedCatchUpResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("returns the replace error", func(t *testing.T) {
@@ -341,7 +341,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.ErrorIs(t, err, assert.AnError)
-		assertCatchUpResult(t, expectedCatchUpResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 	})
 }
 
