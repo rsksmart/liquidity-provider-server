@@ -4,6 +4,7 @@ package mongodb_test
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -41,6 +42,7 @@ func TestBootstrap_IndexesCreated(t *testing.T) {
 		{collection: mongo.PegoutQuoteCollection, field: "hash", unique: false},
 		{collection: mongo.PegInWatchCollection, field: "rsk_address", unique: true},
 		{collection: mongo.PegInWatchCollection, field: "state", unique: false},
+		{collection: mongo.PegInClaimCollection, field: "state", unique: false},
 	}
 
 	for _, expected := range expectedIndexes {
@@ -77,6 +79,7 @@ func TestBootstrap_RegistryConstruction(t *testing.T) {
 	assert.NotNil(t, db.PenalizedEventRepository)
 	assert.NotNil(t, db.BatchPegOutRepository)
 	assert.NotNil(t, db.PegInWatchRepository)
+	assert.NotNil(t, db.PegInClaimRepository)
 	assert.NotNil(t, db.Connection)
 }
 
@@ -118,6 +121,33 @@ func TestBootstrap_UniqueIndex_TrustedAccounts(t *testing.T) {
 		CountDocuments(ctx, bson.M{"address": "0xduplicateaddress"})
 	require.NoError(t, countErr)
 	assert.Equal(t, int64(1), count)
+}
+
+func TestBootstrap_UniqueIndex_PegInClaims(t *testing.T) {
+	ctx := context.Background()
+	coll := rawCollection(mongo.PegInClaimCollection)
+	rskAddress := fmt.Sprintf("0xbootstrapclaim-%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, err := coll.DeleteMany(ctx, bson.M{"rsk_address": rskAddress})
+		assert.NoError(t, err)
+	})
+
+	doc := map[string]any{"rsk_address": rskAddress, "deposit_txid": "duplicate_deposit", "state": "submitting"}
+	_, err := coll.InsertOne(ctx, doc)
+	require.NoError(t, err)
+
+	_, err = coll.InsertOne(ctx, doc)
+	assert.Error(t, err, "second insert with same rsk_address and deposit_txid should fail due to unique index")
+	require.True(t, mongodrv.IsDuplicateKeyError(err), "expected duplicate key error, got: %v", err)
+
+	_, err = coll.InsertOne(ctx, map[string]any{"rsk_address": rskAddress, "deposit_txid": "other_deposit", "state": "submitting"})
+	require.NoError(t, err, "the same rsk_address with another deposit_txid is a different claim")
+
+	count, countErr := mongoClient.Database(testDbName).
+		Collection(mongo.PegInClaimCollection).
+		CountDocuments(ctx, bson.M{"rsk_address": rskAddress})
+	require.NoError(t, countErr)
+	assert.Equal(t, int64(2), count)
 }
 
 func TestBootstrap_UniqueIndex_BatchPegOutEvents(t *testing.T) {

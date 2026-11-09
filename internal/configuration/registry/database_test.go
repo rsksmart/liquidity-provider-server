@@ -18,6 +18,7 @@ func TestNewDatabaseRegistry(t *testing.T) {
 		assert.NotNil(t, dbRegistry.PeginRepository)
 		assert.NotNil(t, dbRegistry.PegoutRepository)
 		assert.NotNil(t, dbRegistry.LiquidityProviderRepository)
+		assert.NotNil(t, dbRegistry.PegInClaimRepository)
 		assert.Equal(t, conn, dbRegistry.Connection)
 	})
 }
