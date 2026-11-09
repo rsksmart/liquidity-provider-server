@@ -24,15 +24,9 @@ var (
 	_ = abi.ConvertType
 )
 
-// IPegInAddressRegistryRegistration is an auto generated low-level Go binding around an user-defined struct.
-type IPegInAddressRegistryRegistration struct {
-	Registrant        common.Address
-	RegistrationBlock *big.Int
-}
-
 // PegInAddressRegistryContractMetaData contains all meta data concerning the PegInAddressRegistryContract contract.
 var PegInAddressRegistryContractMetaData = bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"getPegInAddress\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"payload\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"encoding\",\"type\":\"uint8\",\"internalType\":\"enumIPegInAddressRegistry.Encoding\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegInAddresses\",\"inputs\":[{\"name\":\"rskAddrs\",\"type\":\"address[]\",\"internalType\":\"address[]\"}],\"outputs\":[{\"name\":\"payloads\",\"type\":\"bytes[]\",\"internalType\":\"bytes[]\"},{\"name\":\"encoding\",\"type\":\"uint8\",\"internalType\":\"enumIPegInAddressRegistry.Encoding\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRegistration\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"registration\",\"type\":\"tuple\",\"internalType\":\"structIPegInAddressRegistry.Registration\",\"components\":[{\"name\":\"registrant\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"registrationBlock\",\"type\":\"uint96\",\"internalType\":\"uint96\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRegistrationRoot\",\"inputs\":[],\"outputs\":[{\"name\":\"registrationRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isRegistered\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"registered\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"registerAddress\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"btcTxSerialized\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcBlockHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"merkleBranchPath\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"AddressRegistered\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"registrant\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"registrationRoot\",\"type\":\"bytes32\",\"indexed\":false,\"internalType\":\"bytes32\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AddressAlreadyRegistered\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"DepositBelowMinimum\",\"inputs\":[{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minimum\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"DepositNotConfirmed\",\"inputs\":[{\"name\":\"btcTxHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"DepositOutputNotFound\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}]}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"getMinDepositSats\",\"inputs\":[],\"outputs\":[{\"name\":\"minDepositSats\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegInAddress\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"payload\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"encoding\",\"type\":\"uint8\",\"internalType\":\"enumIPegInAddressRegistry.Encoding\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPegInAddresses\",\"inputs\":[{\"name\":\"rskAddrs\",\"type\":\"address[]\",\"internalType\":\"address[]\"}],\"outputs\":[{\"name\":\"payloads\",\"type\":\"bytes[]\",\"internalType\":\"bytes[]\"},{\"name\":\"encoding\",\"type\":\"uint8\",\"internalType\":\"enumIPegInAddressRegistry.Encoding\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRegistrant\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"registrant\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRegistrationBlock\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"registrationBlock\",\"type\":\"uint96\",\"internalType\":\"uint96\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getRegistrationRoot\",\"inputs\":[],\"outputs\":[{\"name\":\"registrationRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"isRegistered\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[{\"name\":\"registered\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"registerAddress\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"btcTxSerialized\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"btcBlockHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"merkleBranchPath\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"merkleBranchHashes\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"AddressRegistered\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"registrant\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"registrationRoot\",\"type\":\"bytes32\",\"indexed\":false,\"internalType\":\"bytes32\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"AddressAlreadyRegistered\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"BatchTooLarge\",\"inputs\":[{\"name\":\"requested\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"max\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"ConfigMinBelowBridge\",\"inputs\":[{\"name\":\"protocolMinSats\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"bridgeMinSats\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"ConfigurationsNotSet\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"DepositBelowMinimum\",\"inputs\":[{\"name\":\"value\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"minimum\",\"type\":\"uint256\",\"internalType\":\"uint256\"}]},{\"type\":\"error\",\"name\":\"DepositNotConfirmed\",\"inputs\":[{\"name\":\"btcTxHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}]},{\"type\":\"error\",\"name\":\"DepositOutputNotFound\",\"inputs\":[{\"name\":\"rskAddr\",\"type\":\"address\",\"internalType\":\"address\"}]},{\"type\":\"error\",\"name\":\"PegInContractNotSet\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"UnableToGetConfirmations\",\"inputs\":[{\"name\":\"errorCode\",\"type\":\"int256\",\"internalType\":\"int256\"}]}]",
 	ID:  "PegInAddressRegistryContract",
 }
 
@@ -54,6 +48,41 @@ func NewPegInAddressRegistryContract() *PegInAddressRegistryContract {
 // Use this to create the instance object passed to abigen v2 library functions Call, Transact, etc.
 func (c *PegInAddressRegistryContract) Instance(backend bind.ContractBackend, addr common.Address) *bind.BoundContract {
 	return bind.NewBoundContract(addr, c.abi, backend, backend, backend)
+}
+
+// PackGetMinDepositSats is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x0a2b4622.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function getMinDepositSats() view returns(uint256 minDepositSats)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) PackGetMinDepositSats() []byte {
+	enc, err := pegInAddressRegistryContract.abi.Pack("getMinDepositSats")
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackGetMinDepositSats is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x0a2b4622.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function getMinDepositSats() view returns(uint256 minDepositSats)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) TryPackGetMinDepositSats() ([]byte, error) {
+	return pegInAddressRegistryContract.abi.Pack("getMinDepositSats")
+}
+
+// UnpackGetMinDepositSats is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x0a2b4622.
+//
+// Solidity: function getMinDepositSats() view returns(uint256 minDepositSats)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackGetMinDepositSats(data []byte) (*big.Int, error) {
+	out, err := pegInAddressRegistryContract.abi.Unpack("getMinDepositSats", data)
+	if err != nil {
+		return new(big.Int), err
+	}
+	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
+	return out0, nil
 }
 
 // PackGetPegInAddress is the Go binding used to pack the parameters required for calling
@@ -144,38 +173,73 @@ func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackGetPegIn
 	return *outstruct, nil
 }
 
-// PackGetRegistration is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x72731062.  This method will panic if any
+// PackGetRegistrant is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x6b7dfb40.  This method will panic if any
 // invalid/nil inputs are passed.
 //
-// Solidity: function getRegistration(address rskAddr) view returns((address,uint96) registration)
-func (pegInAddressRegistryContract *PegInAddressRegistryContract) PackGetRegistration(rskAddr common.Address) []byte {
-	enc, err := pegInAddressRegistryContract.abi.Pack("getRegistration", rskAddr)
+// Solidity: function getRegistrant(address rskAddr) view returns(address registrant)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) PackGetRegistrant(rskAddr common.Address) []byte {
+	enc, err := pegInAddressRegistryContract.abi.Pack("getRegistrant", rskAddr)
 	if err != nil {
 		panic(err)
 	}
 	return enc
 }
 
-// TryPackGetRegistration is the Go binding used to pack the parameters required for calling
-// the contract method with ID 0x72731062.  This method will return an error
+// TryPackGetRegistrant is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x6b7dfb40.  This method will return an error
 // if any inputs are invalid/nil.
 //
-// Solidity: function getRegistration(address rskAddr) view returns((address,uint96) registration)
-func (pegInAddressRegistryContract *PegInAddressRegistryContract) TryPackGetRegistration(rskAddr common.Address) ([]byte, error) {
-	return pegInAddressRegistryContract.abi.Pack("getRegistration", rskAddr)
+// Solidity: function getRegistrant(address rskAddr) view returns(address registrant)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) TryPackGetRegistrant(rskAddr common.Address) ([]byte, error) {
+	return pegInAddressRegistryContract.abi.Pack("getRegistrant", rskAddr)
 }
 
-// UnpackGetRegistration is the Go binding that unpacks the parameters returned
-// from invoking the contract method with ID 0x72731062.
+// UnpackGetRegistrant is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x6b7dfb40.
 //
-// Solidity: function getRegistration(address rskAddr) view returns((address,uint96) registration)
-func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackGetRegistration(data []byte) (IPegInAddressRegistryRegistration, error) {
-	out, err := pegInAddressRegistryContract.abi.Unpack("getRegistration", data)
+// Solidity: function getRegistrant(address rskAddr) view returns(address registrant)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackGetRegistrant(data []byte) (common.Address, error) {
+	out, err := pegInAddressRegistryContract.abi.Unpack("getRegistrant", data)
 	if err != nil {
-		return *new(IPegInAddressRegistryRegistration), err
+		return *new(common.Address), err
 	}
-	out0 := *abi.ConvertType(out[0], new(IPegInAddressRegistryRegistration)).(*IPegInAddressRegistryRegistration)
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+	return out0, nil
+}
+
+// PackGetRegistrationBlock is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x5017bc63.  This method will panic if any
+// invalid/nil inputs are passed.
+//
+// Solidity: function getRegistrationBlock(address rskAddr) view returns(uint96 registrationBlock)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) PackGetRegistrationBlock(rskAddr common.Address) []byte {
+	enc, err := pegInAddressRegistryContract.abi.Pack("getRegistrationBlock", rskAddr)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+// TryPackGetRegistrationBlock is the Go binding used to pack the parameters required for calling
+// the contract method with ID 0x5017bc63.  This method will return an error
+// if any inputs are invalid/nil.
+//
+// Solidity: function getRegistrationBlock(address rskAddr) view returns(uint96 registrationBlock)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) TryPackGetRegistrationBlock(rskAddr common.Address) ([]byte, error) {
+	return pegInAddressRegistryContract.abi.Pack("getRegistrationBlock", rskAddr)
+}
+
+// UnpackGetRegistrationBlock is the Go binding that unpacks the parameters returned
+// from invoking the contract method with ID 0x5017bc63.
+//
+// Solidity: function getRegistrationBlock(address rskAddr) view returns(uint96 registrationBlock)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackGetRegistrationBlock(data []byte) (*big.Int, error) {
+	out, err := pegInAddressRegistryContract.abi.Unpack("getRegistrationBlock", data)
+	if err != nil {
+		return new(big.Int), err
+	}
+	out0 := abi.ConvertType(out[0], new(big.Int)).(*big.Int)
 	return out0, nil
 }
 
@@ -320,6 +384,15 @@ func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackError(ra
 	if bytes.Equal(raw[:4], pegInAddressRegistryContract.abi.Errors["AddressAlreadyRegistered"].ID.Bytes()[:4]) {
 		return pegInAddressRegistryContract.UnpackAddressAlreadyRegisteredError(raw[4:])
 	}
+	if bytes.Equal(raw[:4], pegInAddressRegistryContract.abi.Errors["BatchTooLarge"].ID.Bytes()[:4]) {
+		return pegInAddressRegistryContract.UnpackBatchTooLargeError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], pegInAddressRegistryContract.abi.Errors["ConfigMinBelowBridge"].ID.Bytes()[:4]) {
+		return pegInAddressRegistryContract.UnpackConfigMinBelowBridgeError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], pegInAddressRegistryContract.abi.Errors["ConfigurationsNotSet"].ID.Bytes()[:4]) {
+		return pegInAddressRegistryContract.UnpackConfigurationsNotSetError(raw[4:])
+	}
 	if bytes.Equal(raw[:4], pegInAddressRegistryContract.abi.Errors["DepositBelowMinimum"].ID.Bytes()[:4]) {
 		return pegInAddressRegistryContract.UnpackDepositBelowMinimumError(raw[4:])
 	}
@@ -328,6 +401,12 @@ func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackError(ra
 	}
 	if bytes.Equal(raw[:4], pegInAddressRegistryContract.abi.Errors["DepositOutputNotFound"].ID.Bytes()[:4]) {
 		return pegInAddressRegistryContract.UnpackDepositOutputNotFoundError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], pegInAddressRegistryContract.abi.Errors["PegInContractNotSet"].ID.Bytes()[:4]) {
+		return pegInAddressRegistryContract.UnpackPegInContractNotSetError(raw[4:])
+	}
+	if bytes.Equal(raw[:4], pegInAddressRegistryContract.abi.Errors["UnableToGetConfirmations"].ID.Bytes()[:4]) {
+		return pegInAddressRegistryContract.UnpackUnableToGetConfirmationsError(raw[4:])
 	}
 	return nil, errors.New("Unknown error")
 }
@@ -351,6 +430,79 @@ func PegInAddressRegistryContractAddressAlreadyRegisteredErrorID() common.Hash {
 func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackAddressAlreadyRegisteredError(raw []byte) (*PegInAddressRegistryContractAddressAlreadyRegistered, error) {
 	out := new(PegInAddressRegistryContractAddressAlreadyRegistered)
 	if err := pegInAddressRegistryContract.abi.UnpackIntoInterface(out, "AddressAlreadyRegistered", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PegInAddressRegistryContractBatchTooLarge represents a BatchTooLarge error raised by the PegInAddressRegistryContract contract.
+type PegInAddressRegistryContractBatchTooLarge struct {
+	Requested *big.Int
+	Max       *big.Int
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error BatchTooLarge(uint256 requested, uint256 max)
+func PegInAddressRegistryContractBatchTooLargeErrorID() common.Hash {
+	return common.HexToHash("0xbb1cb70bcc2ddbaabd8d251943ebb6b48ae10b9f78ce35a6f00b43eac7ae64f1")
+}
+
+// UnpackBatchTooLargeError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error BatchTooLarge(uint256 requested, uint256 max)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackBatchTooLargeError(raw []byte) (*PegInAddressRegistryContractBatchTooLarge, error) {
+	out := new(PegInAddressRegistryContractBatchTooLarge)
+	if err := pegInAddressRegistryContract.abi.UnpackIntoInterface(out, "BatchTooLarge", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PegInAddressRegistryContractConfigMinBelowBridge represents a ConfigMinBelowBridge error raised by the PegInAddressRegistryContract contract.
+type PegInAddressRegistryContractConfigMinBelowBridge struct {
+	ProtocolMinSats *big.Int
+	BridgeMinSats   *big.Int
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error ConfigMinBelowBridge(uint256 protocolMinSats, uint256 bridgeMinSats)
+func PegInAddressRegistryContractConfigMinBelowBridgeErrorID() common.Hash {
+	return common.HexToHash("0x83a110e5c260a077179361e44fee8a2bc38d94bf3197f8090786a827ddd5175e")
+}
+
+// UnpackConfigMinBelowBridgeError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error ConfigMinBelowBridge(uint256 protocolMinSats, uint256 bridgeMinSats)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackConfigMinBelowBridgeError(raw []byte) (*PegInAddressRegistryContractConfigMinBelowBridge, error) {
+	out := new(PegInAddressRegistryContractConfigMinBelowBridge)
+	if err := pegInAddressRegistryContract.abi.UnpackIntoInterface(out, "ConfigMinBelowBridge", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PegInAddressRegistryContractConfigurationsNotSet represents a ConfigurationsNotSet error raised by the PegInAddressRegistryContract contract.
+type PegInAddressRegistryContractConfigurationsNotSet struct {
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error ConfigurationsNotSet()
+func PegInAddressRegistryContractConfigurationsNotSetErrorID() common.Hash {
+	return common.HexToHash("0xb886c87724e229e4303d6c62dd737b4b34c49708459241ceb77de770ce9030fd")
+}
+
+// UnpackConfigurationsNotSetError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error ConfigurationsNotSet()
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackConfigurationsNotSetError(raw []byte) (*PegInAddressRegistryContractConfigurationsNotSet, error) {
+	out := new(PegInAddressRegistryContractConfigurationsNotSet)
+	if err := pegInAddressRegistryContract.abi.UnpackIntoInterface(out, "ConfigurationsNotSet", raw); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -424,6 +576,53 @@ func PegInAddressRegistryContractDepositOutputNotFoundErrorID() common.Hash {
 func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackDepositOutputNotFoundError(raw []byte) (*PegInAddressRegistryContractDepositOutputNotFound, error) {
 	out := new(PegInAddressRegistryContractDepositOutputNotFound)
 	if err := pegInAddressRegistryContract.abi.UnpackIntoInterface(out, "DepositOutputNotFound", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PegInAddressRegistryContractPegInContractNotSet represents a PegInContractNotSet error raised by the PegInAddressRegistryContract contract.
+type PegInAddressRegistryContractPegInContractNotSet struct {
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error PegInContractNotSet()
+func PegInAddressRegistryContractPegInContractNotSetErrorID() common.Hash {
+	return common.HexToHash("0x86342334cd81a2843094724d6be926dc543a0726d4f1f220532563338633d274")
+}
+
+// UnpackPegInContractNotSetError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error PegInContractNotSet()
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackPegInContractNotSetError(raw []byte) (*PegInAddressRegistryContractPegInContractNotSet, error) {
+	out := new(PegInAddressRegistryContractPegInContractNotSet)
+	if err := pegInAddressRegistryContract.abi.UnpackIntoInterface(out, "PegInContractNotSet", raw); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PegInAddressRegistryContractUnableToGetConfirmations represents a UnableToGetConfirmations error raised by the PegInAddressRegistryContract contract.
+type PegInAddressRegistryContractUnableToGetConfirmations struct {
+	ErrorCode *big.Int
+}
+
+// ErrorID returns the hash of canonical representation of the error's signature.
+//
+// Solidity: error UnableToGetConfirmations(int256 errorCode)
+func PegInAddressRegistryContractUnableToGetConfirmationsErrorID() common.Hash {
+	return common.HexToHash("0xd06e366aa562b88cc28592d73c0fea0b2c6f7f7544f39af59c0d16c892dd5ad4")
+}
+
+// UnpackUnableToGetConfirmationsError is the Go binding used to decode the provided
+// error data into the corresponding Go error struct.
+//
+// Solidity: error UnableToGetConfirmations(int256 errorCode)
+func (pegInAddressRegistryContract *PegInAddressRegistryContract) UnpackUnableToGetConfirmationsError(raw []byte) (*PegInAddressRegistryContractUnableToGetConfirmations, error) {
+	out := new(PegInAddressRegistryContractUnableToGetConfirmations)
+	if err := pegInAddressRegistryContract.abi.UnpackIntoInterface(out, "UnableToGetConfirmations", raw); err != nil {
 		return nil, err
 	}
 	return out, nil

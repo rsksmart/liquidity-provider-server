@@ -239,62 +239,6 @@ func (_c *PegInAddressRegistryContractMock_GetPegInAddresses_Call) RunAndReturn(
 	return _c
 }
 
-// GetRegistration provides a mock function with given fields: rskAddr
-func (_m *PegInAddressRegistryContractMock) GetRegistration(rskAddr string) (blockchain.PegInRegistration, error) {
-	ret := _m.Called(rskAddr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetRegistration")
-	}
-
-	var r0 blockchain.PegInRegistration
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (blockchain.PegInRegistration, error)); ok {
-		return rf(rskAddr)
-	}
-	if rf, ok := ret.Get(0).(func(string) blockchain.PegInRegistration); ok {
-		r0 = rf(rskAddr)
-	} else {
-		r0 = ret.Get(0).(blockchain.PegInRegistration)
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(rskAddr)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// PegInAddressRegistryContractMock_GetRegistration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRegistration'
-type PegInAddressRegistryContractMock_GetRegistration_Call struct {
-	*mock.Call
-}
-
-// GetRegistration is a helper method to define mock.On call
-//   - rskAddr string
-func (_e *PegInAddressRegistryContractMock_Expecter) GetRegistration(rskAddr interface{}) *PegInAddressRegistryContractMock_GetRegistration_Call {
-	return &PegInAddressRegistryContractMock_GetRegistration_Call{Call: _e.mock.On("GetRegistration", rskAddr)}
-}
-
-func (_c *PegInAddressRegistryContractMock_GetRegistration_Call) Run(run func(rskAddr string)) *PegInAddressRegistryContractMock_GetRegistration_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *PegInAddressRegistryContractMock_GetRegistration_Call) Return(_a0 blockchain.PegInRegistration, _a1 error) *PegInAddressRegistryContractMock_GetRegistration_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *PegInAddressRegistryContractMock_GetRegistration_Call) RunAndReturn(run func(string) (blockchain.PegInRegistration, error)) *PegInAddressRegistryContractMock_GetRegistration_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetRegistrationRoot provides a mock function with given fields: ctx, blockNumber
 func (_m *PegInAddressRegistryContractMock) GetRegistrationRoot(ctx context.Context, blockNumber uint64) ([32]byte, error) {
 	ret := _m.Called(ctx, blockNumber)
