@@ -67,7 +67,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) Run(ctx context.Context) (Catc
 			fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err),
 		)
 	}
-	SortAddressRegisteredEvents(events)
+	useCase.sortAddressRegisteredEvents(events)
 
 	next := rootstock.PegInWatchCheckpoint{Root: checkpoint.Root, Block: toBlock}
 	watches := make([]rootstock.PegInWatch, 0, len(events))
@@ -115,7 +115,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) wrap(err error) error {
 	return usecases.WrapUseCaseError(usecases.CatchUpRegisteredAddressesId, err)
 }
 
-func SortAddressRegisteredEvents(events []blockchain.AddressRegistered) {
+func (useCase *CatchUpRegisteredAddressesUseCase) sortAddressRegisteredEvents(events []blockchain.AddressRegistered) {
 	slices.SortStableFunc(events, func(first, second blockchain.AddressRegistered) int {
 		if byBlock := cmp.Compare(first.BlockNumber, second.BlockNumber); byBlock != 0 {
 			return byBlock

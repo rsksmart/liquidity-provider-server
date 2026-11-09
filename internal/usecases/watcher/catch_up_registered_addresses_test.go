@@ -2,7 +2,6 @@ package watcher_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -227,19 +226,20 @@ func TestCatchUpRegisteredAddressesUseCase_RunErrors(t *testing.T) {
 	})
 }
 
-func TestSortAddressRegisteredEvents(t *testing.T) {
+func TestCatchUpRegisteredAddressesUseCase_SavesRegistrationsInChainOrder(t *testing.T) {
+	fixture := newCatchUpFixture(t)
+	fixture.withCheckpoint(nil)
 	events := []blockchain.AddressRegistered{
-		{TxHash: "0x01", BlockNumber: 12, LogIndex: 0},
-		{TxHash: "0x02", BlockNumber: 11, LogIndex: 9},
-		{TxHash: "0x03", BlockNumber: 11, LogIndex: 2},
-		{TxHash: "0x04", BlockNumber: 10, LogIndex: 5},
+		{TxHash: "0x01", BlockNumber: 103, LogIndex: 0},
+		{TxHash: "0x02", BlockNumber: 102, LogIndex: 9},
+		{TxHash: "0x03", BlockNumber: 102, LogIndex: 2},
+		{TxHash: "0x04", BlockNumber: 101, LogIndex: 5},
 	}
+	fixture.withPage(105, 100, 103, events)
+	fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
-	watcher.SortAddressRegisteredEvents(events)
+	result, err := fixture.useCase.Run(context.Background())
 
-	ordered := make([]string, 0, len(events))
-	for _, event := range events {
-		ordered = append(ordered, fmt.Sprintf("%d/%d", event.BlockNumber, event.LogIndex))
-	}
-	assert.Equal(t, []string{"10/5", "11/2", "11/9", "12/0"}, ordered)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"0x04", "0x03", "0x02", "0x01"}, savedTxHashes(result.Watches))
 }
