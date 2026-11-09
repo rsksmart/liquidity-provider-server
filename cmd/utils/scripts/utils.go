@@ -10,6 +10,7 @@ import (
 	collateralBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
 	discoveryBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
 	peginBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
+	peginCommitFirstBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_commit_first"
 	pegoutBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/environment"
@@ -72,6 +73,7 @@ func CreatePeginContract(
 		rootstock.RetryParams{Retries: 0, Sleep: 0},
 		environment.DefaultTimeouts().MiningWait.Seconds(),
 		binding,
+		peginCommitFirstBindings.NewPeginCommitFirstContract(),
 		rootstock.MustLoadFlyoverABIs(),
 	), nil
 }

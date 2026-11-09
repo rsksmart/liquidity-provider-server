@@ -9,9 +9,12 @@ import (
 	bridgeBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/bridge"
 	collateralBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/collateral_management"
 	discoveryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/discovery"
+	emergencyPauseBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/emergency_pause"
 	flyoverConfigurationsBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/flyover_configurations"
+	pauseRegistryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pause_registry"
 	peginBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	peginAddressRegistryBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_address_registry"
+	peginCommitFirstBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_commit_first"
 	pegoutBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	pegoutEscrowBinding "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout_escrow"
 	"github.com/rsksmart/liquidity-provider-server/internal/configuration/bootstrap/wallet"
@@ -28,6 +31,9 @@ type Rootstock struct {
 type rskContractBindings struct {
 	bridge                *bridgeBinding.RskBridge
 	peginContract         *peginBinding.PeginContract
+	peginCommitFirst      *peginCommitFirstBinding.PeginCommitFirstContract
+	emergencyPause        *emergencyPauseBinding.EmergencyPauseContract
+	pauseRegistry         *pauseRegistryBinding.PauseRegistryContract
 	pegoutContract        *pegoutBinding.PegoutContract
 	collateralManagement  *collateralBinding.CollateralManagementContract
 	discovery             *discoveryBinding.FlyoverDiscovery
@@ -39,6 +45,7 @@ type rskContractBindings struct {
 type rskBoundContracts struct {
 	bridge                *bind.BoundContract
 	peginContract         *bind.BoundContract
+	peginPausable         *bind.BoundContract
 	pegoutContract        *bind.BoundContract
 	collateralManagement  *bind.BoundContract
 	discovery             *bind.BoundContract
@@ -93,6 +100,7 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				rootstock.DefaultRetryParams,
 				timeouts.MiningWait.Seconds(),
 				contractBindings.peginContract,
+				contractBindings.peginCommitFirst,
 				abis,
 			),
 			PegOut: rootstock.NewPegoutContractImpl(
@@ -142,6 +150,13 @@ func NewRootstockRegistry(env environment.Environment, client *rootstock.RskClie
 				rootstock.DefaultRetryParams,
 				contractBindings.flyoverConfigurations,
 				abis,
+			),
+			PauseRegistry: rootstock.NewPauseRegistryContractImpl(
+				client,
+				boundContracts.peginPausable,
+				rootstock.DefaultRetryParams,
+				contractBindings.emergencyPause,
+				contractBindings.pauseRegistry,
 			),
 			PegOutEscrow: optionalPegOutEscrow(
 				env,
@@ -196,6 +211,7 @@ func createBoundContracts(
 	}
 
 	peginContract := bindings.peginContract.Instance(client.Rpc(), peginContractAddress)
+	peginPausable := bindings.emergencyPause.Instance(client.Rpc(), peginContractAddress)
 	pegoutContract := bindings.pegoutContract.Instance(client.Rpc(), pegoutContractAddress)
 	collateralManagement := bindings.collateralManagement.Instance(client.Rpc(), collateralManagementAddress)
 	discovery := bindings.discovery.Instance(client.Rpc(), discoveryAddress)
@@ -210,6 +226,7 @@ func createBoundContracts(
 	return rskBoundContracts{
 		bridge:                bridge,
 		peginContract:         peginContract,
+		peginPausable:         peginPausable,
 		pegoutContract:        pegoutContract,
 		collateralManagement:  collateralManagement,
 		discovery:             discovery,
@@ -223,6 +240,9 @@ func createContractBindings() rskContractBindings {
 	return rskContractBindings{
 		bridge:                bridgeBinding.NewRskBridge(),
 		peginContract:         peginBinding.NewPeginContract(),
+		peginCommitFirst:      peginCommitFirstBinding.NewPeginCommitFirstContract(),
+		emergencyPause:        emergencyPauseBinding.NewEmergencyPauseContract(),
+		pauseRegistry:         pauseRegistryBinding.NewPauseRegistryContract(),
 		pegoutContract:        pegoutBinding.NewPegoutContract(),
 		collateralManagement:  collateralBinding.NewCollateralManagementContract(),
 		discovery:             discoveryBinding.NewFlyoverDiscovery(),
