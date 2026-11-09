@@ -1,0 +1,11 @@
+[
+  {
+    "type": "event",
+    "name": "batch_pegout_created",
+    "inputs": [
+      { "name": "btcTx", "type": "bytes32", "indexed": true, "internalType": "bytes32" },
+      { "name": "releaseRskTxHashes", "type": "bytes", "indexed": false, "internalType": "bytes" }
+    ],
+    "anonymous": false
+  }
+]
