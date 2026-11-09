@@ -211,7 +211,7 @@ func TestPegInWatcher_SortsEventsAndClampsToFinalizedHead(t *testing.T) {
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{}, nil).Once()
 	var operations []string
 	var operationsMutex sync.Mutex
-	fixture.expectCatchUp(catchUpExpectation{head: 105, fromBlock: 100, toBlock: 103, events: events}).
+	fixture.expectCatchUp(catchUpExpectation{checkpoint: &rootstock.PegInWatchCheckpoint{Block: 99}, head: 105, fromBlock: 100, toBlock: 103, events: events}).
 		Run(func(_ context.Context, saved []rootstock.PegInWatch, _ rootstock.PegInWatchCheckpoint) {
 			operationsMutex.Lock()
 			for _, entry := range saved {
@@ -281,7 +281,7 @@ func TestPegInWatcher_SkipsUnsupportedEncodingsAndContinues(t *testing.T) {
 		{TxHash: "base58", RskAddress: rskAddress(3), BlockNumber: 100, LogIndex: 3},
 	}
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{}, nil).Once()
-	fixture.expectCatchUp(catchUpExpectation{head: 102, fromBlock: 100, toBlock: 100, events: events})
+	fixture.expectCatchUp(catchUpExpectation{checkpoint: &rootstock.PegInWatchCheckpoint{Block: 99}, head: 102, fromBlock: 100, toBlock: 100, events: events})
 
 	encodings := []blockchain.PegInAddressRegistryEncoding{
 		blockchain.PegInAddressRegistryEncodingBech32,
@@ -347,7 +347,7 @@ func TestPegInWatcher_RecordsEntryErrorAndContinues(t *testing.T) {
 		{TxHash: "valid", RskAddress: rskAddress(2), BlockNumber: 100, LogIndex: 2},
 	}
 	fixture.repository.EXPECT().List(mock.Anything).Return(nil, nil).Once()
-	fixture.expectCatchUp(catchUpExpectation{head: 102, fromBlock: 100, toBlock: 100, events: events})
+	fixture.expectCatchUp(catchUpExpectation{checkpoint: &rootstock.PegInWatchCheckpoint{Block: 99}, head: 102, fromBlock: 100, toBlock: 100, events: events})
 	broken, valid := events[0], events[1]
 
 	brokenEntry := discoveredWatchEntry(broken)
@@ -466,7 +466,7 @@ func TestPegInWatcher_LeavesDiscoveredWhenRescanFails(t *testing.T) {
 		{TxHash: "needs-rescan", RskAddress: rskAddress(1), BlockNumber: 100, LogIndex: 1},
 	}
 	fixture.repository.EXPECT().List(mock.Anything).Return(nil, nil).Once()
-	fixture.expectCatchUp(catchUpExpectation{head: 102, fromBlock: 100, toBlock: 100, events: events})
+	fixture.expectCatchUp(catchUpExpectation{checkpoint: &rootstock.PegInWatchCheckpoint{Block: 99}, head: 102, fromBlock: 100, toBlock: 100, events: events})
 	event := events[0]
 	persisted := discoveredWatchEntry(event)
 	fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
