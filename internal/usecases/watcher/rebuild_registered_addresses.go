@@ -23,12 +23,31 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuild(
 	if contractRoot == checkpoint.Root {
 		return useCase.rebuildFrom(ctx, checkpoint.Block+1, checkpoint.Root, finalizedHead)
 	}
+	storedRoot, err := useCase.storedRootAt(ctx, checkpoint.Block)
+	if err != nil {
+		return CatchUpRegisteredAddressesResult{}, err
+	}
+	if storedRoot != checkpoint.Root {
+		log.Warn(LogRegistryRowsDoNotMatchPoint(checkpoint.Block, useCase.startBlock))
+		return useCase.rebuildFromStoredRoot(ctx, useCase.startBlock, finalizedHead)
+	}
 
 	fromBlock, err := useCase.firstMismatchingBlock(ctx, useCase.startBlock, checkpoint.Block)
 	if err != nil {
 		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("find the first mismatching PegIn address registry block: %w", err)
 	}
 	return useCase.rebuildFromStoredRoot(ctx, fromBlock, finalizedHead)
+}
+
+func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFromStart(
+	ctx context.Context,
+	checkpoint rootstock.PegInWatchCheckpoint,
+	finalizedHead uint64,
+) (CatchUpRegisteredAddressesResult, error) {
+	if useCase.startBlock > finalizedHead {
+		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
+	}
+	return useCase.rebuildFromStoredRoot(ctx, useCase.startBlock, finalizedHead)
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFromStoredRoot(

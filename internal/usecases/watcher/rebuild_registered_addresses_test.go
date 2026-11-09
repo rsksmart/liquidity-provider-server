@@ -96,7 +96,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsAfterAReorgBelowTheStoredBloc
 	newTip := reorged[1].RegistrationRoot
 	stored := rootstock.PegInWatchCheckpoint{Root: oldForkTip, Block: 150}
 	fixture.withCheckpoint(&stored)
-	fixture.withStoredRoots(rootTimeline(rootPoint{110, shared}, rootPoint{130, oldFork}, rootPoint{140, oldForkTip}), 7)
+	fixture.withStoredRoots(rootTimeline(rootPoint{110, shared}, rootPoint{130, oldFork}, rootPoint{140, oldForkTip}), 8)
 	fixture.withChainRoots(rootTimeline(rootPoint{110, shared}, rootPoint{135, reorged[0].RegistrationRoot}, rootPoint{145, newTip}), 9)
 	fixture.withPage(160, 151, 158, []blockchain.AddressRegistered{})
 	fixture.withEvents(130, 139, reorged[:1])
@@ -142,7 +142,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsToTheChainRootWhenRootsMatchA
 	chainTip := canonical[0].RegistrationRoot
 	stored := rootstock.PegInWatchCheckpoint{Root: storedTip, Block: 150}
 	fixture.withCheckpoint(&stored)
-	fixture.withStoredRoots(rootTimeline(rootPoint{110, rootA}, rootPoint{120, rootAB}, rootPoint{140, storedTip}), 7)
+	fixture.withStoredRoots(rootTimeline(rootPoint{110, rootA}, rootPoint{120, rootAB}, rootPoint{140, storedTip}), 8)
 	fixture.withChainRoots(rootTimeline(rootPoint{115, rootA}, rootPoint{120, rootAB}, rootPoint{140, chainTip}), 9)
 	fixture.withPage(160, 151, 158, []blockchain.AddressRegistered{})
 	fixture.withEvents(140, 149, canonical)
@@ -260,6 +260,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		mismatchedPage(fixture)
 		fixture.withContractRoot(150, [32]byte{3})
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(125)).Return([32]byte{}, nil).Once()
 		fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(125)).Return([32]byte{}, assert.AnError).Once()
 
@@ -274,6 +275,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		mismatchedPage(fixture)
 		fixture.withContractRoot(150, [32]byte{3})
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(125)).Return([32]byte{}, assert.AnError).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
