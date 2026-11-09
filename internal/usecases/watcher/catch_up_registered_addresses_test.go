@@ -32,6 +32,11 @@ type catchUpFixture struct {
 
 func newCatchUpFixture(t *testing.T) *catchUpFixture {
 	t.Helper()
+	return newCatchUpFixtureWithPageSize(t, catchUpPageSize)
+}
+
+func newCatchUpFixtureWithPageSize(t *testing.T, pageSize uint64) *catchUpFixture {
+	t.Helper()
 	fixture := &catchUpFixture{
 		repository: mocks.NewPegInWatchRepositoryMock(t),
 		registry:   mocks.NewPegInAddressRegistryContractMock(t),
@@ -47,7 +52,7 @@ func newCatchUpFixture(t *testing.T) *catchUpFixture {
 		fixture.rskRpc,
 		countingHash,
 		catchUpStartBlock,
-		catchUpPageSize,
+		pageSize,
 		catchUpFinalityDepth,
 	)
 	return fixture
@@ -335,27 +340,42 @@ func TestCatchUpRegisteredAddressesUseCase_SavesRegistrationsInChainOrder(t *tes
 	assert.Equal(t, []string{"0x04", "0x03", "0x02", "0x01"}, savedTxHashes(result.Watches))
 }
 
-func TestNextRegistryPage(t *testing.T) {
+func TestCatchUpRegisteredAddressesUseCase_PageRange(t *testing.T) {
+	stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 109}
 	cases := []struct {
 		name          string
-		fromBlock     uint64
+		storedBlock   uint64
 		finalizedHead uint64
 		pageSize      uint64
 		toBlock       uint64
 		hasPage       bool
 	}{
-		{name: "nothing to read past the finalized head", fromBlock: 11, finalizedHead: 10, pageSize: 5},
-		{name: "a single block", fromBlock: 10, finalizedHead: 10, pageSize: 5, toBlock: 10, hasPage: true},
-		{name: "stops at the finalized head", fromBlock: 10, finalizedHead: 13, pageSize: 5, toBlock: 13, hasPage: true},
-		{name: "a full page ends at the finalized head", fromBlock: 10, finalizedHead: 14, pageSize: 5, toBlock: 14, hasPage: true},
-		{name: "stops at the page size", fromBlock: 10, finalizedHead: 100, pageSize: 5, toBlock: 14, hasPage: true},
-		{name: "a zero page size reads to the finalized head", fromBlock: 10, finalizedHead: 100, toBlock: 100, hasPage: true},
+		{name: "reads nothing past the finalized head", storedBlock: 110, finalizedHead: 110, pageSize: 5},
+		{name: "reads a single block", storedBlock: 109, finalizedHead: 110, pageSize: 5, toBlock: 110, hasPage: true},
+		{name: "stops at the finalized head", storedBlock: 109, finalizedHead: 113, pageSize: 5, toBlock: 113, hasPage: true},
+		{name: "ends a full page at the finalized head", storedBlock: 109, finalizedHead: 114, pageSize: 5, toBlock: 114, hasPage: true},
+		{name: "stops at the page size", storedBlock: 109, finalizedHead: 200, pageSize: 5, toBlock: 114, hasPage: true},
+		{name: "reads to the finalized head with a zero page size", storedBlock: 109, finalizedHead: 200, toBlock: 200, hasPage: true},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			toBlock, hasPage := watcher.NextRegistryPage(testCase.fromBlock, testCase.finalizedHead, testCase.pageSize)
-			assert.Equal(t, testCase.hasPage, hasPage)
-			assert.Equal(t, testCase.toBlock, toBlock)
+			fixture := newCatchUpFixtureWithPageSize(t, testCase.pageSize)
+			checkpoint := rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: testCase.storedBlock}
+			fixture.withCheckpoint(&checkpoint)
+			expected := checkpoint
+			if testCase.hasPage {
+				fixture.withPage(testCase.finalizedHead+catchUpFinalityDepth, testCase.storedBlock+1, testCase.toBlock, []blockchain.AddressRegistered{})
+				expected = rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: testCase.toBlock}
+				fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, []rootstock.PegInWatch{}, expected).Return(nil).Once()
+			} else {
+				fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(testCase.finalizedHead+catchUpFinalityDepth, nil).Once()
+			}
+
+			result, err := fixture.useCase.Run(context.Background())
+
+			require.NoError(t, err)
+			assert.Equal(t, expected, result.Checkpoint)
+			assert.Empty(t, result.Watches)
 		})
 	}
 }

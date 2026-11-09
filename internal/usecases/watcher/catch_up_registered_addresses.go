@@ -89,7 +89,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) nextPage(ctx context.Context, 
 	if head < useCase.finalityDepth {
 		return 0, false, nil
 	}
-	toBlock, hasPage := NextRegistryPage(fromBlock, head-useCase.finalityDepth, useCase.pageSize)
+	toBlock, hasPage := useCase.nextRegistryPage(fromBlock, head-useCase.finalityDepth)
 	return toBlock, hasPage, nil
 }
 
@@ -120,14 +120,14 @@ func (useCase *CatchUpRegisteredAddressesUseCase) wrap(err error) error {
 	return usecases.WrapUseCaseError(usecases.CatchUpRegisteredAddressesId, err)
 }
 
-func NextRegistryPage(fromBlock, finalizedHead, pageSize uint64) (uint64, bool) {
+func (useCase *CatchUpRegisteredAddressesUseCase) nextRegistryPage(fromBlock, finalizedHead uint64) (uint64, bool) {
 	if fromBlock > finalizedHead {
 		return 0, false
 	}
-	if pageSize == 0 || finalizedHead-fromBlock < pageSize {
+	if useCase.pageSize == 0 || finalizedHead-fromBlock < useCase.pageSize {
 		return finalizedHead, true
 	}
-	return fromBlock + pageSize - 1, true
+	return fromBlock + useCase.pageSize - 1, true
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) sortAddressRegisteredEvents(events []blockchain.AddressRegistered) {
