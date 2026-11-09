@@ -3,6 +3,7 @@ package blockchain
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -31,6 +32,37 @@ func (params RefundPegoutParams) String() string {
 		params.MerkleBranchPath,
 		params.MerkleBranchHashes,
 	)
+}
+
+var (
+	PegInAlreadyProcessedError     = errors.New("pegin already processed")
+	PegInBelowMinimumError         = errors.New("pegin amount below the minimum")
+	DepositBelowBridgeMinimumError = errors.New("deposit below the bridge minimum")
+	InsufficientConfirmationsError = errors.New("deposit without enough confirmations")
+	UnableToGetConfirmationsError  = errors.New("bridge unable to get the deposit confirmations")
+	IncorrectFrontingError         = errors.New("fronted value does not match the contract")
+)
+
+type RequestPegInParams struct {
+	RskAddress         string
+	BtcRawTx           []byte
+	BtcBlockHeaderHash [32]byte
+	MerkleBranchPath   *big.Int
+	MerkleBranchHashes [][32]byte
+}
+
+type PegInRequestedEvent struct {
+	PegInID     string
+	Claimer     string
+	RskAddress  string
+	Amount      *entities.Wei
+	NetToUser   *entities.Wei
+	CallSuccess bool
+}
+
+type RequestPegInResult struct {
+	Receipt TransactionReceipt
+	Event   PegInRequestedEvent
 }
 
 type ProviderRegistrationParams struct {
@@ -89,6 +121,9 @@ type PeginContract interface {
 	GetAddress() string
 	GetBalance(address string) (*entities.Wei, error)
 	Withdraw(amount *entities.Wei) error
+	SimulateRequestPegIn(txConfig TransactionConfig, params RequestPegInParams) error
+	EstimateRequestPegInGas(txConfig TransactionConfig, params RequestPegInParams) (uint64, error)
+	RequestPegIn(txConfig TransactionConfig, params RequestPegInParams) (RequestPegInResult, error)
 }
 
 type PegoutContract interface {

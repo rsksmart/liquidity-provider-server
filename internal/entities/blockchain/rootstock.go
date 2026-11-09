@@ -34,6 +34,7 @@ type RskContracts struct {
 	Discovery             DiscoveryContract
 	PegInAddressRegistry  PegInAddressRegistryContract
 	FlyoverConfigurations FlyoverConfigurationsContract
+	PauseRegistry         PauseRegistryContract
 	PegOutEscrow          PegOutEscrowContract
 }
 

@@ -22,6 +22,63 @@ func (_m *PeginContractMock) EXPECT() *PeginContractMock_Expecter {
 	return &PeginContractMock_Expecter{mock: &_m.Mock}
 }
 
+// EstimateRequestPegInGas provides a mock function with given fields: txConfig, params
+func (_m *PeginContractMock) EstimateRequestPegInGas(txConfig blockchain.TransactionConfig, params blockchain.RequestPegInParams) (uint64, error) {
+	ret := _m.Called(txConfig, params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EstimateRequestPegInGas")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) (uint64, error)); ok {
+		return rf(txConfig, params)
+	}
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) uint64); ok {
+		r0 = rf(txConfig, params)
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) error); ok {
+		r1 = rf(txConfig, params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginContractMock_EstimateRequestPegInGas_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EstimateRequestPegInGas'
+type PeginContractMock_EstimateRequestPegInGas_Call struct {
+	*mock.Call
+}
+
+// EstimateRequestPegInGas is a helper method to define mock.On call
+//   - txConfig blockchain.TransactionConfig
+//   - params blockchain.RequestPegInParams
+func (_e *PeginContractMock_Expecter) EstimateRequestPegInGas(txConfig interface{}, params interface{}) *PeginContractMock_EstimateRequestPegInGas_Call {
+	return &PeginContractMock_EstimateRequestPegInGas_Call{Call: _e.mock.On("EstimateRequestPegInGas", txConfig, params)}
+}
+
+func (_c *PeginContractMock_EstimateRequestPegInGas_Call) Run(run func(txConfig blockchain.TransactionConfig, params blockchain.RequestPegInParams)) *PeginContractMock_EstimateRequestPegInGas_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.TransactionConfig), args[1].(blockchain.RequestPegInParams))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_EstimateRequestPegInGas_Call) Return(_a0 uint64, _a1 error) *PeginContractMock_EstimateRequestPegInGas_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginContractMock_EstimateRequestPegInGas_Call) RunAndReturn(run func(blockchain.TransactionConfig, blockchain.RequestPegInParams) (uint64, error)) *PeginContractMock_EstimateRequestPegInGas_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAddress provides a mock function with no fields
 func (_m *PeginContractMock) GetAddress() string {
 	ret := _m.Called()
@@ -176,6 +233,110 @@ func (_c *PeginContractMock_PausedStatus_Call) Return(_a0 blockchain.PauseStatus
 }
 
 func (_c *PeginContractMock_PausedStatus_Call) RunAndReturn(run func() (blockchain.PauseStatus, error)) *PeginContractMock_PausedStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RequestPegIn provides a mock function with given fields: txConfig, params
+func (_m *PeginContractMock) RequestPegIn(txConfig blockchain.TransactionConfig, params blockchain.RequestPegInParams) (blockchain.RequestPegInResult, error) {
+	ret := _m.Called(txConfig, params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RequestPegIn")
+	}
+
+	var r0 blockchain.RequestPegInResult
+	var r1 error
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) (blockchain.RequestPegInResult, error)); ok {
+		return rf(txConfig, params)
+	}
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) blockchain.RequestPegInResult); ok {
+		r0 = rf(txConfig, params)
+	} else {
+		r0 = ret.Get(0).(blockchain.RequestPegInResult)
+	}
+
+	if rf, ok := ret.Get(1).(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) error); ok {
+		r1 = rf(txConfig, params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginContractMock_RequestPegIn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RequestPegIn'
+type PeginContractMock_RequestPegIn_Call struct {
+	*mock.Call
+}
+
+// RequestPegIn is a helper method to define mock.On call
+//   - txConfig blockchain.TransactionConfig
+//   - params blockchain.RequestPegInParams
+func (_e *PeginContractMock_Expecter) RequestPegIn(txConfig interface{}, params interface{}) *PeginContractMock_RequestPegIn_Call {
+	return &PeginContractMock_RequestPegIn_Call{Call: _e.mock.On("RequestPegIn", txConfig, params)}
+}
+
+func (_c *PeginContractMock_RequestPegIn_Call) Run(run func(txConfig blockchain.TransactionConfig, params blockchain.RequestPegInParams)) *PeginContractMock_RequestPegIn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.TransactionConfig), args[1].(blockchain.RequestPegInParams))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_RequestPegIn_Call) Return(_a0 blockchain.RequestPegInResult, _a1 error) *PeginContractMock_RequestPegIn_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginContractMock_RequestPegIn_Call) RunAndReturn(run func(blockchain.TransactionConfig, blockchain.RequestPegInParams) (blockchain.RequestPegInResult, error)) *PeginContractMock_RequestPegIn_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SimulateRequestPegIn provides a mock function with given fields: txConfig, params
+func (_m *PeginContractMock) SimulateRequestPegIn(txConfig blockchain.TransactionConfig, params blockchain.RequestPegInParams) error {
+	ret := _m.Called(txConfig, params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SimulateRequestPegIn")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) error); ok {
+		r0 = rf(txConfig, params)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PeginContractMock_SimulateRequestPegIn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SimulateRequestPegIn'
+type PeginContractMock_SimulateRequestPegIn_Call struct {
+	*mock.Call
+}
+
+// SimulateRequestPegIn is a helper method to define mock.On call
+//   - txConfig blockchain.TransactionConfig
+//   - params blockchain.RequestPegInParams
+func (_e *PeginContractMock_Expecter) SimulateRequestPegIn(txConfig interface{}, params interface{}) *PeginContractMock_SimulateRequestPegIn_Call {
+	return &PeginContractMock_SimulateRequestPegIn_Call{Call: _e.mock.On("SimulateRequestPegIn", txConfig, params)}
+}
+
+func (_c *PeginContractMock_SimulateRequestPegIn_Call) Run(run func(txConfig blockchain.TransactionConfig, params blockchain.RequestPegInParams)) *PeginContractMock_SimulateRequestPegIn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.TransactionConfig), args[1].(blockchain.RequestPegInParams))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_SimulateRequestPegIn_Call) Return(_a0 error) *PeginContractMock_SimulateRequestPegIn_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PeginContractMock_SimulateRequestPegIn_Call) RunAndReturn(run func(blockchain.TransactionConfig, blockchain.RequestPegInParams) error) *PeginContractMock_SimulateRequestPegIn_Call {
 	_c.Call.Return(run)
 	return _c
 }

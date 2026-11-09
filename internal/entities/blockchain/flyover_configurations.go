@@ -8,6 +8,16 @@ type ConfirmationTier struct {
 	Confirmations uint64
 }
 
+type PegInConfiguration struct {
+	FixedFee          *entities.Wei
+	PercentageFee     uint64
+	MinAmount         *entities.Wei
+	MaxAmount         *entities.Wei
+	RegistrantFee     *entities.Wei
+	ClaimGasFee       *entities.Wei
+	ConfirmationTiers []ConfirmationTier
+}
+
 // PegOutConfiguration is the snapshotted peg-out parameter set from FlyoverConfigurations.
 type PegOutConfiguration struct {
 	FixedFee          *entities.Wei
@@ -28,6 +38,7 @@ type FlyoverConfigurationsContract interface {
 	GetAddress() string
 	CalculatePegInFee(amount *entities.Wei) (*entities.Wei, error)
 	GetRequiredPegInBtcConfirmations(amount *entities.Wei) (uint64, error)
+	GetPegInConfiguration() (PegInConfiguration, error)
 	CalculatePegOutFee(amount *entities.Wei) (*entities.Wei, error)
 	GetRequiredPegOutBtcConfirmations(amount *entities.Wei) (uint64, error)
 	GetPegOutConfiguration() (PegOutConfiguration, error)

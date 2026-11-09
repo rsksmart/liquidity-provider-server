@@ -52,6 +52,7 @@ func TestNewRootstockRegistry(t *testing.T) {
 		require.NotNil(t, rskRegistry.Contracts.Bridge)
 		require.NotNil(t, rskRegistry.Contracts.PegInAddressRegistry)
 		require.NotNil(t, rskRegistry.Contracts.FlyoverConfigurations)
+		require.NotNil(t, rskRegistry.Contracts.PauseRegistry)
 		require.Equal(t, env.Rsk.PegInAddressRegistryAddress, rskRegistry.Contracts.PegInAddressRegistry.GetAddress())
 		require.Equal(t, env.Rsk.FlyoverConfigurationsAddress, rskRegistry.Contracts.FlyoverConfigurations.GetAddress())
 		require.Equal(t, rskWalletMock, rskRegistry.Wallet)

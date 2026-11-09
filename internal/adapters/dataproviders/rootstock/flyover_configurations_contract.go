@@ -72,6 +72,22 @@ func (configurations *flyoverConfigurationsContractImpl) GetRequiredPegInBtcConf
 	return result.Uint64(), nil
 }
 
+func (configurations *flyoverConfigurationsContractImpl) GetPegInConfiguration() (blockchain.PegInConfiguration, error) {
+	opts := &bind.CallOpts{}
+	result, err := rskRetry(configurations.retryParams.Retries, configurations.retryParams.Sleep,
+		func() (bindings.IFlyoverConfigurationsPegConfiguration, error) {
+			callData, dataErr := configurations.binding.TryPackGetPegInConfiguration()
+			if dataErr != nil {
+				return bindings.IFlyoverConfigurationsPegConfiguration{}, dataErr
+			}
+			return bind.Call(configurations.contract, opts, callData, configurations.binding.UnpackGetPegInConfiguration)
+		})
+	if err != nil {
+		return blockchain.PegInConfiguration{}, err
+	}
+	return mapPegInConfiguration(result), nil
+}
+
 func (configurations *flyoverConfigurationsContractImpl) CalculatePegOutFee(amount *entities.Wei) (*entities.Wei, error) {
 	opts := &bind.CallOpts{}
 	result, err := rskRetry(configurations.retryParams.Retries, configurations.retryParams.Sleep,
@@ -118,6 +134,25 @@ func (configurations *flyoverConfigurationsContractImpl) GetPegOutConfiguration(
 		return blockchain.PegOutConfiguration{}, err
 	}
 	return mapPegOutConfiguration(result), nil
+}
+
+func mapPegInConfiguration(raw bindings.IFlyoverConfigurationsPegConfiguration) blockchain.PegInConfiguration {
+	tiers := make([]blockchain.ConfirmationTier, 0, len(raw.ConfirmationTiers))
+	for _, tier := range raw.ConfirmationTiers {
+		tiers = append(tiers, blockchain.ConfirmationTier{
+			MaxAmount:     bigIntToWei(tier.MaxAmount),
+			Confirmations: bigIntToUint64(tier.Confirmations),
+		})
+	}
+	return blockchain.PegInConfiguration{
+		FixedFee:          bigIntToWei(raw.FixedFee),
+		PercentageFee:     bigIntToUint64(raw.PercentageFee),
+		MinAmount:         bigIntToWei(raw.MinAmount),
+		MaxAmount:         bigIntToWei(raw.MaxAmount),
+		RegistrantFee:     bigIntToWei(raw.RegistrantFee),
+		ClaimGasFee:       bigIntToWei(raw.ClaimGasFee),
+		ConfirmationTiers: tiers,
+	}
 }
 
 func mapPegOutConfiguration(raw bindings.IFlyoverConfigurationsPegOutConfiguration) blockchain.PegOutConfiguration {
