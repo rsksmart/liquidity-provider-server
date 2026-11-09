@@ -69,12 +69,21 @@ func (useCase *CatchUpRegisteredAddressesUseCase) catchUp(ctx context.Context) (
 	if err != nil || !hasHead {
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, err
 	}
-	if !found {
-		if useCase.startBlock > finalizedHead {
-			return CatchUpRegisteredAddressesResult{}, nil
-		}
-		return useCase.rebuildFromStoredRoot(ctx, useCase.startBlock, finalizedHead)
+	if !found || checkpoint.Block+1 < useCase.startBlock {
+		return useCase.rebuildFromStart(ctx, checkpoint, finalizedHead)
 	}
+	if checkpoint.Block > finalizedHead {
+		log.Warn(LogRegistryPointAboveFinalizedHead(checkpoint.Block, finalizedHead))
+		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
+	}
+	return useCase.catchUpFrom(ctx, checkpoint, finalizedHead)
+}
+
+func (useCase *CatchUpRegisteredAddressesUseCase) catchUpFrom(
+	ctx context.Context,
+	checkpoint rootstock.PegInWatchCheckpoint,
+	finalizedHead uint64,
+) (CatchUpRegisteredAddressesResult, error) {
 	fromBlock := checkpoint.Block + 1
 	toBlock, hasPage := useCase.nextPageEnd(fromBlock, finalizedHead)
 	if !hasPage {
