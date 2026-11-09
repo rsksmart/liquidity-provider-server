@@ -307,7 +307,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 		fixture.withContractRoot(153, localRoot)
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: localRoot, Block: 153}).
 			Return(nil).Once()
-		logged := test.AssertLogContains(t, "PegIn address registry root mismatch at block 151")
+		logged := test.AssertLogContains(t, watcher.LogRegistryEventRootMismatch(151, localRoot, events[0].RegistrationRoot))
 
 		_, err = fixture.useCase.Run(context.Background())
 
@@ -321,7 +321,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(153, [32]byte{2})
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-		logged := test.AssertLogContains(t, "PegIn address registry root mismatch at block 153")
+		logged := test.AssertLogContains(t, watcher.LogRegistryContractRootMismatch(153, stored.Root, [32]byte{2}))
 
 		_, err := fixture.useCase.Run(context.Background())
 
