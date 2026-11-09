@@ -67,18 +67,22 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		assert.Equal(t, uint64(153), result.Checkpoint.Block)
 		assert.Equal(t, []string{"0x03"}, savedTxHashes(result.Watches))
 	})
-	t.Run("reads one page at a time", func(t *testing.T) {
+	t.Run("saves after each page up to the finalized head", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 120})
-		fixture.withPage(200, 121, 130, []blockchain.AddressRegistered{})
+		fixture.withPage(142, 121, 130, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(130, [32]byte{9})
 		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 130}).
+			Return(nil).Once()
+		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(131), blockPointer(140)).Return([]blockchain.AddressRegistered{}, nil).Once()
+		fixture.withContractRoot(140, [32]byte{9})
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 140}).
 			Return(nil).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
-		assert.Equal(t, uint64(130), result.Checkpoint.Block)
+		assert.Equal(t, uint64(140), result.Checkpoint.Block)
 	})
 	t.Run("keeps the stored root when the page has no registrations", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
@@ -219,7 +223,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 
 		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
 		assert.Contains(t, err.Error(), "at block 151")
-		assert.Equal(t, watcher.CatchUpRegisteredAddressesResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("reports a mismatch when the contract root moved without events and saves nothing", func(t *testing.T) {
@@ -237,7 +241,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 
 		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
 		assert.Contains(t, err.Error(), "at block 153")
-		assert.Equal(t, watcher.CatchUpRegisteredAddressesResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 }
@@ -321,36 +325,33 @@ func TestCatchUpRegisteredAddressesUseCase_PageRange(t *testing.T) {
 		storedBlock   uint64
 		finalizedHead uint64
 		pageSize      uint64
-		toBlock       uint64
-		hasPage       bool
+		pages         [][2]uint64
 	}{
 		{name: "reads nothing past the finalized head", storedBlock: 110, finalizedHead: 110, pageSize: 5},
-		{name: "reads a single block", storedBlock: 109, finalizedHead: 110, pageSize: 5, toBlock: 110, hasPage: true},
-		{name: "stops at the finalized head", storedBlock: 109, finalizedHead: 113, pageSize: 5, toBlock: 113, hasPage: true},
-		{name: "ends a full page at the finalized head", storedBlock: 109, finalizedHead: 114, pageSize: 5, toBlock: 114, hasPage: true},
-		{name: "stops at the page size", storedBlock: 109, finalizedHead: 200, pageSize: 5, toBlock: 114, hasPage: true},
-		{name: "reads to the finalized head with a zero page size", storedBlock: 109, finalizedHead: 200, toBlock: 200, hasPage: true},
+		{name: "reads a single block", storedBlock: 109, finalizedHead: 110, pageSize: 5, pages: [][2]uint64{{110, 110}}},
+		{name: "stops at the finalized head", storedBlock: 109, finalizedHead: 113, pageSize: 5, pages: [][2]uint64{{110, 113}}},
+		{name: "ends a full page at the finalized head", storedBlock: 109, finalizedHead: 114, pageSize: 5, pages: [][2]uint64{{110, 114}}},
+		{name: "stops each page at the page size", storedBlock: 109, finalizedHead: 119, pageSize: 5, pages: [][2]uint64{{110, 114}, {115, 119}}},
+		{name: "reads to the finalized head with a zero page size", storedBlock: 109, finalizedHead: 200, pages: [][2]uint64{{110, 200}}},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			fixture := newCatchUpFixtureWithPageSize(t, testCase.pageSize)
 			checkpoint := rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: testCase.storedBlock}
 			fixture.withCheckpoint(&checkpoint)
+			fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(testCase.finalizedHead+catchUpFinalityDepth, nil).Once()
 			expected := checkpoint
-			if testCase.hasPage {
-				fixture.withPage(testCase.finalizedHead+catchUpFinalityDepth, testCase.storedBlock+1, testCase.toBlock, []blockchain.AddressRegistered{})
-				fixture.withContractRoot(testCase.toBlock, stored.Root)
-				expected = rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: testCase.toBlock}
+			for _, page := range testCase.pages {
+				fixture.withEvents(page[0], page[1], []blockchain.AddressRegistered{})
+				fixture.withContractRoot(page[1], stored.Root)
+				expected = rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: page[1]}
 				fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, []rootstock.PegInWatch{}, expected).Return(nil).Once()
-			} else {
-				fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(testCase.finalizedHead+catchUpFinalityDepth, nil).Once()
 			}
 
 			result, err := fixture.useCase.Run(context.Background())
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, result.Checkpoint)
-			assert.Empty(t, result.Watches)
+			assertCatchUpResult(t, expectedCatchUpResult{checkpoint: expected}, result)
 		})
 	}
 }

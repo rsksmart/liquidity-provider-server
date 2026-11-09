@@ -185,7 +185,7 @@ func TestPegInWatcher_ContinuesFromStoredCheckpoint(t *testing.T) {
 	}}, nil).Once()
 	fixture.expectCatchUp(catchUpExpectation{
 		checkpoint: rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105},
-		head:       112,
+		head:       110,
 		fromBlock:  106,
 		toBlock:    108,
 	})
