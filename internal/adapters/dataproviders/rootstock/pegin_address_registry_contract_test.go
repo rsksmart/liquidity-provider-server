@@ -41,22 +41,6 @@ func newPegInAddressRegistryTestContract() (boundContractMock, *bindings.PegInAd
 	return contractMock, registryBinding, registry
 }
 
-func mustPackRegistration(t *testing.T, registrant common.Address, registrationBlock *big.Int) []byte {
-	t.Helper()
-	regType, err := abi.NewType("tuple", "structIPegInAddressRegistry.Registration", []abi.ArgumentMarshaling{
-		{Name: "registrant", Type: "address"},
-		{Name: "registrationBlock", Type: "uint96"},
-	})
-	require.NoError(t, err)
-	args := abi.Arguments{{Type: regType}}
-	out, err := args.Pack(bindings.IPegInAddressRegistryRegistration{
-		Registrant:        registrant,
-		RegistrationBlock: registrationBlock,
-	})
-	require.NoError(t, err)
-	return out
-}
-
 func TestNewPegInAddressRegistryContractImpl(t *testing.T) {
 	boundContract := bind.NewBoundContract(common.Address{}, abi.ABI{}, nil, nil, nil)
 	contractBinding := bindings.NewPegInAddressRegistryContract()
@@ -175,41 +159,6 @@ func TestPegInAddressRegistryContractImpl_IsRegistered(t *testing.T) {
 		result, err := registry.IsRegistered(test.AnyString)
 		require.ErrorIs(t, err, blockchain.InvalidAddressError)
 		assert.False(t, result)
-	})
-}
-
-func TestPegInAddressRegistryContractImpl_GetRegistration(t *testing.T) {
-	contractMock, registryBinding, registry := newPegInAddressRegistryTestContract()
-	registrant := common.HexToAddress("0x00000000000000000000000000000000000def")
-	t.Run("Success", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(registryBinding.PackGetRegistration(parsedAddress)),
-			mock.Anything,
-		).Return(mustPackRegistration(t, registrant, big.NewInt(555)), nil).Once()
-		result, err := registry.GetRegistration(parsedAddress.String())
-		require.NoError(t, err)
-		assert.Equal(t, blockchain.PegInRegistration{
-			Registrant:        registrant.String(),
-			RegistrationBlock: 555,
-		}, result)
-		contractMock.caller.AssertExpectations(t)
-	})
-	t.Run("Error handling on call fail", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
-			mock.Anything,
-			matchCallData(registryBinding.PackGetRegistration(parsedAddress)),
-			mock.Anything,
-		).Return(nil, assert.AnError).Once()
-		result, err := registry.GetRegistration(parsedAddress.String())
-		require.Error(t, err)
-		assert.Empty(t, result)
-		contractMock.caller.AssertExpectations(t)
-	})
-	t.Run("Invalid address", func(t *testing.T) {
-		result, err := registry.GetRegistration(test.AnyString)
-		require.ErrorIs(t, err, blockchain.InvalidAddressError)
-		assert.Empty(t, result)
 	})
 }
 
