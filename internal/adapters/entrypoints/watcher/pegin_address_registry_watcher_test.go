@@ -598,6 +598,49 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenRebuildFails(t *testing.T) {
 	fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 }
 
+//nolint:funlen // One scenario covers the rebuild, the reload and the import of the only new address.
+func TestPegInWatcher_ReloadsTheWatchListAfterARebuild(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, 100, 1, 2)
+	stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105}
+	dropped := rootstock.PegInWatch{TxHash: "dropped", BlockNumber: 106, RskAddress: rskAddress(5), State: rootstock.PegInWatchDiscovered}
+	kept := rootstock.PegInWatch{TxHash: "kept", BlockNumber: 100, RskAddress: rskAddress(6), State: rootstock.PegInWatchImported}
+	rebuilt := []blockchain.AddressRegistered{
+		{TxHash: "kept-again", BlockNumber: 106, LogIndex: 1, RskAddress: kept.RskAddress},
+		{TxHash: "added", BlockNumber: 106, LogIndex: 2, RskAddress: rskAddress(7)},
+	}
+	root := foldRegistrations(t, stored.Root, rebuilt)
+	added := discoveredWatchEntry(rebuilt[1])
+	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{kept, dropped}, nil).Once()
+	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(stored, true, nil).Once()
+	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Once()
+	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
+		Return([]blockchain.AddressRegistered{}, nil).Once()
+	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return(root, nil).Once()
+	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(105)).Return(stored.Root, nil).Once()
+	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
+		Return(rebuilt, nil).Once()
+	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return(root, nil).Once()
+	fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(106), mock.Anything, rootstock.PegInWatchCheckpoint{Root: root, Block: 106}).
+		Return(nil).Once()
+	keptAfterRebuild := kept
+	keptAfterRebuild.TxHash, keptAfterRebuild.BlockNumber = "kept-again", 106
+	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{keptAfterRebuild, added}, nil).Once()
+	fixture.repository.EXPECT().Get(mock.Anything, added.RskAddress).Return(&added, nil).Once()
+	deposit := depositAddressFixture(0)
+	fixture.registry.EXPECT().GetPegInAddress(added.RskAddress).
+		Return(blockchain.PegInAddress{Payload: deposit.payload, Encoding: blockchain.PegInAddressRegistryEncodingBase58}, nil).Once()
+	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
+	fixture.expectBoundedRescan()
+	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
+		return updated.RskAddress == added.RskAddress && updated.State == rootstock.PegInWatchImported
+	})).Return(nil).Once()
+
+	fixture.runScan()
+
+	fixture.repository.AssertNotCalled(t, "Get", mock.Anything, dropped.RskAddress)
+	fixture.repository.AssertNotCalled(t, "Get", mock.Anything, kept.RskAddress)
+}
+
 func uint64Pointer(expected uint64) interface{} {
 	return mock.MatchedBy(func(actual *uint64) bool {
 		return actual != nil && *actual == expected

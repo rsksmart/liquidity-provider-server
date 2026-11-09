@@ -168,3 +168,144 @@ func assertRskAddressIndexIsUnique(t *testing.T, ctx context.Context, collection
 	}
 	require.Failf(t, "missing index", "%s was not built on %s", rskAddressIndex, collection.Name())
 }
+
+func replaceFixtureBlock() uint64 {
+	return 900_000_000 + uint64(time.Now().UnixNano()%1_000_000)*100
+}
+
+//nolint:funlen // One scenario checks every kind of row a rebuild touches.
+func TestReplacedRegistrationsKeepImportStateAgainstMongo(t *testing.T) {
+	ctx := context.Background()
+	watches := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInWatchCollection)
+	checkpoints := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInWatchCheckpointCollection)
+	repository := mongoAdapter.NewPegInWatchMongoRepository(conn)
+	require.NoError(t, checkpoints.Drop(ctx))
+
+	base := replaceFixtureBlock()
+	suffix := time.Now().UnixNano()
+	below := rootstock.NewPegInWatch("0xbelow", 1, base-1, fmt.Sprintf("0xbelow-%d", suffix), "0xr", [32]byte{1})
+	moved := rootstock.NewPegInWatch("0xmoved", 1, base+1, fmt.Sprintf("0xmoved-%d", suffix), "0xr", [32]byte{2})
+	dropped := rootstock.NewPegInWatch("0xdropped", 1, base+5, fmt.Sprintf("0xdropped-%d", suffix), "0xr", [32]byte{3})
+	added := rootstock.NewPegInWatch("0xadded", 2, base+7, fmt.Sprintf("0xadded-%d", suffix), "0xr", [32]byte{5})
+	t.Cleanup(func() {
+		_, err := watches.DeleteMany(ctx, bson.M{"block_number": bson.M{"$gte": base - 1, "$lte": base + 10}})
+		assert.NoError(t, err)
+		assert.NoError(t, checkpoints.Drop(ctx))
+	})
+	require.NoError(t, repository.SaveVerifiedRegistrations(
+		ctx,
+		[]rootstock.PegInWatch{below, moved, dropped},
+		rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: base + 5},
+	))
+	moved.MarkImported()
+	moved.BtcAddress = "n1BE7ioVukYS2GC88hT2K6cUvRiKwMwio7"
+	require.NoError(t, repository.Update(ctx, moved))
+
+	rebuiltMoved := rootstock.NewPegInWatch("0xmoved-again", 0, base+7, moved.RskAddress, "0xr", [32]byte{4})
+	rebuilt := rootstock.PegInWatchCheckpoint{Root: [32]byte{5}, Block: base + 8}
+	require.NoError(t, repository.ReplaceVerifiedRegistrations(ctx, base, []rootstock.PegInWatch{rebuiltMoved, added}, rebuilt))
+
+	storedMoved, err := repository.Get(ctx, moved.RskAddress)
+	require.NoError(t, err)
+	require.NotNil(t, storedMoved)
+	assert.Equal(t, rootstock.PegInWatchImported, storedMoved.State)
+	assert.Equal(t, moved.BtcAddress, storedMoved.BtcAddress)
+	assert.Equal(t, "0xmoved-again", storedMoved.TxHash)
+	assert.Equal(t, base+7, storedMoved.BlockNumber)
+	assert.Equal(t, [32]byte{4}, storedMoved.RegistrationRoot)
+	storedAdded, err := repository.Get(ctx, added.RskAddress)
+	require.NoError(t, err)
+	require.NotNil(t, storedAdded)
+	assert.Equal(t, rootstock.PegInWatchDiscovered, storedAdded.State)
+	assert.Equal(t, added.RskAddress, storedAdded.RskAddress)
+	storedDropped, err := repository.Get(ctx, dropped.RskAddress)
+	require.NoError(t, err)
+	assert.Nil(t, storedDropped)
+	storedBelow, err := repository.Get(ctx, below.RskAddress)
+	require.NoError(t, err)
+	assert.NotNil(t, storedBelow)
+
+	checkpoint, found, err := repository.GetCheckpoint(ctx)
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, rebuilt, checkpoint)
+	rootBefore, err := repository.GetRootAt(ctx, base)
+	require.NoError(t, err)
+	assert.Equal(t, below.RegistrationRoot, rootBefore)
+	rootAfter, err := repository.GetRootAt(ctx, base+8)
+	require.NoError(t, err)
+	assert.Equal(t, added.RegistrationRoot, rootAfter)
+}
+
+func TestReplacedRegistrationsAreAtomicAgainstMongo(t *testing.T) {
+	ctx := context.Background()
+	database := mongoClient.Database(mongoAdapter.DbName)
+	watches := database.Collection(mongoAdapter.PegInWatchCollection)
+	checkpoints := database.Collection(mongoAdapter.PegInWatchCheckpointCollection)
+	repository := mongoAdapter.NewPegInWatchMongoRepository(conn)
+	require.NoError(t, checkpoints.Drop(ctx))
+
+	base := replaceFixtureBlock()
+	suffix := time.Now().UnixNano()
+	stale := rootstock.NewPegInWatch("0xstale", 1, base+1, fmt.Sprintf("0xstale-%d", suffix), "0xr", [32]byte{1})
+	fresh := rootstock.NewPegInWatch("0xfresh", 1, base+2, fmt.Sprintf("0xfresh-%d", suffix), "0xr", [32]byte{2})
+	t.Cleanup(func() {
+		_, err := watches.DeleteMany(ctx, bson.M{"block_number": bson.M{"$gte": base, "$lte": base + 10}})
+		assert.NoError(t, err)
+		assert.NoError(t, checkpoints.Drop(ctx))
+	})
+	previous := rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: base + 1}
+	require.NoError(t, repository.SaveVerifiedRegistrations(ctx, []rootstock.PegInWatch{stale}, previous))
+	require.NoError(t, database.RunCommand(ctx, bson.D{
+		{Key: "collMod", Value: mongoAdapter.PegInWatchCheckpointCollection},
+		{Key: "validator", Value: bson.M{"block": bson.M{"$lt": 0}}},
+	}).Err())
+
+	err := repository.ReplaceVerifiedRegistrations(
+		ctx,
+		base,
+		[]rootstock.PegInWatch{fresh},
+		rootstock.PegInWatchCheckpoint{Root: [32]byte{2}, Block: base + 2},
+	)
+
+	require.Error(t, err)
+	storedStale, err := repository.Get(ctx, stale.RskAddress)
+	require.NoError(t, err)
+	assert.NotNil(t, storedStale, "a row removed before the failed checkpoint write must be restored")
+	storedFresh, err := repository.Get(ctx, fresh.RskAddress)
+	require.NoError(t, err)
+	assert.Nil(t, storedFresh, "a row written before the failed checkpoint write must be rolled back")
+	stored, found, err := repository.GetCheckpoint(ctx)
+	require.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, previous, stored)
+}
+
+func TestReplacedRegistrationsHandleManyAddressesAgainstMongo(t *testing.T) {
+	const addresses = 5000
+	ctx := context.Background()
+	watches := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInWatchCollection)
+	checkpoints := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInWatchCheckpointCollection)
+	repository := mongoAdapter.NewPegInWatchMongoRepository(conn)
+	require.NoError(t, checkpoints.Drop(ctx))
+
+	base := replaceFixtureBlock()
+	suffix := time.Now().UnixNano()
+	rebuilt := make([]rootstock.PegInWatch, 0, addresses)
+	for index := range addresses {
+		rebuilt = append(rebuilt, rootstock.NewPegInWatch(
+			fmt.Sprintf("0xmany-%d", index), uint(index), base, fmt.Sprintf("0xmany-%d-%d", suffix, index), "0xr", [32]byte{1},
+		))
+	}
+	t.Cleanup(func() {
+		_, err := watches.DeleteMany(ctx, bson.M{"block_number": base})
+		assert.NoError(t, err)
+		assert.NoError(t, checkpoints.Drop(ctx))
+	})
+
+	require.NoError(t, repository.ReplaceVerifiedRegistrations(ctx, base, rebuilt, rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: base}))
+
+	documents, err := watches.CountDocuments(ctx, bson.M{"block_number": base})
+	require.NoError(t, err)
+	assert.Equal(t, int64(addresses), documents)
+}

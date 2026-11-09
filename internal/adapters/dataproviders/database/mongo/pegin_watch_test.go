@@ -373,3 +373,175 @@ func withUpdateUpsert() interface{} {
 		return resolved.Upsert != nil && *resolved.Upsert
 	})
 }
+
+func TestPegInWatchMongoRepository_GetRootAt(t *testing.T) {
+	atOrBelow := bson.M{"block_number": bson.M{"$lte": uint64(150)}}
+	newestFirst := mock.MatchedBy(func(opt options.Lister[options.FindOneOptions]) bool {
+		resolved := &options.FindOneOptions{}
+		for _, fn := range opt.List() {
+			if err := fn(resolved); err != nil {
+				return false
+			}
+		}
+		return assert.ObjectsAreEqual(bson.D{{Key: "block_number", Value: -1}, {Key: "log_index", Value: -1}}, resolved.Sort)
+	})
+	t.Run("returns the root of the last row at or below the block", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+		collection.EXPECT().FindOne(mock.Anything, atOrBelow, newestFirst).
+			Return(mongoDb.NewSingleResultFromDocument(
+				rootstock.PegInWatch{RskAddress: "0xaaaa", BlockNumber: 149, RegistrationRoot: [32]byte{4, 5}},
+				nil,
+				nil,
+			)).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		root, err := repo.GetRootAt(context.Background(), 150)
+
+		require.NoError(t, err)
+		assert.Equal(t, [32]byte{4, 5}, root)
+		collection.AssertExpectations(t)
+	})
+	t.Run("returns the zero root when no row is at or below the block", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+		collection.EXPECT().FindOne(mock.Anything, atOrBelow, newestFirst).
+			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, mongoDb.ErrNoDocuments, nil)).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		root, err := repo.GetRootAt(context.Background(), 150)
+
+		require.NoError(t, err)
+		assert.Equal(t, [32]byte{}, root)
+		collection.AssertExpectations(t)
+	})
+	t.Run("returns the read error", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
+		collection.EXPECT().FindOne(mock.Anything, atOrBelow, newestFirst).
+			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, assert.AnError, nil)).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		_, err := repo.GetRootAt(context.Background(), 150)
+
+		require.ErrorIs(t, err, assert.AnError)
+		collection.AssertExpectations(t)
+	})
+}
+
+func replacedModels(t *testing.T, fromBlock uint64, watches ...rootstock.PegInWatch) interface{} {
+	t.Helper()
+	return mock.MatchedBy(func(models []mongoDb.WriteModel) bool {
+		if len(models) != len(watches)+1 {
+			return false
+		}
+		addresses := make([]string, 0, len(watches))
+		for index, watch := range watches {
+			addresses = append(addresses, watch.RskAddress)
+			if !isRebuiltWatchUpsert(models[index+1], watch) {
+				return false
+			}
+		}
+		deleteModel, ok := models[0].(*mongoDb.DeleteManyModel)
+		return ok && assert.ObjectsAreEqual(bson.M{
+			"block_number": bson.M{"$gte": fromBlock},
+			"rsk_address":  bson.M{"$nin": addresses},
+		}, deleteModel.Filter)
+	})
+}
+
+func isRebuiltWatchUpsert(model mongoDb.WriteModel, watch rootstock.PegInWatch) bool {
+	upsert, ok := model.(*mongoDb.UpdateOneModel)
+	if !ok || upsert.Upsert == nil || !*upsert.Upsert || !assert.ObjectsAreEqual(bson.M{"rsk_address": watch.RskAddress}, upsert.Filter) {
+		return false
+	}
+	update, ok := upsert.Update.(bson.M)
+	return ok && keepsImportState(update, watch)
+}
+
+func keepsImportState(update bson.M, watch rootstock.PegInWatch) bool {
+	set, setOk := update["$set"].(bson.M)
+	insert, insertOk := update["$setOnInsert"].(bson.M)
+	return setOk && insertOk &&
+		set["block_number"] == watch.BlockNumber && set["registration_root"] == watch.RegistrationRoot &&
+		insert["state"] == watch.State && insert["btc_address"] == watch.BtcAddress
+}
+
+func orderedBulkWrite() interface{} {
+	return mock.MatchedBy(func(opt options.Lister[options.BulkWriteOptions]) bool {
+		resolved := &options.BulkWriteOptions{}
+		for _, fn := range opt.List() {
+			if err := fn(resolved); err != nil {
+				return false
+			}
+		}
+		return resolved.Ordered != nil && *resolved.Ordered
+	})
+}
+
+func TestPegInWatchMongoRepository_ReplaceVerifiedRegistrations(t *testing.T) {
+	first, second, checkpoint := verifiedRegistrationsFixture()
+	checkpointIdentity := bson.M{"_id": "verified"}
+
+	t.Run("removes, upserts and saves the checkpoint in one transaction with one bulk write", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.expectTransaction(t, nil)
+		saveMocks.watches.EXPECT().BulkWrite(mock.Anything, replacedModels(t, 10, first, second), orderedBulkWrite()).
+			Return(&mongoDb.BulkWriteResult{}, nil).Once()
+		saveMocks.checkpoints.EXPECT().UpdateOne(mock.Anything, checkpointIdentity, bson.M{"$set": checkpoint}, withUpdateUpsert()).
+			Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		require.NoError(t, repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{first, second}, checkpoint))
+		saveMocks.assertExpectations(t)
+	})
+	t.Run("removes every row from the block when the chain has none there", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.expectTransaction(t, nil)
+		saveMocks.watches.EXPECT().BulkWrite(mock.Anything, replacedModels(t, 10), orderedBulkWrite()).
+			Return(&mongoDb.BulkWriteResult{}, nil).Once()
+		saveMocks.checkpoints.EXPECT().UpdateOne(mock.Anything, checkpointIdentity, bson.M{"$set": checkpoint}, withUpdateUpsert()).
+			Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		require.NoError(t, repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{}, checkpoint))
+		saveMocks.assertExpectations(t)
+	})
+}
+
+func TestPegInWatchMongoRepository_ReplaceVerifiedRegistrationsErrors(t *testing.T) {
+	first, _, checkpoint := verifiedRegistrationsFixture()
+	checkpointIdentity := bson.M{"_id": "verified"}
+
+	t.Run("stops before the checkpoint when the bulk write fails", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.expectTransaction(t, assert.AnError)
+		saveMocks.watches.EXPECT().BulkWrite(mock.Anything, mock.Anything, orderedBulkWrite()).Return(nil, assert.AnError).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		err := repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{first}, checkpoint)
+
+		require.ErrorIs(t, err, assert.AnError)
+		saveMocks.assertExpectations(t)
+	})
+	t.Run("returns the checkpoint write error", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.expectTransaction(t, assert.AnError)
+		saveMocks.watches.EXPECT().BulkWrite(mock.Anything, mock.Anything, orderedBulkWrite()).Return(&mongoDb.BulkWriteResult{}, nil).Once()
+		saveMocks.checkpoints.EXPECT().UpdateOne(mock.Anything, checkpointIdentity, bson.M{"$set": checkpoint}, withUpdateUpsert()).
+			Return(nil, assert.AnError).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		err := repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{first}, checkpoint)
+
+		require.ErrorIs(t, err, assert.AnError)
+		saveMocks.assertExpectations(t)
+	})
+	t.Run("returns the session error without writing", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.client.On("StartSession").Return(saveMocks.session, assert.AnError).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		err := repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{first}, checkpoint)
+
+		require.ErrorIs(t, err, assert.AnError)
+		saveMocks.assertExpectations(t)
+	})
+}
