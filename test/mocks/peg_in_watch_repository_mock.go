@@ -144,6 +144,65 @@ func (_c *PegInWatchRepositoryMock_GetCheckpoint_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// GetRootAt provides a mock function with given fields: ctx, block
+func (_m *PegInWatchRepositoryMock) GetRootAt(ctx context.Context, block uint64) ([32]byte, error) {
+	ret := _m.Called(ctx, block)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRootAt")
+	}
+
+	var r0 [32]byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) ([32]byte, error)); ok {
+		return rf(ctx, block)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) [32]byte); ok {
+		r0 = rf(ctx, block)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([32]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uint64) error); ok {
+		r1 = rf(ctx, block)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegInWatchRepositoryMock_GetRootAt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRootAt'
+type PegInWatchRepositoryMock_GetRootAt_Call struct {
+	*mock.Call
+}
+
+// GetRootAt is a helper method to define mock.On call
+//   - ctx context.Context
+//   - block uint64
+func (_e *PegInWatchRepositoryMock_Expecter) GetRootAt(ctx interface{}, block interface{}) *PegInWatchRepositoryMock_GetRootAt_Call {
+	return &PegInWatchRepositoryMock_GetRootAt_Call{Call: _e.mock.On("GetRootAt", ctx, block)}
+}
+
+func (_c *PegInWatchRepositoryMock_GetRootAt_Call) Run(run func(ctx context.Context, block uint64)) *PegInWatchRepositoryMock_GetRootAt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uint64))
+	})
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_GetRootAt_Call) Return(_a0 [32]byte, _a1 error) *PegInWatchRepositoryMock_GetRootAt_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_GetRootAt_Call) RunAndReturn(run func(context.Context, uint64) ([32]byte, error)) *PegInWatchRepositoryMock_GetRootAt_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // List provides a mock function with given fields: ctx
 func (_m *PegInWatchRepositoryMock) List(ctx context.Context) ([]rootstock.PegInWatch, error) {
 	ret := _m.Called(ctx)
@@ -198,6 +257,55 @@ func (_c *PegInWatchRepositoryMock_List_Call) Return(_a0 []rootstock.PegInWatch,
 }
 
 func (_c *PegInWatchRepositoryMock_List_Call) RunAndReturn(run func(context.Context) ([]rootstock.PegInWatch, error)) *PegInWatchRepositoryMock_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReplaceVerifiedRegistrations provides a mock function with given fields: ctx, fromBlock, watches, checkpoint
+func (_m *PegInWatchRepositoryMock) ReplaceVerifiedRegistrations(ctx context.Context, fromBlock uint64, watches []rootstock.PegInWatch, checkpoint rootstock.PegInWatchCheckpoint) error {
+	ret := _m.Called(ctx, fromBlock, watches, checkpoint)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceVerifiedRegistrations")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, uint64, []rootstock.PegInWatch, rootstock.PegInWatchCheckpoint) error); ok {
+		r0 = rf(ctx, fromBlock, watches, checkpoint)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceVerifiedRegistrations'
+type PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call struct {
+	*mock.Call
+}
+
+// ReplaceVerifiedRegistrations is a helper method to define mock.On call
+//   - ctx context.Context
+//   - fromBlock uint64
+//   - watches []rootstock.PegInWatch
+//   - checkpoint rootstock.PegInWatchCheckpoint
+func (_e *PegInWatchRepositoryMock_Expecter) ReplaceVerifiedRegistrations(ctx interface{}, fromBlock interface{}, watches interface{}, checkpoint interface{}) *PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call {
+	return &PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call{Call: _e.mock.On("ReplaceVerifiedRegistrations", ctx, fromBlock, watches, checkpoint)}
+}
+
+func (_c *PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call) Run(run func(ctx context.Context, fromBlock uint64, watches []rootstock.PegInWatch, checkpoint rootstock.PegInWatchCheckpoint)) *PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uint64), args[2].([]rootstock.PegInWatch), args[3].(rootstock.PegInWatchCheckpoint))
+	})
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call) Return(_a0 error) *PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call) RunAndReturn(run func(context.Context, uint64, []rootstock.PegInWatch, rootstock.PegInWatchCheckpoint) error) *PegInWatchRepositoryMock_ReplaceVerifiedRegistrations_Call {
 	_c.Call.Return(run)
 	return _c
 }

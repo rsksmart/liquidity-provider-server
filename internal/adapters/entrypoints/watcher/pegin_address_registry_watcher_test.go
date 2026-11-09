@@ -562,7 +562,7 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenCatchUpFails(t *testing.T) {
 	fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 }
 
-func TestPegInWatcher_RetriesDiscoveredEntriesWhenCatchUpReportsMismatch(t *testing.T) {
+func TestPegInWatcher_RetriesDiscoveredEntriesWhenRebuildFails(t *testing.T) {
 	fixture := newPegInWatcherFixture(t, 100, 1, 2)
 	entry := rootstock.PegInWatch{
 		TxHash:      "pending-import",
@@ -578,6 +578,7 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenCatchUpReportsMismatch(t *test
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
 		Return([]blockchain.AddressRegistered{}, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return([32]byte{2}, nil).Once()
+	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(105)).Return([32]byte{}, assert.AnError).Once()
 	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
 	deposit := depositAddressFixture(0)
 	fixture.registry.EXPECT().GetPegInAddress(entry.RskAddress).

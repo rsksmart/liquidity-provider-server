@@ -107,8 +107,12 @@ func (watcher *PegInWatcher) Shutdown(closeChannel chan<- bool) {
 
 func (watcher *PegInWatcher) scan(ctx context.Context) error {
 	result, catchUpErr := watcher.catchUpUseCase.Run(ctx)
-	for _, watch := range result.Watches {
-		watcher.rememberWatch(watch)
+	if result.Rebuilt {
+		catchUpErr = watcher.Prepare(ctx)
+	} else {
+		for _, watch := range result.Watches {
+			watcher.rememberWatch(watch)
+		}
 	}
 	pending, err := watcher.retryDiscoveredWatches(ctx, []rootstock.PegInWatch{})
 	if err == nil {

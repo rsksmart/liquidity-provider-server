@@ -106,4 +106,6 @@ type PegInWatchRepository interface {
 	Update(ctx context.Context, watch PegInWatch) error
 	GetCheckpoint(ctx context.Context) (checkpoint PegInWatchCheckpoint, found bool, err error)
 	SaveVerifiedRegistrations(ctx context.Context, watches []PegInWatch, checkpoint PegInWatchCheckpoint) error
+	GetRootAt(ctx context.Context, block uint64) ([32]byte, error)
+	ReplaceVerifiedRegistrations(ctx context.Context, fromBlock uint64, watches []PegInWatch, checkpoint PegInWatchCheckpoint) error
 }
