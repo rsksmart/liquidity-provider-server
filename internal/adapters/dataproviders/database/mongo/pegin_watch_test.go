@@ -323,7 +323,7 @@ func newCheckpointSaveMocks() checkpointSaveMocks {
 	return saveMocks
 }
 
-func (saveMocks checkpointSaveMocks) runTransaction(t *testing.T, expectedErr error) {
+func (saveMocks checkpointSaveMocks) expectTransaction(t *testing.T, expectedErr error) {
 	saveMocks.client.On("StartSession").Return(saveMocks.session, nil).Once()
 	saveMocks.session.On("WithTransaction", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
@@ -355,7 +355,7 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrations(t *testing.T) {
 
 	t.Run("writes the watches and the checkpoint in one transaction", func(t *testing.T) {
 		saveMocks := newCheckpointSaveMocks()
-		saveMocks.runTransaction(t, nil)
+		saveMocks.expectTransaction(t, nil)
 		for _, watch := range []rootstock.PegInWatch{first, second} {
 			saveMocks.watches.EXPECT().UpdateOne(
 				mock.Anything,
@@ -377,7 +377,7 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrations(t *testing.T) {
 	})
 	t.Run("writes only the checkpoint when there are no new watches", func(t *testing.T) {
 		saveMocks := newCheckpointSaveMocks()
-		saveMocks.runTransaction(t, nil)
+		saveMocks.expectTransaction(t, nil)
 		saveMocks.checkpoints.EXPECT().UpdateOne(mock.Anything, checkpointIdentity, bson.M{"$set": checkpoint}, withUpdateUpsert()).
 			Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 
@@ -393,7 +393,7 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrationsErrors(t *testing.T)
 
 	t.Run("stops before the checkpoint when a watch write fails", func(t *testing.T) {
 		saveMocks := newCheckpointSaveMocks()
-		saveMocks.runTransaction(t, assert.AnError)
+		saveMocks.expectTransaction(t, assert.AnError)
 		saveMocks.watches.EXPECT().UpdateOne(mock.Anything, bson.M{"rsk_address": first.RskAddress}, mock.Anything, withUpdateUpsert()).
 			Return(nil, assert.AnError).Once()
 
@@ -405,7 +405,7 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrationsErrors(t *testing.T)
 	})
 	t.Run("returns the checkpoint write error", func(t *testing.T) {
 		saveMocks := newCheckpointSaveMocks()
-		saveMocks.runTransaction(t, assert.AnError)
+		saveMocks.expectTransaction(t, assert.AnError)
 		saveMocks.watches.EXPECT().UpdateOne(mock.Anything, mock.Anything, mock.Anything, withUpdateUpsert()).
 			Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
 		saveMocks.checkpoints.EXPECT().UpdateOne(mock.Anything, checkpointIdentity, bson.M{"$set": checkpoint}, withUpdateUpsert()).
