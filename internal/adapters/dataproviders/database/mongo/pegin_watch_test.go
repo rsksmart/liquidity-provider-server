@@ -7,6 +7,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -250,6 +251,181 @@ func TestPegInWatchMongoRepository_CursorErrors(t *testing.T) {
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
 		require.ErrorIs(t, repo.SetCursor(context.Background(), 123), assert.AnError)
 		collection.AssertExpectations(t)
+	})
+}
+
+func TestPegInWatchMongoRepository_GetCheckpoint(t *testing.T) {
+	checkpointIdentity := bson.M{"_id": "verified"}
+	t.Run("returns none when no checkpoint is stored", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCheckpointCollection)
+		collection.EXPECT().FindOne(mock.Anything, checkpointIdentity).
+			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, mongoDb.ErrNoDocuments, nil)).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		checkpoint, found, err := repo.GetCheckpoint(context.Background())
+
+		require.NoError(t, err)
+		assert.False(t, found)
+		assert.Equal(t, rootstock.PegInWatchCheckpoint{}, checkpoint)
+		collection.AssertExpectations(t)
+	})
+	t.Run("returns the stored checkpoint", func(t *testing.T) {
+		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{1, 2, 3}, Block: 123}
+		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCheckpointCollection)
+		collection.EXPECT().FindOne(mock.Anything, checkpointIdentity).
+			Return(mongoDb.NewSingleResultFromDocument(
+				bson.M{"_id": "verified", "root": stored.Root, "block": stored.Block},
+				nil,
+				nil,
+			)).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		checkpoint, found, err := repo.GetCheckpoint(context.Background())
+
+		require.NoError(t, err)
+		assert.True(t, found)
+		assert.Equal(t, stored, checkpoint)
+		collection.AssertExpectations(t)
+	})
+	t.Run("returns the read error", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCheckpointCollection)
+		collection.EXPECT().FindOne(mock.Anything, checkpointIdentity).
+			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, assert.AnError, nil)).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		checkpoint, found, err := repo.GetCheckpoint(context.Background())
+
+		require.ErrorIs(t, err, assert.AnError)
+		assert.False(t, found)
+		assert.Equal(t, rootstock.PegInWatchCheckpoint{}, checkpoint)
+		collection.AssertExpectations(t)
+	})
+}
+
+type checkpointSaveMocks struct {
+	client      *mocks.DbClientBindingMock
+	watches     *mocks.CollectionBindingMock
+	checkpoints *mocks.CollectionBindingMock
+	session     *mocks.SessionBindingMock
+}
+
+func newCheckpointSaveMocks() checkpointSaveMocks {
+	client, db := getClientAndDatabaseMocks()
+	saveMocks := checkpointSaveMocks{
+		client:      client,
+		watches:     &mocks.CollectionBindingMock{},
+		checkpoints: &mocks.CollectionBindingMock{},
+		session:     &mocks.SessionBindingMock{},
+	}
+	db.On("Collection", mongo.PegInWatchCollection).Return(saveMocks.watches)
+	db.On("Collection", mongo.PegInWatchCheckpointCollection).Return(saveMocks.checkpoints)
+	saveMocks.session.On("EndSession", mock.Anything).Return().Once()
+	return saveMocks
+}
+
+func (saveMocks checkpointSaveMocks) expectTransaction(t *testing.T, expectedErr error) {
+	saveMocks.client.On("StartSession").Return(saveMocks.session, nil).Once()
+	saveMocks.session.On("WithTransaction", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) {
+			fn, ok := args.Get(1).(func(context.Context) (any, error))
+			require.True(t, ok)
+			result, cbErr := fn(context.Background())
+			require.ErrorIs(t, cbErr, expectedErr)
+			assert.Nil(t, result)
+		}).
+		Return(nil, expectedErr).Once()
+}
+
+func (saveMocks checkpointSaveMocks) assertExpectations(t *testing.T) {
+	saveMocks.client.AssertExpectations(t)
+	saveMocks.watches.AssertExpectations(t)
+	saveMocks.checkpoints.AssertExpectations(t)
+	saveMocks.session.AssertExpectations(t)
+}
+
+func verifiedRegistrationsFixture() (rootstock.PegInWatch, rootstock.PegInWatch, rootstock.PegInWatchCheckpoint) {
+	first := rootstock.PegInWatch{TxHash: "0x01", RskAddress: "0xaaaa", BlockNumber: 10, State: rootstock.PegInWatchDiscovered}
+	second := rootstock.PegInWatch{TxHash: "0x02", RskAddress: "0xbbbb", BlockNumber: 11, State: rootstock.PegInWatchDiscovered}
+	return first, second, rootstock.PegInWatchCheckpoint{Root: [32]byte{7}, Block: 11}
+}
+
+func TestPegInWatchMongoRepository_SaveVerifiedRegistrations(t *testing.T) {
+	first, second, checkpoint := verifiedRegistrationsFixture()
+	checkpointIdentity := bson.M{"_id": "verified"}
+
+	t.Run("writes the watches and the checkpoint in one transaction", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.expectTransaction(t, nil)
+		for _, watch := range []rootstock.PegInWatch{first, second} {
+			saveMocks.watches.EXPECT().UpdateOne(
+				mock.Anything,
+				bson.M{"rsk_address": watch.RskAddress},
+				bson.M{"$setOnInsert": watch},
+				withUpdateUpsert(),
+			).Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
+		}
+		saveMocks.checkpoints.EXPECT().UpdateOne(
+			mock.Anything,
+			checkpointIdentity,
+			bson.M{"$set": checkpoint},
+			withUpdateUpsert(),
+		).Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		require.NoError(t, repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{first, second}, checkpoint))
+		saveMocks.assertExpectations(t)
+	})
+	t.Run("writes only the checkpoint when there are no new watches", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.expectTransaction(t, nil)
+		saveMocks.checkpoints.EXPECT().UpdateOne(mock.Anything, checkpointIdentity, bson.M{"$set": checkpoint}, withUpdateUpsert()).
+			Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		require.NoError(t, repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{}, checkpoint))
+		saveMocks.assertExpectations(t)
+	})
+}
+
+func TestPegInWatchMongoRepository_SaveVerifiedRegistrationsErrors(t *testing.T) {
+	first, second, checkpoint := verifiedRegistrationsFixture()
+	checkpointIdentity := bson.M{"_id": "verified"}
+
+	t.Run("stops before the checkpoint when a watch write fails", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.expectTransaction(t, assert.AnError)
+		saveMocks.watches.EXPECT().UpdateOne(mock.Anything, bson.M{"rsk_address": first.RskAddress}, mock.Anything, withUpdateUpsert()).
+			Return(nil, assert.AnError).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		err := repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{first, second}, checkpoint)
+
+		require.ErrorIs(t, err, assert.AnError)
+		saveMocks.assertExpectations(t)
+	})
+	t.Run("returns the checkpoint write error", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.expectTransaction(t, assert.AnError)
+		saveMocks.watches.EXPECT().UpdateOne(mock.Anything, mock.Anything, mock.Anything, withUpdateUpsert()).
+			Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
+		saveMocks.checkpoints.EXPECT().UpdateOne(mock.Anything, checkpointIdentity, bson.M{"$set": checkpoint}, withUpdateUpsert()).
+			Return(nil, assert.AnError).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		err := repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{first}, checkpoint)
+
+		require.ErrorIs(t, err, assert.AnError)
+		saveMocks.assertExpectations(t)
+	})
+	t.Run("returns the session error without writing", func(t *testing.T) {
+		saveMocks := newCheckpointSaveMocks()
+		saveMocks.client.On("StartSession").Return(saveMocks.session, assert.AnError).Once()
+
+		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		err := repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{first}, checkpoint)
+
+		require.ErrorIs(t, err, assert.AnError)
+		saveMocks.assertExpectations(t)
 	})
 }
 

@@ -94,6 +94,11 @@ func (watch *PegInWatch) RecordError(err error) bool {
 	return true
 }
 
+type PegInWatchCheckpoint struct {
+	Root  [32]byte `json:"root" bson:"root"`
+	Block uint64   `json:"block" bson:"block"`
+}
+
 type PegInWatchRepository interface {
 	Upsert(ctx context.Context, watch PegInWatch) error
 	Get(ctx context.Context, rskAddress string) (*PegInWatch, error)
@@ -101,4 +106,6 @@ type PegInWatchRepository interface {
 	Update(ctx context.Context, watch PegInWatch) error
 	GetCursor(ctx context.Context) (lastScannedBlock uint64, found bool, err error)
 	SetCursor(ctx context.Context, lastScannedBlock uint64) error
+	GetCheckpoint(ctx context.Context) (checkpoint PegInWatchCheckpoint, found bool, err error)
+	SaveVerifiedRegistrations(ctx context.Context, watches []PegInWatch, checkpoint PegInWatchCheckpoint) error
 }
