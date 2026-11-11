@@ -16,7 +16,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuild(
 	checkpoint rootstock.PegInWatchCheckpoint,
 	finalizedHead uint64,
 ) (CatchUpRegisteredAddressesResult, error) {
-	contractRoot, err := useCase.oldRootAt(ctx, checkpoint.Block)
+	contractRoot, err := useCase.contractRootAt(ctx, checkpoint.Block)
 	if err != nil {
 		return CatchUpRegisteredAddressesResult{}, err
 	}
@@ -28,10 +28,10 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuild(
 	if err != nil {
 		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("find the first mismatching PegIn address registry block: %w", err)
 	}
-	return useCase.rebuildAfterStoredRoot(ctx, fromBlock, finalizedHead)
+	return useCase.rebuildFromStoredRoot(ctx, fromBlock, finalizedHead)
 }
 
-func (useCase *CatchUpRegisteredAddressesUseCase) rebuildAfterStoredRoot(
+func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFromStoredRoot(
 	ctx context.Context,
 	fromBlock uint64,
 	finalizedHead uint64,
@@ -82,7 +82,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) storedRootMatchesAt(ctx contex
 	if err != nil {
 		return false, err
 	}
-	contractRoot, err := useCase.oldRootAt(ctx, block)
+	contractRoot, err := useCase.contractRootAt(ctx, block)
 	if err != nil {
 		return false, err
 	}
@@ -104,7 +104,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) storedRootAt(ctx context.Conte
 	return root, nil
 }
 
-func (useCase *CatchUpRegisteredAddressesUseCase) oldRootAt(ctx context.Context, block uint64) ([32]byte, error) {
+func (useCase *CatchUpRegisteredAddressesUseCase) contractRootAt(ctx context.Context, block uint64) ([32]byte, error) {
 	root, err := useCase.registry.GetRegistrationRoot(ctx, block)
 	if err != nil {
 		return [32]byte{}, fmt.Errorf("%w %d, check that the RSK node can answer calls at old blocks: %w", RegistryOldBlockReadError, block, err)
