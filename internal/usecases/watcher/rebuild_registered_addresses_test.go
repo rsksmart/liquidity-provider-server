@@ -316,6 +316,18 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		assert.Equal(t, 2, readsOfBlock100)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
+	t.Run("changes no data when the stored rows cannot be read at the stored block", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		mismatchedPage(fixture)
+		fixture.withContractRoot(150, [32]byte{3})
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return([32]byte{}, assert.AnError).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.ErrorIs(t, err, assert.AnError)
+		assertCatchUpResult(t, expectedCatchUpResult{}, result)
+		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
 	t.Run("returns the replace error", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		mismatchedPage(fixture)
@@ -438,6 +450,19 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidStoredPoint(t *testin
 		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
 		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
+		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+	t.Run("keeps the stored point while it is below the start block and the start block is above the finalized head", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 50}
+		fixture.withCheckpoint(&stored)
+		fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(60), nil).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
+		fixture.registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }
