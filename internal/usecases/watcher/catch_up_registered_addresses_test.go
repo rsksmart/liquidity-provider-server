@@ -199,8 +199,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
-		assert.Empty(t, result.Watches)
-		assert.Equal(t, rootstock.PegInWatchCheckpoint{}, result.Checkpoint)
+		assertCatchUpResult(t, expectedCatchUpResult{}, result)
 	})
 }
 
