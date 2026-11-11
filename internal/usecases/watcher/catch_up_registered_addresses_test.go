@@ -82,7 +82,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
-		assert.Equal(t, uint64(140), result.Checkpoint.Block)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 140}}, result)
 	})
 	t.Run("keeps the stored root when the page has no registrations", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
