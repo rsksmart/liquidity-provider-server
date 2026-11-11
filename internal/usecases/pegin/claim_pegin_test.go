@@ -590,9 +590,10 @@ func TestClaimPegInUseCase_Run_SkipsAClaimStoredConcurrently(t *testing.T) {
 	f.expectDryRun(claimValue(), nil)
 	f.expectFunding(claimValue(), claimRequiredBalance())
 	f.expectAdd(rootstock.PegInClaimExistsError)
-	defer test.AssertLogContains(t, pegin.LogPegInClaimStoredMeanwhile(claimRskAddress, claimDepositTxID))()
+	logged := test.AssertLogContains(t, pegin.LogPegInClaimStoredMeanwhile(claimRskAddress, claimDepositTxID))
 
 	require.NoError(t, f.run())
+	assert.True(t, logged())
 	f.pegIn.AssertNotCalled(t, "RequestPegIn", mock.Anything, mock.Anything)
 	f.assertExpectations(t)
 }
@@ -604,9 +605,10 @@ func TestClaimPegInUseCase_Run_RecordsARaceLostInTheGasEstimate(t *testing.T) {
 	f.pegIn.EXPECT().EstimateRequestPegInGas(blockchain.NewTransactionConfig(claimValue(), 0, nil), claimParams()).
 		Return(uint64(0), blockchain.PegInAlreadyProcessedError).Once()
 	added := f.expectAdd(nil)
-	defer test.AssertLogContains(t, pegin.LogPegInClaimRaceLost(claimRskAddress, claimDepositTxID))()
+	logged := test.AssertLogContains(t, pegin.LogPegInClaimRaceLost(claimRskAddress, claimDepositTxID))
 
 	require.NoError(t, f.run())
+	assert.True(t, logged())
 	assert.Equal(t, expectedClaim(rootstock.PegInClaimRaceLost, *added), *added)
 	f.wallet.AssertNotCalled(t, "GetBalance", mock.Anything)
 	f.pegIn.AssertNotCalled(t, "RequestPegIn", mock.Anything, mock.Anything)
