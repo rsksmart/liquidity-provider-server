@@ -125,6 +125,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegInWatchRepository,
 			rskRegistry.Contracts.PegInAddressRegistry,
 			messaging.Rpc.Rsk,
+			crypto.Keccak256,
 			peginEnv.AddressRegistryWatcherStartBlock,
 			peginEnv.AddressRegistryWatcherPageSize,
 			env.Rsk.FillWithDefaults().MaxReorgDepth,
