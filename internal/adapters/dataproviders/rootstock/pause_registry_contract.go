@@ -8,11 +8,11 @@ import (
 )
 
 type pauseRegistryContractImpl struct {
-	client         RpcClientBinding
-	pausable       *bind.BoundContract
-	retryParams    RetryParams
-	emergencyPause *emergencyPause.EmergencyPauseContract
-	registry       *pauseRegistry.PauseRegistryContract
+	client          RpcClientBinding
+	pausable        *bind.BoundContract
+	retryParams     RetryParams
+	emergencyPause  *emergencyPause.EmergencyPauseContract
+	registryBinding *pauseRegistry.PauseRegistryContract
 }
 
 func NewPauseRegistryContractImpl(
@@ -23,11 +23,11 @@ func NewPauseRegistryContractImpl(
 	registryBinding *pauseRegistry.PauseRegistryContract,
 ) blockchain.PauseRegistryContract {
 	return &pauseRegistryContractImpl{
-		client:         client.client,
-		pausable:       pausable,
-		retryParams:    retryParams,
-		emergencyPause: emergencyPauseBinding,
-		registry:       registryBinding,
+		client:          client.client,
+		pausable:        pausable,
+		retryParams:     retryParams,
+		emergencyPause:  emergencyPauseBinding,
+		registryBinding: registryBinding,
 	}
 }
 
@@ -43,11 +43,11 @@ func (registry *pauseRegistryContractImpl) PauseLevel() (blockchain.PauseLevel, 
 			if addressErr != nil {
 				return 0, addressErr
 			}
-			levelCallData, dataErr := registry.registry.TryPackPauseLevel()
+			levelCallData, dataErr := registry.registryBinding.TryPackPauseLevel()
 			if dataErr != nil {
 				return 0, dataErr
 			}
-			return bind.Call(registry.registry.Instance(registry.client, address), opts, levelCallData, registry.registry.UnpackPauseLevel)
+			return bind.Call(registry.registryBinding.Instance(registry.client, address), opts, levelCallData, registry.registryBinding.UnpackPauseLevel)
 		})
 	if err != nil {
 		return blockchain.PauseLevelNone, err

@@ -62,7 +62,7 @@ func newRequestPegInHarness(t *testing.T) requestPegInHarness {
 		test.AnyRskAddress,
 		contractMock.contract,
 		signer,
-		rootstock.RetryParams{},
+		rootstock.RetryParams{Retries: 2},
 		time.Duration(1),
 		bindings.NewPeginContract(),
 		commitFirstBindings.NewPeginCommitFirstContract(),
@@ -259,6 +259,18 @@ func TestPeginContractImpl_EstimateRequestPegInGas(t *testing.T) {
 		h.client.AssertExpectations(t)
 	})
 
+	t.Run("maps a revert without asking the node again", func(t *testing.T) {
+		h := newRequestPegInHarness(t)
+		h.signer.EXPECT().Address().Return(h.from)
+		h.client.EXPECT().EstimateGas(mock.Anything, mock.Anything).
+			Return(uint64(0), NewRskRpcError(requestPegInRevertMessage, "0x61ef2833"+revertWordPadding)).Once()
+
+		gas, err := h.contract.EstimateRequestPegInGas(txConfig, requestPegInTestParams())
+		require.ErrorIs(t, err, blockchain.PegInAlreadyProcessedError)
+		assert.Zero(t, gas)
+		h.client.AssertNumberOfCalls(t, "EstimateGas", 1)
+	})
+
 	t.Run("rejects an invalid rsk address without calling the node", func(t *testing.T) {
 		h := newRequestPegInHarness(t)
 		params := requestPegInTestParams()
@@ -324,6 +336,32 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, uint64(280000), sent.tx.Gas())
 		h.contractMock.transactor.AssertExpectations(t)
+	})
+
+	t.Run("signs with the given gas price without asking the node for one", func(t *testing.T) {
+		h := newRequestPegInHarness(t)
+		gasPrice := entities.NewWei(65000000)
+		h.signer.EXPECT().Address().Return(h.from)
+		h.signer.EXPECT().Sign(mock.Anything, mock.Anything).
+			RunAndReturn(func(_ common.Address, tx *geth.Transaction) (*geth.Transaction, error) {
+				return geth.SignTx(tx, geth.HomesteadSigner{}, h.key)
+			}).Once()
+		h.contractMock.transactor.EXPECT().PendingNonceAt(mock.Anything, mock.Anything).Return(uint64(1), nil).Once()
+		var sentTx *geth.Transaction
+		h.contractMock.transactor.EXPECT().SendTransaction(mock.Anything, mock.Anything).
+			RunAndReturn(func(_ context.Context, tx *geth.Transaction) error {
+				sentTx = tx
+				return nil
+			}).Once()
+		h.client.EXPECT().TransactionReceipt(mock.Anything, mock.Anything).
+			Return(requestPegInTestReceipt(1, pegInRequestedLog(t, pegInContractAddress, event)), nil).Once()
+
+		_, err := h.contract.RequestPegIn(blockchain.TransactionConfig{Value: value, GasLimit: &gasLimit, GasPrice: gasPrice}, requestPegInTestParams())
+		require.NoError(t, err)
+		require.NotNil(t, sentTx)
+		assert.Equal(t, gasPrice.AsBigInt(), sentTx.GasPrice())
+		h.contractMock.transactor.AssertNotCalled(t, "SuggestGasPrice", mock.Anything)
+		h.contractMock.transactor.AssertNotCalled(t, "HeaderByNumber", mock.Anything, mock.Anything)
 	})
 
 	t.Run("returns no transaction hash when nothing was broadcast", func(t *testing.T) {
