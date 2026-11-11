@@ -277,8 +277,38 @@ func (saveMocks checkpointSaveMocks) assertExpectations(t *testing.T) {
 }
 
 func verifiedRegistrationsFixture() (rootstock.PegInWatch, rootstock.PegInWatch, rootstock.PegInWatchCheckpoint) {
-	first := rootstock.PegInWatch{TxHash: "0x01", RskAddress: "0xaaaa", BlockNumber: 10, State: rootstock.PegInWatchDiscovered}
-	second := rootstock.PegInWatch{TxHash: "0x02", RskAddress: "0xbbbb", BlockNumber: 11, State: rootstock.PegInWatchDiscovered}
+	firstSeenAt := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
+	secondSeenAt := time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC)
+	first := rootstock.PegInWatch{
+		TxHash:           "0x01",
+		LogIndex:         3,
+		BlockNumber:      10,
+		RskAddress:       "0xaaaa",
+		Registrant:       "0xregistrant1",
+		RegistrationRoot: [32]byte{1},
+		Encoding:         1,
+		BtcAddress:       "btc-first",
+		State:            rootstock.PegInWatchDiscovered,
+		LastSeenAt:       &firstSeenAt,
+		LastError:        "first error",
+		CreatedAt:        time.Date(2026, 11, 1, 8, 0, 0, 0, time.UTC),
+		UpdatedAt:        time.Date(2026, 11, 1, 9, 0, 0, 0, time.UTC),
+	}
+	second := rootstock.PegInWatch{
+		TxHash:           "0x02",
+		LogIndex:         4,
+		BlockNumber:      11,
+		RskAddress:       "0xbbbb",
+		Registrant:       "0xregistrant2",
+		RegistrationRoot: [32]byte{2},
+		Encoding:         2,
+		BtcAddress:       "btc-second",
+		State:            rootstock.PegInWatchImported,
+		LastSeenAt:       &secondSeenAt,
+		LastError:        "second error",
+		CreatedAt:        time.Date(2026, 11, 2, 8, 0, 0, 0, time.UTC),
+		UpdatedAt:        time.Date(2026, 11, 2, 9, 0, 0, 0, time.UTC),
+	}
 	return first, second, rootstock.PegInWatchCheckpoint{Root: [32]byte{7}, Block: 11}
 }
 

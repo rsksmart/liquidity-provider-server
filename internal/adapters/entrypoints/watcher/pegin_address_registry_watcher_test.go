@@ -652,7 +652,7 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 	added := discoveredWatchEntry(rebuiltEvents[0])
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{dropped}, nil).Once()
 	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(stored, true, nil).Once()
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Twice()
+	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(108), nil).Times(3)
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
 		Return([]blockchain.AddressRegistered{}, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return(root, nil).Once()
@@ -662,7 +662,7 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return(root, nil).Once()
 	fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(106), mock.Anything, rebuiltPoint).Return(nil).Once()
 	fixture.repository.EXPECT().List(mock.Anything).Return(nil, assert.AnError).Once()
-	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(rebuiltPoint, true, nil).Once()
+	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(rebuiltPoint, true, nil).Twice()
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{added}, nil).Once()
 	fixture.repository.EXPECT().Get(mock.Anything, added.RskAddress).Return(&added, nil).Once()
 	deposit := depositAddressFixture(0)
@@ -679,9 +679,11 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 	fixture.repository.AssertNotCalled(t, "Get", mock.Anything, dropped.RskAddress)
 	fixture.wallet.AssertNotCalled(t, "ImportAddress", mock.Anything)
 	session.poll()
+	session.poll()
 	session.stop()
 
 	fixture.repository.AssertNotCalled(t, "Get", mock.Anything, dropped.RskAddress)
+	fixture.repository.AssertNumberOfCalls(t, "List", 3)
 }
 
 func uint64Pointer(expected uint64) interface{} {
