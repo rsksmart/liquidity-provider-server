@@ -27,7 +27,7 @@ When every check matches, it saves the new rows and the new point in one MongoDB
 | The registry root at the stored block differs from the stored point, and the stored rows do not match the stored point either | Rebuilds from the start block, without a binary search. |
 | The stored point is above the finalized head | Changes nothing and waits for the node to catch up. |
 
-A rebuild reads every page from the rebuild block to the finalized head and checks the root in each event. It calls `getRegistrationRoot()` only once, at the finalized head. Then it writes everything in one MongoDB transaction:
+A rebuild reads every page from the rebuild block to the finalized head and checks the root in each event. The rebuild read itself calls `getRegistrationRoot()` only once, at the finalized head. Then it writes everything in one MongoDB transaction:
 
 - rows at or above the rebuild block that the chain no longer has are removed;
 - rows that are still on the chain keep their BTC address and import state;
@@ -45,7 +45,7 @@ If any step fails, nothing changes and the LPS tries again on the next tick.
 | `Stored PegIn watch rows do not match the stored point at block X, rebuilding from the start block Y` | The rows and the point disagree. A full rebuild starts. |
 | `Stored PegIn address registry point at block X is above the finalized RSK head Y, waiting for the node to catch up` | The node is behind or on another network. |
 | `PegIn address registry watcher scan failed: ... cannot read the PegIn address registry root at old block X, check that the RSK node can answer calls at old blocks: ...` | A repair after a mismatch needs the registry root at an old block, and the node cannot answer. See manual repair. |
-| `PegIn address registry watcher scan failed: ... get PegIn address registry root at block X: ...` | The node could not answer the root read at the end of a page. After a long stop that block can be old. See manual repair if it repeats. |
+| `PegIn address registry watcher scan failed: ... get PegIn address registry root at block X: ...` | The node could not answer a root read at the end of a page or at the finalized head. After a long stop that block can be old. See manual repair if it repeats. |
 | `PegIn address registry watcher scan failed: ...` | The tick failed. The rest of the line says why. |
 
 ### Requirements and limits
