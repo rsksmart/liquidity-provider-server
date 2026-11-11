@@ -137,7 +137,7 @@ func TestBootstrap_UniqueIndex_PegInClaims(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = coll.InsertOne(ctx, doc)
-	assert.Error(t, err, "second insert with same rsk_address and deposit_txid should fail due to unique index")
+	require.Error(t, err, "second insert with same rsk_address and deposit_txid should fail due to unique index")
 	require.True(t, mongodrv.IsDuplicateKeyError(err), "expected duplicate key error, got: %v", err)
 
 	_, err = coll.InsertOne(ctx, map[string]any{"rsk_address": rskAddress, "deposit_txid": "other_deposit", "state": "submitting"})
