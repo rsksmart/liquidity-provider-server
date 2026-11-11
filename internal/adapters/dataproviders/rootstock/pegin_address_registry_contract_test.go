@@ -239,6 +239,30 @@ func TestPegInAddressRegistryContractImpl_GetRegistrationRoot(t *testing.T) {
 		assert.Equal(t, [32]byte{}, result)
 		contractMock.caller.AssertExpectations(t)
 	})
+	t.Run("Returns the empty root at a block before the registry was deployed", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(registryBinding.PackGetRegistrationRoot()),
+			big.NewInt(123),
+		).Return([]byte{}, nil).Once()
+		contractMock.caller.EXPECT().CodeAt(mock.Anything, common.HexToAddress(test.AnyRskAddress), big.NewInt(123)).Return([]byte{}, nil).Once()
+		result, err := registry.GetRegistrationRoot(context.Background(), 123)
+		require.NoError(t, err)
+		assert.Equal(t, [32]byte{}, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+	t.Run("Error handling on code read fail", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(registryBinding.PackGetRegistrationRoot()),
+			big.NewInt(123),
+		).Return([]byte{}, nil).Once()
+		contractMock.caller.EXPECT().CodeAt(mock.Anything, common.HexToAddress(test.AnyRskAddress), big.NewInt(123)).Return(nil, assert.AnError).Once()
+		result, err := registry.GetRegistrationRoot(context.Background(), 123)
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Equal(t, [32]byte{}, result)
+		contractMock.caller.AssertExpectations(t)
+	})
 }
 
 // nolint:funlen

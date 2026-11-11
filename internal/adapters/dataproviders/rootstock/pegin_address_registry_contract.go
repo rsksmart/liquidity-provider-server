@@ -2,6 +2,7 @@ package rootstock
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/v2"
@@ -143,7 +144,11 @@ func (registry *peginAddressRegistryContractImpl) GetRegistrationRoot(
 			if dataErr != nil {
 				return [32]byte{}, dataErr
 			}
-			return bind.Call(registry.contract, opts, callData, registry.binding.UnpackGetRegistrationRoot)
+			root, err := bind.Call(registry.contract, opts, callData, registry.binding.UnpackGetRegistrationRoot)
+			if errors.Is(err, bind.ErrNoCode) {
+				return [32]byte{}, nil
+			}
+			return root, err
 		})
 }
 
