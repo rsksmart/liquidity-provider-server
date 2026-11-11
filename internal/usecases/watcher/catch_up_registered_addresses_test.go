@@ -307,7 +307,8 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 
 		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
 		assert.Contains(t, err.Error(), "at block 151")
-		assert.Empty(t, result.Watches)
+		assert.Equal(t, watcher.CatchUpRegisteredAddressesResult{}, result)
+		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("reports a mismatch when the contract root moved without events and saves nothing", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
@@ -320,7 +321,8 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 
 		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
 		assert.Contains(t, err.Error(), "at block 153")
-		assert.Empty(t, result.Watches)
+		assert.Equal(t, watcher.CatchUpRegisteredAddressesResult{}, result)
+		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 }
 
