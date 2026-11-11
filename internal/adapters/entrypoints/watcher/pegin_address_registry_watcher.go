@@ -50,6 +50,7 @@ type PegInWatcher struct {
 	watcherStopChannel  chan struct{}
 	watches             []rootstock.PegInWatch
 	stateMutex          sync.RWMutex
+	reloadPending       bool
 }
 
 func NewPegInWatcher(
@@ -107,8 +108,10 @@ func (watcher *PegInWatcher) Shutdown(closeChannel chan<- bool) {
 
 func (watcher *PegInWatcher) scan(ctx context.Context) error {
 	result, catchUpErr := watcher.catchUpUseCase.Run(ctx)
-	if result.Rebuilt {
-		catchUpErr = watcher.Prepare(ctx)
+	if result.Rebuilt || watcher.reloadPending {
+		if err := watcher.reload(ctx); err != nil {
+			return errors.Join(catchUpErr, err)
+		}
 	} else {
 		for _, watch := range result.Watches {
 			watcher.rememberWatch(watch)
@@ -119,6 +122,12 @@ func (watcher *PegInWatcher) scan(ctx context.Context) error {
 		err = watcher.rescanPendingImports(ctx, pending)
 	}
 	return errors.Join(catchUpErr, err)
+}
+
+func (watcher *PegInWatcher) reload(ctx context.Context) error {
+	err := watcher.Prepare(ctx)
+	watcher.reloadPending = err != nil
+	return err
 }
 
 func (watcher *PegInWatcher) retryDiscoveredWatches(
