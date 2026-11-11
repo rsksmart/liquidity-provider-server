@@ -457,11 +457,24 @@ func isRebuiltWatchUpsert(model mongoDb.WriteModel, watch rootstock.PegInWatch) 
 }
 
 func keepsImportState(update bson.M, watch rootstock.PegInWatch) bool {
-	set, setOk := update["$set"].(bson.M)
-	insert, insertOk := update["$setOnInsert"].(bson.M)
-	return setOk && insertOk &&
-		set["block_number"] == watch.BlockNumber && set["registration_root"] == watch.RegistrationRoot &&
-		insert["state"] == watch.State && insert["btc_address"] == watch.BtcAddress
+	return assert.ObjectsAreEqual(bson.M{
+		"$set": bson.M{
+			"tx_hash":           watch.TxHash,
+			"log_index":         watch.LogIndex,
+			"block_number":      watch.BlockNumber,
+			"registrant":        watch.Registrant,
+			"registration_root": watch.RegistrationRoot,
+			"updated_at":        watch.UpdatedAt,
+		},
+		"$setOnInsert": bson.M{
+			"encoding":     watch.Encoding,
+			"btc_address":  watch.BtcAddress,
+			"state":        watch.State,
+			"last_seen_at": watch.LastSeenAt,
+			"last_error":   watch.LastError,
+			"created_at":   watch.CreatedAt,
+		},
+	}, update)
 }
 
 func orderedBulkWrite() interface{} {

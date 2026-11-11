@@ -35,6 +35,11 @@ func newCatchUpFixture(t *testing.T) *catchUpFixture {
 
 func newCatchUpFixtureWithPageSize(t *testing.T, pageSize uint64) *catchUpFixture {
 	t.Helper()
+	return newCatchUpFixtureWithStartBlockAndPageSize(t, catchUpStartBlock, pageSize)
+}
+
+func newCatchUpFixtureWithStartBlockAndPageSize(t *testing.T, startBlock, pageSize uint64) *catchUpFixture {
+	t.Helper()
 	fixture := &catchUpFixture{
 		repository: mocks.NewPegInWatchRepositoryMock(t),
 		registry:   mocks.NewPegInAddressRegistryContractMock(t),
@@ -49,7 +54,7 @@ func newCatchUpFixtureWithPageSize(t *testing.T, pageSize uint64) *catchUpFixtur
 		fixture.registry,
 		fixture.rskRpc,
 		countingHash,
-		catchUpStartBlock,
+		startBlock,
 		pageSize,
 		catchUpFinalityDepth,
 	)
