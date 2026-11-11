@@ -109,7 +109,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) readRange(
 	toBlock uint64,
 	root [32]byte,
 ) (CatchUpRegisteredAddressesResult, error) {
-	read := CatchUpRegisteredAddressesResult{
+	rangeResult := CatchUpRegisteredAddressesResult{
 		Watches:    []rootstock.PegInWatch{},
 		Checkpoint: rootstock.PegInWatchCheckpoint{Root: root, Block: toBlock},
 	}
@@ -119,15 +119,15 @@ func (useCase *CatchUpRegisteredAddressesUseCase) readRange(
 		if err != nil {
 			return CatchUpRegisteredAddressesResult{}, fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", pageFrom, pageTo, err)
 		}
-		if read, err = useCase.foldEvents(read, events); err != nil {
+		if rangeResult, err = useCase.foldEvents(rangeResult, events); err != nil {
 			return CatchUpRegisteredAddressesResult{}, err
 		}
 		pageFrom = pageTo + 1
 	}
-	if err := useCase.checkContractRoot(ctx, read.Checkpoint); err != nil {
+	if err := useCase.checkContractRoot(ctx, rangeResult.Checkpoint); err != nil {
 		return CatchUpRegisteredAddressesResult{}, err
 	}
-	return read, nil
+	return rangeResult, nil
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) foldEvents(
