@@ -39,6 +39,10 @@ func LogPegInClaimRaceLost(rskAddress, depositTxID string) string {
 	return fmt.Sprintf("PegIn deposit %s for %s was claimed by another liquidity provider", depositTxID, rskAddress)
 }
 
+func LogPegInClaimStoredMeanwhile(rskAddress, depositTxID string) string {
+	return fmt.Sprintf("PegIn claim of deposit %s for %s was stored by another claim attempt", depositTxID, rskAddress)
+}
+
 func LogPegInClaimed(rskAddress, depositTxID, txHash, pegInID string) string {
 	return fmt.Sprintf("Claimed PegIn deposit %s for %s in transaction %s, pegInId %s", depositTxID, rskAddress, txHash, pegInID)
 }

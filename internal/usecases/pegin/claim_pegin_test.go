@@ -2,6 +2,7 @@ package pegin_test
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"math/big"
 	"sync"
@@ -270,7 +271,7 @@ func TestClaimPegInUseCase_Run_ClaimsAConfirmedDeposit(t *testing.T) {
 	f.assertExpectations(t)
 }
 
-func TestClaimPegInUseCase_Run_SendsOnlyUpToTheMaximum(t *testing.T) {
+func TestClaimPegInUseCase_Run_SendsOnlyUpToTheMaximumAndStoresTheFullDeposit(t *testing.T) {
 	f := newClaimPegInFixtures()
 	maxAmount := mustWei(t, "100000000000000000000")
 	amount := mustWei(t, "100000000010000000000")
@@ -283,9 +284,27 @@ func TestClaimPegInUseCase_Run_SendsOnlyUpToTheMaximum(t *testing.T) {
 	f.configurations.EXPECT().GetPegInConfiguration().Return(configuration, nil).Once()
 	f.configurations.EXPECT().CalculatePegInFee(maxAmount).Return(fee, nil).Once()
 	f.expectSpvProof()
-	f.expectDryRun(value, blockchain.ContractPausedError)
+	f.expectDryRun(value, nil)
+	f.expectFunding(value, mustWei(t, "99000000000000000000"))
+	added := f.expectAdd(nil)
+	f.pegIn.EXPECT().RequestPegIn(blockchain.NewTransactionConfig(value, claimGasLimit, claimGasPrice()), claimParams()).
+		Return(claimResult(true, claimPegInID), nil).Once()
+	f.expectUpdate(nil)
 
 	require.NoError(t, f.run())
+	assert.Equal(t, rootstock.PegInClaim{
+		RskAddress:  claimRskAddress,
+		DepositTxID: claimDepositTxID,
+		BtcAddress:  claimBtcAddress,
+		PegInID:     claimPegInID,
+		State:       rootstock.PegInClaimSubmitting,
+		Amount:      amount,
+		Fee:         fee,
+		GasFee:      entities.NewWei(0),
+		Value:       value,
+		CreatedAt:   added.CreatedAt,
+		UpdatedAt:   added.UpdatedAt,
+	}, *added)
 	f.assertExpectations(t)
 }
 
@@ -565,13 +584,31 @@ func TestClaimPegInUseCase_Run_SkipsWhenTheWalletCantCoverTheClaim(t *testing.T)
 }
 
 func TestClaimPegInUseCase_Run_SkipsAClaimStoredConcurrently(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	f := newClaimPegInFixtures()
 	f.expectPreparedClaim()
 	f.expectDryRun(claimValue(), nil)
 	f.expectFunding(claimValue(), claimRequiredBalance())
 	f.expectAdd(rootstock.PegInClaimExistsError)
+	defer test.AssertLogContains(t, pegin.LogPegInClaimStoredMeanwhile(claimRskAddress, claimDepositTxID))()
 
 	require.NoError(t, f.run())
+	f.pegIn.AssertNotCalled(t, "RequestPegIn", mock.Anything, mock.Anything)
+	f.assertExpectations(t)
+}
+
+func TestClaimPegInUseCase_Run_RecordsARaceLostInTheGasEstimate(t *testing.T) {
+	f := newClaimPegInFixtures()
+	f.expectPreparedClaim()
+	f.expectDryRun(claimValue(), nil)
+	f.pegIn.EXPECT().EstimateRequestPegInGas(blockchain.NewTransactionConfig(claimValue(), 0, nil), claimParams()).
+		Return(uint64(0), blockchain.PegInAlreadyProcessedError).Once()
+	added := f.expectAdd(nil)
+	defer test.AssertLogContains(t, pegin.LogPegInClaimRaceLost(claimRskAddress, claimDepositTxID))()
+
+	require.NoError(t, f.run())
+	assert.Equal(t, expectedClaim(rootstock.PegInClaimRaceLost, *added), *added)
+	f.wallet.AssertNotCalled(t, "GetBalance", mock.Anything)
 	f.pegIn.AssertNotCalled(t, "RequestPegIn", mock.Anything, mock.Anything)
 	f.assertExpectations(t)
 }
@@ -734,7 +771,11 @@ func TestClaimPegInUseCase_Run_FailsWhenThePegInIdInputsAreNotHex(t *testing.T) 
 
 			err := f.runFor(testCase.rskAddress, testCase.depositTxID)
 			require.ErrorContains(t, err, string(usecases.ClaimPegInId))
+			var invalidByte hex.InvalidByteError
+			require.ErrorAs(t, err, &invalidByte)
+			assert.Equal(t, hex.InvalidByteError('n'), invalidByte)
 			f.pegIn.AssertNotCalled(t, "SimulateRequestPegIn", mock.Anything, mock.Anything)
+			f.assertExpectations(t)
 		})
 	}
 }

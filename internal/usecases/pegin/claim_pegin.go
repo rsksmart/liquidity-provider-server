@@ -159,7 +159,7 @@ func (useCase *ClaimPegInUseCase) confirmedDepositAmount(watch rootstock.PegInWa
 		return nil, err
 	}
 	outputs := tx.UTXOsToAddress(watch.BtcAddress)
-	if len(outputs) == 0 || outputs[0] == nil {
+	if len(outputs) == 0 {
 		return nil, fmt.Errorf("%w: %s", DepositOutputNotFoundError, depositTxID)
 	}
 	amount := outputs[0]
@@ -291,12 +291,14 @@ func (useCase *ClaimPegInUseCase) submitClaim(ctx context.Context, request pegIn
 	defer useCase.peginLiquidityMutex.Unlock()
 
 	txConfig, err := useCase.fundedTransactionConfig(ctx, request)
-	if err != nil {
+	if errors.Is(err, blockchain.PegInAlreadyProcessedError) {
+		return useCase.addRaceLostClaim(ctx, request)
+	} else if err != nil {
 		return err
 	}
 	claim := request.newClaim(rootstock.PegInClaimSubmitting)
 	if err = useCase.claims.Add(ctx, claim); errors.Is(err, rootstock.PegInClaimExistsError) {
-		log.Debug(LogPegInClaimAlreadyStored(claim.RskAddress, claim.DepositTxID, claim.State))
+		log.Debug(LogPegInClaimStoredMeanwhile(claim.RskAddress, claim.DepositTxID))
 		return errPegInClaimSkipped
 	} else if err != nil {
 		return err
