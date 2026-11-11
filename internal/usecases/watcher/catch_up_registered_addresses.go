@@ -103,19 +103,19 @@ func (useCase *CatchUpRegisteredAddressesUseCase) finalizedHead(ctx context.Cont
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) foldEvents(
-	read CatchUpRegisteredAddressesResult,
+	folded CatchUpRegisteredAddressesResult,
 	events []blockchain.AddressRegistered,
 ) (CatchUpRegisteredAddressesResult, error) {
 	useCase.sortAddressRegisteredEvents(events)
 	var err error
 	for _, event := range events {
-		if read.Checkpoint.Root, err = blockchain.FoldPegInAddressRegistryRoot(useCase.hashFunction, read.Checkpoint.Root, event.RskAddress); err != nil {
+		if folded.Checkpoint.Root, err = blockchain.FoldPegInAddressRegistryRoot(useCase.hashFunction, folded.Checkpoint.Root, event.RskAddress); err != nil {
 			return CatchUpRegisteredAddressesResult{}, fmt.Errorf("fold AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
 		}
-		if read.Checkpoint.Root != event.RegistrationRoot {
-			log.Warn(LogRegistryEventRootMismatch(event.BlockNumber, read.Checkpoint.Root, event.RegistrationRoot))
+		if folded.Checkpoint.Root != event.RegistrationRoot {
+			log.Warn(LogRegistryEventRootMismatch(event.BlockNumber, folded.Checkpoint.Root, event.RegistrationRoot))
 		}
-		read.Watches = append(read.Watches, rootstock.NewPegInWatch(
+		folded.Watches = append(folded.Watches, rootstock.NewPegInWatch(
 			event.TxHash,
 			event.LogIndex,
 			event.BlockNumber,
@@ -124,7 +124,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) foldEvents(
 			event.RegistrationRoot,
 		))
 	}
-	return read, nil
+	return folded, nil
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) checkContractRoot(ctx context.Context, checkpoint rootstock.PegInWatchCheckpoint) error {
