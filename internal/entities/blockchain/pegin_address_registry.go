@@ -92,9 +92,6 @@ func FoldPegInAddressRegistryRoot(
 	if err != nil {
 		return [32]byte{}, fmt.Errorf("%w: %w", InvalidAddressError, err)
 	}
-	if len(addressBytes) != 20 {
-		return [32]byte{}, fmt.Errorf("%w: decoded RSK address length %d", InvalidAddressError, len(addressBytes))
-	}
 
 	var preimage [52]byte
 	copy(preimage[:32], previousRoot[:])

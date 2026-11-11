@@ -56,9 +56,13 @@ func (useCase *CatchUpRegisteredAddressesUseCase) Run(ctx context.Context) (Catc
 	if found {
 		fromBlock = checkpoint.Block + 1
 	}
-	toBlock, hasPage, err := useCase.nextPage(ctx, fromBlock)
-	if err != nil || !hasPage {
-		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, err
+	finalizedHead, hasHead, err := useCase.finalizedHead(ctx)
+	if err != nil {
+		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, useCase.wrap(err)
+	}
+	toBlock, hasPage := useCase.nextPageEnd(fromBlock, finalizedHead)
+	if !hasHead || !hasPage {
+		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
 	}
 
 	events, err := useCase.registry.GetAddressRegisteredEvents(ctx, fromBlock, &toBlock)
@@ -72,25 +76,24 @@ func (useCase *CatchUpRegisteredAddressesUseCase) Run(ctx context.Context) (Catc
 		return CatchUpRegisteredAddressesResult{}, useCase.wrap(err)
 	}
 
-	next := rootstock.PegInWatchCheckpoint{Root: root, Block: toBlock}
-	if err = useCase.repository.SaveVerifiedRegistrations(ctx, watches, next); err != nil {
+	nextCheckpoint := rootstock.PegInWatchCheckpoint{Root: root, Block: toBlock}
+	if err = useCase.repository.SaveVerifiedRegistrations(ctx, watches, nextCheckpoint); err != nil {
 		return CatchUpRegisteredAddressesResult{}, useCase.wrap(
 			fmt.Errorf("save PegIn address registry checkpoint at block %d: %w", toBlock, err),
 		)
 	}
-	return CatchUpRegisteredAddressesResult{Watches: watches, Checkpoint: next}, nil
+	return CatchUpRegisteredAddressesResult{Watches: watches, Checkpoint: nextCheckpoint}, nil
 }
 
-func (useCase *CatchUpRegisteredAddressesUseCase) nextPage(ctx context.Context, fromBlock uint64) (uint64, bool, error) {
-	head, err := useCase.rskRpc.GetHeight(ctx)
+func (useCase *CatchUpRegisteredAddressesUseCase) finalizedHead(ctx context.Context) (head uint64, hasHead bool, err error) {
+	height, err := useCase.rskRpc.GetHeight(ctx)
 	if err != nil {
-		return 0, false, useCase.wrap(fmt.Errorf("get RSK height: %w", err))
+		return 0, false, fmt.Errorf("get RSK height: %w", err)
 	}
-	if head < useCase.finalityDepth {
+	if height < useCase.finalityDepth {
 		return 0, false, nil
 	}
-	toBlock, hasPage := useCase.nextRegistryPage(fromBlock, head-useCase.finalityDepth)
-	return toBlock, hasPage, nil
+	return height - useCase.finalityDepth, true, nil
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) foldPage(
@@ -120,12 +123,12 @@ func (useCase *CatchUpRegisteredAddressesUseCase) wrap(err error) error {
 	return usecases.WrapUseCaseError(usecases.CatchUpRegisteredAddressesId, err)
 }
 
-func (useCase *CatchUpRegisteredAddressesUseCase) nextRegistryPage(fromBlock, finalizedHead uint64) (uint64, bool) {
-	if fromBlock > finalizedHead {
+func (useCase *CatchUpRegisteredAddressesUseCase) nextPageEnd(fromBlock, lastBlock uint64) (toBlock uint64, hasPage bool) {
+	if fromBlock > lastBlock {
 		return 0, false
 	}
-	if useCase.pageSize == 0 || finalizedHead-fromBlock < useCase.pageSize {
-		return finalizedHead, true
+	if useCase.pageSize == 0 || lastBlock-fromBlock < useCase.pageSize {
+		return lastBlock, true
 	}
 	return fromBlock + useCase.pageSize - 1, true
 }
