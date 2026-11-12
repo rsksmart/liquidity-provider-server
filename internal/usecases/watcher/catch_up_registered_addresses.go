@@ -78,7 +78,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) catchUp(ctx context.Context) (
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
 	}
 
-	page, err := useCase.readRange(ctx, fromBlock, toBlock, checkpoint.Root)
+	page, err := useCase.readVerifiedRange(ctx, fromBlock, toBlock, checkpoint.Root)
 	if found && errors.Is(err, RegistryRootMismatchError) {
 		log.Warnf(LogRegistryCatchUpMismatch, err)
 		return useCase.rebuild(ctx, checkpoint, finalizedHead)
@@ -103,7 +103,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) finalizedHead(ctx context.Cont
 	return height - useCase.finalityDepth, true, nil
 }
 
-func (useCase *CatchUpRegisteredAddressesUseCase) readRange(
+func (useCase *CatchUpRegisteredAddressesUseCase) readVerifiedRange(
 	ctx context.Context,
 	fromBlock uint64,
 	toBlock uint64,

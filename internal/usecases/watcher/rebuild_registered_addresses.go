@@ -49,7 +49,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFrom(
 	root [32]byte,
 	finalizedHead uint64,
 ) (CatchUpRegisteredAddressesResult, error) {
-	rebuilt, err := useCase.readRange(ctx, fromBlock, finalizedHead, root)
+	rebuilt, err := useCase.readVerifiedRange(ctx, fromBlock, finalizedHead, root)
 	if err != nil {
 		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("rebuild the PegIn watch list from block %d: %w", fromBlock, err)
 	}
