@@ -52,6 +52,7 @@ If any step fails, nothing changes and the LPS tries again on the next tick.
 
 - Every repair after a mismatch calls `getRegistrationRoot()` at the stored block, and the binary search calls it at older blocks, so the RSK node must keep the state of old blocks. A full rebuild from the start block reads the root only at the finalized head. A catch-up reads it at the end of each page, so after a long stop it also reads old blocks.
 - The registry root covers only the ordered list of RSK addresses. It does not cover the BTC address, encoding, state, errors or timestamps of a row.
+- A rebuild rewrites only the rows at or above the rebuild block. If a reorg moved a registration below that block to another block, its row keeps the old tx hash and block number. The address list is still right.
 - Rows below the start block are never changed.
 - Bitcoin Core cannot remove an address imported with `importaddress`. An address removed from the list stays in the wallet. It only adds rescan cost.
 
