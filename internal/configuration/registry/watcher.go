@@ -46,7 +46,7 @@ func NewWatcherRegistry(
 	timeouts environment.ApplicationTimeouts,
 ) *WatcherRegistry {
 	appMetrics := monitoring.NewMetrics(prometheus.DefaultRegisterer)
-	peginWatcher := newPegInWatcher(useCaseRegistry, btcRegistry, messaging, tickers)
+	peginWatcher := newPegInWatcher(useCaseRegistry, tickers)
 
 	return &WatcherRegistry{
 		PegInAddressRegistryWatcher: peginWatcher,
@@ -172,20 +172,14 @@ func NewWatcherRegistry(
 
 func newPegInWatcher(
 	useCaseRegistry *UseCaseRegistry,
-	btcRegistry *Bitcoin,
-	messaging *Messaging,
 	tickers *watcher.ApplicationTickers,
 ) *watcher.PegInWatcher {
 	return watcher.NewPegInWatcher(
 		watcher.NewPegInWatcherUseCases(
 			useCaseRegistry.getWatchedRegisteredAddressesUseCase,
 			useCaseRegistry.catchUpRegisteredAddressesUseCase,
-			useCaseRegistry.discoverRegisteredAddressUseCase,
-			useCaseRegistry.markRegisteredAddressImportedUseCase,
-			useCaseRegistry.recordRegisteredAddressWatchErrorUseCase,
+			useCaseRegistry.importRegisteredAddressesUseCase,
 		),
-		messaging.Rpc.Btc,
-		btcRegistry.MonitoringWallet,
 		tickers.PegInAddressRegistryWatcherTicker,
 	)
 }

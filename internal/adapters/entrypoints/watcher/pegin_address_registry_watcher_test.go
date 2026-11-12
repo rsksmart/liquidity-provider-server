@@ -29,7 +29,7 @@ type pegInAddressRegistryWatcherFixture struct {
 	repository *mocks.PegInWatchRepositoryMock
 	registry   *mocks.PegInAddressRegistryContractMock
 	rskRpc     *mocks.RootstockRpcServerMock
-	btcNetwork *mocks.BtcRpcMock
+	btcNetwork *mocks.BitcoinNetworkMock
 	wallet     *mocks.BitcoinWalletMock
 	ticker     *sessionTicker
 	watcher    *watcherAdapter.PegInWatcher
@@ -48,11 +48,10 @@ func newPegInWatcherFixture(
 		repository: mocks.NewPegInWatchRepositoryMock(t),
 		registry:   mocks.NewPegInAddressRegistryContractMock(t),
 		rskRpc:     mocks.NewRootstockRpcServerMock(t),
-		btcNetwork: &mocks.BtcRpcMock{},
+		btcNetwork: mocks.NewBitcoinNetworkMock(t),
 		wallet:     mocks.NewBitcoinWalletMock(t),
 		ticker:     newSessionTicker(),
 	}
-	t.Cleanup(func() { fixture.btcNetwork.AssertExpectations(t) })
 	useCases := watcherAdapter.NewPegInWatcherUseCases(
 		watcher.NewGetWatchedRegisteredAddressesUseCase(fixture.repository),
 		watcher.NewCatchUpRegisteredAddressesUseCase(
@@ -64,22 +63,15 @@ func newPegInWatcherFixture(
 			pageSize,
 			finalityDepth,
 		),
-		watcher.NewDiscoverRegisteredAddressUseCase(fixture.repository, fixture.registry, fixture.wallet),
-		watcher.NewMarkRegisteredAddressImportedUseCase(fixture.repository),
-		watcher.NewRecordRegisteredAddressWatchErrorUseCase(fixture.repository),
+		watcher.NewImportRegisteredAddressesUseCase(fixture.repository, fixture.registry, fixture.btcNetwork, fixture.wallet),
 	)
-	fixture.watcher = watcherAdapter.NewPegInWatcher(
-		useCases,
-		fixture.btcNetwork,
-		fixture.wallet,
-		fixture.ticker,
-	)
+	fixture.watcher = watcherAdapter.NewPegInWatcher(useCases, fixture.ticker)
 	return fixture
 }
 
 func (fixture *pegInAddressRegistryWatcherFixture) expectBoundedRescan() {
 	fixture.t.Helper()
-	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.btcNetwork.EXPECT().GetHeight().Return(big.NewInt(200), nil).Once()
 	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
 		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
 		Once()
@@ -245,7 +237,7 @@ func TestPegInWatcher_SortsEventsAndClampsToFinalizedHead(t *testing.T) {
 			operationsMutex.Unlock()
 		}).Return(nil).Once()
 	}
-	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.btcNetwork.EXPECT().GetHeight().Return(big.NewInt(200), nil).Once()
 	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).
 		Run(func(int64) {
 			operationsMutex.Lock()
@@ -471,7 +463,7 @@ func TestPegInWatcher_LeavesDiscoveredWhenRescanFails(t *testing.T) {
 		}, nil).
 		Once()
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
-	fixture.btcNetwork.On("GetHeight").Return(big.NewInt(200), nil).Once()
+	fixture.btcNetwork.EXPECT().GetHeight().Return(big.NewInt(200), nil).Once()
 	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).Return(blockchain.BitcoinRescanResult{}, assert.AnError).Once()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
 		return entry.TxHash == event.TxHash &&
@@ -707,6 +699,29 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 
 	fixture.repository.AssertNotCalled(t, "Get", mock.Anything, dropped.RskAddress)
 	fixture.repository.AssertNumberOfCalls(t, "List", 3)
+}
+
+func TestPegInWatcher_KeepsTheImportResultsWhenTheImportFails(t *testing.T) {
+	fixture := newPegInWatcherFixture(t, 100, 1, 2)
+	stale := rootstock.PegInWatch{TxHash: "stale", BlockNumber: 90, RskAddress: rskAddress(1), State: rootstock.PegInWatchDiscovered}
+	unreadable := rootstock.PegInWatch{TxHash: "unreadable", BlockNumber: 91, RskAddress: rskAddress(2), State: rootstock.PegInWatchDiscovered}
+	storedStale, storedUnreadable := stale, unreadable
+	storedStale.State, storedUnreadable.State = rootstock.PegInWatchImported, rootstock.PegInWatchImported
+	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{stale, unreadable}, nil).Once()
+	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).
+		Return(rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105}, true, nil).Twice()
+	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(107), nil).Twice()
+	fixture.repository.EXPECT().Get(mock.Anything, stale.RskAddress).Return(&storedStale, nil).Once()
+	fixture.repository.EXPECT().Get(mock.Anything, unreadable.RskAddress).Return(nil, assert.AnError).Once()
+	fixture.repository.EXPECT().Get(mock.Anything, unreadable.RskAddress).Return(&storedUnreadable, nil).Once()
+
+	session := startWatcherSession(t, fixture.watcher, fixture.ticker)
+	session.poll()
+	session.poll()
+	session.stop()
+
+	fixture.repository.AssertNumberOfCalls(t, "Get", 3)
+	fixture.wallet.AssertNotCalled(t, "RescanBlockchain", mock.Anything)
 }
 
 func uint64Pointer(expected uint64) interface{} {
