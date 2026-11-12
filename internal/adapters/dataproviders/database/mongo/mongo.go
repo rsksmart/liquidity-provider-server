@@ -60,33 +60,33 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	}
 	nonUniqueIndexes := []struct {
 		collection string
-		field      string
+		fields     []string
 	}{
-		{collection: RetainedPegoutQuoteCollection, field: "bridge_rebalances.tx_hash"},
-		{collection: RetainedPeginQuoteCollection, field: "state"},
-		{collection: RetainedPegoutQuoteCollection, field: "state"},
-		{collection: PegInWatchCollection, field: "state"},
-		{collection: PegInWatchCollection, field: "block_number"},
+		{collection: RetainedPegoutQuoteCollection, fields: []string{"bridge_rebalances.tx_hash"}},
+		{collection: RetainedPeginQuoteCollection, fields: []string{"state"}},
+		{collection: RetainedPegoutQuoteCollection, fields: []string{"state"}},
+		{collection: PegInWatchCollection, fields: []string{"state"}},
+		{collection: PegInWatchCollection, fields: []string{"block_number", "log_index"}},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.
-		{collection: PeginQuoteCollection, field: "agreement_timestamp"},
-		{collection: PegoutQuoteCollection, field: "agreement_timestamp"},
+		{collection: PeginQuoteCollection, fields: []string{"agreement_timestamp"}},
+		{collection: PegoutQuoteCollection, fields: []string{"agreement_timestamp"}},
 		// quote_hash is semantically one-to-one with a quote, but InsertRetainedQuote does
 		// not enforce uniqueness; a unique build would fail and block startup on any pre-
 		// existing duplicate, with no read-perf gain.
-		{collection: RetainedPeginQuoteCollection, field: "quote_hash"},
-		{collection: RetainedPegoutQuoteCollection, field: "quote_hash"},
+		{collection: RetainedPeginQuoteCollection, fields: []string{"quote_hash"}},
+		{collection: RetainedPegoutQuoteCollection, fields: []string{"quote_hash"}},
 		// hash is the quote's content hash and effectively its PK, but InsertQuote performs a
 		// plain insert with no duplicate check; a unique build would block startup on any
 		// pre-existing duplicate (legacy data, replayed insert) with no read-perf gain.
-		{collection: PeginQuoteCollection, field: "hash"},
-		{collection: PegoutQuoteCollection, field: "hash"},
+		{collection: PeginQuoteCollection, fields: []string{"hash"}},
+		{collection: PegoutQuoteCollection, fields: []string{"hash"}},
 	}
 	for _, idx := range nonUniqueIndexes {
-		if err := createIndex(ctx, db, idx.collection, idx.field); err != nil {
-			return fmt.Errorf("error creating index on %s.%s: %w", idx.collection, idx.field, err)
+		if err := createIndex(ctx, db, idx.collection, idx.fields...); err != nil {
+			return fmt.Errorf("error creating index on %s.%s: %w", idx.collection, indexFields(idx.fields), err)
 		}
-		log.Infof("Created index on %s.%s", idx.collection, idx.field)
+		log.Infof("Created index on %s.%s", idx.collection, indexFields(idx.fields))
 	}
 	return nil
 }
@@ -114,11 +114,11 @@ func indexFields(fields []string) string {
 	return strings.Join(fields, ",")
 }
 
-func createIndex(ctx context.Context, db *mongo.Database, collectionName, field string) error {
+func createIndex(ctx context.Context, db *mongo.Database, collectionName string, fields ...string) error {
 	_, err := db.Collection(collectionName).Indexes().CreateOne(
 		ctx,
 		mongo.IndexModel{
-			Keys: bson.D{{Key: field, Value: 1}},
+			Keys: indexKeys(fields),
 		},
 	)
 	return err

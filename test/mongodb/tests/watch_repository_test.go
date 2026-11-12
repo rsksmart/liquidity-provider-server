@@ -169,6 +169,31 @@ func assertRskAddressIndexIsUnique(t *testing.T, ctx context.Context, collection
 	require.Failf(t, "missing index", "%s was not built on %s", rskAddressIndex, collection.Name())
 }
 
+func TestWatchRowsAreIndexedByBlockAndLogIndexAgainstMongo(t *testing.T) {
+	ctx := context.Background()
+	collection := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInWatchCollection)
+
+	cursor, err := collection.Indexes().List(ctx)
+	require.NoError(t, err)
+	var indexes []struct {
+		Name string `bson:"name"`
+		Key  bson.D `bson:"key"`
+	}
+	require.NoError(t, cursor.All(ctx, &indexes))
+
+	for _, index := range indexes {
+		if index.Name == "block_number_1_log_index_1" {
+			require.Len(t, index.Key, 2)
+			assert.Equal(t, "block_number", index.Key[0].Key)
+			assert.Equal(t, "log_index", index.Key[1].Key)
+			assert.EqualValues(t, 1, index.Key[0].Value)
+			assert.EqualValues(t, 1, index.Key[1].Value)
+			return
+		}
+	}
+	require.Failf(t, "missing index", "block_number_1_log_index_1 was not built on %s", collection.Name())
+}
+
 func replaceFixtureBlock() uint64 {
 	return 900_000_000 + uint64(time.Now().UnixNano()%1_000_000)*100
 }
