@@ -3,6 +3,7 @@ package watcher
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -10,8 +11,9 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	log "github.com/sirupsen/logrus"
 )
+
+var RegistryRootMismatchError = errors.New("PegIn address registry root mismatch")
 
 type CatchUpRegisteredAddressesUseCase struct {
 	repository    rootstock.PegInWatchRepository
@@ -113,7 +115,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) foldEvents(
 			return CatchUpRegisteredAddressesResult{}, fmt.Errorf("fold AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
 		}
 		if folded.Checkpoint.Root != event.RegistrationRoot {
-			log.Warn(LogRegistryEventRootMismatch(event.BlockNumber, folded.Checkpoint.Root, event.RegistrationRoot))
+			return CatchUpRegisteredAddressesResult{}, useCase.eventRootMismatch(event.BlockNumber, folded.Checkpoint.Root, event.RegistrationRoot)
 		}
 		folded.Watches = append(folded.Watches, rootstock.NewPegInWatch(
 			event.TxHash,
@@ -133,7 +135,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) checkContractRoot(ctx context.
 		return fmt.Errorf("get PegIn address registry root at block %d: %w", checkpoint.Block, err)
 	}
 	if checkpoint.Root != contractRoot {
-		log.Warn(LogRegistryContractRootMismatch(checkpoint.Block, checkpoint.Root, contractRoot))
+		return useCase.contractRootMismatch(checkpoint.Block, checkpoint.Root, contractRoot)
 	}
 	return nil
 }
@@ -159,4 +161,12 @@ func (useCase *CatchUpRegisteredAddressesUseCase) sortAddressRegisteredEvents(ev
 		}
 		return cmp.Compare(first.LogIndex, second.LogIndex)
 	})
+}
+
+func (useCase *CatchUpRegisteredAddressesUseCase) eventRootMismatch(block uint64, localRoot, eventRoot [32]byte) error {
+	return fmt.Errorf("%w at block %d: local root 0x%x, event root 0x%x", RegistryRootMismatchError, block, localRoot, eventRoot)
+}
+
+func (useCase *CatchUpRegisteredAddressesUseCase) contractRootMismatch(block uint64, localRoot, contractRoot [32]byte) error {
+	return fmt.Errorf("%w at block %d: local root 0x%x, contract root 0x%x", RegistryRootMismatchError, block, localRoot, contractRoot)
 }
