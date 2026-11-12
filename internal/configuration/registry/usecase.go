@@ -123,6 +123,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegInWatchRepository,
 			rskRegistry.Contracts.PegInAddressRegistry,
 			messaging.Rpc.Rsk,
+			messaging.EventBus,
 			crypto.Keccak256,
 			peginEnv.AddressRegistryWatcherStartBlock,
 			peginEnv.AddressRegistryWatcherPageSize,

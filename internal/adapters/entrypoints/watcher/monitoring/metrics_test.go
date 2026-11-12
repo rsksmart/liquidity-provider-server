@@ -2,9 +2,11 @@ package monitoring_test
 
 import (
 	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/reports"
@@ -28,12 +30,16 @@ func TestNewMetrics(t *testing.T) {
 		assert.NotNil(t, metrics.NodePeerBelowThreshold)
 		assert.NotNil(t, metrics.NodePeerCheckErrors)
 		assert.NotNil(t, metrics.NodePeerAlerts)
+		assert.NotNil(t, metrics.PegInAddressRegistryRootMismatchMetric)
+		assert.NotNil(t, metrics.PegInAddressRegistryResyncMetric)
 
 		// Verify metric names and help text by checking descriptors
 		peginDesc := getMetricDesc(metrics.PeginQuotesMetric)
 		pegoutDesc := getMetricDesc(metrics.PegoutQuotesMetric)
 		serverInfoDesc := getMetricDesc(metrics.ServerInfoMetric)
 		assetsDesc := getMetricDesc(metrics.AssetsMetrics)
+		rootMismatchDesc := getMetricDesc(metrics.PegInAddressRegistryRootMismatchMetric)
+		resyncDesc := getMetricDesc(metrics.PegInAddressRegistryResyncMetric)
 
 		assert.Contains(t, peginDesc, "lps_pegin_quotes")
 		assert.Contains(t, peginDesc, "Pegin quotes processed")
@@ -52,6 +58,11 @@ func TestNewMetrics(t *testing.T) {
 		assert.Contains(t, assetsDesc, "Liquidity provider asset balances and metrics")
 		assert.Contains(t, assetsDesc, "currency")
 		assert.Contains(t, assetsDesc, "type")
+
+		assert.Contains(t, rootMismatchDesc, "lps_pegin_address_registry_root_mismatch_total")
+		assert.Contains(t, rootMismatchDesc, "Total number of PegIn address registry root mismatches found by the catch-up")
+		assert.Contains(t, resyncDesc, "lps_pegin_address_registry_resync_total")
+		assert.Contains(t, resyncDesc, "Total number of PegIn watch list rebuilds from registry events")
 
 		registerer.AssertExpectations(t)
 	})
@@ -204,6 +215,8 @@ func createMetricsWithMock(t *testing.T) (*monitoring.Metrics, *mocks.Registerer
 		mock.AnythingOfType("*prometheus.GaugeVec"),   // NodePeerBelowThreshold
 		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerCheckErrors
 		mock.AnythingOfType("*prometheus.CounterVec"), // NodePeerAlerts
+		counterNamed("lps_pegin_address_registry_root_mismatch_total"),
+		counterNamed("lps_pegin_address_registry_resync_total"),
 	).Return()
 
 	metrics := monitoring.NewMetrics(registerer)
@@ -256,4 +269,37 @@ func TestMetrics_IncrementNodePeerAlert(t *testing.T) {
 	assert.InDelta(t, 1.0, getCounterVecValue(metrics.NodePeerAlerts, "bitcoin"), 0.0001)
 	metrics.IncrementNodePeerAlert("bitcoin")
 	assert.InDelta(t, 2.0, getCounterVecValue(metrics.NodePeerAlerts, "bitcoin"), 0.0001)
+}
+
+func TestMetrics_IncrementPegInAddressRegistryCounters(t *testing.T) {
+	t.Run("should increment only the root mismatch counter", func(t *testing.T) {
+		metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+
+		metrics.IncrementPegInAddressRegistryRootMismatch()
+
+		assert.InDelta(t, 1.0, getCounterValue(metrics.PegInAddressRegistryRootMismatchMetric), 0.001)
+		assert.InDelta(t, 0.0, getCounterValue(metrics.PegInAddressRegistryResyncMetric), 0.001)
+	})
+	t.Run("should increment only the resync counter", func(t *testing.T) {
+		metrics := monitoring.NewMetrics(prometheus.NewRegistry())
+
+		metrics.IncrementPegInAddressRegistryResync()
+
+		assert.InDelta(t, 0.0, getCounterValue(metrics.PegInAddressRegistryRootMismatchMetric), 0.001)
+		assert.InDelta(t, 1.0, getCounterValue(metrics.PegInAddressRegistryResyncMetric), 0.001)
+	})
+}
+
+func getCounterValue(counter prometheus.Counter) float64 {
+	metric := &dto.Metric{}
+	if err := counter.Write(metric); err != nil {
+		return -1
+	}
+	return metric.GetCounter().GetValue()
+}
+
+func counterNamed(name string) interface{} {
+	return mock.MatchedBy(func(counter prometheus.Counter) bool {
+		return strings.Contains(counter.Desc().String(), `"`+name+`"`)
+	})
 }

@@ -24,6 +24,7 @@ type catchUpFixture struct {
 	repository *mocks.PegInWatchRepositoryMock
 	registry   *mocks.PegInAddressRegistryContractMock
 	rskRpc     *mocks.RootstockRpcServerMock
+	eventBus   *mocks.EventBusMock
 	hashCalls  int
 	useCase    *watcher.CatchUpRegisteredAddressesUseCase
 }
@@ -44,7 +45,10 @@ func newCatchUpFixtureWithStartBlockAndPageSize(t *testing.T, startBlock, pageSi
 		repository: mocks.NewPegInWatchRepositoryMock(t),
 		registry:   mocks.NewPegInAddressRegistryContractMock(t),
 		rskRpc:     mocks.NewRootstockRpcServerMock(t),
+		eventBus:   &mocks.EventBusMock{},
 	}
+	fixture.eventBus.Test(t)
+	t.Cleanup(func() { fixture.eventBus.AssertExpectations(t) })
 	countingHash := func(data ...[]byte) []byte {
 		fixture.hashCalls++
 		return crypto.Keccak256(data...)
@@ -53,6 +57,7 @@ func newCatchUpFixtureWithStartBlockAndPageSize(t *testing.T, startBlock, pageSi
 		fixture.repository,
 		fixture.registry,
 		fixture.rskRpc,
+		fixture.eventBus,
 		countingHash,
 		startBlock,
 		pageSize,
@@ -127,4 +132,17 @@ func assertCatchUpResult(t *testing.T, expected expectedCatchUpResult, result wa
 	assert.Equal(t, txHashes, savedTxHashes(result.Watches))
 	assert.Equal(t, expected.checkpoint, result.Checkpoint)
 	assert.Equal(t, expected.rebuilt, result.Rebuilt)
+}
+
+func (fixture *catchUpFixture) expectResyncPublished() {
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryResyncEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryResyncEventId && !event.Timestamp.IsZero()
+	})).Return().Once()
+}
+
+func (fixture *catchUpFixture) expectRecoveryPublished() {
+	fixture.expectResyncPublished()
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRootMismatchEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryRootMismatchEventId && !event.Timestamp.IsZero()
+	})).Return().Once()
 }
