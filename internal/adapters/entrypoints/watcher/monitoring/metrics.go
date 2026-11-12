@@ -22,6 +22,9 @@ type Metrics struct {
 	NodePeerBelowThreshold        *prometheus.GaugeVec
 	NodePeerCheckErrors           *prometheus.CounterVec
 	NodePeerAlerts                *prometheus.CounterVec
+
+	PegInAddressRegistryRootMismatchMetric prometheus.Counter
+	PegInAddressRegistryResyncMetric       prometheus.Counter
 }
 
 type nodeReorgMetrics struct {
@@ -146,6 +149,14 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		NodePeerBelowThreshold:        belowThreshold,
 		NodePeerCheckErrors:           checkErrors,
 		NodePeerAlerts:                peerAlerts,
+		PegInAddressRegistryRootMismatchMetric: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "lps_pegin_address_registry_root_mismatch_total",
+			Help: "Total number of PegIn address registry root mismatches found by the catch-up",
+		}),
+		PegInAddressRegistryResyncMetric: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "lps_pegin_address_registry_resync_total",
+			Help: "Total number of PegIn watch list rebuilds from registry events",
+		}),
 	}
 
 	reg.MustRegister(
@@ -161,6 +172,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		reorg.CheckErrors,
 		reorg.Alerts,
 		peerCount, minThreshold, belowThreshold, checkErrors, peerAlerts,
+		appMetrics.PegInAddressRegistryRootMismatchMetric,
+		appMetrics.PegInAddressRegistryResyncMetric,
 	)
 	return &appMetrics
 }
@@ -181,6 +194,14 @@ func (m *Metrics) IncrementNodeReorgCheckError(node string) {
 
 func (m *Metrics) IncrementNodeReorgAlert(node string) {
 	m.NodeReorgAlertsMetric.WithLabelValues(node).Inc()
+}
+
+func (m *Metrics) IncrementPegInAddressRegistryRootMismatch() {
+	m.PegInAddressRegistryRootMismatchMetric.Inc()
+}
+
+func (m *Metrics) IncrementPegInAddressRegistryResync() {
+	m.PegInAddressRegistryResyncMetric.Inc()
 }
 
 func (m *Metrics) UpdateAssetsFromReport(report reports.GetAssetsReportResult) {

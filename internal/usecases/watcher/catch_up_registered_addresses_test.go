@@ -18,6 +18,7 @@ import (
 func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 	t.Run("rebuilds from the start block when no checkpoint is stored", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectResyncPublished()
 		fixture.withCheckpoint(nil)
 		events := chainedRegistrations(t, [32]byte{},
 			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), Registrant: "0xr", BlockNumber: 101},
@@ -67,6 +68,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, uint64(153), result.Checkpoint.Block)
 		assert.Equal(t, []string{"0x03"}, savedTxHashes(result.Watches))
+		fixture.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
 	})
 	t.Run("saves after each page up to the finalized head", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
@@ -392,6 +394,7 @@ func TestCatchUpRegisteredAddressesUseCase_ReachesTheHeadInOneRun(t *testing.T) 
 	})
 	t.Run("rebuilds from the checkpoint saved earlier in the run when a later page does not match", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectRecoveryPublished()
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(142, 121, 130, events[:1])
 		fixture.withContractRoot(130, firstPage.Root)

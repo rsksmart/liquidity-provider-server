@@ -54,6 +54,7 @@ func (fixture *catchUpFixture) withChainRoots(timeline func(uint64) [32]byte, ca
 
 func TestCatchUpRegisteredAddressesUseCase_RebuildsAfterASkippedEvent(t *testing.T) {
 	fixture := newCatchUpFixture(t)
+	fixture.expectRecoveryPublished()
 	stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 150}
 	fixture.withCheckpoint(&stored)
 	events := chainedRegistrations(t, stored.Root,
@@ -87,6 +88,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsAfterASkippedEvent(t *testing
 //nolint:funlen
 func TestCatchUpRegisteredAddressesUseCase_RebuildsAfterAReorgBelowTheStoredBlock(t *testing.T) {
 	fixture := newCatchUpFixture(t)
+	fixture.expectRecoveryPublished()
 	shared := foldedRoot(t, [32]byte{}, catchUpAddress(1))
 	oldFork := foldedRoot(t, shared, catchUpAddress(2))
 	oldForkTip := foldedRoot(t, oldFork, catchUpAddress(3))
@@ -134,6 +136,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsAfterAReorgBelowTheStoredBloc
 
 func TestCatchUpRegisteredAddressesUseCase_RebuildsToTheChainRootWhenRootsMatchAgainBelowTheMismatch(t *testing.T) {
 	fixture := newCatchUpFixture(t)
+	fixture.expectRecoveryPublished()
 	rootA := foldedRoot(t, [32]byte{}, catchUpAddress(1))
 	rootAB := foldedRoot(t, rootA, catchUpAddress(2))
 	storedTip := foldedRoot(t, rootAB, catchUpAddress(3))
@@ -173,6 +176,7 @@ func TestCatchUpRegisteredAddressesUseCase_FindsTheFirstMismatchingBlock(t *test
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			fixture := newCatchUpFixtureWithPageSize(t, 0)
+			fixture.expectRecoveryPublished()
 			stale := foldedRoot(t, [32]byte{}, catchUpAddress(1))
 			events := chainedRegistrations(t, [32]byte{},
 				blockchain.AddressRegistered{TxHash: "0x02", RskAddress: catchUpAddress(2), BlockNumber: testCase.firstBad},
@@ -208,6 +212,7 @@ func TestCatchUpRegisteredAddressesUseCase_FindsTheFirstMismatchingBlock(t *test
 
 func TestCatchUpRegisteredAddressesUseCase_RebuildsFromBlockZeroWithoutReadingARootBeforeIt(t *testing.T) {
 	fixture := newCatchUpFixtureWithStartBlockAndPageSize(t, 0, 0)
+	fixture.expectRecoveryPublished()
 	stale := foldedRoot(t, [32]byte{}, catchUpAddress(1))
 	events := chainedRegistrations(t, [32]byte{},
 		blockchain.AddressRegistered{TxHash: "0x02", RskAddress: catchUpAddress(2), BlockNumber: 0},
@@ -342,12 +347,14 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 
 		require.ErrorIs(t, err, assert.AnError)
 		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
+		fixture.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
 	})
 }
 
 func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockOnAFirstStart(t *testing.T) {
 	t.Run("gets every earlier registration and reaches the head in one run", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectResyncPublished()
 		fixture.withCheckpoint(nil)
 		events := chainedRegistrations(t, [32]byte{},
 			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 100},
@@ -372,6 +379,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockOnAFirstStar
 	})
 	t.Run("folds from the stored documents below the start block", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectResyncPublished()
 		fixture.withCheckpoint(nil)
 		below := foldedRoot(t, [32]byte{}, catchUpAddress(1))
 		events := chainedRegistrations(t, below,
@@ -422,6 +430,7 @@ func TestCatchUpRegisteredAddressesUseCase_FirstStartErrors(t *testing.T) {
 func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidCheckpoint(t *testing.T) {
 	t.Run("rebuilds from the start block when the checkpoint is below it", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectResyncPublished()
 		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 50})
 		events := chainedRegistrations(t, [32]byte{},
 			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 102},
@@ -468,6 +477,7 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidCheckpoint(t *testing
 func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDocumentsDoNotMatchTheCheckpoint(t *testing.T) {
 	t.Run("when the checkpoint does not match the chain", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectRecoveryPublished()
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 150}
 		fixture.withCheckpoint(&stored)
 		events := chainedRegistrations(t, [32]byte{},
@@ -496,6 +506,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDo
 	})
 	t.Run("when the checkpoint matches the chain", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectRecoveryPublished()
 		events := chainedRegistrations(t, [32]byte{},
 			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 120},
 			blockchain.AddressRegistered{TxHash: "0x02", RskAddress: catchUpAddress(2), BlockNumber: 152},
