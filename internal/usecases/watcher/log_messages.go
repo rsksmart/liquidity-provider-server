@@ -12,8 +12,8 @@ func LogRegistryPointAboveFinalizedHead(block, finalizedHead uint64) string {
 	)
 }
 
-func LogRegistryRowsDoNotMatchPoint(block, startBlock uint64) string {
-	return fmt.Sprintf("Stored PegIn watch rows do not match the stored point at block %d, rebuilding from the start block %d", block, startBlock)
+func LogRegistryDocumentsDoNotMatchPoint(block, startBlock uint64) string {
+	return fmt.Sprintf("Stored PegIn watch documents do not match the stored point at block %d, rebuilding from the start block %d", block, startBlock)
 }
 
 func LogRegistryStartBlockAboveFinalizedHead(startBlock, finalizedHead uint64) string {

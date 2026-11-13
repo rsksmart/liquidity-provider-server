@@ -21,7 +21,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuild(
 		return CatchUpRegisteredAddressesResult{}, err
 	}
 	if storedRoot != checkpoint.Root {
-		log.Warn(LogRegistryRowsDoNotMatchPoint(checkpoint.Block, useCase.startBlock))
+		log.Warn(LogRegistryDocumentsDoNotMatchPoint(checkpoint.Block, useCase.startBlock))
 		return useCase.rebuildFromStoredRoot(ctx, useCase.startBlock, finalizedHead)
 	}
 	contractRoot, err := useCase.contractRootAt(ctx, checkpoint.Block)

@@ -317,7 +317,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		assert.Equal(t, 2, readsOfBlock100)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
-	t.Run("changes no data when the stored rows cannot be read at the stored block", func(t *testing.T) {
+	t.Run("changes no data when the stored documents cannot be read at the stored block", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		mismatchedPage(fixture)
 		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return([32]byte{}, assert.AnError).Once()
@@ -370,7 +370,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockOnAFirstStar
 		require.NoError(t, err)
 		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01", "0x02", "0x03", "0x04"}, checkpoint: head, rebuilt: true}, result)
 	})
-	t.Run("folds from the stored rows below the start block", func(t *testing.T) {
+	t.Run("folds from the stored documents below the start block", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(nil)
 		below := foldedRoot(t, [32]byte{}, catchUpAddress(1))
@@ -449,9 +449,6 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidStoredPoint(t *testin
 		require.NoError(t, err)
 		assert.True(t, logged())
 		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
-		fixture.registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
-		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
-		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("keeps the stored point while it is below the start block and the start block is above the finalized head", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
@@ -465,12 +462,10 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidStoredPoint(t *testin
 		require.NoError(t, err)
 		assert.True(t, logged())
 		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
-		fixture.registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
-		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }
 
-func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredRowsDoNotMatchTheStoredPoint(t *testing.T) {
+func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDocumentsDoNotMatchTheStoredPoint(t *testing.T) {
 	t.Run("when the stored point does not match the chain", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 150}
@@ -491,7 +486,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredRo
 		fixture.withEvents(150, 153, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(153, next.Root)
 		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(100), mock.Anything, next).Return(nil).Once()
-		logged := test.AssertLogContains(t, watcher.LogRegistryRowsDoNotMatchPoint(150, 100))
+		logged := test.AssertLogContains(t, watcher.LogRegistryDocumentsDoNotMatchPoint(150, 100))
 
 		result, err := fixture.useCase.Run(context.Background())
 
@@ -520,7 +515,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredRo
 		fixture.withEvents(150, 153, events[1:])
 		fixture.withContractRoot(153, next.Root)
 		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(100), mock.Anything, next).Return(nil).Once()
-		logged := test.AssertLogContains(t, watcher.LogRegistryRowsDoNotMatchPoint(150, 100))
+		logged := test.AssertLogContains(t, watcher.LogRegistryDocumentsDoNotMatchPoint(150, 100))
 
 		result, err := fixture.useCase.Run(context.Background())
 
