@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	log "github.com/sirupsen/logrus"
 )
@@ -76,6 +78,9 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFrom(
 		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("save the PegIn watch list rebuilt from block %d: %w", fromBlock, err)
 	}
 	log.Info(LogRegistryWatchListRebuilt(fromBlock, finalizedHead, len(rebuilt.Watches)))
+	useCase.eventBus.Publish(blockchain.PegInAddressRegistryResyncEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryResyncEventId),
+	})
 	rebuilt.Rebuilt = true
 	return rebuilt, nil
 }

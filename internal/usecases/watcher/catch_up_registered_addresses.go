@@ -20,6 +20,7 @@ type CatchUpRegisteredAddressesUseCase struct {
 	repository    rootstock.PegInWatchRepository
 	registry      blockchain.PegInAddressRegistryContract
 	rskRpc        blockchain.RootstockRpcServer
+	eventBus      entities.EventBus
 	hashFunction  entities.HashFunction
 	startBlock    uint64
 	pageSize      uint64
@@ -30,6 +31,7 @@ func NewCatchUpRegisteredAddressesUseCase(
 	repository rootstock.PegInWatchRepository,
 	registry blockchain.PegInAddressRegistryContract,
 	rskRpc blockchain.RootstockRpcServer,
+	eventBus entities.EventBus,
 	hashFunction entities.HashFunction,
 	startBlock uint64,
 	pageSize uint64,
@@ -39,6 +41,7 @@ func NewCatchUpRegisteredAddressesUseCase(
 		repository:    repository,
 		registry:      registry,
 		rskRpc:        rskRpc,
+		eventBus:      eventBus,
 		hashFunction:  hashFunction,
 		startBlock:    startBlock,
 		pageSize:      pageSize,
@@ -99,6 +102,9 @@ func (useCase *CatchUpRegisteredAddressesUseCase) catchUpFrom(
 			if rebuildErr != nil {
 				return result, rebuildErr
 			}
+			useCase.eventBus.Publish(blockchain.PegInAddressRegistryRootMismatchEvent{
+				BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryRootMismatchEventId),
+			})
 			return rebuilt, nil
 		}
 		if err != nil {

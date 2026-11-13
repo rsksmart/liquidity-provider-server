@@ -9,7 +9,8 @@ import (
 )
 
 type WatcherRegistry struct {
-	PegInAddressRegistryWatcher *watcher.PegInWatcher
+	PegInAddressRegistryWatcher        *watcher.PegInWatcher
+	PegInAddressRegistryMetricsWatcher *monitoring.PegInAddressRegistryMetricsWatcher
 
 	QuoteCleanerWatcher       *watcher.QuoteCleanerWatcher
 	PegoutRskDepositWatcher   *watcher.PegoutRskDepositWatcher
@@ -49,7 +50,8 @@ func NewWatcherRegistry(
 	peginWatcher := newPegInWatcher(useCaseRegistry, tickers)
 
 	return &WatcherRegistry{
-		PegInAddressRegistryWatcher: peginWatcher,
+		PegInAddressRegistryWatcher:        peginWatcher,
+		PegInAddressRegistryMetricsWatcher: monitoring.NewPegInAddressRegistryMetricsWatcher(appMetrics, messaging.EventBus),
 		QuoteCleanerWatcher: watcher.NewQuoteCleanerWatcher(
 			useCaseRegistry.cleanExpiredQuotesUseCase,
 			tickers.QuoteCleanerTicker,
