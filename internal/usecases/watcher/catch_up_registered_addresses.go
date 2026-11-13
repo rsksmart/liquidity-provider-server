@@ -73,7 +73,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) catchUp(ctx context.Context) (
 		return useCase.rebuildFromStart(ctx, checkpoint, finalizedHead)
 	}
 	if checkpoint.Block > finalizedHead {
-		log.Warn(LogRegistryPointAboveFinalizedHead(checkpoint.Block, finalizedHead))
+		log.Warn(LogRegistryCheckpointAboveFinalizedHead(checkpoint.Block, finalizedHead))
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
 	}
 	return useCase.catchUpFrom(ctx, checkpoint, finalizedHead)

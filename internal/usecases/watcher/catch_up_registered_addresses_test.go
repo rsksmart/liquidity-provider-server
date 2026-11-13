@@ -16,7 +16,7 @@ import (
 
 //nolint:funlen
 func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
-	t.Run("rebuilds from the start block when no point is stored", func(t *testing.T) {
+	t.Run("rebuilds from the start block when no checkpoint is stored", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(nil)
 		events := chainedRegistrations(t, [32]byte{},

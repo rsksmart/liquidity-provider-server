@@ -419,8 +419,8 @@ func TestCatchUpRegisteredAddressesUseCase_FirstStartErrors(t *testing.T) {
 	})
 }
 
-func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidStoredPoint(t *testing.T) {
-	t.Run("rebuilds from the start block when the stored point is below it", func(t *testing.T) {
+func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidCheckpoint(t *testing.T) {
+	t.Run("rebuilds from the start block when the checkpoint is below it", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 50})
 		events := chainedRegistrations(t, [32]byte{},
@@ -437,12 +437,12 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidStoredPoint(t *testin
 		require.NoError(t, err)
 		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01"}, checkpoint: next, rebuilt: true}, result)
 	})
-	t.Run("waits without reading or writing while the stored point is above the finalized head", func(t *testing.T) {
+	t.Run("waits without reading or writing while the checkpoint is above the finalized head", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 500}
 		fixture.withCheckpoint(&stored)
 		fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(300), nil).Once()
-		logged := test.AssertLogContains(t, watcher.LogRegistryPointAboveFinalizedHead(500, 298))
+		logged := test.AssertLogContains(t, watcher.LogRegistryCheckpointAboveFinalizedHead(500, 298))
 
 		result, err := fixture.useCase.Run(context.Background())
 
@@ -450,7 +450,7 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidStoredPoint(t *testin
 		assert.True(t, logged())
 		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 	})
-	t.Run("keeps the stored point while it is below the start block and the start block is above the finalized head", func(t *testing.T) {
+	t.Run("keeps the checkpoint while it is below the start block and the start block is above the finalized head", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 50}
 		fixture.withCheckpoint(&stored)
@@ -465,8 +465,8 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidStoredPoint(t *testin
 	})
 }
 
-func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDocumentsDoNotMatchTheStoredPoint(t *testing.T) {
-	t.Run("when the stored point does not match the chain", func(t *testing.T) {
+func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDocumentsDoNotMatchTheCheckpoint(t *testing.T) {
+	t.Run("when the checkpoint does not match the chain", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 150}
 		fixture.withCheckpoint(&stored)
@@ -486,7 +486,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDo
 		fixture.withEvents(150, 153, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(153, next.Root)
 		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(100), mock.Anything, next).Return(nil).Once()
-		logged := test.AssertLogContains(t, watcher.LogRegistryDocumentsDoNotMatchPoint(150, 100))
+		logged := test.AssertLogContains(t, watcher.LogRegistryDocumentsDoNotMatchCheckpoint(150, 100))
 
 		result, err := fixture.useCase.Run(context.Background())
 
@@ -494,7 +494,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDo
 		assert.True(t, logged())
 		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01"}, checkpoint: next, rebuilt: true}, result)
 	})
-	t.Run("when the stored point matches the chain", func(t *testing.T) {
+	t.Run("when the checkpoint matches the chain", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		events := chainedRegistrations(t, [32]byte{},
 			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 120},
@@ -515,7 +515,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDo
 		fixture.withEvents(150, 153, events[1:])
 		fixture.withContractRoot(153, next.Root)
 		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(100), mock.Anything, next).Return(nil).Once()
-		logged := test.AssertLogContains(t, watcher.LogRegistryDocumentsDoNotMatchPoint(150, 100))
+		logged := test.AssertLogContains(t, watcher.LogRegistryDocumentsDoNotMatchCheckpoint(150, 100))
 
 		result, err := fixture.useCase.Run(context.Background())
 

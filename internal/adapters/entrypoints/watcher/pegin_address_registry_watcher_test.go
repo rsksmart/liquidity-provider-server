@@ -643,7 +643,7 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 	dropped := rootstock.PegInWatch{TxHash: "dropped", BlockNumber: 106, RskAddress: rskAddress(5), State: rootstock.PegInWatchDiscovered}
 	rebuiltEvents := []blockchain.AddressRegistered{{TxHash: "added", BlockNumber: 106, LogIndex: 1, RskAddress: rskAddress(7)}}
 	root := foldRegistrations(t, stored.Root, rebuiltEvents)
-	rebuiltPoint := rootstock.PegInWatchCheckpoint{Root: root, Block: 106}
+	rebuiltCheckpoint := rootstock.PegInWatchCheckpoint{Root: root, Block: 106}
 	added := discoveredWatchEntry(rebuiltEvents[0])
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{dropped}, nil).Once()
 	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(stored, true, nil).Once()
@@ -656,9 +656,9 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
 		Return(rebuiltEvents, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return(root, nil).Once()
-	fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(106), mock.Anything, rebuiltPoint).Return(nil).Once()
+	fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(106), mock.Anything, rebuiltCheckpoint).Return(nil).Once()
 	fixture.repository.EXPECT().List(mock.Anything).Return(nil, assert.AnError).Once()
-	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(rebuiltPoint, true, nil).Twice()
+	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(rebuiltCheckpoint, true, nil).Twice()
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{added}, nil).Once()
 	fixture.repository.EXPECT().Get(mock.Anything, added.RskAddress).Return(&added, nil).Once()
 	deposit := depositAddressFixture(0)
