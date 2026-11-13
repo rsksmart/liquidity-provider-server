@@ -90,6 +90,7 @@ packages:
     interfaces:
       Pausable:
       BitcoinWallet:
+      BitcoinNetwork:
       RootstockRpcServer:
       PeginContract:
       PegoutContract:
