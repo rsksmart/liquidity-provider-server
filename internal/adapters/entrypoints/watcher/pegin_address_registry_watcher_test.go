@@ -86,7 +86,7 @@ func (fixture *pegInAddressRegistryWatcherFixture) expectBoundedRescan() {
 }
 
 type catchUpExpectation struct {
-	checkpoint *rootstock.PegInWatchCheckpoint
+	checkpoint rootstock.PegInWatchCheckpoint
 	head       uint64
 	fromBlock  uint64
 	toBlock    uint64
@@ -97,16 +97,9 @@ func (fixture *pegInAddressRegistryWatcherFixture) expectCatchUp(
 	expected catchUpExpectation,
 ) *mocks.PegInWatchRepositoryMock_SaveVerifiedRegistrations_Call {
 	fixture.t.Helper()
-	var previousRoot [32]byte
-	if expected.checkpoint == nil {
-		fixture.repository.EXPECT().GetCheckpoint(mock.Anything).
-			Return(rootstock.PegInWatchCheckpoint{}, false, nil).Once()
-	} else {
-		previousRoot = expected.checkpoint.Root
-		fixture.repository.EXPECT().GetCheckpoint(mock.Anything).
-			Return(*expected.checkpoint, true, nil).Once()
-	}
-	root := foldRegistrations(fixture.t, previousRoot, expected.events)
+	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).
+		Return(expected.checkpoint, true, nil).Once()
+	root := foldRegistrations(fixture.t, expected.checkpoint.Root, expected.events)
 	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(expected.head, nil).Once()
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, expected.fromBlock, uint64Pointer(expected.toBlock)).
 		Return(expected.events, nil).Once()
@@ -191,7 +184,7 @@ func TestPegInWatcher_ContinuesFromStoredCheckpoint(t *testing.T) {
 		State:  rootstock.PegInWatchImported,
 	}}, nil).Once()
 	fixture.expectCatchUp(catchUpExpectation{
-		checkpoint: &rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105},
+		checkpoint: rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105},
 		head:       112,
 		fromBlock:  106,
 		toBlock:    108,
@@ -211,7 +204,7 @@ func TestPegInWatcher_SortsEventsAndClampsToFinalizedHead(t *testing.T) {
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{}, nil).Once()
 	var operations []string
 	var operationsMutex sync.Mutex
-	fixture.expectCatchUp(catchUpExpectation{head: 105, fromBlock: 100, toBlock: 103, events: events}).
+	fixture.expectCatchUp(catchUpExpectation{checkpoint: rootstock.PegInWatchCheckpoint{Block: 99}, head: 105, fromBlock: 100, toBlock: 103, events: events}).
 		Run(func(_ context.Context, saved []rootstock.PegInWatch, _ rootstock.PegInWatchCheckpoint) {
 			operationsMutex.Lock()
 			for _, entry := range saved {
@@ -281,7 +274,7 @@ func TestPegInWatcher_SkipsUnsupportedEncodingsAndContinues(t *testing.T) {
 		{TxHash: "base58", RskAddress: rskAddress(3), BlockNumber: 100, LogIndex: 3},
 	}
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{}, nil).Once()
-	fixture.expectCatchUp(catchUpExpectation{head: 102, fromBlock: 100, toBlock: 100, events: events})
+	fixture.expectCatchUp(catchUpExpectation{checkpoint: rootstock.PegInWatchCheckpoint{Block: 99}, head: 102, fromBlock: 100, toBlock: 100, events: events})
 
 	encodings := []blockchain.PegInAddressRegistryEncoding{
 		blockchain.PegInAddressRegistryEncodingBech32,
@@ -329,7 +322,7 @@ func TestPegInWatcher_DoesNotReimportPersistedEntry(t *testing.T) {
 
 	fixture.repository.EXPECT().List(mock.Anything).Return([]rootstock.PegInWatch{persisted}, nil).Once()
 	fixture.expectCatchUp(catchUpExpectation{
-		checkpoint: &rootstock.PegInWatchCheckpoint{Block: 99},
+		checkpoint: rootstock.PegInWatchCheckpoint{Block: 99},
 		head:       102,
 		fromBlock:  100,
 		toBlock:    100,
@@ -347,7 +340,7 @@ func TestPegInWatcher_RecordsEntryErrorAndContinues(t *testing.T) {
 		{TxHash: "valid", RskAddress: rskAddress(2), BlockNumber: 100, LogIndex: 2},
 	}
 	fixture.repository.EXPECT().List(mock.Anything).Return(nil, nil).Once()
-	fixture.expectCatchUp(catchUpExpectation{head: 102, fromBlock: 100, toBlock: 100, events: events})
+	fixture.expectCatchUp(catchUpExpectation{checkpoint: rootstock.PegInWatchCheckpoint{Block: 99}, head: 102, fromBlock: 100, toBlock: 100, events: events})
 	broken, valid := events[0], events[1]
 
 	brokenEntry := discoveredWatchEntry(broken)
@@ -399,7 +392,7 @@ func TestPegInWatcher_RetriesPersistedDiscoveredEntry(t *testing.T) {
 		Return([]rootstock.PegInWatch{entry}, nil).
 		Once()
 	fixture.expectCatchUp(catchUpExpectation{
-		checkpoint: &rootstock.PegInWatchCheckpoint{Block: 105},
+		checkpoint: rootstock.PegInWatchCheckpoint{Block: 105},
 		head:       108,
 		fromBlock:  106,
 		toBlock:    106,
@@ -440,7 +433,7 @@ func TestPegInWatcher_SuppressesRepeatedIdenticalEntryErrors(t *testing.T) {
 		Return([]rootstock.PegInWatch{entry}, nil).
 		Once()
 	fixture.expectCatchUp(catchUpExpectation{
-		checkpoint: &rootstock.PegInWatchCheckpoint{Block: 105},
+		checkpoint: rootstock.PegInWatchCheckpoint{Block: 105},
 		head:       108,
 		fromBlock:  106,
 		toBlock:    106,
@@ -466,7 +459,7 @@ func TestPegInWatcher_LeavesDiscoveredWhenRescanFails(t *testing.T) {
 		{TxHash: "needs-rescan", RskAddress: rskAddress(1), BlockNumber: 100, LogIndex: 1},
 	}
 	fixture.repository.EXPECT().List(mock.Anything).Return(nil, nil).Once()
-	fixture.expectCatchUp(catchUpExpectation{head: 102, fromBlock: 100, toBlock: 100, events: events})
+	fixture.expectCatchUp(catchUpExpectation{checkpoint: rootstock.PegInWatchCheckpoint{Block: 99}, head: 102, fromBlock: 100, toBlock: 100, events: events})
 	event := events[0]
 	persisted := discoveredWatchEntry(event)
 	fixture.repository.EXPECT().Get(mock.Anything, event.RskAddress).Return(&persisted, nil).Once()
@@ -504,7 +497,7 @@ func TestPegInWatcher_RecordsUnencodablePayload(t *testing.T) {
 		Return([]rootstock.PegInWatch{entry}, nil).
 		Once()
 	fixture.expectCatchUp(catchUpExpectation{
-		checkpoint: &rootstock.PegInWatchCheckpoint{Block: 105},
+		checkpoint: rootstock.PegInWatchCheckpoint{Block: 105},
 		head:       108,
 		fromBlock:  106,
 		toBlock:    106,
