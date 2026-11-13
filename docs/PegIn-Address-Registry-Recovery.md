@@ -57,6 +57,7 @@ On the same tick, after the transaction, the LPS imports the `discovered` addres
 - A rebuild rewrites only the documents at or above the rebuild block. If a reorg moved a registration below that block to another block, its document keeps the old tx hash and block number. The address list is still right.
 - Documents below the start block are never changed.
 - Bitcoin Core cannot remove an address imported with `importaddress`. An address removed from the list stays in the wallet. It only adds rescan cost.
+- The rescan after an import starts 100 BTC blocks (about 16 hours) below the BTC tip. The wallet does not see older deposits to a newly imported address. This matters after step 6 of the manual repair, and for addresses registered while the LPS was stopped for longer than that.
 
 ## Manual repair
 
@@ -82,7 +83,13 @@ Use this when the same error repeats on every tick, the waiting warning stays wh
    db.peginWatch.deleteMany({})
    ```
 
-   Every address is then imported into the Bitcoin wallet again, with a rescan.
+   Every address is then imported into the Bitcoin wallet again. The rescan covers only the last 100 BTC blocks.
 7. Start the LPS and wait for `Rebuilt the PegIn watch list ...` in the logs.
-8. Compare the checkpoint with the chain. `db.peginWatchCheckpoint.findOne()` gives `root` and `block`, and `db.peginWatchCheckpoint.findOne().root.toString('hex')` prints the root in hex. `getRegistrationRoot()` called at that block must return the same root.
-9. If the roots still differ, stop the LPS, record the block and both roots from the error, check the node and the configuration again, then escalate.
+8. If you deleted the documents in step 6, or the LPS was stopped for more than 100 BTC blocks, and an older deposit may still matter, rescan the wallet from a BTC height before that deposit. The rescan can take a long time and blocks the wallet while it runs:
+
+   ```bash
+   bitcoin-cli -rpcwallet=pegin-watchonly-wallet rescanblockchain <height>
+   ```
+
+9. Compare the checkpoint with the chain. `db.peginWatchCheckpoint.findOne()` gives `root` and `block`, and `db.peginWatchCheckpoint.findOne().root.toString('hex')` prints the root in hex. `getRegistrationRoot()` called at that block must return the same root.
+10. If the roots still differ, stop the LPS, record the block and both roots from the error, check the node and the configuration again, then escalate.
