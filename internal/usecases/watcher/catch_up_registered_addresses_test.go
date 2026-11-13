@@ -73,11 +73,11 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 120})
 		fixture.withPage(142, 121, 130, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(130, [32]byte{9})
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 130}).
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches(), rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 130}).
 			Return(nil).Once()
 		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(131), blockPointer(140)).Return([]blockchain.AddressRegistered{}, nil).Once()
 		fixture.withContractRoot(140, [32]byte{9})
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 140}).
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches(), rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 140}).
 			Return(nil).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
@@ -376,14 +376,14 @@ func TestCatchUpRegisteredAddressesUseCase_ReachesTheHeadInOneRun(t *testing.T) 
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(149, 121, 130, events[:1])
 		fixture.withContractRoot(130, firstPage.Root)
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, firstPage).Return(nil).Once()
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x01"), firstPage).Return(nil).Once()
 		fixture.withEvents(131, 140, events[1:2])
 		fixture.withContractRoot(140, secondPage.Root)
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, secondPage).Return(nil).Once()
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x02"), secondPage).Return(nil).Once()
 		fixture.withEvents(141, 147, events[2:])
 		fixture.withContractRoot(147, events[2].RegistrationRoot)
 		lastPage := rootstock.PegInWatchCheckpoint{Root: events[2].RegistrationRoot, Block: 147}
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, lastPage).Return(nil).Once()
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x03"), lastPage).Return(nil).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
 
@@ -396,7 +396,7 @@ func TestCatchUpRegisteredAddressesUseCase_ReachesTheHeadInOneRun(t *testing.T) 
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(142, 121, 130, events[:1])
 		fixture.withContractRoot(130, firstPage.Root)
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, firstPage).Return(nil).Once()
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x01"), firstPage).Return(nil).Once()
 		fixture.withEvents(131, 140, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(140, secondPage.Root)
 		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(130)).Return(firstPage.Root, nil).Once()
@@ -424,7 +424,7 @@ func TestCatchUpRegisteredAddressesUseCase_KeepsTheSavedPagesOnALaterError(t *te
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(142, 121, 130, events[:1])
 		fixture.withContractRoot(130, firstPage.Root)
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, firstPage).Return(nil).Once()
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x01"), firstPage).Return(nil).Once()
 		fixture.withEvents(131, 140, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(140, events[1].RegistrationRoot)
 		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(130)).Return(firstPage.Root, nil).Once()
@@ -440,10 +440,14 @@ func TestCatchUpRegisteredAddressesUseCase_KeepsTheSavedPagesOnALaterError(t *te
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(142, 121, 130, events[:1])
 		fixture.withContractRoot(130, firstPage.Root)
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, firstPage).Return(nil).Once()
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x01"), firstPage).Return(nil).Once()
 		fixture.withEvents(131, 140, events[1:])
 		fixture.withContractRoot(140, events[1].RegistrationRoot)
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError).Once()
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(
+			mock.Anything,
+			pageWatches("0x02"),
+			rootstock.PegInWatchCheckpoint{Root: events[1].RegistrationRoot, Block: 140},
+		).Return(assert.AnError).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
 

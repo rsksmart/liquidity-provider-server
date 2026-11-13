@@ -2,6 +2,7 @@ package watcher_test
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -97,6 +98,12 @@ func (fixture *catchUpFixture) withContractRoot(block uint64, root [32]byte) {
 func blockPointer(expected uint64) interface{} {
 	return mock.MatchedBy(func(actual *uint64) bool {
 		return actual != nil && *actual == expected
+	})
+}
+
+func pageWatches(txHashes ...string) interface{} {
+	return mock.MatchedBy(func(watches []rootstock.PegInWatch) bool {
+		return slices.Equal(txHashes, savedTxHashes(watches))
 	})
 }
 
