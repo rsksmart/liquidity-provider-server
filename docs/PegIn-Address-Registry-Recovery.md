@@ -31,10 +31,12 @@ A rebuild reads every page from the rebuild block to the finalized head and chec
 
 - documents at or above the rebuild block that the chain no longer has are removed;
 - documents that are still on the chain keep their BTC address and import state;
-- new addresses are added as `discovered` and imported on the same tick;
+- new addresses are added as `discovered`;
 - the new checkpoint is saved.
 
-If any step fails, nothing changes and the LPS tries again on the next tick.
+If any of these steps fails, nothing changes and the LPS tries again on the next tick.
+
+On the same tick, after the transaction, the LPS imports the `discovered` addresses into the Bitcoin wallet and rescans. This is not part of the transaction: if it fails, the rebuild stays saved, the document keeps the error in `last_error` and stays `discovered`, and the LPS tries the import again on the next tick.
 
 ### What to look for in the logs
 
