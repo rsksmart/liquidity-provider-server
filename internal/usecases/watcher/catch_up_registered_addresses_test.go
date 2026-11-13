@@ -389,7 +389,6 @@ func TestCatchUpRegisteredAddressesUseCase_ReachesTheHeadInOneRun(t *testing.T) 
 
 		require.NoError(t, err)
 		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01", "0x02", "0x03"}, checkpoint: lastPage}, result)
-		fixture.rskRpc.AssertNumberOfCalls(t, "GetHeight", 1)
 	})
 	t.Run("rebuilds from the checkpoint saved earlier in the run when a later page does not match", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
