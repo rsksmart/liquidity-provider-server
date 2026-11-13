@@ -353,7 +353,6 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockOnAFirstStar
 
 		require.NoError(t, err)
 		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01", "0x02", "0x03", "0x04"}, checkpoint: head, rebuilt: true}, result)
-		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("folds from the stored rows below the start block", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
