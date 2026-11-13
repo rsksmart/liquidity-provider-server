@@ -84,24 +84,32 @@ func (useCase *CatchUpRegisteredAddressesUseCase) catchUpFrom(
 	checkpoint rootstock.PegInWatchCheckpoint,
 	finalizedHead uint64,
 ) (CatchUpRegisteredAddressesResult, error) {
-	fromBlock := checkpoint.Block + 1
-	toBlock, hasPage := useCase.nextPageEnd(fromBlock, finalizedHead)
-	if !hasPage {
-		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
-	}
+	result := CatchUpRegisteredAddressesResult{Watches: []rootstock.PegInWatch{}, Checkpoint: checkpoint}
+	for {
+		fromBlock := result.Checkpoint.Block + 1
+		toBlock, hasPage := useCase.nextPageEnd(fromBlock, finalizedHead)
+		if !hasPage {
+			return result, nil
+		}
 
-	page, err := useCase.readVerifiedRange(ctx, fromBlock, toBlock, checkpoint.Root)
-	if errors.Is(err, RegistryRootMismatchError) {
-		log.Warnf(LogRegistryCatchUpMismatch, err)
-		return useCase.rebuild(ctx, checkpoint, finalizedHead)
+		page, err := useCase.readVerifiedRange(ctx, fromBlock, toBlock, result.Checkpoint.Root)
+		if errors.Is(err, RegistryRootMismatchError) {
+			log.Warnf(LogRegistryCatchUpMismatch, err)
+			rebuilt, rebuildErr := useCase.rebuild(ctx, result.Checkpoint, finalizedHead)
+			if rebuildErr != nil {
+				return result, rebuildErr
+			}
+			return rebuilt, nil
+		}
+		if err != nil {
+			return result, err
+		}
+		if err = useCase.repository.SaveVerifiedRegistrations(ctx, page.Watches, page.Checkpoint); err != nil {
+			return result, fmt.Errorf("save PegIn address registry checkpoint at block %d: %w", toBlock, err)
+		}
+		result.Watches = append(result.Watches, page.Watches...)
+		result.Checkpoint = page.Checkpoint
 	}
-	if err != nil {
-		return CatchUpRegisteredAddressesResult{}, err
-	}
-	if err = useCase.repository.SaveVerifiedRegistrations(ctx, page.Watches, page.Checkpoint); err != nil {
-		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("save PegIn address registry checkpoint at block %d: %w", toBlock, err)
-	}
-	return page, nil
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) finalizedHead(ctx context.Context) (head uint64, hasHead bool, err error) {

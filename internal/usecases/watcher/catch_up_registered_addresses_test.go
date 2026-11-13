@@ -68,18 +68,22 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		assert.Equal(t, uint64(153), result.Checkpoint.Block)
 		assert.Equal(t, []string{"0x03"}, savedTxHashes(result.Watches))
 	})
-	t.Run("reads one page at a time", func(t *testing.T) {
+	t.Run("saves after each page up to the finalized head", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 120})
-		fixture.withPage(200, 121, 130, []blockchain.AddressRegistered{})
+		fixture.withPage(142, 121, 130, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(130, [32]byte{9})
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, mock.Anything, rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 130}).
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches(), rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 130}).
+			Return(nil).Once()
+		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(131), blockPointer(140)).Return([]blockchain.AddressRegistered{}, nil).Once()
+		fixture.withContractRoot(140, [32]byte{9})
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches(), rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 140}).
 			Return(nil).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
-		assert.Equal(t, uint64(130), result.Checkpoint.Block)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 140}}, result)
 	})
 	t.Run("keeps the stored root when the page has no registrations", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
@@ -223,7 +227,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 
 		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
 		assert.Contains(t, err.Error(), "at block 151")
-		assert.Equal(t, watcher.CatchUpRegisteredAddressesResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("reports a mismatch when the contract root moved without events and saves nothing", func(t *testing.T) {
@@ -242,7 +246,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 
 		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
 		assert.Contains(t, err.Error(), "at block 153")
-		assert.Equal(t, watcher.CatchUpRegisteredAddressesResult{}, result)
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 }
@@ -326,36 +330,127 @@ func TestCatchUpRegisteredAddressesUseCase_PageRange(t *testing.T) {
 		storedBlock   uint64
 		finalizedHead uint64
 		pageSize      uint64
-		toBlock       uint64
-		hasPage       bool
+		pages         [][2]uint64
 	}{
 		{name: "reads nothing past the finalized head", storedBlock: 110, finalizedHead: 110, pageSize: 5},
-		{name: "reads a single block", storedBlock: 109, finalizedHead: 110, pageSize: 5, toBlock: 110, hasPage: true},
-		{name: "stops at the finalized head", storedBlock: 109, finalizedHead: 113, pageSize: 5, toBlock: 113, hasPage: true},
-		{name: "ends a full page at the finalized head", storedBlock: 109, finalizedHead: 114, pageSize: 5, toBlock: 114, hasPage: true},
-		{name: "stops at the page size", storedBlock: 109, finalizedHead: 200, pageSize: 5, toBlock: 114, hasPage: true},
-		{name: "reads to the finalized head with a zero page size", storedBlock: 109, finalizedHead: 200, toBlock: 200, hasPage: true},
+		{name: "reads a single block", storedBlock: 109, finalizedHead: 110, pageSize: 5, pages: [][2]uint64{{110, 110}}},
+		{name: "stops at the finalized head", storedBlock: 109, finalizedHead: 113, pageSize: 5, pages: [][2]uint64{{110, 113}}},
+		{name: "ends a full page at the finalized head", storedBlock: 109, finalizedHead: 114, pageSize: 5, pages: [][2]uint64{{110, 114}}},
+		{name: "stops each page at the page size", storedBlock: 109, finalizedHead: 119, pageSize: 5, pages: [][2]uint64{{110, 114}, {115, 119}}},
+		{name: "reads to the finalized head with a zero page size", storedBlock: 109, finalizedHead: 200, pages: [][2]uint64{{110, 200}}},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			fixture := newCatchUpFixtureWithPageSize(t, testCase.pageSize)
 			checkpoint := rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: testCase.storedBlock}
 			fixture.withCheckpoint(&checkpoint)
+			fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(testCase.finalizedHead+catchUpFinalityDepth, nil).Once()
 			expected := checkpoint
-			if testCase.hasPage {
-				fixture.withPage(testCase.finalizedHead+catchUpFinalityDepth, testCase.storedBlock+1, testCase.toBlock, []blockchain.AddressRegistered{})
-				fixture.withContractRoot(testCase.toBlock, stored.Root)
-				expected = rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: testCase.toBlock}
+			for _, page := range testCase.pages {
+				fixture.withEvents(page[0], page[1], []blockchain.AddressRegistered{})
+				fixture.withContractRoot(page[1], stored.Root)
+				expected = rootstock.PegInWatchCheckpoint{Root: stored.Root, Block: page[1]}
 				fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, []rootstock.PegInWatch{}, expected).Return(nil).Once()
-			} else {
-				fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(testCase.finalizedHead+catchUpFinalityDepth, nil).Once()
 			}
 
 			result, err := fixture.useCase.Run(context.Background())
 
 			require.NoError(t, err)
-			assert.Equal(t, expected, result.Checkpoint)
-			assert.Empty(t, result.Watches)
+			assertCatchUpResult(t, expectedCatchUpResult{checkpoint: expected}, result)
 		})
 	}
+}
+
+//nolint:funlen
+func TestCatchUpRegisteredAddressesUseCase_ReachesTheHeadInOneRun(t *testing.T) {
+	stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 120}
+	events := chainedRegistrations(t, stored.Root,
+		blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 125},
+		blockchain.AddressRegistered{TxHash: "0x02", RskAddress: catchUpAddress(2), BlockNumber: 133},
+		blockchain.AddressRegistered{TxHash: "0x03", RskAddress: catchUpAddress(3), BlockNumber: 145},
+	)
+	firstPage := rootstock.PegInWatchCheckpoint{Root: events[0].RegistrationRoot, Block: 130}
+	secondPage := rootstock.PegInWatchCheckpoint{Root: events[1].RegistrationRoot, Block: 140}
+	t.Run("reads and saves every page behind the head", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		fixture.withCheckpoint(&stored)
+		fixture.withPage(149, 121, 130, events[:1])
+		fixture.withContractRoot(130, firstPage.Root)
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x01"), firstPage).Return(nil).Once()
+		fixture.withEvents(131, 140, events[1:2])
+		fixture.withContractRoot(140, secondPage.Root)
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x02"), secondPage).Return(nil).Once()
+		fixture.withEvents(141, 147, events[2:])
+		fixture.withContractRoot(147, events[2].RegistrationRoot)
+		lastPage := rootstock.PegInWatchCheckpoint{Root: events[2].RegistrationRoot, Block: 147}
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x03"), lastPage).Return(nil).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01", "0x02", "0x03"}, checkpoint: lastPage}, result)
+	})
+	t.Run("rebuilds from the checkpoint saved earlier in the run when a later page does not match", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		fixture.withCheckpoint(&stored)
+		fixture.withPage(142, 121, 130, events[:1])
+		fixture.withContractRoot(130, firstPage.Root)
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x01"), firstPage).Return(nil).Once()
+		fixture.withEvents(131, 140, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(140, secondPage.Root)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(130)).Return(firstPage.Root, nil).Once()
+		fixture.withContractRoot(130, firstPage.Root)
+		fixture.withEvents(131, 140, events[1:2])
+		fixture.withContractRoot(140, secondPage.Root)
+		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(131), mock.Anything, secondPage).Return(nil).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x02"}, checkpoint: secondPage, rebuilt: true}, result)
+	})
+}
+
+func TestCatchUpRegisteredAddressesUseCase_KeepsTheSavedPagesOnALaterError(t *testing.T) {
+	stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{9}, Block: 120}
+	events := chainedRegistrations(t, stored.Root,
+		blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 125},
+		blockchain.AddressRegistered{TxHash: "0x02", RskAddress: catchUpAddress(2), BlockNumber: 133},
+	)
+	firstPage := rootstock.PegInWatchCheckpoint{Root: events[0].RegistrationRoot, Block: 130}
+	t.Run("returns the pages saved before a failed rebuild", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		fixture.withCheckpoint(&stored)
+		fixture.withPage(142, 121, 130, events[:1])
+		fixture.withContractRoot(130, firstPage.Root)
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x01"), firstPage).Return(nil).Once()
+		fixture.withEvents(131, 140, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(140, events[1].RegistrationRoot)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(130)).Return(firstPage.Root, nil).Once()
+		fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(130)).Return([32]byte{}, assert.AnError).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.ErrorIs(t, err, watcher.RegistryOldBlockReadError)
+		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01"}, checkpoint: firstPage}, result)
+	})
+	t.Run("returns the pages saved before a failed save", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		fixture.withCheckpoint(&stored)
+		fixture.withPage(142, 121, 130, events[:1])
+		fixture.withContractRoot(130, firstPage.Root)
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(mock.Anything, pageWatches("0x01"), firstPage).Return(nil).Once()
+		fixture.withEvents(131, 140, events[1:])
+		fixture.withContractRoot(140, events[1].RegistrationRoot)
+		fixture.repository.EXPECT().SaveVerifiedRegistrations(
+			mock.Anything,
+			pageWatches("0x02"),
+			rootstock.PegInWatchCheckpoint{Root: events[1].RegistrationRoot, Block: 140},
+		).Return(assert.AnError).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.ErrorIs(t, err, assert.AnError)
+		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01"}, checkpoint: firstPage}, result)
+	})
 }
