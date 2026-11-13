@@ -10,6 +10,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -62,6 +63,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsAfterASkippedEvent(t *testing
 	finalRoot := events[1].RegistrationRoot
 	fixture.withPage(160, 151, 158, events[:1])
 	fixture.withContractRoot(158, finalRoot)
+	fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 	fixture.withContractRoot(150, stored.Root)
 	fixture.withEvents(151, 158, events)
 	fixture.withContractRoot(158, finalRoot)
@@ -80,7 +82,6 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsAfterASkippedEvent(t *testing
 	require.NoError(t, err)
 	assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01", "0x02"}, checkpoint: next, rebuilt: true}, result)
 	fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
-	fixture.repository.AssertNotCalled(t, "GetRootAt", mock.Anything, mock.Anything)
 }
 
 //nolint:funlen
@@ -96,7 +97,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsAfterAReorgBelowTheStoredBloc
 	newTip := reorged[1].RegistrationRoot
 	stored := rootstock.PegInWatchCheckpoint{Root: oldForkTip, Block: 150}
 	fixture.withCheckpoint(&stored)
-	fixture.withStoredRoots(rootTimeline(rootPoint{110, shared}, rootPoint{130, oldFork}, rootPoint{140, oldForkTip}), 7)
+	fixture.withStoredRoots(rootTimeline(rootPoint{110, shared}, rootPoint{130, oldFork}, rootPoint{140, oldForkTip}), 8)
 	fixture.withChainRoots(rootTimeline(rootPoint{110, shared}, rootPoint{135, reorged[0].RegistrationRoot}, rootPoint{145, newTip}), 9)
 	fixture.withPage(160, 151, 158, []blockchain.AddressRegistered{})
 	fixture.withEvents(130, 139, reorged[:1])
@@ -142,7 +143,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsToTheChainRootWhenRootsMatchA
 	chainTip := canonical[0].RegistrationRoot
 	stored := rootstock.PegInWatchCheckpoint{Root: storedTip, Block: 150}
 	fixture.withCheckpoint(&stored)
-	fixture.withStoredRoots(rootTimeline(rootPoint{110, rootA}, rootPoint{120, rootAB}, rootPoint{140, storedTip}), 7)
+	fixture.withStoredRoots(rootTimeline(rootPoint{110, rootA}, rootPoint{120, rootAB}, rootPoint{140, storedTip}), 8)
 	fixture.withChainRoots(rootTimeline(rootPoint{115, rootA}, rootPoint{120, rootAB}, rootPoint{140, chainTip}), 9)
 	fixture.withPage(160, 151, 158, []blockchain.AddressRegistered{})
 	fixture.withEvents(140, 149, canonical)
@@ -246,6 +247,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 	t.Run("changes no data when the node cannot read the stored block", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		mismatchedPage(fixture)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(150)).Return([32]byte{}, assert.AnError).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
@@ -260,6 +262,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		mismatchedPage(fixture)
 		fixture.withContractRoot(150, [32]byte{3})
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(125)).Return([32]byte{}, nil).Once()
 		fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(125)).Return([32]byte{}, assert.AnError).Once()
 
@@ -274,6 +277,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		mismatchedPage(fixture)
 		fixture.withContractRoot(150, [32]byte{3})
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(125)).Return([32]byte{}, assert.AnError).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
@@ -313,9 +317,21 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildErrors(t *testing.T) {
 		assert.Equal(t, 2, readsOfBlock100)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
+	t.Run("changes no data when the stored documents cannot be read at the stored block", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		mismatchedPage(fixture)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return([32]byte{}, assert.AnError).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.ErrorIs(t, err, assert.AnError)
+		assertCatchUpResult(t, expectedCatchUpResult{}, result)
+		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
 	t.Run("returns the replace error", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		mismatchedPage(fixture)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.withContractRoot(150, stored.Root)
 		fixture.withEvents(151, 153, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(153, stored.Root)
@@ -354,7 +370,7 @@ func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockOnAFirstStar
 		require.NoError(t, err)
 		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01", "0x02", "0x03", "0x04"}, checkpoint: head, rebuilt: true}, result)
 	})
-	t.Run("folds from the stored rows below the start block", func(t *testing.T) {
+	t.Run("folds from the stored documents below the start block", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(nil)
 		below := foldedRoot(t, [32]byte{}, catchUpAddress(1))
@@ -400,5 +416,111 @@ func TestCatchUpRegisteredAddressesUseCase_FirstStartErrors(t *testing.T) {
 		require.ErrorIs(t, err, assert.AnError)
 		assertCatchUpResult(t, expectedCatchUpResult{}, result)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+}
+
+func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidCheckpoint(t *testing.T) {
+	t.Run("rebuilds from the start block when the checkpoint is below it", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 50})
+		events := chainedRegistrations(t, [32]byte{},
+			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 102},
+		)
+		next := rootstock.PegInWatchCheckpoint{Root: events[0].RegistrationRoot, Block: 105}
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(99)).Return([32]byte{}, nil).Once()
+		fixture.withPage(107, 100, 105, events)
+		fixture.withContractRoot(105, next.Root)
+		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(100), mock.Anything, next).Return(nil).Once()
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01"}, checkpoint: next, rebuilt: true}, result)
+	})
+	t.Run("waits without reading or writing while the checkpoint is above the finalized head", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 500}
+		fixture.withCheckpoint(&stored)
+		fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(300), nil).Once()
+		logged := test.AssertLogContains(t, watcher.LogRegistryCheckpointAboveFinalizedHead(500, 298))
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assert.True(t, logged())
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
+	})
+	t.Run("keeps the checkpoint while it is below the start block and the start block is above the finalized head", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 50}
+		fixture.withCheckpoint(&stored)
+		fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(60), nil).Once()
+		logged := test.AssertLogContains(t, watcher.LogRegistryStartBlockAboveFinalizedHead(100, 58))
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assert.True(t, logged())
+		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
+	})
+}
+
+func TestCatchUpRegisteredAddressesUseCase_RebuildsFromTheStartBlockWhenStoredDocumentsDoNotMatchTheCheckpoint(t *testing.T) {
+	t.Run("when the checkpoint does not match the chain", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 150}
+		fixture.withCheckpoint(&stored)
+		events := chainedRegistrations(t, [32]byte{},
+			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 120},
+		)
+		next := rootstock.PegInWatchCheckpoint{Root: events[0].RegistrationRoot, Block: 153}
+		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(153, next.Root)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return([32]byte{4}, nil).Once()
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(99)).Return([32]byte{}, nil).Once()
+		fixture.withEvents(100, 109, []blockchain.AddressRegistered{})
+		fixture.withEvents(110, 119, []blockchain.AddressRegistered{})
+		fixture.withEvents(120, 129, events)
+		fixture.withEvents(130, 139, []blockchain.AddressRegistered{})
+		fixture.withEvents(140, 149, []blockchain.AddressRegistered{})
+		fixture.withEvents(150, 153, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(153, next.Root)
+		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(100), mock.Anything, next).Return(nil).Once()
+		logged := test.AssertLogContains(t, watcher.LogRegistryDocumentsDoNotMatchCheckpoint(150, 100))
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assert.True(t, logged())
+		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01"}, checkpoint: next, rebuilt: true}, result)
+	})
+	t.Run("when the checkpoint matches the chain", func(t *testing.T) {
+		fixture := newCatchUpFixture(t)
+		events := chainedRegistrations(t, [32]byte{},
+			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), BlockNumber: 120},
+			blockchain.AddressRegistered{TxHash: "0x02", RskAddress: catchUpAddress(2), BlockNumber: 152},
+		)
+		stored := rootstock.PegInWatchCheckpoint{Root: events[0].RegistrationRoot, Block: 150}
+		fixture.withCheckpoint(&stored)
+		next := rootstock.PegInWatchCheckpoint{Root: events[1].RegistrationRoot, Block: 153}
+		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
+		fixture.withContractRoot(153, next.Root)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return([32]byte{4}, nil).Once()
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(99)).Return([32]byte{}, nil).Once()
+		fixture.withEvents(100, 109, []blockchain.AddressRegistered{})
+		fixture.withEvents(110, 119, []blockchain.AddressRegistered{})
+		fixture.withEvents(120, 129, events[:1])
+		fixture.withEvents(130, 139, []blockchain.AddressRegistered{})
+		fixture.withEvents(140, 149, []blockchain.AddressRegistered{})
+		fixture.withEvents(150, 153, events[1:])
+		fixture.withContractRoot(153, next.Root)
+		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(mock.Anything, uint64(100), mock.Anything, next).Return(nil).Once()
+		logged := test.AssertLogContains(t, watcher.LogRegistryDocumentsDoNotMatchCheckpoint(150, 100))
+
+		result, err := fixture.useCase.Run(context.Background())
+
+		require.NoError(t, err)
+		assert.True(t, logged())
+		assertCatchUpResult(t, expectedCatchUpResult{txHashes: []string{"0x01", "0x02"}, checkpoint: next, rebuilt: true}, result)
 	})
 }

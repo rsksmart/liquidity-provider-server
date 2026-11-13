@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ import (
 
 //nolint:funlen
 func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
-	t.Run("rebuilds from the start block when no point is stored", func(t *testing.T) {
+	t.Run("rebuilds from the start block when no checkpoint is stored", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(nil)
 		events := chainedRegistrations(t, [32]byte{},
@@ -195,10 +196,12 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(nil)
 		fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(50), nil).Once()
+		logged := test.AssertLogContains(t, watcher.LogRegistryStartBlockAboveFinalizedHead(100, 48))
 
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
+		assert.True(t, logged())
 		assertCatchUpResult(t, expectedCatchUpResult{}, result)
 	})
 }
@@ -212,6 +215,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 			blockchain.AddressRegistered{TxHash: "0x04", RskAddress: catchUpAddress(4), BlockNumber: 151},
 		)
 		fixture.withPage(155, 151, 153, events)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.withContractRoot(150, stored.Root)
 		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(151), blockPointer(153)).Return(events, nil).Once()
 
@@ -228,6 +232,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(153, [32]byte{2})
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.withContractRoot(150, stored.Root)
 		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(151), blockPointer(153)).
 			Return([]blockchain.AddressRegistered{}, nil).Once()
