@@ -65,21 +65,24 @@ func (useCase *CatchUpRegisteredAddressesUseCase) catchUp(ctx context.Context) (
 	if err != nil {
 		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("load PegIn address registry checkpoint: %w", err)
 	}
-	fromBlock := useCase.startBlock
-	if found {
-		fromBlock = checkpoint.Block + 1
-	}
 	finalizedHead, hasHead, err := useCase.finalizedHead(ctx)
 	if err != nil || !hasHead {
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, err
 	}
+	if !found {
+		if useCase.startBlock > finalizedHead {
+			return CatchUpRegisteredAddressesResult{}, nil
+		}
+		return useCase.rebuildFromStoredRoot(ctx, useCase.startBlock, finalizedHead)
+	}
+	fromBlock := checkpoint.Block + 1
 	toBlock, hasPage := useCase.nextPageEnd(fromBlock, finalizedHead)
 	if !hasPage {
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
 	}
 
 	page, err := useCase.readVerifiedRange(ctx, fromBlock, toBlock, checkpoint.Root)
-	if found && errors.Is(err, RegistryRootMismatchError) {
+	if errors.Is(err, RegistryRootMismatchError) {
 		log.Warnf(LogRegistryCatchUpMismatch, err)
 		return useCase.rebuild(ctx, checkpoint, finalizedHead)
 	}

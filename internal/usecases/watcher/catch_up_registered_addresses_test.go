@@ -15,7 +15,7 @@ import (
 
 //nolint:funlen
 func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
-	t.Run("starts from the start block when no point is stored", func(t *testing.T) {
+	t.Run("rebuilds from the start block when no point is stored", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(nil)
 		events := chainedRegistrations(t, [32]byte{},
@@ -23,10 +23,12 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 			blockchain.AddressRegistered{TxHash: "0x02", RskAddress: catchUpAddress(2), Registrant: "0xr", BlockNumber: 104, LogIndex: 3},
 		)
 		root := events[1].RegistrationRoot
-		fixture.withPage(200, 100, 109, events)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(99)).Return([32]byte{}, nil).Once()
+		fixture.withPage(111, 100, 109, events)
 		fixture.withContractRoot(109, root)
-		fixture.repository.EXPECT().SaveVerifiedRegistrations(
+		fixture.repository.EXPECT().ReplaceVerifiedRegistrations(
 			mock.Anything,
+			uint64(100),
 			mock.MatchedBy(func(watches []rootstock.PegInWatch) bool {
 				return len(watches) == 2 &&
 					watches[0].TxHash == "0x01" && watches[0].RskAddress == catchUpAddress(1) && watches[0].Registrant == "0xr" &&
@@ -40,6 +42,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
+		assert.True(t, result.Rebuilt)
 		assert.Equal(t, rootstock.PegInWatchCheckpoint{Root: root, Block: 109}, result.Checkpoint)
 		assert.Equal(t, []string{"0x01", "0x02"}, savedTxHashes(result.Watches))
 	})
@@ -97,7 +100,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 	})
 	t.Run("folds the registrations in chain order", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
-		fixture.withCheckpoint(nil)
+		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Block: 99})
 		chain := chainedRegistrations(t, [32]byte{},
 			blockchain.AddressRegistered{TxHash: "0xfirst", RskAddress: catchUpAddress(1), BlockNumber: 103, LogIndex: 9},
 			blockchain.AddressRegistered{TxHash: "0xmiddle", RskAddress: catchUpAddress(2), BlockNumber: 105, LogIndex: 1},
@@ -133,7 +136,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 	})
 	t.Run("folds registrations in one block by log index, whatever their transaction hashes", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
-		fixture.withCheckpoint(nil)
+		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Block: 99})
 		lower := blockchain.AddressRegistered{TxHash: "0xffff", RskAddress: "0x00000000000000000000000000000000000000a1", BlockNumber: 105, LogIndex: 1}
 		higher := blockchain.AddressRegistered{TxHash: "0x0000", RskAddress: "0x00000000000000000000000000000000000000a2", BlockNumber: 105, LogIndex: 4}
 		pinned := [32]byte(common.HexToHash("0x95bdcbc864b6248af173e5feb03f5830479e972a492e705c3c2a2bddcb8ca643"))
@@ -151,7 +154,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 	})
 	t.Run("folds registrations in one transaction by log index", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
-		fixture.withCheckpoint(nil)
+		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Block: 99})
 		chain := chainedRegistrations(t, [32]byte{},
 			blockchain.AddressRegistered{TxHash: "0xaaaa", RskAddress: catchUpAddress(1), BlockNumber: 103, LogIndex: 2},
 			blockchain.AddressRegistered{TxHash: "0xaaaa", RskAddress: catchUpAddress(2), BlockNumber: 103, LogIndex: 7},
@@ -171,7 +174,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 	})
 	t.Run("rejects an event with an invalid address and saves nothing", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
-		fixture.withCheckpoint(nil)
+		fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Block: 99})
 		fixture.withPage(105, 100, 103, []blockchain.AddressRegistered{{TxHash: "0x05", RskAddress: "0x1234", BlockNumber: 101}})
 
 		_, err := fixture.useCase.Run(context.Background())
@@ -196,8 +199,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
-		assert.Empty(t, result.Watches)
-		assert.Equal(t, rootstock.PegInWatchCheckpoint{}, result.Checkpoint)
+		assertCatchUpResult(t, expectedCatchUpResult{}, result)
 	})
 }
 
@@ -295,7 +297,7 @@ func TestCatchUpRegisteredAddressesUseCase_RunErrors(t *testing.T) {
 
 func TestCatchUpRegisteredAddressesUseCase_SavesRegistrationsInChainOrder(t *testing.T) {
 	fixture := newCatchUpFixture(t)
-	fixture.withCheckpoint(nil)
+	fixture.withCheckpoint(&rootstock.PegInWatchCheckpoint{Block: 99})
 	chain := chainedRegistrations(t, [32]byte{},
 		blockchain.AddressRegistered{TxHash: "0x04", RskAddress: catchUpAddress(4), BlockNumber: 101, LogIndex: 5},
 		blockchain.AddressRegistered{TxHash: "0x03", RskAddress: catchUpAddress(3), BlockNumber: 102, LogIndex: 2},
