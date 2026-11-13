@@ -8,6 +8,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -195,10 +196,12 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		fixture := newCatchUpFixture(t)
 		fixture.withCheckpoint(nil)
 		fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(50), nil).Once()
+		logged := test.AssertLogContains(t, watcher.LogRegistryStartBlockAboveFinalizedHead(100, 48))
 
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
+		assert.True(t, logged())
 		assertCatchUpResult(t, expectedCatchUpResult{}, result)
 	})
 }

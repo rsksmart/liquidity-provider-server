@@ -45,6 +45,7 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFromStart(
 	finalizedHead uint64,
 ) (CatchUpRegisteredAddressesResult, error) {
 	if useCase.startBlock > finalizedHead {
+		log.Info(LogRegistryStartBlockAboveFinalizedHead(useCase.startBlock, finalizedHead))
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
 	}
 	return useCase.rebuildFromStoredRoot(ctx, useCase.startBlock, finalizedHead)

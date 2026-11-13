@@ -458,10 +458,12 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidStoredPoint(t *testin
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{3}, Block: 50}
 		fixture.withCheckpoint(&stored)
 		fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(uint64(60), nil).Once()
+		logged := test.AssertLogContains(t, watcher.LogRegistryStartBlockAboveFinalizedHead(100, 58))
 
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.NoError(t, err)
+		assert.True(t, logged())
 		assertCatchUpResult(t, expectedCatchUpResult{checkpoint: stored}, result)
 		fixture.registry.AssertNotCalled(t, "GetAddressRegisteredEvents", mock.Anything, mock.Anything, mock.Anything)
 		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
