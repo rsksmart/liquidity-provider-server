@@ -5,6 +5,7 @@ import (
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	bindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
+	commitFirstBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_commit_first"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
@@ -26,6 +27,7 @@ func TestNewPeginContractImpl(t *testing.T) {
 		rootstock.RetryParams{Retries: 1, Sleep: 1},
 		time.Duration(1),
 		bindings.NewPeginContract(),
+		commitFirstBindings.NewPeginCommitFirstContract(),
 		Abis,
 	)
 	test.AssertNonZeroValues(t, contract)
@@ -34,7 +36,7 @@ func TestNewPeginContractImpl(t *testing.T) {
 func TestPeginContractImpl_GetBalance(t *testing.T) {
 	contractMock := createBoundContractMock()
 	peginBinding := bindings.NewPeginContract()
-	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, commitFirstBindings.NewPeginCommitFirstContract(), Abis)
 	t.Run("Success", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,
@@ -65,7 +67,7 @@ func TestPeginContractImpl_GetBalance(t *testing.T) {
 
 // nolint:funlen
 func TestPeginContractImpl_GetAddress(t *testing.T) {
-	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), nil, Abis)
+	peginContract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, nil, nil, rootstock.RetryParams{}, time.Duration(1), nil, nil, Abis)
 	assert.Equal(t, test.AnyAddress, peginContract.GetAddress())
 }
 
@@ -75,7 +77,7 @@ func TestPeginContractImpl_Withdraw(t *testing.T) {
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
 	peginBinding := bindings.NewPeginContract()
-	peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+	peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, commitFirstBindings.NewPeginCommitFirstContract(), Abis)
 	withdrawAmount := entities.NewWei(5000000000000000000)
 	t.Run("Success", func(t *testing.T) {
 		txData := peginBinding.PackWithdraw(withdrawAmount.AsBigInt())
@@ -102,7 +104,7 @@ func TestPeginContractImpl_Withdraw_ErrorHandling(t *testing.T) {
 	peginBinding := bindings.NewPeginContract()
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
-	peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+	peginContract := rootstock.NewPeginContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, contractMock.contract, signerMock, rootstock.RetryParams{}, time.Duration(1), peginBinding, commitFirstBindings.NewPeginCommitFirstContract(), Abis)
 	withdrawAmount := entities.NewWei(5000000000000000000)
 	signerMock.On("Address").Return(parsedAddress)
 	t.Run("Error handling (dry-run revert NoBalance)", func(t *testing.T) {
@@ -155,7 +157,7 @@ func TestPeginContractImpl_Withdraw_ErrorHandling(t *testing.T) {
 func TestPeginContractImpl_PausedStatus(t *testing.T) {
 	contractMock := createBoundContractMock()
 	peginBinding := bindings.NewPeginContract()
-	contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, Abis)
+	contract := rootstock.NewPeginContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), peginBinding, commitFirstBindings.NewPeginCommitFirstContract(), Abis)
 	t.Run("should return pause status result", func(t *testing.T) {
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,

@@ -98,3 +98,61 @@ func TestFlyoverConfigurationsContractImpl_GetRequiredPegInBtcConfirmations(t *t
 		contractMock.caller.AssertExpectations(t)
 	})
 }
+
+func mustPackConfigurationOutput(t *testing.T, method string, value any) []byte {
+	t.Helper()
+	parsedAbi, err := bindings.FlyoverConfigurationsContractMetaData.ParseABI()
+	require.NoError(t, err)
+	out, err := parsedAbi.Methods[method].Outputs.Pack(value)
+	require.NoError(t, err)
+	return out
+}
+
+func TestFlyoverConfigurationsContractImpl_GetPegInConfiguration(t *testing.T) {
+	contractMock, configurationsBinding, configurations := newFlyoverConfigurationsTestContract()
+	t.Run("maps every field of the peg-in configuration", func(t *testing.T) {
+		raw := bindings.IFlyoverConfigurationsPegConfiguration{
+			FixedFee:      big.NewInt(100000000000000),
+			PercentageFee: big.NewInt(25),
+			MinAmount:     big.NewInt(5000000000000000),
+			MaxAmount:     new(big.Int).SetUint64(10000000000000000000),
+			RegistrantFee: big.NewInt(100000000000000),
+			ClaimGasFee:   big.NewInt(20000000000000),
+			ConfirmationTiers: []bindings.IFlyoverConfigurationsConfirmationTier{
+				{MaxAmount: big.NewInt(1000000000000000000), Confirmations: big.NewInt(2)},
+				{MaxAmount: new(big.Int).SetUint64(10000000000000000000), Confirmations: big.NewInt(6)},
+			},
+		}
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(configurationsBinding.PackGetPegInConfiguration()),
+			mock.Anything,
+		).Return(mustPackConfigurationOutput(t, "getPegInConfiguration", raw), nil).Once()
+		result, err := configurations.GetPegInConfiguration()
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.PegInConfiguration{
+			FixedFee:      entities.NewWei(100000000000000),
+			PercentageFee: 25,
+			MinAmount:     entities.NewWei(5000000000000000),
+			MaxAmount:     entities.NewUWei(10000000000000000000),
+			RegistrantFee: entities.NewWei(100000000000000),
+			ClaimGasFee:   entities.NewWei(20000000000000),
+			ConfirmationTiers: []blockchain.ConfirmationTier{
+				{MaxAmount: entities.NewWei(1000000000000000000), Confirmations: 2},
+				{MaxAmount: entities.NewUWei(10000000000000000000), Confirmations: 6},
+			},
+		}, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+	t.Run("Error handling on call fail", func(t *testing.T) {
+		contractMock.caller.EXPECT().CallContract(
+			mock.Anything,
+			matchCallData(configurationsBinding.PackGetPegInConfiguration()),
+			mock.Anything,
+		).Return(nil, assert.AnError).Once()
+		result, err := configurations.GetPegInConfiguration()
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Equal(t, blockchain.PegInConfiguration{}, result)
+		contractMock.caller.AssertExpectations(t)
+	})
+}

@@ -182,6 +182,61 @@ func (_c *FlyoverConfigurationsContractMock_GetAddress_Call) RunAndReturn(run fu
 	return _c
 }
 
+// GetPegInConfiguration provides a mock function with no fields
+func (_m *FlyoverConfigurationsContractMock) GetPegInConfiguration() (blockchain.PegInConfiguration, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPegInConfiguration")
+	}
+
+	var r0 blockchain.PegInConfiguration
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (blockchain.PegInConfiguration, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() blockchain.PegInConfiguration); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(blockchain.PegInConfiguration)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FlyoverConfigurationsContractMock_GetPegInConfiguration_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPegInConfiguration'
+type FlyoverConfigurationsContractMock_GetPegInConfiguration_Call struct {
+	*mock.Call
+}
+
+// GetPegInConfiguration is a helper method to define mock.On call
+func (_e *FlyoverConfigurationsContractMock_Expecter) GetPegInConfiguration() *FlyoverConfigurationsContractMock_GetPegInConfiguration_Call {
+	return &FlyoverConfigurationsContractMock_GetPegInConfiguration_Call{Call: _e.mock.On("GetPegInConfiguration")}
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetPegInConfiguration_Call) Run(run func()) *FlyoverConfigurationsContractMock_GetPegInConfiguration_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetPegInConfiguration_Call) Return(_a0 blockchain.PegInConfiguration, _a1 error) *FlyoverConfigurationsContractMock_GetPegInConfiguration_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *FlyoverConfigurationsContractMock_GetPegInConfiguration_Call) RunAndReturn(run func() (blockchain.PegInConfiguration, error)) *FlyoverConfigurationsContractMock_GetPegInConfiguration_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPegOutConfiguration provides a mock function with no fields
 func (_m *FlyoverConfigurationsContractMock) GetPegOutConfiguration() (blockchain.PegOutConfiguration, error) {
 	ret := _m.Called()
