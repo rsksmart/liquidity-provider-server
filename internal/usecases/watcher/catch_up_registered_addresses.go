@@ -11,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	log "github.com/sirupsen/logrus"
 )
 
 var RegistryRootMismatchError = errors.New("PegIn address registry root mismatch")
@@ -48,47 +49,45 @@ func NewCatchUpRegisteredAddressesUseCase(
 type CatchUpRegisteredAddressesResult struct {
 	Watches    []rootstock.PegInWatch
 	Checkpoint rootstock.PegInWatchCheckpoint
+	Rebuilt    bool
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) Run(ctx context.Context) (CatchUpRegisteredAddressesResult, error) {
+	result, err := useCase.catchUp(ctx)
+	if err != nil {
+		return result, usecases.WrapUseCaseError(usecases.CatchUpRegisteredAddressesId, err)
+	}
+	return result, nil
+}
+
+func (useCase *CatchUpRegisteredAddressesUseCase) catchUp(ctx context.Context) (CatchUpRegisteredAddressesResult, error) {
 	checkpoint, found, err := useCase.repository.GetCheckpoint(ctx)
 	if err != nil {
-		return CatchUpRegisteredAddressesResult{}, useCase.wrap(fmt.Errorf("load PegIn address registry checkpoint: %w", err))
+		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("load PegIn address registry checkpoint: %w", err)
 	}
 	fromBlock := useCase.startBlock
 	if found {
 		fromBlock = checkpoint.Block + 1
 	}
 	finalizedHead, hasHead, err := useCase.finalizedHead(ctx)
-	if err != nil {
-		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, useCase.wrap(err)
+	if err != nil || !hasHead {
+		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, err
 	}
 	toBlock, hasPage := useCase.nextPageEnd(fromBlock, finalizedHead)
-	if !hasHead || !hasPage {
+	if !hasPage {
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
 	}
 
-	events, err := useCase.registry.GetAddressRegisteredEvents(ctx, fromBlock, &toBlock)
+	page, err := useCase.readVerifiedRange(ctx, fromBlock, toBlock, checkpoint.Root)
+	if found && errors.Is(err, RegistryRootMismatchError) {
+		log.Warnf(LogRegistryCatchUpMismatch, err)
+		return useCase.rebuild(ctx, checkpoint, finalizedHead)
+	}
 	if err != nil {
-		return CatchUpRegisteredAddressesResult{}, useCase.wrap(
-			fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", fromBlock, toBlock, err),
-		)
+		return CatchUpRegisteredAddressesResult{}, err
 	}
-	page, err := useCase.foldEvents(CatchUpRegisteredAddressesResult{
-		Watches:    []rootstock.PegInWatch{},
-		Checkpoint: rootstock.PegInWatchCheckpoint{Root: checkpoint.Root, Block: toBlock},
-	}, events)
-	if err != nil {
-		return CatchUpRegisteredAddressesResult{}, useCase.wrap(err)
-	}
-	if err = useCase.checkContractRoot(ctx, page.Checkpoint); err != nil {
-		return CatchUpRegisteredAddressesResult{}, useCase.wrap(err)
-	}
-
 	if err = useCase.repository.SaveVerifiedRegistrations(ctx, page.Watches, page.Checkpoint); err != nil {
-		return CatchUpRegisteredAddressesResult{}, useCase.wrap(
-			fmt.Errorf("save PegIn address registry checkpoint at block %d: %w", toBlock, err),
-		)
+		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("save PegIn address registry checkpoint at block %d: %w", toBlock, err)
 	}
 	return page, nil
 }
@@ -102,6 +101,33 @@ func (useCase *CatchUpRegisteredAddressesUseCase) finalizedHead(ctx context.Cont
 		return 0, false, nil
 	}
 	return height - useCase.finalityDepth, true, nil
+}
+
+func (useCase *CatchUpRegisteredAddressesUseCase) readVerifiedRange(
+	ctx context.Context,
+	fromBlock uint64,
+	toBlock uint64,
+	root [32]byte,
+) (CatchUpRegisteredAddressesResult, error) {
+	rangeResult := CatchUpRegisteredAddressesResult{
+		Watches:    []rootstock.PegInWatch{},
+		Checkpoint: rootstock.PegInWatchCheckpoint{Root: root, Block: toBlock},
+	}
+	for pageFrom := fromBlock; pageFrom <= toBlock; {
+		pageTo, _ := useCase.nextPageEnd(pageFrom, toBlock)
+		events, err := useCase.registry.GetAddressRegisteredEvents(ctx, pageFrom, &pageTo)
+		if err != nil {
+			return CatchUpRegisteredAddressesResult{}, fmt.Errorf("get AddressRegistered events for blocks %d-%d: %w", pageFrom, pageTo, err)
+		}
+		if rangeResult, err = useCase.foldEvents(rangeResult, events); err != nil {
+			return CatchUpRegisteredAddressesResult{}, err
+		}
+		pageFrom = pageTo + 1
+	}
+	if err := useCase.checkContractRoot(ctx, rangeResult.Checkpoint); err != nil {
+		return CatchUpRegisteredAddressesResult{}, err
+	}
+	return rangeResult, nil
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) foldEvents(
@@ -138,10 +164,6 @@ func (useCase *CatchUpRegisteredAddressesUseCase) checkContractRoot(ctx context.
 		return useCase.contractRootMismatch(checkpoint.Block, checkpoint.Root, contractRoot)
 	}
 	return nil
-}
-
-func (useCase *CatchUpRegisteredAddressesUseCase) wrap(err error) error {
-	return usecases.WrapUseCaseError(usecases.CatchUpRegisteredAddressesId, err)
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) nextPageEnd(fromBlock, lastBlock uint64) (toBlock uint64, hasPage bool) {

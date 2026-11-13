@@ -2,108 +2,16 @@ package watcher_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
-	"github.com/rsksmart/liquidity-provider-server/test/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-const (
-	catchUpStartBlock    uint64 = 100
-	catchUpPageSize      uint64 = 10
-	catchUpFinalityDepth uint64 = 2
-)
-
-type catchUpFixture struct {
-	repository *mocks.PegInWatchRepositoryMock
-	registry   *mocks.PegInAddressRegistryContractMock
-	rskRpc     *mocks.RootstockRpcServerMock
-	hashCalls  int
-	useCase    *watcher.CatchUpRegisteredAddressesUseCase
-}
-
-func newCatchUpFixture(t *testing.T) *catchUpFixture {
-	t.Helper()
-	return newCatchUpFixtureWithPageSize(t, catchUpPageSize)
-}
-
-func newCatchUpFixtureWithPageSize(t *testing.T, pageSize uint64) *catchUpFixture {
-	t.Helper()
-	fixture := &catchUpFixture{
-		repository: mocks.NewPegInWatchRepositoryMock(t),
-		registry:   mocks.NewPegInAddressRegistryContractMock(t),
-		rskRpc:     mocks.NewRootstockRpcServerMock(t),
-	}
-	countingHash := func(data ...[]byte) []byte {
-		fixture.hashCalls++
-		return crypto.Keccak256(data...)
-	}
-	fixture.useCase = watcher.NewCatchUpRegisteredAddressesUseCase(
-		fixture.repository,
-		fixture.registry,
-		fixture.rskRpc,
-		countingHash,
-		catchUpStartBlock,
-		pageSize,
-		catchUpFinalityDepth,
-	)
-	return fixture
-}
-
-func (fixture *catchUpFixture) withCheckpoint(checkpoint *rootstock.PegInWatchCheckpoint) {
-	if checkpoint == nil {
-		fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(rootstock.PegInWatchCheckpoint{}, false, nil).Once()
-		return
-	}
-	fixture.repository.EXPECT().GetCheckpoint(mock.Anything).Return(*checkpoint, true, nil).Once()
-}
-
-func (fixture *catchUpFixture) withPage(head, fromBlock, toBlock uint64, events []blockchain.AddressRegistered) {
-	fixture.rskRpc.EXPECT().GetHeight(mock.Anything).Return(head, nil).Once()
-	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, fromBlock, blockPointer(toBlock)).Return(events, nil).Once()
-}
-
-func catchUpAddress(suffix int) string {
-	return fmt.Sprintf("0x%040x", suffix)
-}
-
-func chainedRegistrations(t *testing.T, previousRoot [32]byte, events ...blockchain.AddressRegistered) []blockchain.AddressRegistered {
-	t.Helper()
-	root := previousRoot
-	for index := range events {
-		var err error
-		root, err = blockchain.FoldPegInAddressRegistryRoot(crypto.Keccak256, root, events[index].RskAddress)
-		require.NoError(t, err)
-		events[index].RegistrationRoot = root
-	}
-	return events
-}
-
-func (fixture *catchUpFixture) withContractRoot(block uint64, root [32]byte) {
-	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, block).Return(root, nil).Once()
-}
-
-func blockPointer(expected uint64) interface{} {
-	return mock.MatchedBy(func(actual *uint64) bool {
-		return actual != nil && *actual == expected
-	})
-}
-
-func savedTxHashes(watches []rootstock.PegInWatch) []string {
-	hashes := make([]string, 0, len(watches))
-	for _, watch := range watches {
-		hashes = append(hashes, watch.TxHash)
-	}
-	return hashes
-}
 
 //nolint:funlen
 func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
@@ -302,12 +210,15 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 			blockchain.AddressRegistered{TxHash: "0x04", RskAddress: catchUpAddress(4), BlockNumber: 151},
 		)
 		fixture.withPage(155, 151, 153, events)
+		fixture.withContractRoot(150, stored.Root)
+		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(151), blockPointer(153)).Return(events, nil).Once()
 
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
 		assert.Contains(t, err.Error(), "at block 151")
-		assert.Empty(t, result.Watches)
+		assert.Equal(t, watcher.CatchUpRegisteredAddressesResult{}, result)
+		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("reports a mismatch when the contract root moved without events and saves nothing", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
@@ -315,12 +226,17 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(153, [32]byte{2})
+		fixture.withContractRoot(150, stored.Root)
+		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(151), blockPointer(153)).
+			Return([]blockchain.AddressRegistered{}, nil).Once()
+		fixture.withContractRoot(153, [32]byte{2})
 
 		result, err := fixture.useCase.Run(context.Background())
 
 		require.ErrorIs(t, err, watcher.RegistryRootMismatchError)
 		assert.Contains(t, err.Error(), "at block 153")
-		assert.Empty(t, result.Watches)
+		assert.Equal(t, watcher.CatchUpRegisteredAddressesResult{}, result)
+		fixture.repository.AssertNotCalled(t, "SaveVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything)
 	})
 }
 
