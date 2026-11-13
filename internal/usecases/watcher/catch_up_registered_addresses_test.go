@@ -212,6 +212,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 			blockchain.AddressRegistered{TxHash: "0x04", RskAddress: catchUpAddress(4), BlockNumber: 151},
 		)
 		fixture.withPage(155, 151, 153, events)
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.withContractRoot(150, stored.Root)
 		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(151), blockPointer(153)).Return(events, nil).Once()
 
@@ -228,6 +229,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
 		fixture.withContractRoot(153, [32]byte{2})
+		fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(150)).Return(stored.Root, nil).Once()
 		fixture.withContractRoot(150, stored.Root)
 		fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(151), blockPointer(153)).
 			Return([]blockchain.AddressRegistered{}, nil).Once()

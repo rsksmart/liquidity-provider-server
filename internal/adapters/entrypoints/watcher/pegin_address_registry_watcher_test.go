@@ -571,6 +571,7 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenRebuildFails(t *testing.T) {
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
 		Return([]blockchain.AddressRegistered{}, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return([32]byte{2}, nil).Once()
+	fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(105)).Return([32]byte{1}, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(105)).Return([32]byte{}, assert.AnError).Once()
 	fixture.repository.EXPECT().Get(mock.Anything, entry.RskAddress).Return(&entry, nil).Once()
 	deposit := depositAddressFixture(0)
@@ -609,6 +610,7 @@ func TestPegInWatcher_ReloadsTheWatchListAfterARebuild(t *testing.T) {
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
 		Return([]blockchain.AddressRegistered{}, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return(root, nil).Once()
+	fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(105)).Return(stored.Root, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(105)).Return(stored.Root, nil).Once()
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
 		Return(rebuilt, nil).Once()
@@ -649,6 +651,7 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
 		Return([]blockchain.AddressRegistered{}, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(106)).Return(root, nil).Once()
+	fixture.repository.EXPECT().GetRootAt(mock.Anything, uint64(105)).Return(stored.Root, nil).Once()
 	fixture.registry.EXPECT().GetRegistrationRoot(mock.Anything, uint64(105)).Return(stored.Root, nil).Once()
 	fixture.registry.EXPECT().GetAddressRegisteredEvents(mock.Anything, uint64(106), uint64Pointer(106)).
 		Return(rebuiltEvents, nil).Once()
