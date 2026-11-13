@@ -37,12 +37,6 @@ type PegInAddressBatch struct {
 	Encoding PegInAddressRegistryEncoding
 }
 
-// PegInRegistration is the decoded registration record for a single RSK destination address.
-type PegInRegistration struct {
-	Registrant        string
-	RegistrationBlock uint64
-}
-
 // AddressRegistered is the decoded AddressRegistered event of the PegInAddressRegistry contract.
 type AddressRegistered struct {
 	RskAddress       string
@@ -69,7 +63,6 @@ type PegInAddressRegistryContract interface {
 	GetPegInAddress(rskAddr string) (PegInAddress, error)
 	GetPegInAddresses(rskAddrs []string) (PegInAddressBatch, error)
 	IsRegistered(rskAddr string) (bool, error)
-	GetRegistration(rskAddr string) (PegInRegistration, error)
 	GetRegistrationRoot(ctx context.Context, blockNumber uint64) ([32]byte, error)
 	// GetAddressRegisteredEvents returns the AddressRegistered events in [fromBlock, toBlock].
 	// A nil toBlock reads up to the latest block.
