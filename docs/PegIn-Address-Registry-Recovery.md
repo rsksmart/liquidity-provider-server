@@ -21,11 +21,12 @@ When every check matches, it saves the new documents and the new checkpoint in o
 | Situation | What the LPS does |
 | --- | --- |
 | No checkpoint: a first start, or an upgrade from a version without one | Rebuilds the list from `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK`. |
-| The new blocks do not match, for example the node dropped an event | Reads the registry root at the checkpoint block. If it still matches, reads the new blocks again from the checkpoint, in the same tick. |
+| The new blocks do not match, for example the node dropped an event | Checks that the stored documents match the checkpoint, then reads the registry root at the checkpoint block. If it still matches, reads the new blocks again from the checkpoint, in the same tick. |
 | The chain no longer matches at or below the checkpoint block, for example after a reorg deeper than `RSK_MAX_REORG_DEPTH` | Finds the first block where the stored documents and the registry differ, with a binary search of about log2(checkpoint block − start block) reads, then rebuilds from that block. |
 | The checkpoint is below the start block | Rebuilds from the start block. |
-| The registry root at the checkpoint block differs from the checkpoint, and the stored documents do not match the checkpoint either | Rebuilds from the start block, without a binary search. |
+| The new blocks do not match, and the stored documents do not match the checkpoint either | Rebuilds from the start block, without a binary search. |
 | The checkpoint is above the finalized head | Changes nothing and waits for the node to catch up. |
+| No checkpoint, or a checkpoint below the start block, while the start block is above the finalized head | Changes nothing and waits until the head reaches the start block. |
 
 A rebuild reads every page from the rebuild block to the finalized head and checks the root in each event. The rebuild read itself calls `getRegistrationRoot()` only once, at the finalized head. Then it writes everything in one MongoDB transaction:
 
@@ -46,13 +47,14 @@ On the same tick, after the transaction, the LPS imports the `discovered` addres
 | `Rebuilt the PegIn watch list from block X to block Y with N registrations` | The rebuild succeeded. No action needed. |
 | `Stored PegIn watch documents do not match the checkpoint at block X, rebuilding from the start block Y` | The documents and the checkpoint disagree. A full rebuild starts. |
 | `Stored PegIn address registry checkpoint at block X is above the finalized RSK head Y, waiting for the node to catch up` | The node is behind or on another network. |
+| `PegIn address registry start block X is above the finalized RSK head Y, waiting until the head reaches it` | The node is behind, or `PEGIN_ADDRESS_REGISTRY_WATCHER_START_BLOCK` is wrong. |
 | `PegIn address registry watcher scan failed: ... cannot read the PegIn address registry root at old block X, check that the RSK node can answer calls at old blocks: ...` | A repair after a mismatch needs the registry root at an old block, and the node cannot answer. See manual repair. |
 | `PegIn address registry watcher scan failed: ... get PegIn address registry root at block X: ...` | The node could not answer a root read at the end of a page or at the finalized head. After a long stop that block can be old. See manual repair if it repeats. |
 | `PegIn address registry watcher scan failed: ...` | The tick failed. The rest of the line says why. |
 
 ### Requirements and limits
 
-- Every repair after a mismatch calls `getRegistrationRoot()` at the checkpoint block, and the binary search calls it at older blocks, so the RSK node must keep the state of old blocks. A full rebuild from the start block reads the root only at the finalized head. A catch-up reads it at the end of each page, so after a long stop it also reads old blocks.
+- Every repair after a mismatch, when the stored documents match the checkpoint, calls `getRegistrationRoot()` at the checkpoint block, and the binary search calls it at older blocks, so the RSK node must keep the state of old blocks. A full rebuild from the start block reads the root only at the finalized head. A catch-up reads it at the end of each page, so after a long stop it also reads old blocks.
 - The registry root covers only the ordered list of RSK addresses. It does not cover the BTC address, encoding, state, errors or timestamps of a document.
 - A rebuild rewrites only the documents at or above the rebuild block. If a reorg moved a registration below that block to another block, its document keeps the old tx hash and block number. The address list is still right.
 - Documents below the start block are never changed.
@@ -61,7 +63,7 @@ On the same tick, after the transaction, the LPS imports the `discovered` addres
 
 ## Manual repair
 
-Use this when the same error repeats on every tick, the waiting warning stays while the node is in sync, or the configuration was wrong.
+Use this when the same error repeats on every tick, a waiting log stays while the node is in sync, or the configuration was wrong.
 
 1. Stop the LPS. Do not change watcher data while it runs.
 2. Back up MongoDB.
