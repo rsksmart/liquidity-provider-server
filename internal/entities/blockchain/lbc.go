@@ -60,11 +60,6 @@ type PegInRequestedEvent struct {
 	CallSuccess bool
 }
 
-type RequestPegInResult struct {
-	Receipt TransactionReceipt
-	Event   PegInRequestedEvent
-}
-
 type ProviderRegistrationParams struct {
 	Name       string                          `validate:"required"`
 	ApiBaseUrl string                          `validate:"required"`
@@ -123,7 +118,8 @@ type PeginContract interface {
 	Withdraw(amount *entities.Wei) error
 	SimulateRequestPegIn(txConfig TransactionConfig, params RequestPegInParams) error
 	EstimateRequestPegInGas(txConfig TransactionConfig, params RequestPegInParams) (uint64, error)
-	RequestPegIn(txConfig TransactionConfig, params RequestPegInParams) (RequestPegInResult, error)
+	RequestPegIn(txConfig TransactionConfig, params RequestPegInParams) (TransactionReceipt, error)
+	PegInRequestedEvent(receipt TransactionReceipt) (PegInRequestedEvent, error)
 }
 
 type PegoutContract interface {

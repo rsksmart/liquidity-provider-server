@@ -111,7 +111,7 @@ func mustPackConfigurationOutput(t *testing.T, method string, value any) []byte 
 func TestFlyoverConfigurationsContractImpl_GetPegInConfiguration(t *testing.T) {
 	contractMock, configurationsBinding, configurations := newFlyoverConfigurationsTestContract()
 	t.Run("maps every field of the peg-in configuration", func(t *testing.T) {
-		raw := bindings.IFlyoverConfigurationsPegConfiguration{
+		raw := bindings.IFlyoverConfigurationsPegInConfiguration{
 			FixedFee:      big.NewInt(100000000000000),
 			PercentageFee: big.NewInt(25),
 			MinAmount:     big.NewInt(5000000000000000),
@@ -122,6 +122,8 @@ func TestFlyoverConfigurationsContractImpl_GetPegInConfiguration(t *testing.T) {
 				{MaxAmount: big.NewInt(1000000000000000000), Confirmations: big.NewInt(2)},
 				{MaxAmount: new(big.Int).SetUint64(10000000000000000000), Confirmations: big.NewInt(6)},
 			},
+			PenaltyFee:  big.NewInt(30000000000000),
+			ClaimWindow: big.NewInt(10800),
 		}
 		contractMock.caller.EXPECT().CallContract(
 			mock.Anything,

@@ -146,6 +146,27 @@ func pegInRequestedLog(t *testing.T, emitter common.Address, event commitFirstBi
 	}
 }
 
+func pegInRequestedTestEvent() commitFirstBindings.PeginCommitFirstContractPegInRequested {
+	return commitFirstBindings.PeginCommitFirstContractPegInRequested{
+		PegInId:     [32]byte(common.HexToHash("0x6c0c1c2ba8a9cd4f0a3f0e15cc1d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b")),
+		Claimer:     common.HexToAddress("0x9D93929A9099be4355fC2389FbF253982F9dF47c"),
+		RskAddr:     common.HexToAddress("0x79568c2989232dCa1840087D73d403602364c0D4"),
+		Amount:      big.NewInt(5000000000000000),
+		NetToUser:   big.NewInt(4880000000000000),
+		CallSuccess: true,
+	}
+}
+
+func pegInRequestedTransactionLog(t *testing.T, emitter common.Address, event commitFirstBindings.PeginCommitFirstContractPegInRequested) blockchain.TransactionLog {
+	t.Helper()
+	gethLog := pegInRequestedLog(t, emitter, event)
+	topics := make([][32]byte, len(gethLog.Topics))
+	for i, topic := range gethLog.Topics {
+		topics[i] = topic
+	}
+	return blockchain.TransactionLog{Address: gethLog.Address.String(), Topics: topics, Data: gethLog.Data}
+}
+
 func requestPegInTestReceipt(status uint64, logs ...*geth.Log) *geth.Receipt {
 	return &geth.Receipt{
 		Status:            status,
@@ -289,16 +310,9 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 	gasLimit := uint64(300000)
 	txConfig := blockchain.TransactionConfig{Value: value, GasLimit: &gasLimit}
 	pegInContractAddress := common.HexToAddress(test.AnyRskAddress)
-	event := commitFirstBindings.PeginCommitFirstContractPegInRequested{
-		PegInId:     [32]byte(common.HexToHash("0x6c0c1c2ba8a9cd4f0a3f0e15cc1d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b")),
-		Claimer:     common.HexToAddress("0x9D93929A9099be4355fC2389FbF253982F9dF47c"),
-		RskAddr:     common.HexToAddress("0x79568c2989232dCa1840087D73d403602364c0D4"),
-		Amount:      big.NewInt(5000000000000000),
-		NetToUser:   value.AsBigInt(),
-		CallSuccess: true,
-	}
+	event := pegInRequestedTestEvent()
 
-	t.Run("sends the value with the gas limit and returns the receipt and the PegInRequested event", func(t *testing.T) {
+	t.Run("sends the value with the gas limit and returns the receipt", func(t *testing.T) {
 		h := newRequestPegInHarness(t)
 		sent := h.expectSignedSend(t, gasLimit, value.AsBigInt())
 		receipt := requestPegInTestReceipt(1, pegInRequestedLog(t, pegInContractAddress, event))
@@ -308,18 +322,8 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 		require.NoError(t, err)
 		expectedReceipt, parseErr := rootstock.ParseReceipt(sent.tx, receipt)
 		require.NoError(t, parseErr)
-		assert.Equal(t, blockchain.RequestPegInResult{
-			Receipt: expectedReceipt,
-			Event: blockchain.PegInRequestedEvent{
-				PegInID:     "6c0c1c2ba8a9cd4f0a3f0e15cc1d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b",
-				Claimer:     "0x9D93929A9099be4355fC2389FbF253982F9dF47c",
-				RskAddress:  "0x79568c2989232dCa1840087D73d403602364c0D4",
-				Amount:      entities.NewWei(5000000000000000),
-				NetToUser:   value,
-				CallSuccess: true,
-			},
-		}, result)
-		assert.Equal(t, h.from.String(), result.Receipt.From)
+		assert.Equal(t, expectedReceipt, result)
+		assert.Equal(t, h.from.String(), result.From)
 		h.contractMock.transactor.AssertExpectations(t)
 		h.client.AssertExpectations(t)
 	})
@@ -378,7 +382,7 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 
 		result, err := h.contract.RequestPegIn(txConfig, requestPegInTestParams())
 		require.ErrorIs(t, err, assert.AnError)
-		assert.Equal(t, blockchain.RequestPegInResult{}, result)
+		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		h.client.AssertNotCalled(t, "TransactionReceipt", mock.Anything, mock.Anything)
 	})
 
@@ -389,9 +393,7 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 
 		result, err := h.contract.RequestPegIn(txConfig, requestPegInTestParams())
 		require.ErrorContains(t, err, "request pegin error")
-		assert.Equal(t, blockchain.RequestPegInResult{
-			Receipt: blockchain.TransactionReceipt{TransactionHash: sent.tx.Hash().String()},
-		}, result)
+		assert.Equal(t, blockchain.TransactionReceipt{TransactionHash: sent.tx.Hash().String()}, result)
 		h.contractMock.transactor.AssertNumberOfCalls(t, "SendTransaction", 1)
 	})
 
@@ -402,9 +404,7 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 
 		result, err := h.contract.RequestPegIn(txConfig, requestPegInTestParams())
 		require.EqualError(t, err, "request pegin error: incomplete receipt")
-		assert.Equal(t, blockchain.RequestPegInResult{
-			Receipt: blockchain.TransactionReceipt{TransactionHash: sent.tx.Hash().String()},
-		}, result)
+		assert.Equal(t, blockchain.TransactionReceipt{TransactionHash: sent.tx.Hash().String()}, result)
 		h.contractMock.transactor.AssertNumberOfCalls(t, "SendTransaction", 1)
 	})
 
@@ -421,7 +421,7 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 		require.ErrorIs(t, err, blockchain.TxFailedError)
 		expectedReceipt, parseErr := rootstock.ParseReceipt(sent.tx, receipt)
 		require.NoError(t, parseErr)
-		assert.Equal(t, blockchain.RequestPegInResult{Receipt: expectedReceipt}, result)
+		assert.Equal(t, expectedReceipt, result)
 		h.client.AssertExpectations(t)
 	})
 
@@ -437,40 +437,29 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 		h.client.AssertExpectations(t)
 	})
 
-	t.Run("fails when the receipt has no PegInRequested event", func(t *testing.T) {
+	t.Run("returns the receipt of a mined transaction without a PegInRequested event", func(t *testing.T) {
 		h := newRequestPegInHarness(t)
 		sent := h.expectSignedSend(t, gasLimit, value.AsBigInt())
 		receipt := requestPegInTestReceipt(1)
 		h.client.EXPECT().TransactionReceipt(mock.Anything, mock.Anything).Return(receipt, nil).Once()
 
 		result, err := h.contract.RequestPegIn(txConfig, requestPegInTestParams())
-		require.EqualError(t, err, "request pegin error: PegInRequested event not found")
+		require.NoError(t, err)
 		expectedReceipt, parseErr := rootstock.ParseReceipt(sent.tx, receipt)
 		require.NoError(t, parseErr)
-		assert.Equal(t, blockchain.RequestPegInResult{Receipt: expectedReceipt}, result)
+		assert.Equal(t, expectedReceipt, result)
 	})
 
-	t.Run("ignores a PegInRequested log from another contract", func(t *testing.T) {
+	t.Run("keeps the transaction hash when the receipt is incomplete", func(t *testing.T) {
 		h := newRequestPegInHarness(t)
-		h.expectSignedSend(t, gasLimit, value.AsBigInt())
-		otherContract := common.HexToAddress("0x5555555555555555555555555555555555555555")
-		h.client.EXPECT().TransactionReceipt(mock.Anything, mock.Anything).
-			Return(requestPegInTestReceipt(1, pegInRequestedLog(t, otherContract, event)), nil).Once()
-
-		_, err := h.contract.RequestPegIn(txConfig, requestPegInTestParams())
-		require.EqualError(t, err, "request pegin error: PegInRequested event not found")
-	})
-
-	t.Run("returns the unpack error of a malformed PegInRequested log", func(t *testing.T) {
-		h := newRequestPegInHarness(t)
-		h.expectSignedSend(t, gasLimit, value.AsBigInt())
-		malformed := pegInRequestedLog(t, pegInContractAddress, event)
-		malformed.Data = []byte{1}
-		h.client.EXPECT().TransactionReceipt(mock.Anything, mock.Anything).Return(requestPegInTestReceipt(1, malformed), nil).Once()
+		sent := h.expectSignedSend(t, gasLimit, value.AsBigInt())
+		receipt := requestPegInTestReceipt(1)
+		receipt.BlockNumber = nil
+		h.client.EXPECT().TransactionReceipt(mock.Anything, mock.Anything).Return(receipt, nil).Once()
 
 		result, err := h.contract.RequestPegIn(txConfig, requestPegInTestParams())
-		require.ErrorContains(t, err, "request pegin error")
-		assert.Equal(t, blockchain.PegInRequestedEvent{}, result.Event)
+		require.EqualError(t, err, "request pegin error: receipt without block number")
+		assert.Equal(t, blockchain.TransactionReceipt{TransactionHash: sent.tx.Hash().String()}, result)
 	})
 
 	t.Run("rejects an invalid rsk address without sending", func(t *testing.T) {
@@ -480,7 +469,69 @@ func TestPeginContractImpl_RequestPegIn(t *testing.T) {
 
 		result, err := h.contract.RequestPegIn(txConfig, params)
 		require.ErrorIs(t, err, blockchain.InvalidAddressError)
-		assert.Equal(t, blockchain.RequestPegInResult{}, result)
+		assert.Equal(t, blockchain.TransactionReceipt{}, result)
 		h.contractMock.transactor.AssertNotCalled(t, "SendTransaction", mock.Anything, mock.Anything)
+	})
+}
+
+func TestPeginContractImpl_PegInRequestedEvent(t *testing.T) {
+	pegInContractAddress := common.HexToAddress(test.AnyRskAddress)
+	txHash := "0x7a3c5e8f9b1d2a4c6e8f0a2b4c6d8e0f1a3b5c7d9e1f3a5b7c9d1e3f5a7b9c1d"
+	event := pegInRequestedTestEvent()
+	receiptWith := func(logs ...blockchain.TransactionLog) blockchain.TransactionReceipt {
+		return blockchain.TransactionReceipt{TransactionHash: txHash, Logs: logs}
+	}
+
+	t.Run("decodes the PegInRequested event of the pegin contract", func(t *testing.T) {
+		h := newRequestPegInHarness(t)
+		unrelated := blockchain.TransactionLog{Address: pegInContractAddress.String()}
+
+		result, err := h.contract.PegInRequestedEvent(receiptWith(unrelated, pegInRequestedTransactionLog(t, pegInContractAddress, event)))
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.PegInRequestedEvent{
+			PegInID:     "6c0c1c2ba8a9cd4f0a3f0e15cc1d0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b",
+			Claimer:     "0x9D93929A9099be4355fC2389FbF253982F9dF47c",
+			RskAddress:  "0x79568c2989232dCa1840087D73d403602364c0D4",
+			Amount:      entities.NewWei(5000000000000000),
+			NetToUser:   entities.NewWei(4880000000000000),
+			CallSuccess: true,
+		}, result)
+	})
+
+	t.Run("fails when the receipt has no PegInRequested event", func(t *testing.T) {
+		h := newRequestPegInHarness(t)
+
+		result, err := h.contract.PegInRequestedEvent(receiptWith())
+		require.EqualError(t, err, "PegInRequested event not found in transaction "+txHash)
+		assert.Equal(t, blockchain.PegInRequestedEvent{}, result)
+	})
+
+	t.Run("ignores a PegInRequested log from another contract", func(t *testing.T) {
+		h := newRequestPegInHarness(t)
+		otherContract := common.HexToAddress("0x5555555555555555555555555555555555555555")
+
+		result, err := h.contract.PegInRequestedEvent(receiptWith(pegInRequestedTransactionLog(t, otherContract, event)))
+		require.EqualError(t, err, "PegInRequested event not found in transaction "+txHash)
+		assert.Equal(t, blockchain.PegInRequestedEvent{}, result)
+	})
+
+	t.Run("rejects a PegInRequested log with empty data instead of panicking", func(t *testing.T) {
+		h := newRequestPegInHarness(t)
+		emptyData := pegInRequestedTransactionLog(t, pegInContractAddress, event)
+		emptyData.Data = nil
+
+		result, err := h.contract.PegInRequestedEvent(receiptWith(emptyData))
+		require.EqualError(t, err, "PegInRequested event in transaction "+txHash+" has 0 data bytes, expected 96")
+		assert.Equal(t, blockchain.PegInRequestedEvent{}, result)
+	})
+
+	t.Run("returns the unpack error of a PegInRequested log without its indexed topics", func(t *testing.T) {
+		h := newRequestPegInHarness(t)
+		malformed := pegInRequestedTransactionLog(t, pegInContractAddress, event)
+		malformed.Topics = malformed.Topics[:1]
+
+		result, err := h.contract.PegInRequestedEvent(receiptWith(malformed))
+		require.ErrorContains(t, err, "PegInRequested event in transaction "+txHash+": ")
+		assert.Equal(t, blockchain.PegInRequestedEvent{}, result)
 	})
 }

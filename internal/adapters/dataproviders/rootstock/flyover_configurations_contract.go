@@ -75,10 +75,10 @@ func (configurations *flyoverConfigurationsContractImpl) GetRequiredPegInBtcConf
 func (configurations *flyoverConfigurationsContractImpl) GetPegInConfiguration() (blockchain.PegInConfiguration, error) {
 	opts := &bind.CallOpts{}
 	result, err := rskRetry(configurations.retryParams.Retries, configurations.retryParams.Sleep,
-		func() (bindings.IFlyoverConfigurationsPegConfiguration, error) {
+		func() (bindings.IFlyoverConfigurationsPegInConfiguration, error) {
 			callData, dataErr := configurations.binding.TryPackGetPegInConfiguration()
 			if dataErr != nil {
-				return bindings.IFlyoverConfigurationsPegConfiguration{}, dataErr
+				return bindings.IFlyoverConfigurationsPegInConfiguration{}, dataErr
 			}
 			return bind.Call(configurations.contract, opts, callData, configurations.binding.UnpackGetPegInConfiguration)
 		})
@@ -136,7 +136,7 @@ func (configurations *flyoverConfigurationsContractImpl) GetPegOutConfiguration(
 	return mapPegOutConfiguration(result), nil
 }
 
-func mapPegInConfiguration(raw bindings.IFlyoverConfigurationsPegConfiguration) blockchain.PegInConfiguration {
+func mapPegInConfiguration(raw bindings.IFlyoverConfigurationsPegInConfiguration) blockchain.PegInConfiguration {
 	tiers := make([]blockchain.ConfirmationTier, 0, len(raw.ConfirmationTiers))
 	for _, tier := range raw.ConfirmationTiers {
 		tiers = append(tiers, blockchain.ConfirmationTier{
