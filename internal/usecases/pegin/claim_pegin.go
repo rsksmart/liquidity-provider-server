@@ -109,7 +109,7 @@ func (useCase *ClaimPegInUseCase) prepareClaim(
 ) (pegInClaimRequest, error) {
 	request := pegInClaimRequest{watch: watch, depositTxID: depositTxID}
 	var err error
-	if request.createdAt, err = useCase.checkStoredClaim(ctx, watch.RskAddress, depositTxID); err != nil {
+	if request.createdAt, err = useCase.claimCreatedAt(ctx, watch.RskAddress, depositTxID); err != nil {
 		return pegInClaimRequest{}, err
 	}
 	amount, err := useCase.confirmedDepositAmount(watch, depositTxID)
@@ -135,7 +135,7 @@ func (useCase *ClaimPegInUseCase) prepareClaim(
 	return request, useCase.dryRun(request)
 }
 
-func (useCase *ClaimPegInUseCase) checkStoredClaim(
+func (useCase *ClaimPegInUseCase) claimCreatedAt(
 	ctx context.Context,
 	rskAddress, depositTxID string,
 ) (createdAt time.Time, err error) {
@@ -290,66 +290,96 @@ func (useCase *ClaimPegInUseCase) submitClaim(ctx context.Context, request pegIn
 	useCase.peginLiquidityMutex.Lock()
 	defer useCase.peginLiquidityMutex.Unlock()
 
-	txConfig, err := useCase.fundedTransactionConfig(ctx, request)
+	gas, err := useCase.estimateClaimGas(ctx, request)
 	if errors.Is(err, blockchain.PegInAlreadyProcessedError) {
 		return useCase.addRaceLostClaim(ctx, request)
 	} else if err != nil {
 		return err
 	}
-	claim := request.newClaim(rootstock.PegInClaimSubmitting)
-	if err = useCase.claims.Add(ctx, claim); errors.Is(err, rootstock.PegInClaimExistsError) {
-		log.Debug(LogPegInClaimStoredMeanwhile(claim.RskAddress, claim.DepositTxID))
-		return errPegInClaimSkipped
-	} else if err != nil {
-		return err
-	}
 
 	useCase.rskWalletMutex.Lock()
-	result, sendErr := useCase.contracts.PegIn.RequestPegIn(txConfig, request.params)
+	claim, err := useCase.addFundedClaim(ctx, request, gas)
+	if err != nil {
+		useCase.rskWalletMutex.Unlock()
+		return err
+	}
+	receipt, sendErr := useCase.contracts.PegIn.RequestPegIn(
+		blockchain.NewTransactionConfig(request.value, gas.limit, gas.price),
+		request.params,
+	)
 	useCase.rskWalletMutex.Unlock()
-	return useCase.updateSentClaim(ctx, claim, result, sendErr)
+	return useCase.updateSentClaim(context.WithoutCancel(ctx), claim, receipt, sendErr)
 }
 
-func (useCase *ClaimPegInUseCase) fundedTransactionConfig(
+func (useCase *ClaimPegInUseCase) addFundedClaim(
 	ctx context.Context,
 	request pegInClaimRequest,
-) (blockchain.TransactionConfig, error) {
-	gasLimit, err := useCase.contracts.PegIn.EstimateRequestPegInGas(
+	gas pegInClaimGas,
+) (rootstock.PegInClaim, error) {
+	if err := useCase.checkWalletCoversClaim(ctx, request, gas); err != nil {
+		return rootstock.PegInClaim{}, err
+	}
+	claim := request.newClaim(rootstock.PegInClaimSubmitting)
+	err := useCase.claims.Add(ctx, claim)
+	if errors.Is(err, rootstock.PegInClaimExistsError) {
+		log.Debug(LogPegInClaimStoredMeanwhile(claim.RskAddress, claim.DepositTxID))
+		return rootstock.PegInClaim{}, errPegInClaimSkipped
+	}
+	return claim, err
+}
+
+type pegInClaimGas struct {
+	limit uint64
+	price *entities.Wei
+}
+
+func (gas pegInClaimGas) cost() *entities.Wei {
+	return new(entities.Wei).Mul(gas.price, entities.NewUWei(gas.limit))
+}
+
+func (useCase *ClaimPegInUseCase) estimateClaimGas(ctx context.Context, request pegInClaimRequest) (pegInClaimGas, error) {
+	limit, err := useCase.contracts.PegIn.EstimateRequestPegInGas(
 		blockchain.NewTransactionConfig(request.value, 0, nil),
 		request.params,
 	)
 	if err != nil {
-		return blockchain.TransactionConfig{}, err
+		return pegInClaimGas{}, err
 	}
-	gasPrice, err := useCase.rpc.Rsk.GasPrice(ctx)
+	price, err := useCase.rpc.Rsk.GasPrice(ctx)
 	if err != nil {
-		return blockchain.TransactionConfig{}, err
+		return pegInClaimGas{}, err
 	}
+	return pegInClaimGas{limit: limit, price: price}, nil
+}
+
+func (useCase *ClaimPegInUseCase) checkWalletCoversClaim(ctx context.Context, request pegInClaimRequest, gas pegInClaimGas) error {
 	balance, err := useCase.rskWallet.GetBalance(ctx)
 	if err != nil {
-		return blockchain.TransactionConfig{}, err
+		return err
 	}
-	gasCost := new(entities.Wei).Mul(gasPrice, entities.NewUWei(gasLimit))
-	required := new(entities.Wei).Add(request.value, gasCost)
+	required := new(entities.Wei).Add(request.value, gas.cost())
 	if balance.Cmp(required) < 0 {
 		log.Warn(LogPegInClaimInsufficientBalance(request.watch.RskAddress, request.depositTxID, balance, required))
-		return blockchain.TransactionConfig{}, errPegInClaimSkipped
+		return errPegInClaimSkipped
 	}
-	return blockchain.NewTransactionConfig(request.value, gasLimit, gasPrice), nil
+	return nil
 }
 
 func (useCase *ClaimPegInUseCase) updateSentClaim(
 	ctx context.Context,
 	claim rootstock.PegInClaim,
-	result blockchain.RequestPegInResult,
+	receipt blockchain.TransactionReceipt,
 	sendErr error,
 ) error {
-	claim.TxHash = result.Receipt.TransactionHash
+	claim.TxHash = receipt.TransactionHash
 	claim.UpdatedAt = time.Now().UTC()
+	var event blockchain.PegInRequestedEvent
+	var eventErr error
 	switch {
 	case sendErr == nil:
 		claim.State = rootstock.PegInClaimClaimed
-		claim.CallSuccess = result.Event.CallSuccess
+		event, eventErr = useCase.contracts.PegIn.PegInRequestedEvent(receipt)
+		claim.CallSuccess = event.CallSuccess
 	case errors.Is(sendErr, blockchain.PegInAlreadyProcessedError):
 		claim.State = rootstock.PegInClaimRaceLost
 	case claim.TxHash == "" || errors.Is(sendErr, blockchain.TxFailedError):
@@ -361,7 +391,7 @@ func (useCase *ClaimPegInUseCase) updateSentClaim(
 	}
 	switch claim.State {
 	case rootstock.PegInClaimClaimed:
-		useCase.logClaimed(claim, result.Event)
+		useCase.logClaimed(claim, event, eventErr)
 		return nil
 	case rootstock.PegInClaimRaceLost:
 		log.Info(LogPegInClaimRaceLost(claim.RskAddress, claim.DepositTxID))
@@ -371,8 +401,12 @@ func (useCase *ClaimPegInUseCase) updateSentClaim(
 	}
 }
 
-func (useCase *ClaimPegInUseCase) logClaimed(claim rootstock.PegInClaim, event blockchain.PegInRequestedEvent) {
+func (useCase *ClaimPegInUseCase) logClaimed(claim rootstock.PegInClaim, event blockchain.PegInRequestedEvent, eventErr error) {
 	log.Info(LogPegInClaimed(claim.RskAddress, claim.DepositTxID, claim.TxHash, claim.PegInID))
+	if eventErr != nil {
+		log.Error(LogPegInClaimEventUnreadable(claim.DepositTxID, claim.TxHash, eventErr))
+		return
+	}
 	if event.PegInID != claim.PegInID {
 		log.Error(LogPegInClaimIdMismatch(claim.DepositTxID, claim.PegInID, event.PegInID))
 	}

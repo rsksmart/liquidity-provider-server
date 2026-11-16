@@ -83,17 +83,18 @@ func claimParams() blockchain.RequestPegInParams {
 	}
 }
 
-func claimResult(callSuccess bool, eventPegInID string) blockchain.RequestPegInResult {
-	return blockchain.RequestPegInResult{
-		Receipt: blockchain.TransactionReceipt{TransactionHash: claimTxHash, BlockNumber: 123},
-		Event: blockchain.PegInRequestedEvent{
-			PegInID:     eventPegInID,
-			Claimer:     claimClaimer,
-			RskAddress:  claimRskAddress,
-			Amount:      claimDepositAmount(),
-			NetToUser:   claimValue(),
-			CallSuccess: callSuccess,
-		},
+func claimReceipt() blockchain.TransactionReceipt {
+	return blockchain.TransactionReceipt{TransactionHash: claimTxHash, BlockNumber: 123}
+}
+
+func claimEvent(callSuccess bool, eventPegInID string) blockchain.PegInRequestedEvent {
+	return blockchain.PegInRequestedEvent{
+		PegInID:     eventPegInID,
+		Claimer:     claimClaimer,
+		RskAddress:  claimRskAddress,
+		Amount:      claimDepositAmount(),
+		NetToUser:   claimValue(),
+		CallSuccess: callSuccess,
 	}
 }
 
@@ -155,8 +156,12 @@ func (f *claimPegInFixtures) run() error {
 }
 
 func (f *claimPegInFixtures) runFor(rskAddress, depositTxID string) error {
+	return f.runWithContext(context.Background(), rskAddress, depositTxID)
+}
+
+func (f *claimPegInFixtures) runWithContext(ctx context.Context, rskAddress, depositTxID string) error {
 	watch := rootstock.PegInWatch{RskAddress: rskAddress, BtcAddress: claimBtcAddress, State: rootstock.PegInWatchImported}
-	return f.useCase.Run(context.Background(), watch, depositTxID)
+	return f.useCase.Run(ctx, watch, depositTxID)
 }
 
 func (f *claimPegInFixtures) assertExpectations(t *testing.T) {
@@ -240,9 +245,13 @@ func (f *claimPegInFixtures) expectUpdate(err error) *rootstock.PegInClaim {
 	return updated
 }
 
-func (f *claimPegInFixtures) expectSend(result blockchain.RequestPegInResult, err error) {
+func (f *claimPegInFixtures) expectSend(receipt blockchain.TransactionReceipt, err error) {
 	f.pegIn.EXPECT().RequestPegIn(blockchain.NewTransactionConfig(claimValue(), claimGasLimit, claimGasPrice()), claimParams()).
-		Return(result, err).Once()
+		Return(receipt, err).Once()
+}
+
+func (f *claimPegInFixtures) expectEvent(event blockchain.PegInRequestedEvent, err error) {
+	f.pegIn.EXPECT().PegInRequestedEvent(claimReceipt()).Return(event, err).Once()
 }
 
 func (f *claimPegInFixtures) expectSubmittedClaim() (added *rootstock.PegInClaim) {
@@ -255,7 +264,8 @@ func (f *claimPegInFixtures) expectSubmittedClaim() (added *rootstock.PegInClaim
 func TestClaimPegInUseCase_Run_ClaimsAConfirmedDeposit(t *testing.T) {
 	f := newClaimPegInFixtures()
 	added := f.expectSubmittedClaim()
-	f.expectSend(claimResult(true, claimPegInID), nil)
+	f.expectSend(claimReceipt(), nil)
+	f.expectEvent(claimEvent(true, claimPegInID), nil)
 	updated := f.expectUpdate(nil)
 	defer test.AssertLogContains(t, pegin.LogPegInClaimed(claimRskAddress, claimDepositTxID, claimTxHash, claimPegInID))()
 
@@ -288,7 +298,8 @@ func TestClaimPegInUseCase_Run_SendsOnlyUpToTheMaximumAndStoresTheFullDeposit(t 
 	f.expectFunding(value, mustWei(t, "99000000000000000000"))
 	added := f.expectAdd(nil)
 	f.pegIn.EXPECT().RequestPegIn(blockchain.NewTransactionConfig(value, claimGasLimit, claimGasPrice()), claimParams()).
-		Return(claimResult(true, claimPegInID), nil).Once()
+		Return(claimReceipt(), nil).Once()
+	f.expectEvent(claimEvent(true, claimPegInID), nil)
 	f.expectUpdate(nil)
 
 	require.NoError(t, f.run())
@@ -348,7 +359,8 @@ func TestClaimPegInUseCase_Run_RetriesARetryableFailureKeepingItsCreationTime(t 
 	f.expectDryRun(claimValue(), nil)
 	f.expectFunding(claimValue(), claimRequiredBalance())
 	added := f.expectAdd(nil)
-	f.expectSend(claimResult(true, claimPegInID), nil)
+	f.expectSend(claimReceipt(), nil)
+	f.expectEvent(claimEvent(true, claimPegInID), nil)
 	f.expectUpdate(nil)
 
 	require.NoError(t, f.run())
@@ -580,6 +592,7 @@ func TestClaimPegInUseCase_Run_SkipsWhenTheWalletCantCoverTheClaim(t *testing.T)
 	require.NoError(t, f.run())
 	f.claims.AssertNotCalled(t, "Add", mock.Anything, mock.Anything)
 	f.pegIn.AssertNotCalled(t, "RequestPegIn", mock.Anything, mock.Anything)
+	assert.True(t, f.walletMutex.TryLock(), "the wallet mutex is released after a skipped claim")
 	f.assertExpectations(t)
 }
 
@@ -595,6 +608,7 @@ func TestClaimPegInUseCase_Run_SkipsAClaimStoredConcurrently(t *testing.T) {
 	require.NoError(t, f.run())
 	assert.True(t, logged())
 	f.pegIn.AssertNotCalled(t, "RequestPegIn", mock.Anything, mock.Anything)
+	assert.True(t, f.walletMutex.TryLock(), "the wallet mutex is released after a claim stored meanwhile")
 	f.assertExpectations(t)
 }
 
@@ -623,7 +637,7 @@ func assertMutexHeld(t *testing.T, mutex *sync.Mutex, message string) {
 	assert.False(t, acquired, message)
 }
 
-func TestClaimPegInUseCase_Run_HoldsTheLiquidityMutexFromTheBalanceCheckToTheSend(t *testing.T) {
+func TestClaimPegInUseCase_Run_HoldsTheLiquidityAndWalletMutexesFromTheBalanceCheckToTheSend(t *testing.T) {
 	f := newClaimPegInFixtures()
 	f.expectPreparedClaim()
 	f.expectDryRun(claimValue(), nil)
@@ -631,16 +645,25 @@ func TestClaimPegInUseCase_Run_HoldsTheLiquidityMutexFromTheBalanceCheckToTheSen
 	f.rskRpc.EXPECT().GasPrice(mock.Anything).Return(claimGasPrice(), nil).Once()
 	f.wallet.EXPECT().GetBalance(mock.Anything).RunAndReturn(func(context.Context) (*entities.Wei, error) {
 		assertMutexHeld(t, f.liquidityMutex, "the balance check runs under the liquidity mutex")
+		assertMutexHeld(t, f.walletMutex, "the balance check runs under the wallet mutex")
 		return claimRequiredBalance(), nil
 	}).Once()
 	f.expectAdd(nil)
 	f.pegIn.EXPECT().RequestPegIn(mock.Anything, mock.Anything).
-		RunAndReturn(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) (blockchain.RequestPegInResult, error) {
+		RunAndReturn(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) (blockchain.TransactionReceipt, error) {
 			assertMutexHeld(t, f.liquidityMutex, "the send runs under the liquidity mutex")
 			assertMutexHeld(t, f.walletMutex, "the send runs under the wallet mutex")
-			return claimResult(true, claimPegInID), nil
+			return claimReceipt(), nil
 		}).Once()
-	f.expectUpdate(nil)
+	f.expectEvent(claimEvent(true, claimPegInID), nil)
+	f.claims.EXPECT().Update(mock.Anything, mock.Anything).RunAndReturn(func(context.Context, rootstock.PegInClaim) error {
+		released := f.walletMutex.TryLock()
+		if released {
+			f.walletMutex.Unlock()
+		}
+		assert.True(t, released, "the wallet mutex is released before the claim update")
+		return nil
+	}).Once()
 
 	require.NoError(t, f.run())
 	assert.True(t, f.liquidityMutex.TryLock(), "the liquidity mutex is released after the claim")
@@ -651,7 +674,7 @@ func TestClaimPegInUseCase_Run_HoldsTheLiquidityMutexFromTheBalanceCheckToTheSen
 func TestClaimPegInUseCase_Run_RecordsARaceLostAtMining(t *testing.T) {
 	f := newClaimPegInFixtures()
 	f.expectSubmittedClaim()
-	reverted := blockchain.RequestPegInResult{Receipt: blockchain.TransactionReceipt{TransactionHash: claimTxHash}}
+	reverted := blockchain.TransactionReceipt{TransactionHash: claimTxHash}
 	f.expectSend(reverted, errors.Join(blockchain.TxFailedError, blockchain.PegInAlreadyProcessedError))
 	updated := f.expectUpdate(nil)
 	defer test.AssertLogContains(t, pegin.LogPegInClaimRaceLost(claimRskAddress, claimDepositTxID))()
@@ -666,7 +689,7 @@ func TestClaimPegInUseCase_Run_RecordsARaceLostAtMining(t *testing.T) {
 func TestClaimPegInUseCase_Run_MarksAClaimThatWasNotBroadcastAsRetryable(t *testing.T) {
 	f := newClaimPegInFixtures()
 	f.expectSubmittedClaim()
-	f.expectSend(blockchain.RequestPegInResult{}, assert.AnError)
+	f.expectSend(blockchain.TransactionReceipt{}, assert.AnError)
 	updated := f.expectUpdate(nil)
 
 	err := f.run()
@@ -679,7 +702,7 @@ func TestClaimPegInUseCase_Run_MarksAClaimThatWasNotBroadcastAsRetryable(t *test
 func TestClaimPegInUseCase_Run_MarksAMinedRevertAsRetryable(t *testing.T) {
 	f := newClaimPegInFixtures()
 	f.expectSubmittedClaim()
-	reverted := blockchain.RequestPegInResult{Receipt: blockchain.TransactionReceipt{TransactionHash: claimTxHash}}
+	reverted := blockchain.TransactionReceipt{TransactionHash: claimTxHash}
 	f.expectSend(reverted, errors.Join(blockchain.TxFailedError, blockchain.IncorrectFrontingError))
 	updated := f.expectUpdate(nil)
 
@@ -692,7 +715,7 @@ func TestClaimPegInUseCase_Run_MarksAMinedRevertAsRetryable(t *testing.T) {
 func TestClaimPegInUseCase_Run_KeepsAClaimWithAnUnknownOutcomeSubmitting(t *testing.T) {
 	f := newClaimPegInFixtures()
 	f.expectSubmittedClaim()
-	broadcast := blockchain.RequestPegInResult{Receipt: blockchain.TransactionReceipt{TransactionHash: claimTxHash}}
+	broadcast := blockchain.TransactionReceipt{TransactionHash: claimTxHash}
 	f.expectSend(broadcast, assert.AnError)
 	updated := f.expectUpdate(nil)
 
@@ -701,13 +724,37 @@ func TestClaimPegInUseCase_Run_KeepsAClaimWithAnUnknownOutcomeSubmitting(t *test
 	submitting := expectedClaim(rootstock.PegInClaimSubmitting, *updated)
 	submitting.TxHash = claimTxHash
 	assert.Equal(t, submitting, *updated)
+	f.pegIn.AssertNotCalled(t, "PegInRequestedEvent", mock.Anything)
+	f.assertExpectations(t)
+}
+
+func TestClaimPegInUseCase_Run_StoresTheSentClaimAfterTheCallerContextEnds(t *testing.T) {
+	f := newClaimPegInFixtures()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f.expectSubmittedClaim()
+	f.pegIn.EXPECT().RequestPegIn(blockchain.NewTransactionConfig(claimValue(), claimGasLimit, claimGasPrice()), claimParams()).
+		RunAndReturn(func(blockchain.TransactionConfig, blockchain.RequestPegInParams) (blockchain.TransactionReceipt, error) {
+			cancel()
+			return claimReceipt(), nil
+		}).Once()
+	f.expectEvent(claimEvent(true, claimPegInID), nil)
+	f.claims.EXPECT().Update(mock.Anything, mock.Anything).
+		RunAndReturn(func(updateCtx context.Context, claim rootstock.PegInClaim) error {
+			require.NoError(t, updateCtx.Err())
+			assert.Equal(t, rootstock.PegInClaimClaimed, claim.State)
+			return nil
+		}).Once()
+
+	require.NoError(t, f.runWithContext(ctx, claimRskAddress, claimDepositTxID))
 	f.assertExpectations(t)
 }
 
 func TestClaimPegInUseCase_Run_ReturnsTheUpdateErrorAfterTheSend(t *testing.T) {
 	f := newClaimPegInFixtures()
 	f.expectSubmittedClaim()
-	f.expectSend(claimResult(true, claimPegInID), nil)
+	f.expectSend(claimReceipt(), nil)
+	f.expectEvent(claimEvent(true, claimPegInID), nil)
 	f.expectUpdate(assert.AnError)
 
 	err := f.run()
@@ -720,7 +767,8 @@ func TestClaimPegInUseCase_Run_KeepsTheLocalPegInIdWhenTheEventDiffers(t *testin
 	f := newClaimPegInFixtures()
 	f.expectSubmittedClaim()
 	const eventPegInID = "00000000000000000000000000000000000000000000000000000000000000aa"
-	f.expectSend(claimResult(true, eventPegInID), nil)
+	f.expectSend(claimReceipt(), nil)
+	f.expectEvent(claimEvent(true, eventPegInID), nil)
 	updated := f.expectUpdate(nil)
 	defer test.AssertLogContains(t, pegin.LogPegInClaimIdMismatch(claimDepositTxID, claimPegInID, eventPegInID))()
 
@@ -733,9 +781,25 @@ func TestClaimPegInUseCase_Run_KeepsTheLocalPegInIdWhenTheEventDiffers(t *testin
 func TestClaimPegInUseCase_Run_RecordsAFailedUserPayment(t *testing.T) {
 	f := newClaimPegInFixtures()
 	f.expectSubmittedClaim()
-	f.expectSend(claimResult(false, claimPegInID), nil)
+	f.expectSend(claimReceipt(), nil)
+	f.expectEvent(claimEvent(false, claimPegInID), nil)
 	updated := f.expectUpdate(nil)
 	defer test.AssertLogContains(t, pegin.LogPegInClaimUserPaymentFailed(claimRskAddress, claimDepositTxID, claimTxHash))()
+
+	require.NoError(t, f.run())
+	claimed := expectedClaim(rootstock.PegInClaimClaimed, *updated)
+	claimed.TxHash = claimTxHash
+	assert.Equal(t, claimed, *updated)
+	f.assertExpectations(t)
+}
+
+func TestClaimPegInUseCase_Run_StoresAClaimWithAnUnreadableEventAsClaimed(t *testing.T) {
+	f := newClaimPegInFixtures()
+	f.expectSubmittedClaim()
+	f.expectSend(claimReceipt(), nil)
+	f.expectEvent(blockchain.PegInRequestedEvent{}, assert.AnError)
+	updated := f.expectUpdate(nil)
+	defer test.AssertLogContains(t, pegin.LogPegInClaimEventUnreadable(claimDepositTxID, claimTxHash, assert.AnError))()
 
 	require.NoError(t, f.run())
 	claimed := expectedClaim(rootstock.PegInClaimClaimed, *updated)

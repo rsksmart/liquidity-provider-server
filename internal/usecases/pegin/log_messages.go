@@ -54,3 +54,7 @@ func LogPegInClaimIdMismatch(depositTxID, storedPegInID, eventPegInID string) st
 func LogPegInClaimUserPaymentFailed(rskAddress, depositTxID, txHash string) string {
 	return fmt.Sprintf("PegIn claim of deposit %s in transaction %s could not pay %s; the fronted amount went to the PegIn contract balance", depositTxID, txHash, rskAddress)
 }
+
+func LogPegInClaimEventUnreadable(depositTxID, txHash string, err error) string {
+	return fmt.Sprintf("PegIn claim of deposit %s in transaction %s was stored as claimed, but its PegInRequested event can't be read, so the user payment outcome is unknown: %v", depositTxID, txHash, err)
+}
