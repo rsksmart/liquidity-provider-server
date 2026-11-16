@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 IMAGE=$1
 
@@ -16,12 +16,15 @@ docker cp temp_lbc_deployer:/home/node/out bindings/out
 
 CONTRACTS=(
   "IPegIn                  PeginContract                  pegin"
+  "IPegInCommitFirst       PeginCommitFirstContract       pegin_commit_first"
   "IPegOut                 PegoutContract                 pegout"
   "ICollateralManagement   CollateralManagementContract   collateral_management"
   "IBridge                 RskBridge                      bridge"
   "IFlyoverDiscovery       FlyoverDiscovery               discovery"
   "Flyover                 Flyover                        flyover"
   "IPegInAddressRegistry   PegInAddressRegistryContract   pegin_address_registry"
+  "IPauseRegistry          PauseRegistryContract          pause_registry"
+  "EmergencyPause          EmergencyPauseContract         emergency_pause"
   "IFlyoverConfigurations  FlyoverConfigurationsContract  flyover_configurations"
   "IPegOutEscrow           PegOutEscrowContract           pegout_escrow"
 )
@@ -31,6 +34,7 @@ for entry in "${CONTRACTS[@]}"; do
 
   ABI_PATH="bindings/abi/${CONTRACT}.abi.json"
   ARTIFACT="bindings/out/${CONTRACT}.sol/${CONTRACT}.json"
+  ABI_EXTENSION="scripts/abi-extensions/${CONTRACT}.abi.json"
   OUT_GO="bindings/${NAME}_contract.go"
   DEST="internal/adapters/dataproviders/rootstock/bindings/${NAME}/${NAME}_contract.go"
 
@@ -39,7 +43,11 @@ for entry in "${CONTRACTS[@]}"; do
   mkdir -p bindings/abi
   mkdir -p "$(dirname "$DEST")"
 
-  jq '.abi' "$ARTIFACT" > "$ABI_PATH"
+  if [ -f "$ABI_EXTENSION" ]; then
+    jq -s '.[0].abi + .[1]' "$ARTIFACT" "$ABI_EXTENSION" > "$ABI_PATH"
+  else
+    jq '.abi' "$ARTIFACT" > "$ABI_PATH"
+  fi
 
   abigen --v2 \
     --abi "$ABI_PATH" \

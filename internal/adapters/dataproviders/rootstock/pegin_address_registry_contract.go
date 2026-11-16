@@ -107,29 +107,6 @@ func (registry *peginAddressRegistryContractImpl) IsRegistered(rskAddr string) (
 		})
 }
 
-func (registry *peginAddressRegistryContractImpl) GetRegistration(rskAddr string) (blockchain.PegInRegistration, error) {
-	var parsedAddress common.Address
-	if err := ParseAddress(&parsedAddress, rskAddr); err != nil {
-		return blockchain.PegInRegistration{}, err
-	}
-	opts := &bind.CallOpts{}
-	result, err := rskRetry(registry.retryParams.Retries, registry.retryParams.Sleep,
-		func() (bindings.IPegInAddressRegistryRegistration, error) {
-			callData, dataErr := registry.binding.TryPackGetRegistration(parsedAddress)
-			if dataErr != nil {
-				return bindings.IPegInAddressRegistryRegistration{}, dataErr
-			}
-			return bind.Call(registry.contract, opts, callData, registry.binding.UnpackGetRegistration)
-		})
-	if err != nil {
-		return blockchain.PegInRegistration{}, err
-	}
-	return blockchain.PegInRegistration{
-		Registrant:        result.Registrant.String(),
-		RegistrationBlock: result.RegistrationBlock.Uint64(),
-	}, nil
-}
-
 func (registry *peginAddressRegistryContractImpl) GetRegistrationRoot(
 	ctx context.Context,
 	blockNumber uint64,
