@@ -86,8 +86,12 @@ Use this when the same error repeats on every tick, a waiting log stays while th
    ```
 
    Every address is then imported into the Bitcoin wallet again. The rescan covers only the last 100 BTC blocks.
-7. Start the LPS and wait for `Rebuilt the PegIn watch list ...` in the logs.
-8. If you deleted the documents in step 6, or the LPS was stopped for more than 100 BTC blocks, and an older deposit may still matter, rescan the wallet from a BTC height before that deposit. The rescan can take a long time and blocks the wallet while it runs:
+7. Start the LPS and wait for `Rebuilt the PegIn watch list ...` in the logs. The log comes before the wallet import, so also wait until no document is left `discovered`:
+
+   ```javascript
+   db.peginWatch.countDocuments({state: "discovered"})
+   ```
+8. If you deleted the documents in step 6, or the LPS was stopped for more than 100 BTC blocks, and an older deposit may still matter, rescan the wallet from a BTC height before that deposit. First check that no wallet rescan is running (`getwalletinfo` shows `scanning: false`). The rescan can take a long time and blocks the wallet while it runs. The LPS can log `wallet is currently rescanning` errors meanwhile and retries them on its own:
 
    ```bash
    bitcoin-cli -rpcwallet=pegin-watchonly-wallet rescanblockchain <height>
