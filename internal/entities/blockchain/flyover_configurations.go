@@ -16,6 +16,8 @@ type PegInConfiguration struct {
 	RegistrantFee     *entities.Wei
 	ClaimGasFee       *entities.Wei
 	ConfirmationTiers []ConfirmationTier
+	PenaltyFee        *entities.Wei
+	ClaimWindow       uint64
 }
 
 // PegOutConfiguration is the snapshotted peg-out parameter set from FlyoverConfigurations.

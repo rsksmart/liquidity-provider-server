@@ -152,6 +152,8 @@ func mapPegInConfiguration(raw bindings.IFlyoverConfigurationsPegInConfiguration
 		RegistrantFee:     bigIntToWei(raw.RegistrantFee),
 		ClaimGasFee:       bigIntToWei(raw.ClaimGasFee),
 		ConfirmationTiers: tiers,
+		PenaltyFee:        bigIntToWei(raw.PenaltyFee),
+		ClaimWindow:       bigIntToUint64(raw.ClaimWindow),
 	}
 }
 

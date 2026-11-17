@@ -143,6 +143,8 @@ func TestFlyoverConfigurationsContractImpl_GetPegInConfiguration(t *testing.T) {
 				{MaxAmount: entities.NewWei(1000000000000000000), Confirmations: 2},
 				{MaxAmount: entities.NewUWei(10000000000000000000), Confirmations: 6},
 			},
+			PenaltyFee:  entities.NewWei(30000000000000),
+			ClaimWindow: 10800,
 		}, result)
 		contractMock.caller.AssertExpectations(t)
 	})
