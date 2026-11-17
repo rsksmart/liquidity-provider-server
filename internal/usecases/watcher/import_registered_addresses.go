@@ -129,9 +129,9 @@ func (useCase *ImportRegisteredAddressesUseCase) loadOrCreate(
 	ctx context.Context,
 	event blockchain.AddressRegistered,
 ) (*rootstock.PegInWatch, error) {
-	watch, err := useCase.repository.Get(ctx, event.RskAddress)
+	watch, err := useCase.loadWatch(ctx, event.RskAddress)
 	if err != nil {
-		return nil, fmt.Errorf("load AddressRegistered event %s: %w", event.RskAddress, err)
+		return nil, err
 	}
 	if watch != nil {
 		return watch, nil
@@ -148,12 +148,20 @@ func (useCase *ImportRegisteredAddressesUseCase) loadOrCreate(
 	if err = useCase.repository.Upsert(ctx, created); err != nil {
 		return nil, fmt.Errorf("persist AddressRegistered event %s/%d: %w", event.TxHash, event.LogIndex, err)
 	}
-	watch, err = useCase.repository.Get(ctx, event.RskAddress)
+	watch, err = useCase.loadWatch(ctx, event.RskAddress)
 	if err != nil {
-		return nil, fmt.Errorf("load AddressRegistered event %s: %w", event.RskAddress, err)
+		return nil, err
 	}
 	if watch == nil {
 		return nil, fmt.Errorf("load AddressRegistered event %s: watch not found after upsert", event.RskAddress)
+	}
+	return watch, nil
+}
+
+func (useCase *ImportRegisteredAddressesUseCase) loadWatch(ctx context.Context, rskAddress string) (*rootstock.PegInWatch, error) {
+	watch, err := useCase.repository.Get(ctx, rskAddress)
+	if err != nil {
+		return nil, fmt.Errorf("load AddressRegistered event %s: %w", rskAddress, err)
 	}
 	return watch, nil
 }

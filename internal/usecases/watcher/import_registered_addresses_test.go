@@ -287,7 +287,7 @@ func TestImportRegisteredAddressesUseCase_Run_RecordsResolveErrorAndImportsTheNe
 	assertImportResult(t, []rootstock.PegInWatch{brokenAfterError, importedRegistration(valid, address)}, result)
 }
 
-func TestImportRegisteredAddressesUseCase_Run_SuppressesARepeatedWatchError(t *testing.T) {
+func TestImportRegisteredAddressesUseCase_Run_SkipsSavingARepeatedWatchError(t *testing.T) {
 	fixture := newImportRegisteredAddressesFixture(t)
 	watch := failedRegistration(discoveredRegistration(1), "resolve PegIn address for event 0xreg1/1: boom")
 	fixture.withStored(watch)
@@ -389,7 +389,7 @@ func TestImportRegisteredAddressesUseCase_Run_RecordsTheRescanErrorOnEveryPendin
 	assertImportResult(t, []rootstock.PegInWatch{firstFailed, secondFailed}, result)
 }
 
-func TestImportRegisteredAddressesUseCase_Run_SuppressesARepeatedRescanError(t *testing.T) {
+func TestImportRegisteredAddressesUseCase_Run_SkipsSavingARepeatedRescanError(t *testing.T) {
 	fixture := newImportRegisteredAddressesFixture(t)
 	watch := failedRegistration(discoveredRegistration(1), fmt.Sprintf("rescan PegIn addresses: %v", assert.AnError))
 	fixture.withStored(watch)
