@@ -9,25 +9,23 @@ import (
 
 // Watchers intervals
 const (
-	quoteCleanInterval               = 10 * time.Minute
-	pegoutDepositWatcherInterval     = 1 * time.Minute
-	pegoutEscrowWatcherInterval      = 1 * time.Minute
-	pegoutBtcTransferWatcherInterval = 3 * time.Minute
-	pegoutBridgeWatcherInterval      = 5 * time.Minute
-	liquidityCheckInterval           = 10 * time.Minute
-	penalizationCheckInterval        = 10 * time.Minute
-	bitcoinEclipseCheckInterval      = 5 * time.Minute
-	rskEclipseCheckInterval          = 15 * time.Second
-	btcReleaseCheckInterval          = 3 * time.Minute
-	assetMetricsUpdateInterval       = 1 * time.Minute
-	transferColdWalletInterval       = 5 * time.Minute
-	bitcoinReorgCheckInterval        = 5 * time.Minute
-	rootstockReorgCheckInterval      = 30 * time.Second
-	bitcoinPeerCheckInterval         = 1 * time.Minute
-	rootstockPeerCheckInterval       = 1 * time.Minute
-	// Deposits older than this stay invisible after import.
-	peginAddressRegistryWatcherInterval         = 1 * time.Minute
-	peginAddressRegistryRescanDepthBlocks int64 = 100
+	quoteCleanInterval                  = 10 * time.Minute
+	pegoutDepositWatcherInterval        = 1 * time.Minute
+	pegoutEscrowWatcherInterval         = 1 * time.Minute
+	pegoutBtcTransferWatcherInterval    = 3 * time.Minute
+	pegoutBridgeWatcherInterval         = 5 * time.Minute
+	liquidityCheckInterval              = 10 * time.Minute
+	penalizationCheckInterval           = 10 * time.Minute
+	bitcoinEclipseCheckInterval         = 5 * time.Minute
+	rskEclipseCheckInterval             = 15 * time.Second
+	btcReleaseCheckInterval             = 3 * time.Minute
+	assetMetricsUpdateInterval          = 1 * time.Minute
+	transferColdWalletInterval          = 5 * time.Minute
+	bitcoinReorgCheckInterval           = 5 * time.Minute
+	rootstockReorgCheckInterval         = 30 * time.Second
+	bitcoinPeerCheckInterval            = 1 * time.Minute
+	rootstockPeerCheckInterval          = 1 * time.Minute
+	peginAddressRegistryWatcherInterval = 1 * time.Minute
 )
 
 type Watcher interface {
