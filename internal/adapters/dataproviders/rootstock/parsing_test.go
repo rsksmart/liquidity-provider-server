@@ -135,6 +135,20 @@ func TestParseReceipt(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
+	t.Run("should return an error instead of panicking when the receipt has no block number", func(t *testing.T) {
+		incomplete := *rawReceipt
+		incomplete.BlockNumber = nil
+		result, err := rootstock.ParseReceipt(rawTx, &incomplete)
+		require.EqualError(t, err, "receipt without block number")
+		assert.Empty(t, result)
+	})
+	t.Run("should return an error instead of panicking when the receipt has a nil log", func(t *testing.T) {
+		incomplete := *rawReceipt
+		incomplete.Logs = []*geth.Log{rawReceipt.Logs[0], nil}
+		result, err := rootstock.ParseReceipt(rawTx, &incomplete)
+		require.EqualError(t, err, "receipt with a nil log")
+		assert.Empty(t, result)
+	})
 	t.Run("should not panic and leave To empty for contract-creation tx", func(t *testing.T) {
 		key, err := crypto.GenerateKey()
 		require.NoError(t, err)

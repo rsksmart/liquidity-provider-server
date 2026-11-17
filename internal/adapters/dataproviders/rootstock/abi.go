@@ -8,12 +8,14 @@ import (
 	flyoverConfigurations "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/flyover_configurations"
 	pegin "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
 	peginAddressRegistry "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_address_registry"
+	peginCommitFirst "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_commit_first"
 	pegout "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout"
 	pegoutEscrow "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout_escrow"
 )
 
 type FlyoverABIs struct {
 	PegIn                 *abi.ABI
+	PegInCommitFirst      *abi.ABI
 	PegOut                *abi.ABI
 	Discovery             *abi.ABI
 	CollateralManagement  *abi.ABI
@@ -27,6 +29,10 @@ func MustLoadFlyoverABIs() *FlyoverABIs {
 	pegInAbi, err := pegin.PeginContractMetaData.ParseABI()
 	if err != nil {
 		panic("could not load PegIn ABI: " + err.Error())
+	}
+	pegInCommitFirstAbi, err := peginCommitFirst.PeginCommitFirstContractMetaData.ParseABI()
+	if err != nil {
+		panic("could not load PegInCommitFirst ABI: " + err.Error())
 	}
 	pegOutAbi, err := pegout.PegoutContractMetaData.ParseABI()
 	if err != nil {
@@ -59,6 +65,7 @@ func MustLoadFlyoverABIs() *FlyoverABIs {
 
 	return &FlyoverABIs{
 		PegIn:                 pegInAbi,
+		PegInCommitFirst:      pegInCommitFirstAbi,
 		PegOut:                pegOutAbi,
 		Discovery:             discoveryAbi,
 		CollateralManagement:  collateralManagementAbi,

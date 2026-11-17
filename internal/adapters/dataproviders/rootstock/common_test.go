@@ -7,6 +7,7 @@ import (
 	geth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	pegin "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin"
+	commitFirstBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegin_commit_first"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -94,6 +95,7 @@ func TestRskRetry(t *testing.T) {
 		rootstock.RetryParams{Retries: retries, Sleep: 1 * time.Second},
 		time.Duration(1),
 		peginBinding,
+		commitFirstBindings.NewPeginCommitFirstContract(),
 		Abis,
 	)
 	t.Run("Error on every attempt", func(t *testing.T) {

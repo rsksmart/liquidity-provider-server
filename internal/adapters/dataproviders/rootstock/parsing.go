@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"time"
 
@@ -24,6 +25,12 @@ const releaseRequestRejectedEvent = "release_request_rejected"
 func ParseReceipt(tx *geth.Transaction, receipt *geth.Receipt) (blockchain.TransactionReceipt, error) {
 	if tx == nil || receipt == nil {
 		return blockchain.TransactionReceipt{}, errors.New("invalid parameters")
+	}
+	if receipt.BlockNumber == nil {
+		return blockchain.TransactionReceipt{}, errors.New("receipt without block number")
+	}
+	if slices.Contains(receipt.Logs, nil) {
+		return blockchain.TransactionReceipt{}, errors.New("receipt with a nil log")
 	}
 
 	gasUsed := new(big.Int)
