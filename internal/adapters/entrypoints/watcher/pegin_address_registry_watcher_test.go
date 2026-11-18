@@ -29,6 +29,7 @@ type pegInAddressRegistryWatcherFixture struct {
 	repository *mocks.PegInWatchRepositoryMock
 	registry   *mocks.PegInAddressRegistryContractMock
 	rskRpc     *mocks.RootstockRpcServerMock
+	eventBus   *mocks.EventBusMock
 	btcNetwork *mocks.BitcoinNetworkMock
 	wallet     *mocks.BitcoinWalletMock
 	ticker     *sessionTicker
@@ -48,16 +49,20 @@ func newPegInWatcherFixture(
 		repository: mocks.NewPegInWatchRepositoryMock(t),
 		registry:   mocks.NewPegInAddressRegistryContractMock(t),
 		rskRpc:     mocks.NewRootstockRpcServerMock(t),
+		eventBus:   &mocks.EventBusMock{},
 		btcNetwork: mocks.NewBitcoinNetworkMock(t),
 		wallet:     mocks.NewBitcoinWalletMock(t),
 		ticker:     newSessionTicker(),
 	}
+	fixture.eventBus.Test(t)
+	t.Cleanup(func() { fixture.eventBus.AssertExpectations(t) })
 	useCases := watcherAdapter.NewPegInWatcherUseCases(
 		watcher.NewGetWatchedRegisteredAddressesUseCase(fixture.repository),
 		watcher.NewCatchUpRegisteredAddressesUseCase(
 			fixture.repository,
 			fixture.registry,
 			fixture.rskRpc,
+			fixture.eventBus,
 			crypto.Keccak256,
 			startBlock,
 			pageSize,
@@ -67,6 +72,21 @@ func newPegInWatcherFixture(
 	)
 	fixture.watcher = watcherAdapter.NewPegInWatcher(useCases, fixture.ticker)
 	return fixture
+}
+
+func (fixture *pegInAddressRegistryWatcherFixture) expectRecoveryPublished() {
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRebuildEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryRebuildEventId && !event.Timestamp.IsZero()
+	})).Return().Once()
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRootMismatchEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryRootMismatchEventId && !event.Timestamp.IsZero()
+	})).Return().Once()
+}
+
+func (fixture *pegInAddressRegistryWatcherFixture) expectRebuildFailedPublished(reason blockchain.PegInAddressRegistryRebuildReason) {
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRebuildFailedEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryRebuildFailedEventId && !event.Timestamp.IsZero() && event.Reason == reason
+	})).Return().Once()
 }
 
 func (fixture *pegInAddressRegistryWatcherFixture) expectBoundedRescan() {
@@ -576,6 +596,7 @@ func TestPegInWatcher_ImportsTheSavedPagesWhenALaterPageFails(t *testing.T) {
 
 func TestPegInWatcher_RetriesDiscoveredEntriesWhenRebuildFails(t *testing.T) {
 	fixture := newPegInWatcherFixture(t, 100, 1, 2)
+	fixture.expectRebuildFailedPublished(blockchain.PegInAddressRegistryRebuildRootMismatch)
 	entry := rootstock.PegInWatch{
 		TxHash:      "pending-import",
 		LogIndex:    1,
@@ -614,6 +635,7 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenRebuildFails(t *testing.T) {
 //nolint:funlen // One scenario covers the rebuild, the reload and the import of the only new address.
 func TestPegInWatcher_ReloadsTheWatchListAfterARebuild(t *testing.T) {
 	fixture := newPegInWatcherFixture(t, 100, 1, 2)
+	fixture.expectRecoveryPublished()
 	stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105}
 	dropped := rootstock.PegInWatch{TxHash: "dropped", BlockNumber: 106, RskAddress: rskAddress(5), State: rootstock.PegInWatchDiscovered}
 	kept := rootstock.PegInWatch{TxHash: "kept", BlockNumber: 100, RskAddress: rskAddress(6), State: rootstock.PegInWatchImported}
@@ -658,6 +680,7 @@ func TestPegInWatcher_ReloadsTheWatchListAfterARebuild(t *testing.T) {
 //nolint:funlen // One scenario covers the failed reload after a rebuild and the reload on the next tick.
 func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *testing.T) {
 	fixture := newPegInWatcherFixture(t, 100, 1, 2)
+	fixture.expectRecoveryPublished()
 	stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 105}
 	dropped := rootstock.PegInWatch{TxHash: "dropped", BlockNumber: 106, RskAddress: rskAddress(5), State: rootstock.PegInWatchDiscovered}
 	rebuiltEvents := []blockchain.AddressRegistered{{TxHash: "added", BlockNumber: 106, LogIndex: 1, RskAddress: rskAddress(7)}}

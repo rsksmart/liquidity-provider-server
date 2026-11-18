@@ -20,6 +20,33 @@ const (
 	PegInAddressRegistryEncodingBech32M = rootstock.PegInAddressRegistryEncodingBech32M
 )
 
+const (
+	PegInAddressRegistryRootMismatchEventId  entities.EventId = "PegInAddressRegistryRootMismatch"
+	PegInAddressRegistryRebuildEventId       entities.EventId = "PegInAddressRegistryRebuild"
+	PegInAddressRegistryRebuildFailedEventId entities.EventId = "PegInAddressRegistryRebuildFailed"
+)
+
+type PegInAddressRegistryRebuildReason string
+
+const (
+	PegInAddressRegistryRebuildRootMismatch     PegInAddressRegistryRebuildReason = "root_mismatch"
+	PegInAddressRegistryRebuildFirstStart       PegInAddressRegistryRebuildReason = "first_start"
+	PegInAddressRegistryRebuildStartBlockRaised PegInAddressRegistryRebuildReason = "start_block_raised"
+)
+
+type PegInAddressRegistryRootMismatchEvent struct {
+	entities.BaseEvent
+}
+
+type PegInAddressRegistryRebuildEvent struct {
+	entities.BaseEvent
+}
+
+type PegInAddressRegistryRebuildFailedEvent struct {
+	entities.BaseEvent
+	Reason PegInAddressRegistryRebuildReason
+}
+
 func IsSupportedPegInEncoding(encoding PegInAddressRegistryEncoding) bool {
 	return rootstock.IsSupportedPegInEncoding(encoding)
 }

@@ -22,6 +22,10 @@ type Metrics struct {
 	NodePeerBelowThreshold        *prometheus.GaugeVec
 	NodePeerCheckErrors           *prometheus.CounterVec
 	NodePeerAlerts                *prometheus.CounterVec
+
+	PegInAddressRegistryRootMismatchMetric  prometheus.Counter
+	PegInAddressRegistryRebuildMetric       prometheus.Counter
+	PegInAddressRegistryRebuildErrorsMetric *prometheus.CounterVec
 }
 
 type nodeReorgMetrics struct {
@@ -146,6 +150,18 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		NodePeerBelowThreshold:        belowThreshold,
 		NodePeerCheckErrors:           checkErrors,
 		NodePeerAlerts:                peerAlerts,
+		PegInAddressRegistryRootMismatchMetric: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "lps_pegin_address_registry_root_mismatch_total",
+			Help: "Total number of PegIn address registry root mismatches repaired by a rebuild",
+		}),
+		PegInAddressRegistryRebuildMetric: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "lps_pegin_address_registry_rebuild_total",
+			Help: "Total number of PegIn watch list rebuilds from registry events, including the first start and a raised start block",
+		}),
+		PegInAddressRegistryRebuildErrorsMetric: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "lps_pegin_address_registry_rebuild_errors_total",
+			Help: "Total number of failed PegIn watch list rebuilds",
+		}, []string{"reason"}),
 	}
 
 	reg.MustRegister(
@@ -161,6 +177,9 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		reorg.CheckErrors,
 		reorg.Alerts,
 		peerCount, minThreshold, belowThreshold, checkErrors, peerAlerts,
+		appMetrics.PegInAddressRegistryRootMismatchMetric,
+		appMetrics.PegInAddressRegistryRebuildMetric,
+		appMetrics.PegInAddressRegistryRebuildErrorsMetric,
 	)
 	return &appMetrics
 }
@@ -181,6 +200,18 @@ func (m *Metrics) IncrementNodeReorgCheckError(node string) {
 
 func (m *Metrics) IncrementNodeReorgAlert(node string) {
 	m.NodeReorgAlertsMetric.WithLabelValues(node).Inc()
+}
+
+func (m *Metrics) IncrementPegInAddressRegistryRootMismatch() {
+	m.PegInAddressRegistryRootMismatchMetric.Inc()
+}
+
+func (m *Metrics) IncrementPegInAddressRegistryRebuild() {
+	m.PegInAddressRegistryRebuildMetric.Inc()
+}
+
+func (m *Metrics) IncrementPegInAddressRegistryRebuildError(reason string) {
+	m.PegInAddressRegistryRebuildErrorsMetric.WithLabelValues(reason).Inc()
 }
 
 func (m *Metrics) UpdateAssetsFromReport(report reports.GetAssetsReportResult) {

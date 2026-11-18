@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	log "github.com/sirupsen/logrus"
 )
@@ -43,12 +45,17 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFromStart(
 	ctx context.Context,
 	checkpoint rootstock.PegInWatchCheckpoint,
 	finalizedHead uint64,
+	reason blockchain.PegInAddressRegistryRebuildReason,
 ) (CatchUpRegisteredAddressesResult, error) {
 	if useCase.startBlock > finalizedHead {
 		log.Info(LogRegistryStartBlockAboveFinalizedHead(useCase.startBlock, finalizedHead))
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, nil
 	}
-	return useCase.rebuildFromStoredRoot(ctx, useCase.startBlock, finalizedHead)
+	rebuilt, err := useCase.rebuildFromStoredRoot(ctx, useCase.startBlock, finalizedHead)
+	if err != nil {
+		useCase.publishRebuildFailed(reason)
+	}
+	return rebuilt, err
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFromStoredRoot(
@@ -77,8 +84,18 @@ func (useCase *CatchUpRegisteredAddressesUseCase) rebuildFrom(
 		return CatchUpRegisteredAddressesResult{}, fmt.Errorf("save the PegIn watch list rebuilt from block %d: %w", fromBlock, err)
 	}
 	log.Info(LogRegistryWatchListRebuilt(fromBlock, finalizedHead, len(rebuilt.Watches)))
+	useCase.eventBus.Publish(blockchain.PegInAddressRegistryRebuildEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryRebuildEventId),
+	})
 	rebuilt.Rebuilt = true
 	return rebuilt, nil
+}
+
+func (useCase *CatchUpRegisteredAddressesUseCase) publishRebuildFailed(reason blockchain.PegInAddressRegistryRebuildReason) {
+	useCase.eventBus.Publish(blockchain.PegInAddressRegistryRebuildFailedEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryRebuildFailedEventId),
+		Reason:    reason,
+	})
 }
 
 func (useCase *CatchUpRegisteredAddressesUseCase) firstMismatchingBlock(ctx context.Context, low, high uint64) (uint64, error) {

@@ -20,6 +20,7 @@ type CatchUpRegisteredAddressesUseCase struct {
 	repository    rootstock.PegInWatchRepository
 	registry      blockchain.PegInAddressRegistryContract
 	rskRpc        blockchain.RootstockRpcServer
+	eventBus      entities.EventBus
 	hashFunction  entities.HashFunction
 	startBlock    uint64
 	pageSize      uint64
@@ -30,6 +31,7 @@ func NewCatchUpRegisteredAddressesUseCase(
 	repository rootstock.PegInWatchRepository,
 	registry blockchain.PegInAddressRegistryContract,
 	rskRpc blockchain.RootstockRpcServer,
+	eventBus entities.EventBus,
 	hashFunction entities.HashFunction,
 	startBlock uint64,
 	pageSize uint64,
@@ -39,6 +41,7 @@ func NewCatchUpRegisteredAddressesUseCase(
 		repository:    repository,
 		registry:      registry,
 		rskRpc:        rskRpc,
+		eventBus:      eventBus,
 		hashFunction:  hashFunction,
 		startBlock:    startBlock,
 		pageSize:      pageSize,
@@ -69,8 +72,11 @@ func (useCase *CatchUpRegisteredAddressesUseCase) catchUp(ctx context.Context) (
 	if err != nil || !hasHead {
 		return CatchUpRegisteredAddressesResult{Checkpoint: checkpoint}, err
 	}
-	if !found || checkpoint.Block+1 < useCase.startBlock {
-		return useCase.rebuildFromStart(ctx, checkpoint, finalizedHead)
+	if !found {
+		return useCase.rebuildFromStart(ctx, checkpoint, finalizedHead, blockchain.PegInAddressRegistryRebuildFirstStart)
+	}
+	if checkpoint.Block+1 < useCase.startBlock {
+		return useCase.rebuildFromStart(ctx, checkpoint, finalizedHead, blockchain.PegInAddressRegistryRebuildStartBlockRaised)
 	}
 	if checkpoint.Block > finalizedHead {
 		log.Warn(LogRegistryCheckpointAboveFinalizedHead(checkpoint.Block, finalizedHead))
@@ -97,8 +103,12 @@ func (useCase *CatchUpRegisteredAddressesUseCase) catchUpFrom(
 			log.Warnf(LogRegistryCatchUpMismatch, err)
 			rebuilt, rebuildErr := useCase.rebuild(ctx, result.Checkpoint, finalizedHead)
 			if rebuildErr != nil {
+				useCase.publishRebuildFailed(blockchain.PegInAddressRegistryRebuildRootMismatch)
 				return result, rebuildErr
 			}
+			useCase.eventBus.Publish(blockchain.PegInAddressRegistryRootMismatchEvent{
+				BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryRootMismatchEventId),
+			})
 			return rebuilt, nil
 		}
 		if err != nil {
