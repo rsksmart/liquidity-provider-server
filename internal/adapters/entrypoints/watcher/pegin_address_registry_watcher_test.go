@@ -75,11 +75,17 @@ func newPegInWatcherFixture(
 }
 
 func (fixture *pegInAddressRegistryWatcherFixture) expectRecoveryPublished() {
-	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryResyncEvent) bool {
-		return event.EventId == blockchain.PegInAddressRegistryResyncEventId && !event.Timestamp.IsZero()
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRebuildEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryRebuildEventId && !event.Timestamp.IsZero()
 	})).Return().Once()
 	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRootMismatchEvent) bool {
 		return event.EventId == blockchain.PegInAddressRegistryRootMismatchEventId && !event.Timestamp.IsZero()
+	})).Return().Once()
+}
+
+func (fixture *pegInAddressRegistryWatcherFixture) expectRebuildFailedPublished(reason blockchain.PegInAddressRegistryRebuildReason) {
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRebuildFailedEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryRebuildFailedEventId && !event.Timestamp.IsZero() && event.Reason == reason
 	})).Return().Once()
 }
 
@@ -590,6 +596,7 @@ func TestPegInWatcher_ImportsTheSavedPagesWhenALaterPageFails(t *testing.T) {
 
 func TestPegInWatcher_RetriesDiscoveredEntriesWhenRebuildFails(t *testing.T) {
 	fixture := newPegInWatcherFixture(t, 100, 1, 2)
+	fixture.expectRebuildFailedPublished(blockchain.PegInAddressRegistryRebuildRootMismatch)
 	entry := rootstock.PegInWatch{
 		TxHash:      "pending-import",
 		LogIndex:    1,

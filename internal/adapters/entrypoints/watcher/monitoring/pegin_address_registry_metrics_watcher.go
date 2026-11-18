@@ -8,11 +8,12 @@ import (
 )
 
 type PegInAddressRegistryMetricsWatcher struct {
-	appMetrics     *Metrics
-	eventBus       entities.EventBus
-	mismatchEvents <-chan entities.Event
-	resyncEvents   <-chan entities.Event
-	closeChannel   chan struct{}
+	appMetrics          *Metrics
+	eventBus            entities.EventBus
+	mismatchEvents      <-chan entities.Event
+	rebuildEvents       <-chan entities.Event
+	rebuildFailedEvents <-chan entities.Event
+	closeChannel        chan struct{}
 }
 
 func NewPegInAddressRegistryMetricsWatcher(appMetrics *Metrics, eventBus entities.EventBus) *PegInAddressRegistryMetricsWatcher {
@@ -25,7 +26,8 @@ func NewPegInAddressRegistryMetricsWatcher(appMetrics *Metrics, eventBus entitie
 
 func (watcher *PegInAddressRegistryMetricsWatcher) Prepare(context.Context) error {
 	watcher.mismatchEvents = watcher.eventBus.Subscribe(blockchain.PegInAddressRegistryRootMismatchEventId)
-	watcher.resyncEvents = watcher.eventBus.Subscribe(blockchain.PegInAddressRegistryResyncEventId)
+	watcher.rebuildEvents = watcher.eventBus.Subscribe(blockchain.PegInAddressRegistryRebuildEventId)
+	watcher.rebuildFailedEvents = watcher.eventBus.Subscribe(blockchain.PegInAddressRegistryRebuildFailedEventId)
 	return nil
 }
 
@@ -36,9 +38,13 @@ func (watcher *PegInAddressRegistryMetricsWatcher) Start() {
 			if _, isMismatch := event.(blockchain.PegInAddressRegistryRootMismatchEvent); isMismatch {
 				watcher.appMetrics.IncrementPegInAddressRegistryRootMismatch()
 			}
-		case event := <-watcher.resyncEvents:
-			if _, isResync := event.(blockchain.PegInAddressRegistryResyncEvent); isResync {
-				watcher.appMetrics.IncrementPegInAddressRegistryResync()
+		case event := <-watcher.rebuildEvents:
+			if _, isRebuild := event.(blockchain.PegInAddressRegistryRebuildEvent); isRebuild {
+				watcher.appMetrics.IncrementPegInAddressRegistryRebuild()
+			}
+		case event := <-watcher.rebuildFailedEvents:
+			if failed, isFailed := event.(blockchain.PegInAddressRegistryRebuildFailedEvent); isFailed {
+				watcher.appMetrics.IncrementPegInAddressRegistryRebuildError(string(failed.Reason))
 			}
 		case <-watcher.closeChannel:
 			close(watcher.closeChannel)

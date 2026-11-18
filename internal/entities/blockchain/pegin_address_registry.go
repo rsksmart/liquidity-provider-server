@@ -21,16 +21,30 @@ const (
 )
 
 const (
-	PegInAddressRegistryRootMismatchEventId entities.EventId = "PegInAddressRegistryRootMismatch"
-	PegInAddressRegistryResyncEventId       entities.EventId = "PegInAddressRegistryResync"
+	PegInAddressRegistryRootMismatchEventId  entities.EventId = "PegInAddressRegistryRootMismatch"
+	PegInAddressRegistryRebuildEventId       entities.EventId = "PegInAddressRegistryRebuild"
+	PegInAddressRegistryRebuildFailedEventId entities.EventId = "PegInAddressRegistryRebuildFailed"
+)
+
+type PegInAddressRegistryRebuildReason string
+
+const (
+	PegInAddressRegistryRebuildRootMismatch     PegInAddressRegistryRebuildReason = "root_mismatch"
+	PegInAddressRegistryRebuildFirstStart       PegInAddressRegistryRebuildReason = "first_start"
+	PegInAddressRegistryRebuildStartBlockRaised PegInAddressRegistryRebuildReason = "start_block_raised"
 )
 
 type PegInAddressRegistryRootMismatchEvent struct {
 	entities.BaseEvent
 }
 
-type PegInAddressRegistryResyncEvent struct {
+type PegInAddressRegistryRebuildEvent struct {
 	entities.BaseEvent
+}
+
+type PegInAddressRegistryRebuildFailedEvent struct {
+	entities.BaseEvent
+	Reason PegInAddressRegistryRebuildReason
 }
 
 func IsSupportedPegInEncoding(encoding PegInAddressRegistryEncoding) bool {

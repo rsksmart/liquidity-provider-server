@@ -23,8 +23,9 @@ type Metrics struct {
 	NodePeerCheckErrors           *prometheus.CounterVec
 	NodePeerAlerts                *prometheus.CounterVec
 
-	PegInAddressRegistryRootMismatchMetric prometheus.Counter
-	PegInAddressRegistryResyncMetric       prometheus.Counter
+	PegInAddressRegistryRootMismatchMetric  prometheus.Counter
+	PegInAddressRegistryRebuildMetric       prometheus.Counter
+	PegInAddressRegistryRebuildErrorsMetric *prometheus.CounterVec
 }
 
 type nodeReorgMetrics struct {
@@ -151,12 +152,16 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		NodePeerAlerts:                peerAlerts,
 		PegInAddressRegistryRootMismatchMetric: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "lps_pegin_address_registry_root_mismatch_total",
-			Help: "Total number of PegIn address registry root mismatches found by the catch-up",
+			Help: "Total number of PegIn address registry root mismatches repaired by a rebuild",
 		}),
-		PegInAddressRegistryResyncMetric: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "lps_pegin_address_registry_resync_total",
-			Help: "Total number of PegIn watch list rebuilds from registry events",
+		PegInAddressRegistryRebuildMetric: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "lps_pegin_address_registry_rebuild_total",
+			Help: "Total number of PegIn watch list rebuilds from registry events, including the first start and a raised start block",
 		}),
+		PegInAddressRegistryRebuildErrorsMetric: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "lps_pegin_address_registry_rebuild_errors_total",
+			Help: "Total number of failed PegIn watch list rebuilds",
+		}, []string{"reason"}),
 	}
 
 	reg.MustRegister(
@@ -173,7 +178,8 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		reorg.Alerts,
 		peerCount, minThreshold, belowThreshold, checkErrors, peerAlerts,
 		appMetrics.PegInAddressRegistryRootMismatchMetric,
-		appMetrics.PegInAddressRegistryResyncMetric,
+		appMetrics.PegInAddressRegistryRebuildMetric,
+		appMetrics.PegInAddressRegistryRebuildErrorsMetric,
 	)
 	return &appMetrics
 }
@@ -200,8 +206,12 @@ func (m *Metrics) IncrementPegInAddressRegistryRootMismatch() {
 	m.PegInAddressRegistryRootMismatchMetric.Inc()
 }
 
-func (m *Metrics) IncrementPegInAddressRegistryResync() {
-	m.PegInAddressRegistryResyncMetric.Inc()
+func (m *Metrics) IncrementPegInAddressRegistryRebuild() {
+	m.PegInAddressRegistryRebuildMetric.Inc()
+}
+
+func (m *Metrics) IncrementPegInAddressRegistryRebuildError(reason string) {
+	m.PegInAddressRegistryRebuildErrorsMetric.WithLabelValues(reason).Inc()
 }
 
 func (m *Metrics) UpdateAssetsFromReport(report reports.GetAssetsReportResult) {

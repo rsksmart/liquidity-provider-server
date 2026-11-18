@@ -16,26 +16,42 @@ import (
 )
 
 type registryMetricsFixture struct {
-	metrics        *monitoring.Metrics
-	eventBus       *mocks.EventBusMock
-	mismatchEvents chan entities.Event
-	resyncEvents   chan entities.Event
-	watcher        *monitoring.PegInAddressRegistryMetricsWatcher
+	metrics             *monitoring.Metrics
+	eventBus            *mocks.EventBusMock
+	mismatchEvents      chan entities.Event
+	rebuildEvents       chan entities.Event
+	rebuildFailedEvents chan entities.Event
+	watcher             *monitoring.PegInAddressRegistryMetricsWatcher
+}
+
+type registryCounterValues struct {
+	mismatches    float64
+	rebuilds      float64
+	rebuildErrors map[blockchain.PegInAddressRegistryRebuildReason]float64
+}
+
+var registryRebuildReasons = []blockchain.PegInAddressRegistryRebuildReason{
+	blockchain.PegInAddressRegistryRebuildRootMismatch,
+	blockchain.PegInAddressRegistryRebuildFirstStart,
+	blockchain.PegInAddressRegistryRebuildStartBlockRaised,
 }
 
 func newRegistryMetricsFixture(t *testing.T) *registryMetricsFixture {
 	t.Helper()
 	fixture := &registryMetricsFixture{
-		metrics:        monitoring.NewMetrics(prometheus.NewRegistry()),
-		eventBus:       &mocks.EventBusMock{},
-		mismatchEvents: make(chan entities.Event),
-		resyncEvents:   make(chan entities.Event),
+		metrics:             monitoring.NewMetrics(prometheus.NewRegistry()),
+		eventBus:            &mocks.EventBusMock{},
+		mismatchEvents:      make(chan entities.Event),
+		rebuildEvents:       make(chan entities.Event),
+		rebuildFailedEvents: make(chan entities.Event),
 	}
 	fixture.eventBus.Test(t)
 	fixture.eventBus.On("Subscribe", blockchain.PegInAddressRegistryRootMismatchEventId).
 		Return((<-chan entities.Event)(fixture.mismatchEvents)).Once()
-	fixture.eventBus.On("Subscribe", blockchain.PegInAddressRegistryResyncEventId).
-		Return((<-chan entities.Event)(fixture.resyncEvents)).Once()
+	fixture.eventBus.On("Subscribe", blockchain.PegInAddressRegistryRebuildEventId).
+		Return((<-chan entities.Event)(fixture.rebuildEvents)).Once()
+	fixture.eventBus.On("Subscribe", blockchain.PegInAddressRegistryRebuildFailedEventId).
+		Return((<-chan entities.Event)(fixture.rebuildFailedEvents)).Once()
 	fixture.watcher = monitoring.NewPegInAddressRegistryMetricsWatcher(fixture.metrics, fixture.eventBus)
 	require.NoError(t, fixture.watcher.Prepare(context.Background()))
 	return fixture
@@ -60,8 +76,26 @@ func startRegistryMetricsWatcher(t *testing.T, metricsWatcher *monitoring.PegInA
 	}
 }
 
-func registryCounters(metrics *monitoring.Metrics) (mismatches, resyncs float64) {
-	return getCounterValue(metrics.PegInAddressRegistryRootMismatchMetric), getCounterValue(metrics.PegInAddressRegistryResyncMetric)
+func readRegistryCounters(metrics *monitoring.Metrics) registryCounterValues {
+	values := registryCounterValues{
+		mismatches:    getCounterValue(metrics.PegInAddressRegistryRootMismatchMetric),
+		rebuilds:      getCounterValue(metrics.PegInAddressRegistryRebuildMetric),
+		rebuildErrors: map[blockchain.PegInAddressRegistryRebuildReason]float64{},
+	}
+	for _, reason := range registryRebuildReasons {
+		values.rebuildErrors[reason] = getCounterVecValue(metrics.PegInAddressRegistryRebuildErrorsMetric, string(reason))
+	}
+	return values
+}
+
+func assertRegistryCounters(t *testing.T, expected registryCounterValues, metrics *monitoring.Metrics) {
+	t.Helper()
+	actual := readRegistryCounters(metrics)
+	assert.InDelta(t, expected.mismatches, actual.mismatches, 0.001)
+	assert.InDelta(t, expected.rebuilds, actual.rebuilds, 0.001)
+	for _, reason := range registryRebuildReasons {
+		assert.InDelta(t, expected.rebuildErrors[reason], actual.rebuildErrors[reason], 0.001, string(reason))
+	}
 }
 
 func rootMismatchEvent() blockchain.PegInAddressRegistryRootMismatchEvent {
@@ -70,9 +104,16 @@ func rootMismatchEvent() blockchain.PegInAddressRegistryRootMismatchEvent {
 	}
 }
 
-func resyncEvent() blockchain.PegInAddressRegistryResyncEvent {
-	return blockchain.PegInAddressRegistryResyncEvent{
-		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryResyncEventId),
+func rebuildEvent() blockchain.PegInAddressRegistryRebuildEvent {
+	return blockchain.PegInAddressRegistryRebuildEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryRebuildEventId),
+	}
+}
+
+func rebuildFailedEvent(reason blockchain.PegInAddressRegistryRebuildReason) blockchain.PegInAddressRegistryRebuildFailedEvent {
+	return blockchain.PegInAddressRegistryRebuildFailedEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressRegistryRebuildFailedEventId),
+		Reason:    reason,
 	}
 }
 
@@ -82,7 +123,7 @@ func TestPegInAddressRegistryMetricsWatcher_Prepare(t *testing.T) {
 	fixture.eventBus.AssertExpectations(t)
 }
 
-func TestPegInAddressRegistryMetricsWatcher_CountsARecoveryPublishedBeforeStart(t *testing.T) {
+func TestPegInAddressRegistryMetricsWatcher_CountsEventsPublishedBeforeStart(t *testing.T) {
 	eventBus := dataproviders.NewLocalEventBus()
 	t.Cleanup(func() {
 		closeChannel := make(chan bool, 1)
@@ -94,27 +135,42 @@ func TestPegInAddressRegistryMetricsWatcher_CountsARecoveryPublishedBeforeStart(
 	require.NoError(t, metricsWatcher.Prepare(context.Background()))
 
 	eventBus.Publish(rootMismatchEvent())
-	eventBus.Publish(resyncEvent())
+	eventBus.Publish(rebuildEvent())
+	eventBus.Publish(rebuildFailedEvent(blockchain.PegInAddressRegistryRebuildFirstStart))
 	stop := startRegistryMetricsWatcher(t, metricsWatcher)
 
 	assert.Eventually(t, func() bool {
-		mismatches, resyncs := registryCounters(metrics)
-		return mismatches == 1 && resyncs == 1
+		counters := readRegistryCounters(metrics)
+		return counters.mismatches == 1 && counters.rebuilds == 1 &&
+			counters.rebuildErrors[blockchain.PegInAddressRegistryRebuildFirstStart] == 1
 	}, time.Second, time.Millisecond)
 	stop()
 }
 
 func TestPegInAddressRegistryMetricsWatcher_CountsEachEvent(t *testing.T) {
 	cases := []struct {
-		name             string
-		mismatchEvents   int
-		resyncEvents     int
-		expectedMismatch float64
-		expectedResyncs  float64
+		name           string
+		mismatchEvents int
+		rebuildEvents  int
+		expected       registryCounterValues
 	}{
-		{name: "a recovery after a mismatch counts one mismatch and one resync", mismatchEvents: 1, resyncEvents: 1, expectedMismatch: 1, expectedResyncs: 1},
-		{name: "a rebuild with no stored point counts only a resync", resyncEvents: 1, expectedResyncs: 1},
-		{name: "two recoveries count twice", mismatchEvents: 2, resyncEvents: 2, expectedMismatch: 2, expectedResyncs: 2},
+		{
+			name:           "a recovery after a mismatch counts one mismatch and one rebuild",
+			mismatchEvents: 1,
+			rebuildEvents:  1,
+			expected:       registryCounterValues{mismatches: 1, rebuilds: 1},
+		},
+		{
+			name:          "a rebuild with no stored checkpoint counts only a rebuild",
+			rebuildEvents: 1,
+			expected:      registryCounterValues{rebuilds: 1},
+		},
+		{
+			name:           "two recoveries count twice",
+			mismatchEvents: 2,
+			rebuildEvents:  2,
+			expected:       registryCounterValues{mismatches: 2, rebuilds: 2},
+		},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -124,16 +180,35 @@ func TestPegInAddressRegistryMetricsWatcher_CountsEachEvent(t *testing.T) {
 			for range testCase.mismatchEvents {
 				fixture.mismatchEvents <- rootMismatchEvent()
 			}
-			for range testCase.resyncEvents {
-				fixture.resyncEvents <- resyncEvent()
+			for range testCase.rebuildEvents {
+				fixture.rebuildEvents <- rebuildEvent()
 			}
 			stop()
 
-			mismatches, resyncs := registryCounters(fixture.metrics)
-			assert.InDelta(t, testCase.expectedMismatch, mismatches, 0.001)
-			assert.InDelta(t, testCase.expectedResyncs, resyncs, 0.001)
+			assertRegistryCounters(t, testCase.expected, fixture.metrics)
 		})
 	}
+}
+
+func TestPegInAddressRegistryMetricsWatcher_CountsFailedRebuildsPerReason(t *testing.T) {
+	fixture := newRegistryMetricsFixture(t)
+	stop := startRegistryMetricsWatcher(t, fixture.watcher)
+
+	for _, reason := range []blockchain.PegInAddressRegistryRebuildReason{
+		blockchain.PegInAddressRegistryRebuildRootMismatch,
+		blockchain.PegInAddressRegistryRebuildFirstStart,
+		blockchain.PegInAddressRegistryRebuildStartBlockRaised,
+		blockchain.PegInAddressRegistryRebuildRootMismatch,
+	} {
+		fixture.rebuildFailedEvents <- rebuildFailedEvent(reason)
+	}
+	stop()
+
+	assertRegistryCounters(t, registryCounterValues{rebuildErrors: map[blockchain.PegInAddressRegistryRebuildReason]float64{
+		blockchain.PegInAddressRegistryRebuildRootMismatch:     2,
+		blockchain.PegInAddressRegistryRebuildFirstStart:       1,
+		blockchain.PegInAddressRegistryRebuildStartBlockRaised: 1,
+	}}, fixture.metrics)
 }
 
 func TestPegInAddressRegistryMetricsWatcher_CountsNothingFromAClosedSubscription(t *testing.T) {
@@ -141,20 +216,29 @@ func TestPegInAddressRegistryMetricsWatcher_CountsNothingFromAClosedSubscription
 		name              string
 		closeSubscription func(fixture *registryMetricsFixture)
 		publishOther      func(fixture *registryMetricsFixture)
-		expectedMismatch  float64
-		expectedResyncs   float64
+		expected          registryCounterValues
 	}{
 		{
 			name:              "a closed mismatch subscription",
 			closeSubscription: func(fixture *registryMetricsFixture) { close(fixture.mismatchEvents) },
-			publishOther:      func(fixture *registryMetricsFixture) { fixture.resyncEvents <- resyncEvent() },
-			expectedResyncs:   1,
+			publishOther:      func(fixture *registryMetricsFixture) { fixture.rebuildEvents <- rebuildEvent() },
+			expected:          registryCounterValues{rebuilds: 1},
 		},
 		{
-			name:              "a closed resync subscription",
-			closeSubscription: func(fixture *registryMetricsFixture) { close(fixture.resyncEvents) },
+			name:              "a closed rebuild subscription",
+			closeSubscription: func(fixture *registryMetricsFixture) { close(fixture.rebuildEvents) },
+			publishOther: func(fixture *registryMetricsFixture) {
+				fixture.rebuildFailedEvents <- rebuildFailedEvent(blockchain.PegInAddressRegistryRebuildRootMismatch)
+			},
+			expected: registryCounterValues{rebuildErrors: map[blockchain.PegInAddressRegistryRebuildReason]float64{
+				blockchain.PegInAddressRegistryRebuildRootMismatch: 1,
+			}},
+		},
+		{
+			name:              "a closed failed rebuild subscription",
+			closeSubscription: func(fixture *registryMetricsFixture) { close(fixture.rebuildFailedEvents) },
 			publishOther:      func(fixture *registryMetricsFixture) { fixture.mismatchEvents <- rootMismatchEvent() },
-			expectedMismatch:  1,
+			expected:          registryCounterValues{mismatches: 1},
 		},
 	}
 	for _, testCase := range cases {
@@ -166,9 +250,7 @@ func TestPegInAddressRegistryMetricsWatcher_CountsNothingFromAClosedSubscription
 			testCase.publishOther(fixture)
 			stop()
 
-			mismatches, resyncs := registryCounters(fixture.metrics)
-			assert.InDelta(t, testCase.expectedMismatch, mismatches, 0.001)
-			assert.InDelta(t, testCase.expectedResyncs, resyncs, 0.001)
+			assertRegistryCounters(t, testCase.expected, fixture.metrics)
 		})
 	}
 }

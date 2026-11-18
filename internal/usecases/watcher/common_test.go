@@ -141,14 +141,20 @@ func assertCatchUpResult(t *testing.T, expected expectedCatchUpResult, result wa
 	assert.Equal(t, expected.rebuilt, result.Rebuilt)
 }
 
-func (fixture *catchUpFixture) expectResyncPublished() {
-	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryResyncEvent) bool {
-		return event.EventId == blockchain.PegInAddressRegistryResyncEventId && !event.Timestamp.IsZero()
+func (fixture *catchUpFixture) expectRebuildPublished() {
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRebuildEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryRebuildEventId && !event.Timestamp.IsZero()
+	})).Return().Once()
+}
+
+func (fixture *catchUpFixture) expectRebuildFailedPublished(reason blockchain.PegInAddressRegistryRebuildReason) {
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRebuildFailedEvent) bool {
+		return event.EventId == blockchain.PegInAddressRegistryRebuildFailedEventId && !event.Timestamp.IsZero() && event.Reason == reason
 	})).Return().Once()
 }
 
 func (fixture *catchUpFixture) expectRecoveryPublished() {
-	fixture.expectResyncPublished()
+	fixture.expectRebuildPublished()
 	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRootMismatchEvent) bool {
 		return event.EventId == blockchain.PegInAddressRegistryRootMismatchEventId && !event.Timestamp.IsZero()
 	})).Return().Once()

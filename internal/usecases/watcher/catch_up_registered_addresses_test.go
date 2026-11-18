@@ -18,7 +18,7 @@ import (
 func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 	t.Run("rebuilds from the start block when no checkpoint is stored", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
-		fixture.expectResyncPublished()
+		fixture.expectRebuildPublished()
 		fixture.withCheckpoint(nil)
 		events := chainedRegistrations(t, [32]byte{},
 			blockchain.AddressRegistered{TxHash: "0x01", RskAddress: catchUpAddress(1), Registrant: "0xr", BlockNumber: 101},
@@ -68,7 +68,6 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, uint64(153), result.Checkpoint.Block)
 		assert.Equal(t, []string{"0x03"}, savedTxHashes(result.Watches))
-		fixture.eventBus.AssertNotCalled(t, "Publish", mock.Anything)
 	})
 	t.Run("saves after each page up to the finalized head", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
@@ -215,6 +214,7 @@ func TestCatchUpRegisteredAddressesUseCase_Run(t *testing.T) {
 func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 	t.Run("reports a mismatch with an event root and saves nothing", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectRebuildFailedPublished(blockchain.PegInAddressRegistryRebuildRootMismatch)
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 150}
 		fixture.withCheckpoint(&stored)
 		events := chainedRegistrations(t, [32]byte{2},
@@ -234,6 +234,7 @@ func TestCatchUpRegisteredAddressesUseCase_RootChecks(t *testing.T) {
 	})
 	t.Run("reports a mismatch when the contract root moved without events and saves nothing", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectRebuildFailedPublished(blockchain.PegInAddressRegistryRebuildRootMismatch)
 		stored := rootstock.PegInWatchCheckpoint{Root: [32]byte{1}, Block: 150}
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(155, 151, 153, []blockchain.AddressRegistered{})
@@ -423,6 +424,7 @@ func TestCatchUpRegisteredAddressesUseCase_KeepsTheSavedPagesOnALaterError(t *te
 	firstPage := rootstock.PegInWatchCheckpoint{Root: events[0].RegistrationRoot, Block: 130}
 	t.Run("returns the pages saved before a failed rebuild", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
+		fixture.expectRebuildFailedPublished(blockchain.PegInAddressRegistryRebuildRootMismatch)
 		fixture.withCheckpoint(&stored)
 		fixture.withPage(142, 121, 130, events[:1])
 		fixture.withContractRoot(130, firstPage.Root)
