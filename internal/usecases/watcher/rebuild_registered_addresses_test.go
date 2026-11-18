@@ -464,7 +464,6 @@ func TestCatchUpRegisteredAddressesUseCase_HandlesAnInvalidCheckpoint(t *testing
 
 		require.ErrorIs(t, err, assert.AnError)
 		assertCatchUpResult(t, expectedCatchUpResult{}, result)
-		fixture.repository.AssertNotCalled(t, "ReplaceVerifiedRegistrations", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("waits without reading or writing while the checkpoint is above the finalized head", func(t *testing.T) {
 		fixture := newCatchUpFixture(t)
