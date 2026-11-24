@@ -26,6 +26,7 @@ type importRegisteredAddressesFixture struct {
 	registry   *mocks.PegInAddressRegistryContractMock
 	btcNetwork *mocks.BitcoinNetworkMock
 	wallet     *mocks.BitcoinWalletMock
+	eventBus   *mocks.EventBusMock
 	useCase    *watcher.ImportRegisteredAddressesUseCase
 }
 
@@ -36,12 +37,16 @@ func newImportRegisteredAddressesFixture(t *testing.T) *importRegisteredAddresse
 		registry:   mocks.NewPegInAddressRegistryContractMock(t),
 		btcNetwork: mocks.NewBitcoinNetworkMock(t),
 		wallet:     mocks.NewBitcoinWalletMock(t),
+		eventBus:   &mocks.EventBusMock{},
 	}
+	fixture.eventBus.Test(t)
+	t.Cleanup(func() { fixture.eventBus.AssertExpectations(t) })
 	fixture.useCase = watcher.NewImportRegisteredAddressesUseCase(
 		fixture.repository,
 		fixture.registry,
 		fixture.btcNetwork,
 		fixture.wallet,
+		fixture.eventBus,
 	)
 	return fixture
 }
@@ -123,6 +128,22 @@ func (fixture *importRegisteredAddressesFixture) expectUpdate(expected rootstock
 	})).Return(err).Once()
 }
 
+func (fixture *importRegisteredAddressesFixture) expectImportedPublished(expected ...rootstock.PegInWatch) {
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressesImportedEvent) bool {
+		actual := make([]rootstock.PegInWatch, 0, len(event.Watches))
+		for _, watch := range event.Watches {
+			actual = append(actual, withoutUpdateTime(watch))
+		}
+		expectedWithoutTime := make([]rootstock.PegInWatch, 0, len(expected))
+		for _, watch := range expected {
+			expectedWithoutTime = append(expectedWithoutTime, withoutUpdateTime(watch))
+		}
+		return event.EventId == blockchain.PegInAddressesImportedEventId &&
+			!event.Timestamp.IsZero() &&
+			assert.ObjectsAreEqual(expectedWithoutTime, actual)
+	})).Return().Once()
+}
+
 func assertImportResult(t *testing.T, expected []rootstock.PegInWatch, result watcher.ImportRegisteredAddressesResult) {
 	t.Helper()
 	actual := make([]rootstock.PegInWatch, 0, len(result.Watches))
@@ -147,6 +168,7 @@ func TestImportRegisteredAddressesUseCase_Run_ImportsDiscoveredAddressesWithOneR
 	fixture.withRescan(200, 100)
 	fixture.expectUpdate(importedRegistration(first, firstAddress), nil)
 	fixture.expectUpdate(importedRegistration(second, secondAddress), nil)
+	fixture.expectImportedPublished(importedRegistration(first, firstAddress), importedRegistration(second, secondAddress))
 
 	result, err := fixture.useCase.Run(context.Background(), []rootstock.PegInWatch{first, second})
 
@@ -169,6 +191,7 @@ func TestImportRegisteredAddressesUseCase_Run_CreatesTheStoredWatchWhenMissing(t
 	address := fixture.withImportedAddress(watch.RskAddress, 0)
 	fixture.withRescan(200, 100)
 	fixture.expectUpdate(importedRegistration(watch, address), nil)
+	fixture.expectImportedPublished(importedRegistration(watch, address))
 
 	result, err := fixture.useCase.Run(context.Background(), []rootstock.PegInWatch{watch})
 
@@ -216,6 +239,7 @@ func TestImportRegisteredAddressesUseCase_Run_ImportsTheStoredRowOfARepeatedRskA
 	address := fixture.withImportedAddress(stored.RskAddress, 0)
 	fixture.withRescan(200, 100)
 	fixture.expectUpdate(importedRegistration(stored, address), nil)
+	fixture.expectImportedPublished(importedRegistration(stored, address))
 
 	result, err := fixture.useCase.Run(context.Background(), []rootstock.PegInWatch{replay})
 
@@ -280,6 +304,7 @@ func TestImportRegisteredAddressesUseCase_Run_RecordsResolveErrorAndImportsTheNe
 	address := fixture.withImportedAddress(valid.RskAddress, 1)
 	fixture.withRescan(200, 100)
 	fixture.expectUpdate(importedRegistration(valid, address), nil)
+	fixture.expectImportedPublished(importedRegistration(valid, address))
 
 	result, err := fixture.useCase.Run(context.Background(), []rootstock.PegInWatch{broken, valid})
 
@@ -308,6 +333,7 @@ func TestImportRegisteredAddressesUseCase_Run_RescansWhenTheWalletAlreadyImporte
 	fixture.wallet.EXPECT().ImportAddress(address).Return(errors.New("address already imported")).Once()
 	fixture.withRescan(200, 100)
 	fixture.expectUpdate(importedRegistration(watch, address), nil)
+	fixture.expectImportedPublished(importedRegistration(watch, address))
 
 	result, err := fixture.useCase.Run(context.Background(), []rootstock.PegInWatch{watch})
 
@@ -338,6 +364,7 @@ func TestImportRegisteredAddressesUseCase_Run_RescansFromTheFirstBlockWhenTheTip
 	address := fixture.withImportedAddress(watch.RskAddress, 0)
 	fixture.withRescan(40, 0)
 	fixture.expectUpdate(importedRegistration(watch, address), nil)
+	fixture.expectImportedPublished(importedRegistration(watch, address))
 
 	result, err := fixture.useCase.Run(context.Background(), []rootstock.PegInWatch{watch})
 
@@ -528,6 +555,7 @@ func TestImportRegisteredAddressesUseCase_Run_KeepsTheUnsavedWatchesDiscoveredWh
 	fixture.withRescan(200, 100)
 	fixture.expectUpdate(importedRegistration(first, firstAddress), nil)
 	fixture.expectUpdate(importedRegistration(second, secondAddress), assert.AnError)
+	fixture.expectImportedPublished(importedRegistration(first, firstAddress))
 
 	result, err := fixture.useCase.Run(context.Background(), []rootstock.PegInWatch{first, second})
 

@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
@@ -42,18 +44,25 @@ type depositWatcherFixture struct {
 	claim      *mocks.ClaimPegInUseCaseMock
 	wallet     *mocks.BitcoinWalletMock
 	btcRpc     *mocks.BitcoinNetworkMock
+	eventBus   *mocks.EventBusMock
+	imported   chan entities.Event
 	ticker     *sessionTicker
 }
 
 func newDepositWatcherFixture(t *testing.T) *depositWatcherFixture {
 	t.Helper()
-	return &depositWatcherFixture{
+	fixture := &depositWatcherFixture{
 		repository: mocks.NewPegInWatchRepositoryMock(t),
 		claim:      mocks.NewClaimPegInUseCaseMock(t),
 		wallet:     mocks.NewBitcoinWalletMock(t),
 		btcRpc:     mocks.NewBitcoinNetworkMock(t),
+		eventBus:   &mocks.EventBusMock{},
+		imported:   make(chan entities.Event, 1),
 		ticker:     newSessionTicker(),
 	}
+	fixture.eventBus.Test(t)
+	t.Cleanup(func() { fixture.eventBus.AssertExpectations(t) })
+	return fixture
 }
 
 func (fixture *depositWatcherFixture) newWatcher() *watcher.PeginDepositAddressWatcher {
@@ -61,11 +70,24 @@ func (fixture *depositWatcherFixture) newWatcher() *watcher.PeginDepositAddressW
 		fixture.claim,
 		w.NewGetWatchedRegisteredAddressesUseCase(fixture.repository),
 	)
-	return watcher.NewPeginDepositAddressWatcher(useCases, fixture.wallet, blockchain.Rpc{Btc: fixture.btcRpc}, fixture.ticker)
+	return watcher.NewPeginDepositAddressWatcher(
+		useCases,
+		fixture.wallet,
+		blockchain.Rpc{Btc: fixture.btcRpc},
+		fixture.eventBus,
+		fixture.ticker,
+	)
+}
+
+func (fixture *depositWatcherFixture) expectSubscription() {
+	fixture.eventBus.On("Subscribe", blockchain.PegInAddressesImportedEventId).
+		Return((<-chan entities.Event)(fixture.imported)).
+		Once()
 }
 
 func (fixture *depositWatcherFixture) start(t *testing.T, watches ...rootstock.PegInWatch) *watcherSession {
 	t.Helper()
+	fixture.expectSubscription()
 	fixture.repository.EXPECT().List(mock.Anything).Return(watches, nil).Once()
 	return startWatcherSession(t, fixture.newWatcher(), fixture.ticker)
 }
@@ -89,13 +111,15 @@ func depositOutput(watch rootstock.PegInWatch, txID string, vout uint32) blockch
 func TestPeginDepositAddressWatcher_Shutdown(t *testing.T) {
 	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
 		useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, nil)
-		return watcher.NewPeginDepositAddressWatcher(useCases, nil, blockchain.Rpc{}, ticker)
+		eventBus := &mocks.EventBusMock{}
+		return watcher.NewPeginDepositAddressWatcher(useCases, nil, blockchain.Rpc{}, eventBus, ticker)
 	})
 }
 
 func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
 	t.Run("returns the error when the watched addresses cannot be loaded", func(t *testing.T) {
 		fixture := newDepositWatcherFixture(t)
+		fixture.expectSubscription()
 		fixture.repository.EXPECT().List(mock.Anything).Return(nil, assert.AnError).Once()
 		err := fixture.newWatcher().Prepare(context.Background())
 		require.ErrorIs(t, err, assert.AnError)
@@ -241,10 +265,61 @@ func TestPeginDepositAddressWatcher_LoadsTheImportedAddressesAgainAfterARestart(
 	firstSession.stop()
 
 	fixture.ticker = newSessionTicker()
+	fixture.imported = make(chan entities.Event, 1)
 	secondSession := fixture.start(t, depositWatcherFirstWatch, depositWatcherSecondWatch)
 	fixture.expectHeight(100)
 	fixture.expectOutputs(depositWatcherSortedAddresses, depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0))
 	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
 	secondSession.poll()
 	secondSession.stop()
+}
+
+func (fixture *depositWatcherFixture) publish(t *testing.T, session *watcherSession, event entities.Event) {
+	t.Helper()
+	idleBefore := fixture.ticker.selects.Load()
+	fixture.imported <- event
+	session.waitUntilIdle(idleBefore)
+}
+
+func TestPeginDepositAddressWatcher_WatchesAnAddressImportedWhileRunning(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	discovered := rootstock.PegInWatch{RskAddress: "0x1", BtcAddress: "2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF", State: rootstock.PegInWatchDiscovered}
+	fixture.publish(t, session, blockchain.PegInAddressesImportedEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressesImportedEventId),
+		Watches:   []rootstock.PegInWatch{depositWatcherSecondWatch, discovered},
+	})
+	fixture.expectHeight(100)
+	fixture.expectOutputs(depositWatcherSortedAddresses, depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0))
+	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
+
+	session.poll()
+	session.stop()
+}
+
+func TestPeginDepositAddressWatcher_IgnoresAnEventOfAnotherType(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	assertLog := test.AssertLogContains(t, watcher.LogPeginBtcWrongEvent)
+	fixture.publish(t, session, blockchain.PegInAddressRegistryRebuildEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressesImportedEventId),
+	})
+	assert.True(t, assertLog())
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress})
+
+	session.poll()
+	session.stop()
+}
+
+func TestPeginDepositAddressWatcher_KeepsRunningWhenTheEventChannelIsClosed(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	assertNoLog := test.AssertNoLog(t)
+	idleBefore := fixture.ticker.selects.Load()
+	close(fixture.imported)
+	require.Eventually(t, func() bool { return fixture.ticker.selects.Load() > idleBefore+10 }, time.Second, time.Millisecond)
+
+	session.stop()
+	assertNoLog()
 }

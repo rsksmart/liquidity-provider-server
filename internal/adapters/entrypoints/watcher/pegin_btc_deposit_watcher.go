@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
@@ -26,6 +27,8 @@ type PeginDepositAddressWatcher struct {
 	btcWallet          blockchain.BitcoinWallet
 	rpc                blockchain.Rpc
 	ticker             utils.Ticker
+	eventBus           entities.EventBus
+	importedEvents     <-chan entities.Event
 	watcherStopChannel chan bool
 	currentBlock       *big.Int
 	currentBlockMutex  sync.RWMutex
@@ -50,6 +53,7 @@ func NewPeginDepositAddressWatcher(
 	useCases *PeginDepositAddressWatcherUseCases,
 	btcWallet blockchain.BitcoinWallet,
 	rpc blockchain.Rpc,
+	eventBus entities.EventBus,
 	ticker utils.Ticker,
 ) *PeginDepositAddressWatcher {
 	watcherStopChannel := make(chan bool, 1)
@@ -58,6 +62,7 @@ func NewPeginDepositAddressWatcher(
 		claimUseCase:       useCases.claimUseCase,
 		getWatchedUseCase:  useCases.getWatchedUseCase,
 		btcWallet:          btcWallet,
+		eventBus:           eventBus,
 		watcherStopChannel: watcherStopChannel,
 		rpc:                rpc,
 		ticker:             ticker,
@@ -70,6 +75,7 @@ func (watcher *PeginDepositAddressWatcher) Prepare(ctx context.Context) error {
 	defer watcher.currentBlockMutex.Unlock()
 	watcher.currentBlock = big.NewInt(0)
 
+	watcher.importedEvents = watcher.eventBus.Subscribe(blockchain.PegInAddressesImportedEventId)
 	watches, err := watcher.getWatchedUseCase.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("load the imported PegIn addresses: %w", err)
@@ -94,6 +100,10 @@ watcherLoop:
 				log.Errorf(LogPeginBtcChainHeight, err)
 			}
 			watcher.currentBlockMutex.Unlock()
+		case event := <-watcher.importedEvents:
+			if event != nil {
+				watcher.rememberImportedWatches(event)
+			}
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
 			close(watcher.watcherStopChannel)
@@ -111,6 +121,17 @@ func (watcher *PeginDepositAddressWatcher) Shutdown(closeChannel chan<- bool) {
 func (watcher *PeginDepositAddressWatcher) rememberWatch(watch rootstock.PegInWatch) {
 	if watch.State == rootstock.PegInWatchImported {
 		watcher.watches[watch.BtcAddress] = watch
+	}
+}
+
+func (watcher *PeginDepositAddressWatcher) rememberImportedWatches(event entities.Event) {
+	imported, ok := event.(blockchain.PegInAddressesImportedEvent)
+	if !ok {
+		log.Error(LogPeginBtcWrongEvent)
+		return
+	}
+	for _, watch := range imported.Watches {
+		watcher.rememberWatch(watch)
 	}
 }
 

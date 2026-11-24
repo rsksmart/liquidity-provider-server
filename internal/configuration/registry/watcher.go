@@ -60,6 +60,7 @@ func NewWatcherRegistry(
 			),
 			btcRegistry.MonitoringWallet,
 			messaging.Rpc,
+			messaging.EventBus,
 			tickers.PeginDepositWatcherTicker,
 		),
 		QuoteCleanerWatcher: watcher.NewQuoteCleanerWatcher(

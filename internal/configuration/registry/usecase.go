@@ -135,6 +135,7 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts.PegInAddressRegistry,
 			messaging.Rpc.Btc,
 			btcRegistry.MonitoringWallet,
+			messaging.EventBus,
 		),
 		claimPegInUseCase: pegin.NewClaimPegInUseCase(
 			databaseRegistry.PegInClaimRepository,

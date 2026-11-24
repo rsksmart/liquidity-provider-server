@@ -68,7 +68,7 @@ func newPegInWatcherFixture(
 			pageSize,
 			finalityDepth,
 		),
-		watcher.NewImportRegisteredAddressesUseCase(fixture.repository, fixture.registry, fixture.btcNetwork, fixture.wallet),
+		watcher.NewImportRegisteredAddressesUseCase(fixture.repository, fixture.registry, fixture.btcNetwork, fixture.wallet, fixture.eventBus),
 	)
 	fixture.watcher = watcherAdapter.NewPegInWatcher(useCases, fixture.ticker)
 	return fixture
@@ -86,6 +86,18 @@ func (fixture *pegInAddressRegistryWatcherFixture) expectRecoveryPublished() {
 func (fixture *pegInAddressRegistryWatcherFixture) expectRebuildFailedPublished(reason blockchain.PegInAddressRegistryRebuildReason) {
 	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressRegistryRebuildFailedEvent) bool {
 		return event.EventId == blockchain.PegInAddressRegistryRebuildFailedEventId && !event.Timestamp.IsZero() && event.Reason == reason
+	})).Return().Once()
+}
+
+func (fixture *pegInAddressRegistryWatcherFixture) expectImportedPublished(rskAddresses ...string) {
+	fixture.eventBus.On("Publish", mock.MatchedBy(func(event blockchain.PegInAddressesImportedEvent) bool {
+		published := make([]string, 0, len(event.Watches))
+		for _, watch := range event.Watches {
+			published = append(published, watch.RskAddress)
+		}
+		return event.EventId == blockchain.PegInAddressesImportedEventId &&
+			!event.Timestamp.IsZero() &&
+			slices.Equal(rskAddresses, published)
 	})).Return().Once()
 }
 
@@ -266,6 +278,7 @@ func TestPegInWatcher_SortsEventsAndClampsToFinalizedHead(t *testing.T) {
 		}).
 		Return(blockchain.BitcoinRescanResult{StartHeight: 100, StopHeight: 200}, nil).
 		Once()
+	fixture.expectImportedPublished(rskAddress(1), rskAddress(2), rskAddress(3))
 	fixture.runScan()
 
 	operationsMutex.Lock()
@@ -319,6 +332,7 @@ func TestPegInWatcher_SkipsUnsupportedEncodingsAndContinues(t *testing.T) {
 				entry.BtcAddress == expectedAddress
 		})).Return(nil).Once()
 	}
+	fixture.expectImportedPublished(rskAddress(3))
 
 	fixture.runScan()
 }
@@ -386,6 +400,7 @@ func TestPegInWatcher_RecordsEntryErrorAndContinues(t *testing.T) {
 			entry.State == rootstock.PegInWatchImported &&
 			entry.LastError == ""
 	})).Return(nil).Once()
+	fixture.expectImportedPublished(valid.RskAddress)
 
 	fixture.runScan()
 }
@@ -425,6 +440,7 @@ func TestPegInWatcher_RetriesPersistedDiscoveredEntry(t *testing.T) {
 			updated.State == rootstock.PegInWatchImported &&
 			updated.LastError == ""
 	})).Return(nil).Once()
+	fixture.expectImportedPublished(entry.RskAddress)
 
 	fixture.runScan()
 }
@@ -561,6 +577,7 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenCatchUpFails(t *testing.T) {
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
 		return updated.TxHash == entry.TxHash && updated.State == rootstock.PegInWatchImported
 	})).Return(nil).Once()
+	fixture.expectImportedPublished(entry.RskAddress)
 
 	fixture.runScan()
 
@@ -590,6 +607,7 @@ func TestPegInWatcher_ImportsTheSavedPagesWhenALaterPageFails(t *testing.T) {
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
 		return updated.RskAddress == saved.RskAddress && updated.State == rootstock.PegInWatchImported
 	})).Return(nil).Once()
+	fixture.expectImportedPublished(saved.RskAddress)
 
 	fixture.runScan()
 }
@@ -626,6 +644,7 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenRebuildFails(t *testing.T) {
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
 		return updated.TxHash == entry.TxHash && updated.State == rootstock.PegInWatchImported
 	})).Return(nil).Once()
+	fixture.expectImportedPublished(entry.RskAddress)
 
 	fixture.runScan()
 
@@ -670,6 +689,7 @@ func TestPegInWatcher_ReloadsTheWatchListAfterARebuild(t *testing.T) {
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
 		return updated.RskAddress == added.RskAddress && updated.State == rootstock.PegInWatchImported
 	})).Return(nil).Once()
+	fixture.expectImportedPublished(added.RskAddress)
 
 	fixture.runScan()
 
@@ -711,6 +731,7 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
 		return updated.RskAddress == added.RskAddress && updated.State == rootstock.PegInWatchImported
 	})).Return(nil).Once()
+	fixture.expectImportedPublished(added.RskAddress)
 
 	session := startWatcherSession(t, fixture.watcher, fixture.ticker)
 	session.poll()

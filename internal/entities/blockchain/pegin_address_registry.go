@@ -24,6 +24,7 @@ const (
 	PegInAddressRegistryRootMismatchEventId  entities.EventId = "PegInAddressRegistryRootMismatch"
 	PegInAddressRegistryRebuildEventId       entities.EventId = "PegInAddressRegistryRebuild"
 	PegInAddressRegistryRebuildFailedEventId entities.EventId = "PegInAddressRegistryRebuildFailed"
+	PegInAddressesImportedEventId            entities.EventId = "PegInAddressesImported"
 )
 
 type PegInAddressRegistryRebuildReason string
@@ -45,6 +46,11 @@ type PegInAddressRegistryRebuildEvent struct {
 type PegInAddressRegistryRebuildFailedEvent struct {
 	entities.BaseEvent
 	Reason PegInAddressRegistryRebuildReason
+}
+
+type PegInAddressesImportedEvent struct {
+	entities.BaseEvent
+	Watches []rootstock.PegInWatch
 }
 
 func IsSupportedPegInEncoding(encoding PegInAddressRegistryEncoding) bool {

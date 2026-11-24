@@ -236,6 +236,7 @@ const (
 	LogPeginBtcChainHeight       = LogPeginBtcPrefix + "error getting Bitcoin chain height: %v"
 	LogPeginBtcShutdown          = LogPeginBtcPrefix + "shut down"
 	LogPeginBtcListDepositsError = LogPeginBtcPrefix + "error listing the deposits to the watched addresses: %v"
+	LogPeginBtcWrongEvent        = LogPeginBtcPrefix + "trying to parse wrong event"
 )
 
 func LogPeginBtcClaimError(rskAddress, depositTxID string, err error) string {
