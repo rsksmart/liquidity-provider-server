@@ -13,6 +13,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/rsksmart/liquidity-provider-server/test/rootstocktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -27,16 +28,16 @@ var testPauseRegistryAddress = common.HexToAddress("0x55555555555555555555555555
 
 type pauseRegistryHarness struct {
 	registry     blockchain.PauseRegistryContract
-	contractMock boundContractMock
+	contractMock rootstocktest.BoundContractMock
 	client       *mocks.RpcClientBindingMock
 }
 
 func newPauseRegistryHarness() pauseRegistryHarness {
-	contractMock := createBoundContractMock()
+	contractMock := rootstocktest.NewBoundContractMock()
 	client := &mocks.RpcClientBindingMock{}
 	registry := rootstock.NewPauseRegistryContractImpl(
 		rootstock.NewRskClient(client),
-		contractMock.contract,
+		contractMock.Contract,
 		rootstock.RetryParams{},
 		emergencyPauseBindings.NewEmergencyPauseContract(),
 		pauseRegistryBindings.NewPauseRegistryContract(),
@@ -45,7 +46,7 @@ func newPauseRegistryHarness() pauseRegistryHarness {
 }
 
 func matchPauseLevelCall(t *testing.T) any {
-	expectedData := mustDecodeHex(t, pauseLevelSelector)
+	expectedData := rootstocktest.MustDecodeHex(t, pauseLevelSelector)
 	return mock.MatchedBy(func(msg ethereum.CallMsg) bool {
 		return msg.To != nil && *msg.To == testPauseRegistryAddress && bytes.Equal(msg.Data, expectedData)
 	})
@@ -54,7 +55,7 @@ func matchPauseLevelCall(t *testing.T) any {
 func TestNewPauseRegistryContractImpl(t *testing.T) {
 	registry := rootstock.NewPauseRegistryContractImpl(
 		rootstock.NewRskClient(&mocks.RpcClientBindingMock{}),
-		createBoundContractMock().contract,
+		rootstocktest.NewBoundContractMock().Contract,
 		rootstock.RetryParams{Retries: 1, Sleep: 1},
 		emergencyPauseBindings.NewEmergencyPauseContract(),
 		pauseRegistryBindings.NewPauseRegistryContract(),
@@ -75,22 +76,22 @@ func TestPauseRegistryContractImpl_PauseLevel(t *testing.T) {
 	for _, testCase := range levels {
 		t.Run("reads the "+testCase.name+" level from the registry the peg-in contract uses", func(t *testing.T) {
 			h := newPauseRegistryHarness()
-			h.contractMock.caller.EXPECT().CallContract(mock.Anything, matchCallData(mustDecodeHex(t, pauseRegistrySelector)), mock.Anything).
+			h.contractMock.Caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(rootstocktest.MustDecodeHex(t, pauseRegistrySelector)), mock.Anything).
 				Return(common.LeftPadBytes(testPauseRegistryAddress.Bytes(), common.HashLength), nil).Once()
 			h.client.EXPECT().CallContract(mock.Anything, matchPauseLevelCall(t), mock.Anything).
-				Return(mustPackUint256(t, big.NewInt(testCase.raw)), nil).Once()
+				Return(rootstocktest.MustPackUint256(t, big.NewInt(testCase.raw)), nil).Once()
 
 			level, err := h.registry.PauseLevel()
 			require.NoError(t, err)
 			assert.Equal(t, testCase.expected, level)
-			h.contractMock.caller.AssertExpectations(t)
+			h.contractMock.Caller.AssertExpectations(t)
 			h.client.AssertExpectations(t)
 		})
 	}
 
 	t.Run("returns the error reading the pause registry address", func(t *testing.T) {
 		h := newPauseRegistryHarness()
-		h.contractMock.caller.EXPECT().CallContract(mock.Anything, matchCallData(mustDecodeHex(t, pauseRegistrySelector)), mock.Anything).
+		h.contractMock.Caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(rootstocktest.MustDecodeHex(t, pauseRegistrySelector)), mock.Anything).
 			Return(nil, assert.AnError).Once()
 
 		level, err := h.registry.PauseLevel()
@@ -101,7 +102,7 @@ func TestPauseRegistryContractImpl_PauseLevel(t *testing.T) {
 
 	t.Run("returns the error reading the pause level", func(t *testing.T) {
 		h := newPauseRegistryHarness()
-		h.contractMock.caller.EXPECT().CallContract(mock.Anything, matchCallData(mustDecodeHex(t, pauseRegistrySelector)), mock.Anything).
+		h.contractMock.Caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(rootstocktest.MustDecodeHex(t, pauseRegistrySelector)), mock.Anything).
 			Return(common.LeftPadBytes(testPauseRegistryAddress.Bytes(), common.HashLength), nil).Once()
 		h.client.EXPECT().CallContract(mock.Anything, matchPauseLevelCall(t), mock.Anything).Return(nil, assert.AnError).Once()
 

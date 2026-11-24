@@ -14,6 +14,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/penalization"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/rsksmart/liquidity-provider-server/test/rootstocktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -82,18 +83,18 @@ func TestNewCollateralManagementContractImpl(t *testing.T) {
 		contractBinding,
 		rootstock.RetryParams{Retries: 1, Sleep: time.Duration(1)},
 		time.Duration(1),
-		Abis,
+		rootstocktest.Abis,
 	)
 	test.AssertNonZeroValues(t, contract)
 }
 
 func TestCollateralManagementContractImpl_GetAddress(t *testing.T) {
-	collateral := rootstock.NewCollateralManagementContractImpl(dummyClient, test.AnyAddress, test.AnyAddress, nil, nil, nil, rootstock.RetryParams{}, time.Duration(1), Abis)
+	collateral := rootstock.NewCollateralManagementContractImpl(rootstocktest.DummyClient, test.AnyAddress, test.AnyAddress, nil, nil, nil, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
 	assert.Equal(t, test.AnyAddress, collateral.GetAddress())
 }
 
 func TestCollateralManagementContractImpl_ProviderResign(t *testing.T) {
-	contractMock := createBoundContractMock()
+	contractMock := rootstocktest.NewBoundContractMock()
 	collateralBinding := bindings.NewCollateralManagementContract()
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
@@ -101,69 +102,69 @@ func TestCollateralManagementContractImpl_ProviderResign(t *testing.T) {
 		rootstock.NewRskClient(mockClient),
 		test.AnyAddress,
 		test.AnyAddress,
-		contractMock.contract,
+		contractMock.Contract,
 		signerMock,
 		collateralBinding,
 		rootstock.RetryParams{},
 		time.Duration(1),
-		Abis,
+		rootstocktest.Abis,
 	)
 	t.Run("Success", func(t *testing.T) {
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackResign()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackResign()),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, true)
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, true)
 		err := collateral.ProviderResign()
 		require.NoError(t, err)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending resign tx", func(t *testing.T) {
 		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 			return tx, nil
 		})
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackResign()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackResign()),
 		).Return(assert.AnError).Once()
 		err := collateral.ProviderResign()
 		require.Error(t, err)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling (resign tx reverted)", func(t *testing.T) {
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackResign()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackResign()),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, false)
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, false)
 		err := collateral.ProviderResign()
 		require.ErrorContains(t, err, "resign transaction failed")
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 }
 
 func TestCollateralManagementContractImpl_GetCollateral(t *testing.T) {
 	collateralBinding := bindings.NewCollateralManagementContract()
-	contractMock := createBoundContractMock()
-	collateral := rootstock.NewCollateralManagementContractImpl(dummyClient, test.AnyAddress, test.AnyAddress, contractMock.contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := rootstocktest.NewBoundContractMock()
+	collateral := rootstock.NewCollateralManagementContractImpl(rootstocktest.DummyClient, test.AnyAddress, test.AnyAddress, contractMock.Contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
 	t.Run("Success", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackGetPegInCollateral(parsedAddress)),
+			rootstocktest.MatchCallData(collateralBinding.PackGetPegInCollateral(rootstocktest.ParsedAddress)),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(500)), nil).Once()
-		result, err := collateral.GetCollateral(parsedAddress.String())
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(500)), nil).Once()
+		result, err := collateral.GetCollateral(rootstocktest.ParsedAddress.String())
 		require.NoError(t, err)
 		assert.Equal(t, entities.NewWei(500), result)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on GetCollateral call error", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackGetPegInCollateral(parsedAddress)),
+			rootstocktest.MatchCallData(collateralBinding.PackGetPegInCollateral(rootstocktest.ParsedAddress)),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
-		result, err := collateral.GetCollateral(parsedAddress.String())
+		result, err := collateral.GetCollateral(rootstocktest.ParsedAddress.String())
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
@@ -176,26 +177,26 @@ func TestCollateralManagementContractImpl_GetCollateral(t *testing.T) {
 
 func TestLiquidityBridgeContractImpl_GetPegoutCollateral(t *testing.T) {
 	collateralBinding := bindings.NewCollateralManagementContract()
-	contractMock := createBoundContractMock()
-	collateral := rootstock.NewCollateralManagementContractImpl(dummyClient, test.AnyAddress, test.AnyAddress, contractMock.contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := rootstocktest.NewBoundContractMock()
+	collateral := rootstock.NewCollateralManagementContractImpl(rootstocktest.DummyClient, test.AnyAddress, test.AnyAddress, contractMock.Contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
 	t.Run("Success", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackGetPegOutCollateral(parsedAddress)),
+			rootstocktest.MatchCallData(collateralBinding.PackGetPegOutCollateral(rootstocktest.ParsedAddress)),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(500)), nil).Once()
-		result, err := collateral.GetPegoutCollateral(parsedAddress.String())
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(500)), nil).Once()
+		result, err := collateral.GetPegoutCollateral(rootstocktest.ParsedAddress.String())
 		require.NoError(t, err)
 		assert.Equal(t, entities.NewWei(500), result)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on GetPegoutCollateral call error", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackGetPegOutCollateral(parsedAddress)),
+			rootstocktest.MatchCallData(collateralBinding.PackGetPegOutCollateral(rootstocktest.ParsedAddress)),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
-		result, err := collateral.GetPegoutCollateral(parsedAddress.String())
+		result, err := collateral.GetPegoutCollateral(rootstocktest.ParsedAddress.String())
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
@@ -208,23 +209,23 @@ func TestLiquidityBridgeContractImpl_GetPegoutCollateral(t *testing.T) {
 
 func TestCollateralManagementContractImpl_GetMinimumCollateral(t *testing.T) {
 	collateralBinding := bindings.NewCollateralManagementContract()
-	contractMock := createBoundContractMock()
-	collateral := rootstock.NewCollateralManagementContractImpl(dummyClient, test.AnyAddress, test.AnyAddress, contractMock.contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := rootstocktest.NewBoundContractMock()
+	collateral := rootstock.NewCollateralManagementContractImpl(rootstocktest.DummyClient, test.AnyAddress, test.AnyAddress, contractMock.Contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
 	t.Run("Success", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackGetMinCollateral()),
+			rootstocktest.MatchCallData(collateralBinding.PackGetMinCollateral()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(500)), nil).Once()
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(500)), nil).Once()
 		result, err := collateral.GetMinimumCollateral()
 		require.NoError(t, err)
 		assert.Equal(t, entities.NewWei(500), result)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on GetMinCollateral call fail", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackGetMinCollateral()),
+			rootstocktest.MatchCallData(collateralBinding.PackGetMinCollateral()),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
 		result, err := collateral.GetMinimumCollateral()
@@ -235,101 +236,101 @@ func TestCollateralManagementContractImpl_GetMinimumCollateral(t *testing.T) {
 
 func TestCollateralManagementContractImpl_AddCollateral(t *testing.T) {
 	collateralBinding := bindings.NewCollateralManagementContract()
-	contractMock := createBoundContractMock()
+	contractMock := rootstocktest.NewBoundContractMock()
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
 	collateral := rootstock.NewCollateralManagementContractImpl(
 		rootstock.NewRskClient(mockClient),
 		test.AnyAddress,
 		test.AnyAddress,
-		contractMock.contract,
+		contractMock.Contract,
 		signerMock,
 		collateralBinding,
 		rootstock.RetryParams{},
 		time.Duration(1),
-		Abis,
+		rootstocktest.Abis,
 	)
 	t.Run("Success", func(t *testing.T) {
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(500), collateralBinding.PackAddPegInCollateral()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(500), collateralBinding.PackAddPegInCollateral()),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, true)
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, true)
 		err := collateral.AddCollateral(entities.NewWei(500))
 		require.NoError(t, err)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending addCollateral tx", func(t *testing.T) {
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(500), collateralBinding.PackAddPegInCollateral()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(500), collateralBinding.PackAddPegInCollateral()),
 		).Return(assert.AnError).Once()
 		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 			return tx, nil
 		})
 		err := collateral.AddCollateral(entities.NewWei(500))
 		require.Error(t, err)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling (addCollateral tx reverted)", func(t *testing.T) {
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(500), collateralBinding.PackAddPegInCollateral()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(500), collateralBinding.PackAddPegInCollateral()),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, false)
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, false)
 		err := collateral.AddCollateral(entities.NewWei(500))
 		require.ErrorContains(t, err, "error adding pegin collateral")
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 }
 
 func TestLiquidityBridgeContractImpl_AddPegoutCollateral(t *testing.T) {
 	collateralBinding := bindings.NewCollateralManagementContract()
-	contractMock := createBoundContractMock()
+	contractMock := rootstocktest.NewBoundContractMock()
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
 	collateral := rootstock.NewCollateralManagementContractImpl(
 		rootstock.NewRskClient(mockClient),
 		test.AnyAddress,
 		test.AnyAddress,
-		contractMock.contract,
+		contractMock.Contract,
 		signerMock,
 		collateralBinding,
 		rootstock.RetryParams{},
 		time.Duration(1),
-		Abis,
+		rootstocktest.Abis,
 	)
 	t.Run("Success", func(t *testing.T) {
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(777), collateralBinding.PackAddPegOutCollateral()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(777), collateralBinding.PackAddPegOutCollateral()),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, true)
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, true)
 		err := collateral.AddPegoutCollateral(entities.NewWei(777))
 		require.NoError(t, err)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending addPegoutCollateral tx", func(t *testing.T) {
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(777), collateralBinding.PackAddPegOutCollateral()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(777), collateralBinding.PackAddPegOutCollateral()),
 		).Return(assert.AnError).Once()
 		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 			return tx, nil
 		})
 		err := collateral.AddPegoutCollateral(entities.NewWei(777))
 		require.Error(t, err)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling (addPegoutCollateral tx reverted)", func(t *testing.T) {
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(777), collateralBinding.PackAddPegOutCollateral()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(777), collateralBinding.PackAddPegOutCollateral()),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, false)
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, false)
 		err := collateral.AddPegoutCollateral(entities.NewWei(777))
 		require.ErrorContains(t, err, "error adding pegout collateral")
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 }
 
@@ -339,132 +340,132 @@ func TestLiquidityBridgeContractImpl_WithdrawCollateral(t *testing.T) {
 	signerMock := &mocks.TransactionSignerMock{}
 	mockClient := &mocks.RpcClientBindingMock{}
 	t.Run("Success", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.Contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackWithdrawCollateral()),
+			rootstocktest.MatchCallData(collateralBinding.PackWithdrawCollateral()),
 			mock.Anything,
 		).Return(nil, nil).Once()
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackWithdrawCollateral()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackWithdrawCollateral()),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, true)
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, true)
 		err := collateral.WithdrawCollateral()
 		require.NoError(t, err)
-		contractMock.caller.AssertExpectations(t)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling when sending withdrawCollateral tx", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.Contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackWithdrawCollateral()),
+			rootstocktest.MatchCallData(collateralBinding.PackWithdrawCollateral()),
 			mock.Anything,
 		).Return(nil, nil).Once()
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackWithdrawCollateral()),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 0, big.NewInt(0), collateralBinding.PackWithdrawCollateral()),
 		).Return(assert.AnError).Once()
 		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 			return tx, nil
 		})
-		prepareTxMocks(&contractMock, mockClient, signerMock, true)
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, true)
 		err := collateral.WithdrawCollateral()
 		require.Error(t, err)
-		contractMock.caller.AssertExpectations(t)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Error handling (withdrawCollateral tx reverted by panic)", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
-		e := NewRskRpcError("division by zero", "0x4e487b710000000000000000000000000000000000000000000000000000000000000012")
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.Contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
+		e := rootstocktest.NewRskRpcError("division by zero", "0x4e487b710000000000000000000000000000000000000000000000000000000000000012")
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackWithdrawCollateral()),
+			rootstocktest.MatchCallData(collateralBinding.PackWithdrawCollateral()),
 			mock.Anything,
 		).Return(nil, e).Once()
 		err := collateral.WithdrawCollateral()
 		require.ErrorContains(t, err, "error parsing withdrawCollateral result")
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling (withdrawCollateral tx reverted by not resigned)", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
-		e := NewRskRpcError("transaction reverted", "0x977254570000000000000000000000002279b7a0a67db372996a5fab50d91eaa73d2ebe6")
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.Contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
+		e := rootstocktest.NewRskRpcError("transaction reverted", "0x977254570000000000000000000000002279b7a0a67db372996a5fab50d91eaa73d2ebe6")
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackWithdrawCollateral()),
+			rootstocktest.MatchCallData(collateralBinding.PackWithdrawCollateral()),
 			mock.Anything,
 		).Return(nil, e).Once()
 		err := collateral.WithdrawCollateral()
 		require.ErrorContains(t, err, "provided hasn't completed resignation process")
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling (withdrawCollateral tx reverted by delay not passed)", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
-		e := NewRskRpcError("transaction reverted", "0xf6cf33350000000000000000000000002279b7a0a67db372996a5fab50d91eaa73d2ebe600000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002")
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		collateral := rootstock.NewCollateralManagementContractImpl(rootstock.NewRskClient(mockClient), test.AnyAddress, test.AnyAddress, contractMock.Contract, signerMock, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
+		e := rootstocktest.NewRskRpcError("transaction reverted", "0xf6cf33350000000000000000000000002279b7a0a67db372996a5fab50d91eaa73d2ebe600000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002")
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackWithdrawCollateral()),
+			rootstocktest.MatchCallData(collateralBinding.PackWithdrawCollateral()),
 			mock.Anything,
 		).Return(nil, e).Once()
 		err := collateral.WithdrawCollateral()
 		require.ErrorContains(t, err, "provided hasn't completed resignation process")
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 }
 
 func TestLiquidityBridgeContractImpl_GetPunishmentEvents(t *testing.T) {
 	collateralBinding := bindings.NewCollateralManagementContract()
-	contractMock := createBoundContractMock()
-	collateral := rootstock.NewCollateralManagementContractImpl(dummyClient, test.AnyRskAddress, test.AnyAddress, contractMock.contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contractMock := rootstocktest.NewBoundContractMock()
+	collateral := rootstock.NewCollateralManagementContractImpl(rootstocktest.DummyClient, test.AnyRskAddress, test.AnyAddress, contractMock.Contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
 	t.Run("Success", func(t *testing.T) {
 		var from uint64 = 500
 		var to uint64 = 1000
-		contractMock.filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(penalizations, nil).Once()
+		contractMock.Filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(penalizations, nil).Once()
 		result, err := collateral.GetPenalizedEvents(context.Background(), from, &to)
 		require.NoError(t, err)
 		assert.Equal(t, parsedPenalizations, result)
-		contractMock.filterer.AssertExpectations(t)
+		contractMock.Filterer.AssertExpectations(t)
 	})
 	t.Run("Error handling when failed to get events", func(t *testing.T) {
 		var from uint64 = 600
 		var to uint64 = 1100
-		contractMock.filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(nil, assert.AnError).Once()
+		contractMock.Filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(nil, assert.AnError).Once()
 		result, err := collateral.GetPenalizedEvents(context.Background(), from, &to)
 		require.Error(t, err)
 		assert.Nil(t, result)
-		contractMock.filterer.AssertExpectations(t)
+		contractMock.Filterer.AssertExpectations(t)
 	})
 }
 
 func TestCollateralManagementContractImpl_PausedStatus(t *testing.T) {
-	contractMock := createBoundContractMock()
+	contractMock := rootstocktest.NewBoundContractMock()
 	collateralBinding := bindings.NewCollateralManagementContract()
-	contract := rootstock.NewCollateralManagementContractImpl(dummyClient, test.AnyRskAddress, test.AnyAddress, contractMock.contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), Abis)
+	contract := rootstock.NewCollateralManagementContractImpl(rootstocktest.DummyClient, test.AnyRskAddress, test.AnyAddress, contractMock.Contract, nil, collateralBinding, rootstock.RetryParams{}, time.Duration(1), rootstocktest.Abis)
 	t.Run("should return pause status result", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackPauseStatus()),
+			rootstocktest.MatchCallData(collateralBinding.PackPauseStatus()),
 			mock.Anything,
-		).Return(mustPackPauseStatus(t, generalPauseStatus{IsPaused: true, Reason: "test", Since: 123}), nil).Once()
+		).Return(rootstocktest.MustPackPauseStatus(t, rootstocktest.GeneralPauseStatus{IsPaused: true, Reason: "test", Since: 123}), nil).Once()
 		result, err := contract.PausedStatus()
 		require.NoError(t, err)
 		assert.Equal(t, blockchain.PauseStatus{IsPaused: true, Reason: "test", Since: 123}, result)
 	})
 	t.Run("should handle error checking pause status", func(t *testing.T) {
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(collateralBinding.PackPauseStatus()),
+			rootstocktest.MatchCallData(collateralBinding.PackPauseStatus()),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
 		result, err := contract.PausedStatus()
 		require.Error(t, err)
 		assert.Empty(t, result)
 	})
-	contractMock.caller.AssertExpectations(t)
+	contractMock.Caller.AssertExpectations(t)
 }

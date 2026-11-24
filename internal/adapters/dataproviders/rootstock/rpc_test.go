@@ -17,6 +17,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/rsksmart/liquidity-provider-server/test/rootstocktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -154,14 +155,14 @@ func TestRskjRpcServer_GetBalance(t *testing.T) {
 	client := &mocks.RpcClientBindingMock{}
 	rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{})
 	t.Run("Success", func(t *testing.T) {
-		client.On("BalanceAt", test.AnyCtx, parsedAddress, blockNumber).Return(big.NewInt(100), nil).Once()
-		balance, err := rpc.GetBalance(context.Background(), parsedAddress.String())
+		client.On("BalanceAt", test.AnyCtx, rootstocktest.ParsedAddress, blockNumber).Return(big.NewInt(100), nil).Once()
+		balance, err := rpc.GetBalance(context.Background(), rootstocktest.ParsedAddress.String())
 		require.NoError(t, err)
 		assert.Equal(t, entities.NewWei(100), balance)
 	})
 	t.Run("Error calling BalanceAt", func(t *testing.T) {
-		client.On("BalanceAt", test.AnyCtx, parsedAddress, blockNumber).Return(nil, assert.AnError).Once()
-		balance, err := rpc.GetBalance(context.Background(), parsedAddress.String())
+		client.On("BalanceAt", test.AnyCtx, rootstocktest.ParsedAddress, blockNumber).Return(nil, assert.AnError).Once()
+		balance, err := rpc.GetBalance(context.Background(), rootstocktest.ParsedAddress.String())
 		require.Error(t, err)
 		assert.Nil(t, balance)
 	})

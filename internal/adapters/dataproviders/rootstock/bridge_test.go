@@ -18,6 +18,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	"github.com/rsksmart/liquidity-provider-server/test/rootstocktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -25,8 +26,6 @@ import (
 	"testing"
 	"time"
 )
-
-var dummyClient = rootstock.NewRskClient(nil)
 
 func TestNewRskBridgeImpl(t *testing.T) {
 	config := rootstock.RskBridgeConfig{Address: test.AnyAddress, RequiredConfirmations: 10, ErpKeys: []string{"key1", "key2", "key3"}, UseSegwitFederation: true}
@@ -40,71 +39,71 @@ func TestNewRskBridgeImpl(t *testing.T) {
 func TestRskBridgeImpl_GetAddress(t *testing.T) {
 	contract := bind.NewBoundContract(common.Address{}, abi.ABI{}, nil, nil, nil)
 	contractBinding := bindings.NewRskBridge()
-	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{Address: test.AnyAddress}, contract, dummyClient, nil, rootstock.RetryParams{}, nil, contractBinding, time.Duration(1))
+	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{Address: test.AnyAddress}, contract, rootstocktest.DummyClient, nil, rootstock.RetryParams{}, nil, contractBinding, time.Duration(1))
 	assert.Equal(t, test.AnyAddress, bridge.GetAddress())
 }
 
 func TestRskBridgeImpl_GetRequiredTxConfirmations(t *testing.T) {
-	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{RequiredConfirmations: 10}, nil, dummyClient, nil, rootstock.RetryParams{}, nil, nil, time.Duration(1))
+	bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{RequiredConfirmations: 10}, nil, rootstocktest.DummyClient, nil, rootstock.RetryParams{}, nil, nil, time.Duration(1))
 	assert.Equal(t, uint64(10), bridge.GetRequiredTxConfirmations())
 }
 
 func TestRskBridgeImpl_GetFedAddress(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		bridgeBinding := bindings.NewRskBridge()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetFederationAddress()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetFederationAddress()),
 			mock.Anything,
 		).Return(mustPackString(t, test.AnyAddress), nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, nil, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, nil, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
 		result, err := bridge.GetFedAddress()
 		assert.Equal(t, test.AnyAddress, result)
 		require.NoError(t, err)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on GetFederationAddress call fail", func(t *testing.T) {
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		bridgeBinding := bindings.NewRskBridge()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetFederationAddress()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetFederationAddress()),
 			mock.Anything,
 		).Return(nil, assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, nil, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, nil, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
 		result, err := bridge.GetFedAddress()
 		assert.Empty(t, result)
 		require.Error(t, err)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 }
 
 func TestRskBridgeImpl_GetMinimumLockTxValue(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		bridgeBinding := bindings.NewRskBridge()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetMinimumLockTxValue()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetMinimumLockTxValue()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(5)), nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, nil, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(5)), nil)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, nil, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
 		result, err := bridge.GetMinimumLockTxValue()
 		assert.IsType(t, &entities.Wei{}, result)
 		assert.Equal(t, entities.NewWei(50000000000), result)
 		require.NoError(t, err)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on GetMinimumLockTxValue call fail", func(t *testing.T) {
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		bridgeBinding := bindings.NewRskBridge()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetMinimumLockTxValue()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetMinimumLockTxValue()),
 			mock.Anything,
 		).Return(nil, assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, nil, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, nil, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
 		result, err := bridge.GetMinimumLockTxValue()
 		assert.Nil(t, result)
 		require.Error(t, err)
@@ -132,33 +131,33 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		var testError error
 		var result rsk.FlyoverDerivation
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		bridgeBinding := bindings.NewRskBridge()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetActivePowpegRedeemScript()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetActivePowpegRedeemScript()),
 			mock.Anything,
 		).Return(mustPackBytes(t, redeemScriptString), nil)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
 		result, testError = bridge.GetFlyoverDerivationAddress(args)
 		assert.Equal(t, rsk.FlyoverDerivation{
 			Address:      "2MxeEHVx71taCeVsXFsfQ7TKK6v943PFVEu",
 			RedeemScript: "20ff883edd54f8cb22464a8181ed62652fcdb0028e0ada18f9828afd76e0df2c727564522102cd53fc53a07f211641a677d250f6de99caf620e8e77071e811a28b3bcddf0be1210362634ab57dae9cb373a5d536e66a8c4f67468bbcfb063809bab643072d78a1242103c5946b3fbae03a654237da863c9ed534e0878657175b132b8ca630f245df04db53ae670350cd00b27553210257c293086c4d4fe8943deda5f890a37d11bebd140e220faa76258a41d077b4d42103c2660a46aa73078ee6016dee953488566426cf55fc8011edd0085634d75395f92103cd3e383ec6e12719a6c69515e5559bcbe037d0aa24c187e1e26ce932e22ad7b32102370a9838e4d15708ad14a104ee5606b36caaaaf739d833e67770ce9fd9b3ec8054ae68",
 		}, result)
 		require.NoError(t, testError)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling on GetActivePowpegRedeemScript call fail", func(t *testing.T) {
 		var testError error
 		var result rsk.FlyoverDerivation
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		bridgeBinding := bindings.NewRskBridge()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetActivePowpegRedeemScript()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetActivePowpegRedeemScript()),
 			mock.Anything,
 		).Return(nil, assert.AnError)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
 		result, testError = bridge.GetFlyoverDerivationAddress(args)
 		assert.Empty(t, result)
 		require.ErrorContains(t, testError, "error retreiving fed redeem script from bridge")
@@ -167,37 +166,37 @@ func TestRskBridgeImpl_GetFlyoverDerivationAddress(t *testing.T) {
 
 func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		bridgeBinding := bindings.NewRskBridge()
-		contractMock.caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(mustPackUint256(t, big.NewInt(2)), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(rootstocktest.MustPackUint256(t, big.NewInt(2)), nil).Once()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")),
 			mock.Anything,
 		).Return(mustPackBytes(t, "010203"), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(1), "btc")),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(1), "btc")),
 			mock.Anything,
 		).Return(mustPackBytes(t, "0a0b0c"), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetFederationThreshold()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetFederationThreshold()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(5)), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(5)), nil).Once()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetFederationAddress()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetFederationAddress()),
 			mock.Anything,
 		).Return(mustPackString(t, test.AnyAddress), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetActiveFederationCreationBlockHeight()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetActiveFederationCreationBlockHeight()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(500)), nil).Once()
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(500)), nil).Once()
 
 		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{ErpKeys: []string{"key1", "key2", "key3"}, UseSegwitFederation: true},
-			contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
+			contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
 		fedInfo, err := bridge.FetchFederationInfo()
 		require.NoError(t, err)
 		assert.Equal(t, rsk.FederationInfo{
@@ -209,18 +208,18 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 			ErpKeys:              []string{"key1", "key2", "key3"},
 			UseSegwit:            true,
 		}, fedInfo)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Error handling", func(t *testing.T) {
 		for _, setUp := range fetchFedInfoErrorSetUps() {
-			contractMock := createBoundContractMock()
+			contractMock := rootstocktest.NewBoundContractMock()
 			bridgeBinding := bindings.NewRskBridge()
-			setUp(t, bridgeBinding, contractMock.caller)
-			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
+			setUp(t, bridgeBinding, contractMock.Caller)
+			bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, nil, bridgeBinding, time.Duration(1))
 			result, err := bridge.FetchFederationInfo()
 			require.Error(t, err)
 			assert.Empty(t, result)
-			contractMock.caller.AssertExpectations(t)
+			contractMock.Caller.AssertExpectations(t)
 		}
 	})
 }
@@ -228,32 +227,32 @@ func TestRskBridgeImpl_FetchFederationInfo(t *testing.T) {
 func fetchFedInfoErrorSetUps() []func(t *testing.T, bridgeBinding *bindings.RskBridge, caller *mocks.ContractCallerMock) {
 	return []func(t *testing.T, bridgeBinding *bindings.RskBridge, caller *mocks.ContractCallerMock){
 		func(t *testing.T, bridgeBinding *bindings.RskBridge, caller *mocks.ContractCallerMock) {
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(nil, assert.AnError).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(t *testing.T, bridgeBinding *bindings.RskBridge, caller *mocks.ContractCallerMock) {
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(mustPackUint256(t, big.NewInt(2)), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")), mock.Anything).Return(nil, assert.AnError).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(rootstocktest.MustPackUint256(t, big.NewInt(2)), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")), mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(t *testing.T, bridgeBinding *bindings.RskBridge, caller *mocks.ContractCallerMock) {
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(mustPackUint256(t, big.NewInt(2)), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")), mock.Anything).Return(mustPackBytes(t, "010203"), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(1), "btc")), mock.Anything).Return(mustPackBytes(t, "0a0b0c"), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationThreshold()), mock.Anything).Return(nil, assert.AnError).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(rootstocktest.MustPackUint256(t, big.NewInt(2)), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")), mock.Anything).Return(mustPackBytes(t, "010203"), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(1), "btc")), mock.Anything).Return(mustPackBytes(t, "0a0b0c"), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationThreshold()), mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(t *testing.T, bridgeBinding *bindings.RskBridge, caller *mocks.ContractCallerMock) {
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(mustPackUint256(t, big.NewInt(2)), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")), mock.Anything).Return(mustPackBytes(t, "010203"), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(1), "btc")), mock.Anything).Return(mustPackBytes(t, "0a0b0c"), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationThreshold()), mock.Anything).Return(mustPackUint256(t, big.NewInt(5)), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationAddress()), mock.Anything).Return(nil, assert.AnError).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(rootstocktest.MustPackUint256(t, big.NewInt(2)), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")), mock.Anything).Return(mustPackBytes(t, "010203"), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(1), "btc")), mock.Anything).Return(mustPackBytes(t, "0a0b0c"), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationThreshold()), mock.Anything).Return(rootstocktest.MustPackUint256(t, big.NewInt(5)), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationAddress()), mock.Anything).Return(nil, assert.AnError).Once()
 		},
 		func(t *testing.T, bridgeBinding *bindings.RskBridge, caller *mocks.ContractCallerMock) {
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(mustPackUint256(t, big.NewInt(2)), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")), mock.Anything).Return(mustPackBytes(t, "010203"), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(1), "btc")), mock.Anything).Return(mustPackBytes(t, "0a0b0c"), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationThreshold()), mock.Anything).Return(mustPackUint256(t, big.NewInt(5)), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetFederationAddress()), mock.Anything).Return(mustPackString(t, test.AnyAddress), nil).Once()
-			caller.EXPECT().CallContract(mock.Anything, matchCallData(bridgeBinding.PackGetActiveFederationCreationBlockHeight()), mock.Anything).Return(nil, assert.AnError).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationSize()), mock.Anything).Return(rootstocktest.MustPackUint256(t, big.NewInt(2)), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(0), "btc")), mock.Anything).Return(mustPackBytes(t, "010203"), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederatorPublicKeyOfType(big.NewInt(1), "btc")), mock.Anything).Return(mustPackBytes(t, "0a0b0c"), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationThreshold()), mock.Anything).Return(rootstocktest.MustPackUint256(t, big.NewInt(5)), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetFederationAddress()), mock.Anything).Return(mustPackString(t, test.AnyAddress), nil).Once()
+			caller.EXPECT().CallContract(mock.Anything, rootstocktest.MatchCallData(bridgeBinding.PackGetActiveFederationCreationBlockHeight()), mock.Anything).Return(nil, assert.AnError).Once()
 		},
 	}
 }
@@ -261,7 +260,7 @@ func fetchFedInfoErrorSetUps() []func(t *testing.T, bridgeBinding *bindings.RskB
 // nolint:funlen
 func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 	signerMock := &mocks.TransactionSignerMock{}
-	signerMock.On("Address").Return(parsedAddress)
+	signerMock.On("Address").Return(rootstocktest.ParsedAddress)
 	coinbaseInfo := rsk.BtcCoinbaseTransactionInformation{
 		BtcTxSerialized:      utils.MustGetRandomBytes(32),
 		BlockHash:            utils.To32Bytes(utils.MustGetRandomBytes(32)),
@@ -272,141 +271,141 @@ func TestRskBridgeImpl_RegisterBtcCoinbaseTransaction(t *testing.T) {
 	}
 	bridgeBinding := bindings.NewRskBridge()
 	t.Run("Should handle error getting best chain height", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.Error(t, err)
 		require.NotErrorIs(t, err, blockchain.WaitingForBridgeError)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Should return WaitingForBridgeError if block is higher than best chain height", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(300)), nil).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(300)), nil).Once()
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.ErrorIs(t, err, blockchain.WaitingForBridgeError)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Should handle error when validating if tx was registered", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(600)), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(600)), nil).Once()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
+			rootstocktest.MatchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
 			mock.Anything,
 		).Return(nil, assert.AnError).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.Error(t, err)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Should skip registration if tx was already registered", func(t *testing.T) {
-		contractMock := createBoundContractMock()
-		contractMock.caller.EXPECT().CallContract(
+		contractMock := rootstocktest.NewBoundContractMock()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(600)), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(600)), nil).Once()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
+			rootstocktest.MatchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
 			mock.Anything,
 		).Return(mustPackBool(t, true), nil).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.NoError(t, err)
-		contractMock.caller.AssertExpectations(t)
+		contractMock.Caller.AssertExpectations(t)
 	})
 	t.Run("Should handle error when sending tx", func(t *testing.T) {
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		signerMock.EXPECT().Sign(mock.Anything, mock.Anything).RunAndReturn(func(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 			return tx, nil
 		})
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(600)), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(600)), nil).Once()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
+			rootstocktest.MatchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
 			mock.Anything,
 		).Return(mustPackBool(t, false), nil).Once()
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
 		).Return(assert.AnError).Once()
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, dummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstocktest.DummyClient, &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.Empty(t, result)
 		require.ErrorContains(t, err, "register coinbase transaction error")
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 	t.Run("Should handle error when tx reverts", func(t *testing.T) {
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		mockClient := &mocks.RpcClientBindingMock{}
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(600)), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(600)), nil).Once()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
+			rootstocktest.MatchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
 			mock.Anything,
 		).Return(mustPackBool(t, false), nil).Once()
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, false)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, false)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.NotEmpty(t, result)
 		require.ErrorContains(t, err, "register coinbase transaction error: transaction reverted (0xd8f5d705f146230553a8aec9a290a19bf4311187fa0489d41207d7215b0b65cb)")
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 
 	t.Run("Should register coinbase transaction successfully", func(t *testing.T) {
-		contractMock := createBoundContractMock()
+		contractMock := rootstocktest.NewBoundContractMock()
 		mockClient := &mocks.RpcClientBindingMock{}
-		contractMock.caller.EXPECT().CallContract(
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
+			rootstocktest.MatchCallData(bridgeBinding.PackGetBtcBlockchainBestChainHeight()),
 			mock.Anything,
-		).Return(mustPackUint256(t, big.NewInt(600)), nil).Once()
-		contractMock.caller.EXPECT().CallContract(
+		).Return(rootstocktest.MustPackUint256(t, big.NewInt(600)), nil).Once()
+		contractMock.Caller.EXPECT().CallContract(
 			mock.Anything,
-			matchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
+			rootstocktest.MatchCallData(bridgeBinding.PackHasBtcBlockCoinbaseTransactionInformation(coinbaseInfo.BlockHash)),
 			mock.Anything,
 		).Return(mustPackBool(t, false), nil).Once()
-		contractMock.transactor.EXPECT().SendTransaction(
+		contractMock.Transactor.EXPECT().SendTransaction(
 			mock.Anything,
-			matchTransaction(contractMock.transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
+			rootstocktest.MatchTransaction(contractMock.Transactor, common.HexToAddress(test.AnyRskAddress), 100000, big.NewInt(0), bridgeBinding.PackRegisterBtcCoinbaseTransaction(coinbaseInfo.BtcTxSerialized, coinbaseInfo.BlockHash, coinbaseInfo.SerializedPmt, coinbaseInfo.WitnessMerkleRoot, coinbaseInfo.WitnessReservedValue)),
 		).Return(nil).Once()
-		prepareTxMocks(&contractMock, mockClient, signerMock, true)
-		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.contract, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
+		rootstocktest.PrepareTxMocks(&contractMock, mockClient, signerMock, true)
+		bridge := rootstock.NewRskBridgeImpl(rootstock.RskBridgeConfig{}, contractMock.Contract, rootstock.NewRskClient(mockClient), &chaincfg.TestNet3Params, rootstock.RetryParams{}, signerMock, bridgeBinding, time.Duration(1))
 		result, err := bridge.RegisterBtcCoinbaseTransaction(coinbaseInfo)
 		assert.NotEmpty(t, result)
 		require.NoError(t, err)
-		contractMock.transactor.AssertExpectations(t)
+		contractMock.Transactor.AssertExpectations(t)
 	})
 }
 
@@ -437,12 +436,12 @@ func TestRskBridgeImpl_GetBatchPegOutCreatedEvent(t *testing.T) {
 		},
 	}
 	bridgeBinding := bindings.NewRskBridge()
-	contractMock := createBoundContractMock()
+	contractMock := rootstocktest.NewBoundContractMock()
 	signer := &mocks.TransactionSignerMock{}
 	bridge := rootstock.NewRskBridgeImpl(
 		rootstock.RskBridgeConfig{},
-		contractMock.contract,
-		dummyClient,
+		contractMock.Contract,
+		rootstocktest.DummyClient,
 		&chaincfg.TestNet3Params,
 		rootstock.RetryParams{},
 		signer,
@@ -452,19 +451,19 @@ func TestRskBridgeImpl_GetBatchPegOutCreatedEvent(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		var from uint64 = 500
 		var to uint64 = 1000
-		contractMock.filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(batches, nil).Once()
+		contractMock.Filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(batches, nil).Once()
 		result, err := bridge.GetBatchPegOutCreatedEvent(context.Background(), from, &to)
 		require.NoError(t, err)
 		assert.Equal(t, parsedBatches, result)
-		contractMock.filterer.AssertExpectations(t)
+		contractMock.Filterer.AssertExpectations(t)
 	})
 	t.Run("Error handling when filtering logs", func(t *testing.T) {
 		var from uint64 = 600
 		var to uint64 = 1100
-		contractMock.filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(nil, assert.AnError).Once()
+		contractMock.Filterer.EXPECT().FilterLogs(mock.Anything, mock.MatchedBy(filterMatchFunc(from, to))).Return(nil, assert.AnError).Once()
 		result, err := bridge.GetBatchPegOutCreatedEvent(context.Background(), from, &to)
 		require.Error(t, err)
 		assert.Nil(t, result)
-		contractMock.filterer.AssertExpectations(t)
+		contractMock.Filterer.AssertExpectations(t)
 	})
 }
