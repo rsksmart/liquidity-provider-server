@@ -2,19 +2,14 @@ package watcher_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
-	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegin"
 	w "github.com/rsksmart/liquidity-provider-server/internal/usecases/watcher"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -23,559 +18,233 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	depositWatcherFirstTxID  = "2ba6da53badd14349c5d6379e88c345e88193598aad714815d4b57c691a9fbdf"
+	depositWatcherSecondTxID = "fda421ccdff7324a382067d1746f6a387132435de6af336a0ebbf3f720eaae4d"
+)
+
+var (
+	depositWatcherFirstWatch = rootstock.PegInWatch{
+		RskAddress: "0x79568c2989232dCa1840087D73d403602364c0D4",
+		BtcAddress: "2N1GMB8gxHYR5HLPSRgf9CJ9Lunjb9CTnKB",
+		State:      rootstock.PegInWatchImported,
+	}
+	depositWatcherSecondWatch = rootstock.PegInWatch{
+		RskAddress: "0x8dccd82443b80ddde3690af86746bfd9d766f8d2",
+		BtcAddress: "2MvDyVY4Rbn6BZT5yTLAt6Y7HVt9LfjKbMV",
+		State:      rootstock.PegInWatchImported,
+	}
+	depositWatcherSortedAddresses = []string{depositWatcherSecondWatch.BtcAddress, depositWatcherFirstWatch.BtcAddress}
+)
+
+type depositWatcherFixture struct {
+	repository *mocks.PegInWatchRepositoryMock
+	claim      *mocks.ClaimPegInUseCaseMock
+	wallet     *mocks.BitcoinWalletMock
+	btcRpc     *mocks.BitcoinNetworkMock
+	ticker     *sessionTicker
+}
+
+func newDepositWatcherFixture(t *testing.T) *depositWatcherFixture {
+	t.Helper()
+	return &depositWatcherFixture{
+		repository: mocks.NewPegInWatchRepositoryMock(t),
+		claim:      mocks.NewClaimPegInUseCaseMock(t),
+		wallet:     mocks.NewBitcoinWalletMock(t),
+		btcRpc:     mocks.NewBitcoinNetworkMock(t),
+		ticker:     newSessionTicker(),
+	}
+}
+
+func (fixture *depositWatcherFixture) newWatcher() *watcher.PeginDepositAddressWatcher {
+	useCases := watcher.NewPeginDepositAddressWatcherUseCases(
+		fixture.claim,
+		w.NewGetWatchedRegisteredAddressesUseCase(fixture.repository),
+	)
+	return watcher.NewPeginDepositAddressWatcher(useCases, fixture.wallet, blockchain.Rpc{Btc: fixture.btcRpc}, fixture.ticker)
+}
+
+func (fixture *depositWatcherFixture) start(t *testing.T, watches ...rootstock.PegInWatch) *watcherSession {
+	t.Helper()
+	fixture.repository.EXPECT().List(mock.Anything).Return(watches, nil).Once()
+	return startWatcherSession(t, fixture.newWatcher(), fixture.ticker)
+}
+
+func (fixture *depositWatcherFixture) expectHeight(height int64) {
+	fixture.btcRpc.EXPECT().GetHeight().Return(big.NewInt(height), nil).Once()
+}
+
+func (fixture *depositWatcherFixture) expectOutputs(addresses []string, outputs ...blockchain.BitcoinUnspentOutput) {
+	fixture.wallet.EXPECT().GetUnspentOutputs(addresses).Return(outputs, nil).Once()
+}
+
+func (fixture *depositWatcherFixture) expectClaim(watch rootstock.PegInWatch, txID string) {
+	fixture.claim.EXPECT().Run(mock.Anything, watch, txID).Return(nil).Once()
+}
+
+func depositOutput(watch rootstock.PegInWatch, txID string, vout uint32) blockchain.BitcoinUnspentOutput {
+	return blockchain.BitcoinUnspentOutput{TxID: txID, Vout: vout, Address: watch.BtcAddress, Confirmations: 1}
+}
+
 func TestPeginDepositAddressWatcher_Shutdown(t *testing.T) {
-	eventBus := &mocks.EventBusMock{}
-	eventBus.On("Subscribe", mock.Anything).Return(make(<-chan entities.Event))
 	createWatcherShutdownTest(t, func(ticker utils.Ticker) watcher.Watcher {
-		useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, nil, nil, nil)
-		return watcher.NewPeginDepositAddressWatcher(useCases, nil, blockchain.Rpc{}, eventBus, ticker)
+		useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, nil)
+		return watcher.NewPeginDepositAddressWatcher(useCases, nil, blockchain.Rpc{}, ticker)
 	})
 }
 
 func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
-	t.Run("prepare successfully", func(t *testing.T) {
-		retainedQuotes := []quote.RetainedPeginQuote{
-			{QuoteHash: "q1", DepositAddress: "addr1"},
-			{QuoteHash: "q2", DepositAddress: "addr2"},
-			{QuoteHash: "q3", DepositAddress: "addr4"},
-		}
-		peginRepository := &mocks.PeginQuoteRepositoryMock{}
-		peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return(retainedQuotes[0:1], nil).Once()
-		peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return(retainedQuotes[1:], nil).Once()
-		btcWallet := &mocks.BitcoinWalletMock{}
-		for i, q := range retainedQuotes {
-			peginRepository.EXPECT().GetQuote(mock.Anything, q.QuoteHash).Return(&quote.PeginQuote{Nonce: int64(i)}, nil).Once()
-			peginRepository.EXPECT().GetPeginCreationData(mock.Anything, q.QuoteHash).Return(quote.PeginCreationData{GasPrice: entities.NewWei(int64(i))}).Once()
-			btcWallet.EXPECT().ImportAddress(q.DepositAddress).Return(nil).Once()
-		}
-		getWatchedUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
-		useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, getWatchedUseCase, nil, nil)
-		addressWatcher := watcher.NewPeginDepositAddressWatcher(useCases, btcWallet, blockchain.Rpc{}, nil, nil)
-		err := addressWatcher.Prepare(context.Background())
-		require.NoError(t, err)
-		peginRepository.AssertExpectations(t)
-		btcWallet.AssertExpectations(t)
-		for _, q := range retainedQuotes {
-			watchedQuote, ok := addressWatcher.GetWatchedQuote(q.QuoteHash)
-			require.True(t, ok)
-			require.Equal(t, q.QuoteHash, watchedQuote.RetainedQuote.QuoteHash)
-		}
-	})
-	t.Run("handle error getting retained quotes", func(t *testing.T) {
-		peginRepository := &mocks.PeginQuoteRepositoryMock{}
-		peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
-		getWatchedUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
-		useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, getWatchedUseCase, nil, nil)
-		addressWatcher := watcher.NewPeginDepositAddressWatcher(useCases, nil, blockchain.Rpc{}, nil, nil)
-		err := addressWatcher.Prepare(context.Background())
-		require.Error(t, err)
-		peginRepository.AssertExpectations(t)
+	t.Run("returns the error when the watched addresses cannot be loaded", func(t *testing.T) {
+		fixture := newDepositWatcherFixture(t)
+		fixture.repository.EXPECT().List(mock.Anything).Return(nil, assert.AnError).Once()
+		err := fixture.newWatcher().Prepare(context.Background())
+		require.ErrorIs(t, err, assert.AnError)
 	})
 }
 
-// nolint:funlen
-func TestPeginDepositAddressWatcher_Start_QuoteAccepted(t *testing.T) {
-	testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: "010203", DepositAddress: test.AnyAddress}
-	testPeginQuote := quote.PeginQuote{Nonce: 5}
-	btcWallet := &mocks.BitcoinWalletMock{}
-	rpc := blockchain.Rpc{}
-	eventBus := &mocks.EventBusMock{}
-	acceptPeginChannel := make(chan entities.Event)
-	eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return((<-chan entities.Event)(acceptPeginChannel))
-	ticker := &mocks.TickerMock{}
-	ticker.EXPECT().C().Return(make(chan time.Time))
-	ticker.EXPECT().Stop().Return()
-	useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, nil, nil, nil)
-	peginWatcher := watcher.NewPeginDepositAddressWatcher(useCases, btcWallet, rpc, eventBus, ticker)
+func TestPeginDepositAddressWatcher_ClaimsTheDepositsOfTheImportedAddresses(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	discovered := rootstock.PegInWatch{RskAddress: "0x1", BtcAddress: "2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF", State: rootstock.PegInWatchDiscovered}
+	unsupported := rootstock.PegInWatch{RskAddress: "0x2", State: rootstock.PegInWatchUnsupportedEncoding}
+	session := fixture.start(t, depositWatcherFirstWatch, discovered, depositWatcherSecondWatch, unsupported)
+	fixture.expectHeight(100)
+	fixture.expectOutputs(
+		depositWatcherSortedAddresses,
+		depositOutput(depositWatcherFirstWatch, depositWatcherFirstTxID, 0),
+		depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 1),
+	)
+	fixture.expectClaim(depositWatcherFirstWatch, depositWatcherFirstTxID)
+	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
 
-	go peginWatcher.Start()
-
-	t.Run("handle error importing address", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcImportAddress(testRetainedQuote.DepositAddress, assert.AnError))
-		btcWallet.On("ImportAddress", mock.Anything).Return(assert.AnError).Once()
-		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-			Quote:         testPeginQuote,
-			RetainedQuote: testRetainedQuote,
-		}
-		watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyString)
-		assert.False(t, ok)
-		assert.Empty(t, watchedQuote)
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := newMockCollectT(collect)
-			btcWallet.AssertExpectations(mt)
-		}, time.Second, 10*time.Millisecond)
-		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
-	})
-	t.Run("handle accepted pegin quote", func(t *testing.T) {
-		defer test.AssertNoLog(t)()
-		btcWallet.Calls = []mock.Call{}
-		btcWallet.ExpectedCalls = []*mock.Call{}
-		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
-		watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyString)
-		assert.False(t, ok)
-		assert.Empty(t, watchedQuote)
-		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-			Quote:         testPeginQuote,
-			RetainedQuote: testRetainedQuote,
-		}
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := newMockCollectT(collect)
-			watchedQuote, ok = peginWatcher.GetWatchedQuote(testRetainedQuote.QuoteHash)
-			assert.True(collect, ok)
-			assert.Equal(collect, quote.WatchedPeginQuote{
-				PeginQuote:    testPeginQuote,
-				RetainedQuote: testRetainedQuote,
-			}, watchedQuote)
-			btcWallet.AssertExpectations(mt)
-		}, time.Second, 10*time.Millisecond)
-	})
-	t.Run("handle already watched quote", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcAlreadyWatched(testRetainedQuote.QuoteHash))
-		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-			Quote:         testPeginQuote,
-			RetainedQuote: testRetainedQuote,
-		}
-		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
-	})
-	t.Run("handle incorrect event sent to bus", func(t *testing.T) {
-		checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcWrongEvent)
-		acceptPeginChannel <- quote.PegoutQuoteCompletedEvent{
-			Event: entities.NewBaseEvent(quote.PegoutQuoteCompletedEventId),
-		}
-		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
-	})
-
-	closeChannel := make(chan bool)
-	go peginWatcher.Shutdown(closeChannel)
-	<-closeChannel
-	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-		mt := newMockCollectT(collect)
-		eventBus.AssertExpectations(mt)
-		ticker.AssertExpectations(mt)
-	}, time.Second, 10*time.Millisecond)
+	session.poll()
+	session.stop()
 }
 
-func TestPeginDepositAddressWatcher_Start_HandleDepositedQuoteError(t *testing.T) {
-	peginRepository := &mocks.PeginQuoteRepositoryMock{}
-	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()
-	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil).Once()
-	btcWallet := &mocks.BitcoinWalletMock{}
-	btcRpc := &mocks.BtcRpcMock{}
-	rpc := blockchain.Rpc{Btc: btcRpc}
-	eventBus := &mocks.EventBusMock{}
-	acceptPeginChannel := make(chan entities.Event)
-	eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return((<-chan entities.Event)(acceptPeginChannel))
-	ticker := &mocks.TickerMock{}
-	tickerChannel := make(chan time.Time)
-	ticker.EXPECT().C().Return(tickerChannel)
-	ticker.EXPECT().Stop().Return()
-	getUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
-	useCases := watcher.NewPeginDepositAddressWatcherUseCases(nil, getUseCase, nil, nil)
-	peginWatcher := watcher.NewPeginDepositAddressWatcher(useCases, btcWallet, rpc, eventBus, ticker)
+func TestPeginDepositAddressWatcher_ChecksOnlyWhenANewBlockArrives(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	output := depositOutput(depositWatcherFirstWatch, depositWatcherFirstTxID, 0)
 
-	require.NoError(t, peginWatcher.Prepare(context.Background()))
-	go peginWatcher.Start()
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress}, output)
+	fixture.expectClaim(depositWatcherFirstWatch, depositWatcherFirstTxID)
+	session.poll()
 
-	testRetainedQuote := quote.RetainedPeginQuote{
-		QuoteHash:      test.AnyHash,
-		DepositAddress: test.AnyAddress,
-		UserBtcTxHash:  test.AnyHash,
-		State:          quote.PeginStateWaitingForDepositConfirmations,
-	}
-	testPeginQuote := quote.PeginQuote{Nonce: 5, Confirmations: 10}
-	btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
-	acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-		Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-		Quote:         testPeginQuote,
-		RetainedQuote: testRetainedQuote,
-	}
-	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-		_, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-		assert.True(collect, ok)
-	}, time.Second, 10*time.Millisecond)
+	fixture.expectHeight(100)
+	session.poll()
 
-	checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcCallForUserError(testRetainedQuote.QuoteHash, assert.AnError))
-	btcRpc.On("GetHeight").Return(big.NewInt(5), nil).Once()
-	btcRpc.On("GetTransactionInfo", testRetainedQuote.UserBtcTxHash).Return(blockchain.BitcoinTransactionInformation{}, assert.AnError).Once()
-	tickerChannel <- time.Now()
-	assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
-	assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-		mt := newMockCollectT(collect)
-		btcRpc.AssertExpectations(mt)
-	}, time.Second, 10*time.Millisecond)
+	fixture.expectHeight(99)
+	session.poll()
 
-	closeChannel := make(chan bool)
-	go peginWatcher.Shutdown(closeChannel)
-	<-closeChannel
+	fixture.expectHeight(101)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress}, output)
+	fixture.expectClaim(depositWatcherFirstWatch, depositWatcherFirstTxID)
+	session.poll()
+
+	session.stop()
 }
 
-// nolint:funlen,cyclop,maintidx,gocyclo
-func TestPeginDepositAddressWatcher_Start_BlockchainCheck(t *testing.T) {
-	peginRepository := &mocks.PeginQuoteRepositoryMock{}
-	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDeposit).Return([]quote.RetainedPeginQuote{}, nil).Once()
-	peginRepository.EXPECT().GetRetainedQuoteByState(mock.Anything, quote.PeginStateWaitingForDepositConfirmations).Return([]quote.RetainedPeginQuote{}, nil).Once()
-	btcWallet := &mocks.BitcoinWalletMock{}
-	btcRpc := &mocks.BtcRpcMock{}
-	rpc := blockchain.Rpc{Btc: btcRpc}
-	eventBus := &mocks.EventBusMock{}
-	acceptPeginChannel := make(chan entities.Event)
-	eventBus.On("Subscribe", quote.AcceptedPeginQuoteEventId).Return((<-chan entities.Event)(acceptPeginChannel))
-	ticker := &mocks.TickerMock{}
-	tickerChannel := make(chan time.Time)
-	ticker.EXPECT().C().Return(tickerChannel)
-	ticker.EXPECT().Stop().Return()
-	getUseCase := w.NewGetWatchedPeginQuoteUseCase(peginRepository)
-	expireUseCase := pegin.NewExpiredPeginQuoteUseCase(peginRepository)
-	updateUseCase := w.NewUpdatePeginDepositUseCase(peginRepository)
-	cfuUseCase := &mocks.CallForUserUseCaseMock{}
-	useCases := watcher.NewPeginDepositAddressWatcherUseCases(cfuUseCase, getUseCase, updateUseCase, expireUseCase)
-	peginWatcher := watcher.NewPeginDepositAddressWatcher(useCases, btcWallet, rpc, eventBus, ticker)
+func TestPeginDepositAddressWatcher_SkipsTheTickWhenTheHeightCannotBeRead(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	assertLog := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcChainHeight, assert.AnError))
+	fixture.btcRpc.EXPECT().GetHeight().Return(nil, assert.AnError).Once()
 
-	resetMocks := func() {
-		btcRpc.ExpectedCalls = []*mock.Call{}
-		btcRpc.Calls = []mock.Call{}
-		btcWallet.ExpectedCalls = []*mock.Call{}
-		btcWallet.Calls = []mock.Call{}
-		peginRepository.ExpectedCalls = []*mock.Call{}
-		peginRepository.Calls = []mock.Call{}
-		cfuUseCase.ExpectedCalls = []*mock.Call{}
-		cfuUseCase.Calls = []mock.Call{}
-	}
+	session.poll()
 
-	prepareErr := peginWatcher.Prepare(context.Background())
-	require.NoError(t, prepareErr)
-	go peginWatcher.Start()
+	assert.True(t, assertLog())
+	session.stop()
+}
 
-	t.Run("should only update current block upwards", func(t *testing.T) {
-		resetMocks()
-		btcRpc.On("GetHeight").Return(big.NewInt(5), nil).Once()
-		btcRpc.On("GetHeight").Return(big.NewInt(4), nil).Once()
-		btcRpc.On("GetHeight").Return(big.NewInt(7), nil).Once()
+func TestPeginDepositAddressWatcher_ChecksTheSameBlockAgainWhenTheWalletCallFails(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	assertLog := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcListDepositsError, assert.AnError))
+	fixture.expectHeight(100)
+	fixture.wallet.EXPECT().GetUnspentOutputs([]string{depositWatcherFirstWatch.BtcAddress}).Return(nil, assert.AnError).Once()
+	session.poll()
+	assert.True(t, assertLog())
 
-		tickerChannel <- time.Now()
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			assert.Equal(collect, big.NewInt(5), peginWatcher.GetCurrentBlock())
-		}, time.Second, 10*time.Millisecond)
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress}, depositOutput(depositWatcherFirstWatch, depositWatcherFirstTxID, 0))
+	fixture.expectClaim(depositWatcherFirstWatch, depositWatcherFirstTxID)
+	session.poll()
 
-		tickerChannel <- time.Now()
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			assert.Equal(collect, big.NewInt(5), peginWatcher.GetCurrentBlock())
-		}, time.Second, 10*time.Millisecond)
+	session.stop()
+}
 
-		tickerChannel <- time.Now()
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			assert.Equal(collect, big.NewInt(7), peginWatcher.GetCurrentBlock())
-		}, time.Second, 10*time.Millisecond)
+func TestPeginDepositAddressWatcher_ClaimsEachDepositOncePerCheck(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch, depositWatcherSecondWatch)
+	fixture.expectHeight(100)
+	fixture.expectOutputs(
+		depositWatcherSortedAddresses,
+		depositOutput(depositWatcherFirstWatch, depositWatcherFirstTxID, 0),
+		depositOutput(depositWatcherFirstWatch, depositWatcherFirstTxID, 1),
+		depositOutput(depositWatcherSecondWatch, depositWatcherFirstTxID, 2),
+	)
+	fixture.expectClaim(depositWatcherFirstWatch, depositWatcherFirstTxID)
+	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherFirstTxID)
 
-		btcRpc.AssertExpectations(t)
-	})
-	t.Run("should handle error getting block height", func(t *testing.T) {
-		resetMocks()
-		checkFunction := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPeginBtcChainHeight, assert.AnError))
-		btcRpc.On("GetHeight").Return(nil, assert.AnError).Once()
-		tickerChannel <- time.Now()
-		assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
-		btcRpc.AssertExpectations(t)
-	})
-	t.Run("should call expire use case on expired quotes", func(t *testing.T) {
-		expiredRetained := quote.RetainedPeginQuote{QuoteHash: test.AnyHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
-		expiredQuote := quote.PeginQuote{Nonce: 6, AgreementTimestamp: 1}
-		t.Run("should handle error when expiring quotes", func(t *testing.T) {
-			resetMocks()
-			wrappedErr := usecases.WrapUseCaseError(usecases.ExpiredPeginQuoteId, assert.AnError)
-			checkFunction := test.AssertLogContains(t, watcher.LogPeginBtcUpdateExpiredError(test.AnyHash, wrappedErr))
-			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(assert.AnError).Once()
-			btcRpc.On("GetHeight").Return(big.NewInt(9), nil).Once()
-			btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
-			btcWallet.On("GetTransactions", test.AnyAddress).Return([]blockchain.BitcoinTransactionInformation{}, nil).Once()
-			acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-				Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-				Quote:         expiredQuote,
-				RetainedQuote: expiredRetained,
-			}
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				assert.True(collect, ok)
-				assert.Equal(collect, quote.WatchedPeginQuote{
-					PeginQuote:    expiredQuote,
-					RetainedQuote: expiredRetained,
-				}, watchedQuote)
-			}, time.Second, 10*time.Millisecond)
+	session.poll()
+	session.stop()
+}
 
-			tickerChannel <- time.Now()
+func TestPeginDepositAddressWatcher_IgnoresOutputsToAddressesItDoesNotWatch(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	fixture.expectHeight(100)
+	fixture.expectOutputs(
+		[]string{depositWatcherFirstWatch.BtcAddress},
+		depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0),
+	)
 
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				assert.NotEmpty(collect, watchedQuote)
-				assert.True(collect, ok)
-				peginRepository.AssertExpectations(mt)
-				btcRpc.AssertExpectations(mt)
-				btcWallet.AssertExpectations(mt)
-			}, time.Second, 10*time.Millisecond)
-			assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
-		})
-		t.Run("should stop tracking quotes after expiring them", func(t *testing.T) {
-			resetMocks()
-			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
-			btcRpc.On("GetHeight").Return(big.NewInt(10), nil).Once()
-			btcWallet.On("GetTransactions", test.AnyAddress).Return([]blockchain.BitcoinTransactionInformation{}, nil).Once()
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				assert.True(collect, ok)
-				assert.Equal(collect, quote.WatchedPeginQuote{
-					PeginQuote:    expiredQuote,
-					RetainedQuote: expiredRetained,
-				}, watchedQuote)
-			}, time.Second, 10*time.Millisecond)
+	session.poll()
+	session.stop()
+}
 
-			tickerChannel <- time.Now()
+func TestPeginDepositAddressWatcher_KeepsClaimingWhenOneClaimFails(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch, depositWatcherSecondWatch)
+	assertLog := test.AssertLogContains(t, watcher.LogPeginBtcClaimError(depositWatcherFirstWatch.RskAddress, depositWatcherFirstTxID, assert.AnError))
+	fixture.expectHeight(100)
+	fixture.expectOutputs(
+		depositWatcherSortedAddresses,
+		depositOutput(depositWatcherFirstWatch, depositWatcherFirstTxID, 0),
+		depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0),
+	)
+	fixture.claim.EXPECT().Run(mock.Anything, depositWatcherFirstWatch, depositWatcherFirstTxID).Return(assert.AnError).Once()
+	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
 
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				assert.Empty(collect, watchedQuote)
-				assert.False(collect, ok)
-				peginRepository.AssertExpectations(mt)
-				btcRpc.AssertExpectations(mt)
-			}, time.Second, 10*time.Millisecond)
-		})
-	})
-	t.Run("should update state to WaitingForDepositConfirmations after first confirmation", func(t *testing.T) {
-		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
-		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: test.AnyHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
-		testQuote := quote.PeginQuote{Nonce: 8, AgreementTimestamp: uint32(time.Now().Unix()), TimeForDeposit: 6000, Confirmations: 10, Value: entities.NewWei(1)}
-		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-			Quote:         testQuote,
-			RetainedQuote: testRetainedQuote,
-		}
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := newMockCollectT(collect)
-			btcWallet.AssertExpectations(mt)
-		}, time.Second, 10*time.Millisecond)
-		t.Run("should handle error getting transactions from wallet", func(t *testing.T) {
-			resetMocks()
-			const errorMsg = "error getting tx"
-			btcRpc.On("GetHeight").Return(big.NewInt(11), nil).Once()
-			checkFunction := test.AssertLogContains(t, errorMsg)
-			btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return(nil, errors.New(errorMsg)).Once()
-			tickerChannel <- time.Now()
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				btcWallet.AssertExpectations(mt)
-			}, time.Second, 10*time.Millisecond)
-			assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
-		})
-		t.Run("should handle error getting transaction block", func(t *testing.T) {
-			resetMocks()
-			const errorMsg = "error getting block"
-			btcRpc.On("GetHeight").Return(big.NewInt(12), nil).Once()
-			checkFunction := test.AssertLogContains(t, errorMsg)
-			btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return([]blockchain.BitcoinTransactionInformation{
-				{Hash: test.AnyHash, Confirmations: 5, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(100)}}},
-			}, nil).Once()
-			btcRpc.On("GetTransactionBlockInfo", test.AnyHash).Return(blockchain.BitcoinBlockInformation{}, errors.New(errorMsg)).Once()
-			tickerChannel <- time.Now()
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				btcWallet.AssertExpectations(mt)
-				btcRpc.AssertExpectations(mt)
-			}, time.Second, 10*time.Millisecond)
-			assert.Eventually(t, checkFunction, time.Second, 10*time.Millisecond)
-		})
-		t.Run("should not update quote if doesn't meet the conditions", func(t *testing.T) {
-			resetMocks()
-			// incorrect amount
-			btcRpc.On("GetHeight").Return(big.NewInt(13), nil).Once()
-			btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return([]blockchain.BitcoinTransactionInformation{
-				{Hash: test.AnyHash, Confirmations: 1, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(0)}}},
-			}, nil).Once()
-			btcRpc.On("GetTransactionBlockInfo", test.AnyHash).Return(blockchain.BitcoinBlockInformation{Time: time.Now()}, nil).Once()
-			tickerChannel <- time.Now()
+	session.poll()
 
-			// incorrect time
-			btcRpc.On("GetHeight").Return(big.NewInt(14), nil).Once()
-			btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return([]blockchain.BitcoinTransactionInformation{
-				{Hash: test.AnyHash, Confirmations: 1, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(100)}}},
-			}, nil).Once()
-			btcRpc.On("GetTransactionBlockInfo", test.AnyHash).Return(blockchain.BitcoinBlockInformation{Time: time.Now().Add(8000 * time.Second)}, nil).Once()
-			tickerChannel <- time.Now()
+	assert.True(t, assertLog())
+	session.stop()
+}
 
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				btcWallet.AssertExpectations(mt)
-				btcRpc.AssertExpectations(mt)
-				peginRepository.AssertNotCalled(mt, "UpdateRetainedQuote", mock.Anything, mock.Anything)
-			}, time.Second, 10*time.Millisecond)
-		})
-		t.Run("should update quote successfully and continue tracking it", func(t *testing.T) {
-			resetMocks()
-			btcRpc.On("GetHeight").Return(big.NewInt(15), nil).Once()
-			tx := blockchain.BitcoinTransactionInformation{Hash: test.AnyHash, Confirmations: 1, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(100)}}}
-			btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return([]blockchain.BitcoinTransactionInformation{tx}, nil).Once()
-			btcRpc.On("GetTransactionInfo", test.AnyHash).Return(tx, nil).Once()
-			btcRpc.On("GetTransactionBlockInfo", test.AnyHash).Return(blockchain.BitcoinBlockInformation{Time: time.Now()}, nil).Once()
-			peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
-			tickerChannel <- time.Now()
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				watchedQuote, _ := peginWatcher.GetWatchedQuote(test.AnyHash)
-				btcWallet.AssertExpectations(mt)
-				btcRpc.AssertExpectations(mt)
-				peginRepository.AssertExpectations(mt)
-				assert.Equal(collect, quote.PeginStateWaitingForDepositConfirmations, watchedQuote.RetainedQuote.State)
-			}, time.Second, 10*time.Millisecond)
-		})
-	})
-	t.Run("should execute call for user use case after confirmations have passed", func(t *testing.T) {
-		t.Run("should not execute call for user if confirmations aren't enough", func(t *testing.T) {
-			resetMocks()
-			btcRpc.On("GetHeight").Return(big.NewInt(16), nil).Once()
-			btcRpc.On("GetTransactionInfo", test.AnyHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 5}, nil).Once()
-			tickerChannel <- time.Now()
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				btcRpc.AssertExpectations(mt)
-				peginRepository.AssertNotCalled(mt, "UpdateRetainedQuote", mock.Anything, mock.Anything)
-			}, time.Second, 10*time.Millisecond)
-		})
-		t.Run("shouldn't stop tracking quote on recoverable error", func(t *testing.T) {
-			resetMocks()
-			btcRpc.On("GetHeight").Return(big.NewInt(17), nil).Once()
-			btcRpc.On("GetTransactionInfo", test.AnyHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 10}, nil).Once()
-			cfuUseCase.EXPECT().Run(mock.Anything, mock.Anything).Return(assert.AnError).Once()
-			tickerChannel <- time.Now()
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				btcRpc.AssertExpectations(mt)
-				cfuUseCase.AssertExpectations(mt)
-				assert.True(collect, ok)
-				assert.NotEmpty(collect, watchedQuote)
-			}, time.Second, 10*time.Millisecond)
-		})
-		t.Run("should stop tracking quote on non-recoverable error", func(t *testing.T) {
-			resetMocks()
-			btcRpc.On("GetHeight").Return(big.NewInt(18), nil).Once()
-			btcRpc.On("GetTransactionInfo", test.AnyHash).Return(blockchain.BitcoinTransactionInformation{Confirmations: 10}, nil).Once()
-			cfuUseCase.EXPECT().Run(mock.Anything, mock.Anything).Return(errors.Join(assert.AnError, usecases.NonRecoverableError)).Once()
-			tickerChannel <- time.Now()
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				btcRpc.AssertExpectations(mt)
-				cfuUseCase.AssertExpectations(mt)
-				assert.False(collect, ok)
-				assert.Empty(collect, watchedQuote)
-			}, time.Second, 10*time.Millisecond)
-		})
-		t.Run("should stop tracking quote on successful call for user", func(t *testing.T) {
-			resetMocks()
-			testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: test.AnyHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDepositConfirmations}
-			testQuote := quote.PeginQuote{Nonce: 8, AgreementTimestamp: uint32(time.Now().Unix()), TimeForDeposit: 6000, Confirmations: 10, Value: entities.NewWei(1)}
+func TestPeginDepositAddressWatcher_ChecksWithNoAddressesWhenNoneIsImported(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t)
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string(nil))
 
-			btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
-			btcRpc.On("GetTransactionInfo", mock.Anything).Return(blockchain.BitcoinTransactionInformation{
-				Hash: test.AnyHash, Confirmations: 15, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(100)}},
-			}, nil).Once()
-			btcRpc.On("GetHeight").Return(big.NewInt(19), nil).Once()
-			cfuUseCase.EXPECT().Run(mock.Anything, mock.Anything).Return(nil).Once()
+	session.poll()
+	session.stop()
+}
 
-			acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-				Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-				Quote:         testQuote,
-				RetainedQuote: testRetainedQuote,
-			}
-			tickerChannel <- time.Now()
-			assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-				mt := newMockCollectT(collect)
-				watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-				btcWallet.AssertExpectations(mt)
-				btcRpc.AssertExpectations(mt)
-				cfuUseCase.AssertExpectations(mt)
-				assert.False(collect, ok)
-				assert.Empty(collect, watchedQuote)
-			}, time.Second, 10*time.Millisecond)
-		})
-	})
-	t.Run("should update expired quote if block was mined before expiration", func(t *testing.T) {
-		const (
-			otherHash = "quote-hash-1"
-			txHash    = "tx-hash-1"
-		)
-		resetMocks()
-		now := time.Now().Unix()
-		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
-		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: otherHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
-		testQuote := quote.PeginQuote{Nonce: 123, AgreementTimestamp: uint32(now - 6000), TimeForDeposit: 5000, Confirmations: 10, Value: entities.NewWei(1)}
-		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-			Quote:         testQuote,
-			RetainedQuote: testRetainedQuote,
-		}
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := newMockCollectT(collect)
-			btcWallet.AssertExpectations(mt)
-		}, time.Second, 10*time.Millisecond)
-		btcRpc.On("GetHeight").Return(big.NewInt(20), nil).Once()
-		tx := blockchain.BitcoinTransactionInformation{Hash: txHash, Confirmations: 1, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1)}}}
-		btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return([]blockchain.BitcoinTransactionInformation{tx}, nil).Once()
-		btcRpc.On("GetTransactionBlockInfo", txHash).Return(blockchain.BitcoinBlockInformation{Time: time.Unix(now-2000, 0)}, nil).Once()
-		btcRpc.On("GetTransactionInfo", txHash).Return(tx, nil).Once()
-		peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
-		tickerChannel <- time.Now()
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := newMockCollectT(collect)
-			watchedQuote, _ := peginWatcher.GetWatchedQuote(otherHash)
-			btcWallet.AssertExpectations(mt)
-			btcRpc.AssertExpectations(mt)
-			peginRepository.AssertExpectations(mt)
-			assert.Equal(collect, quote.PeginStateWaitingForDepositConfirmations, watchedQuote.RetainedQuote.State)
-		}, time.Second, 10*time.Millisecond)
-	})
-	t.Run("should update expired quote and call for user if block was mined before expiration and confirmations already passed", func(t *testing.T) {
-		const (
-			otherHash = "quote-hash-2"
-			txHash    = "tx-hash-2"
-		)
-		resetMocks()
-		now := time.Now().Unix()
-		btcWallet.On("ImportAddress", test.AnyAddress).Return(nil).Once()
-		testRetainedQuote := quote.RetainedPeginQuote{QuoteHash: otherHash, DepositAddress: test.AnyAddress, State: quote.PeginStateWaitingForDeposit}
-		testQuote := quote.PeginQuote{Nonce: 123, AgreementTimestamp: uint32(now - 6000), TimeForDeposit: 5000, Confirmations: 10, Value: entities.NewWei(1)}
-		acceptPeginChannel <- quote.AcceptedPeginQuoteEvent{
-			Event:         entities.NewBaseEvent(quote.AcceptedPeginQuoteEventId),
-			Quote:         testQuote,
-			RetainedQuote: testRetainedQuote,
-		}
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := newMockCollectT(collect)
-			btcWallet.AssertExpectations(mt)
-		}, time.Second, 10*time.Millisecond)
-		btcRpc.On("GetHeight").Return(big.NewInt(21), nil).Once()
-		confirmedTx := blockchain.BitcoinTransactionInformation{Hash: txHash, Confirmations: 100, Outputs: map[string][]*entities.Wei{test.AnyAddress: {entities.NewWei(1)}}}
-		unconfirmedTx := confirmedTx
-		unconfirmedTx.Confirmations = 1
-		btcWallet.On("GetTransactions", testRetainedQuote.DepositAddress).Return([]blockchain.BitcoinTransactionInformation{confirmedTx}, nil).Once()
-		btcRpc.On("GetTransactionBlockInfo", txHash).Return(blockchain.BitcoinBlockInformation{Time: time.Unix(now-2000, 0)}, nil).Once()
-		btcRpc.On("GetTransactionInfo", txHash).Return(confirmedTx, nil).Once()
-		btcRpc.On("GetTransactionInfo", mock.Anything).Return(unconfirmedTx, nil).Once() // the quote from the old test still in the watcher
-		peginRepository.EXPECT().UpdateRetainedQuote(mock.Anything, mock.Anything).Return(nil).Once()
-		cfuUseCase.EXPECT().Run(mock.Anything, mock.Anything).Return(nil).Once()
-		tickerChannel <- time.Now()
-		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
-			mt := newMockCollectT(collect)
-			watchedQuote, ok := peginWatcher.GetWatchedQuote(test.AnyHash)
-			btcWallet.AssertExpectations(mt)
-			btcRpc.AssertExpectations(mt)
-			peginRepository.AssertExpectations(mt)
-			cfuUseCase.AssertExpectations(mt)
-			assert.False(collect, ok)
-			assert.Empty(collect, watchedQuote)
-		}, time.Second, 10*time.Millisecond)
-	})
+func TestPeginDepositAddressWatcher_LoadsTheImportedAddressesAgainAfterARestart(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	firstSession := fixture.start(t, depositWatcherFirstWatch)
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress})
+	firstSession.poll()
+	firstSession.stop()
+
+	fixture.ticker = newSessionTicker()
+	secondSession := fixture.start(t, depositWatcherFirstWatch, depositWatcherSecondWatch)
+	fixture.expectHeight(100)
+	fixture.expectOutputs(depositWatcherSortedAddresses, depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0))
+	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
+	secondSession.poll()
+	secondSession.stop()
 }

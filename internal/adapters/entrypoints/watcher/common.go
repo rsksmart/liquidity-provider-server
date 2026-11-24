@@ -26,6 +26,7 @@ const (
 	bitcoinPeerCheckInterval            = 1 * time.Minute
 	rootstockPeerCheckInterval          = 1 * time.Minute
 	peginAddressRegistryWatcherInterval = 1 * time.Minute
+	peginDepositWatcherInterval         = 1 * time.Minute
 )
 
 type Watcher interface {

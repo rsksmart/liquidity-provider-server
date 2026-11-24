@@ -354,6 +354,64 @@ func (_c *BitcoinWalletMock_GetTransactions_Call) RunAndReturn(run func(string) 
 	return _c
 }
 
+// GetUnspentOutputs provides a mock function with given fields: addresses
+func (_m *BitcoinWalletMock) GetUnspentOutputs(addresses []string) ([]blockchain.BitcoinUnspentOutput, error) {
+	ret := _m.Called(addresses)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUnspentOutputs")
+	}
+
+	var r0 []blockchain.BitcoinUnspentOutput
+	var r1 error
+	if rf, ok := ret.Get(0).(func([]string) ([]blockchain.BitcoinUnspentOutput, error)); ok {
+		return rf(addresses)
+	}
+	if rf, ok := ret.Get(0).(func([]string) []blockchain.BitcoinUnspentOutput); ok {
+		r0 = rf(addresses)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]blockchain.BitcoinUnspentOutput)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func([]string) error); ok {
+		r1 = rf(addresses)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// BitcoinWalletMock_GetUnspentOutputs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUnspentOutputs'
+type BitcoinWalletMock_GetUnspentOutputs_Call struct {
+	*mock.Call
+}
+
+// GetUnspentOutputs is a helper method to define mock.On call
+//   - addresses []string
+func (_e *BitcoinWalletMock_Expecter) GetUnspentOutputs(addresses interface{}) *BitcoinWalletMock_GetUnspentOutputs_Call {
+	return &BitcoinWalletMock_GetUnspentOutputs_Call{Call: _e.mock.On("GetUnspentOutputs", addresses)}
+}
+
+func (_c *BitcoinWalletMock_GetUnspentOutputs_Call) Run(run func(addresses []string)) *BitcoinWalletMock_GetUnspentOutputs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *BitcoinWalletMock_GetUnspentOutputs_Call) Return(_a0 []blockchain.BitcoinUnspentOutput, _a1 error) *BitcoinWalletMock_GetUnspentOutputs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *BitcoinWalletMock_GetUnspentOutputs_Call) RunAndReturn(run func([]string) ([]blockchain.BitcoinUnspentOutput, error)) *BitcoinWalletMock_GetUnspentOutputs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ImportAddress provides a mock function with given fields: address
 func (_m *BitcoinWalletMock) ImportAddress(address string) error {
 	ret := _m.Called(address)

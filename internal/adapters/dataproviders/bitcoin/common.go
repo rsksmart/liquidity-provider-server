@@ -249,6 +249,39 @@ func getTransactionsToAddress(address string, params *chaincfg.Params, client bt
 	return result, nil
 }
 
+func getUnspentOutputs(addresses []string, params *chaincfg.Params, client btcclient.RpcClient) ([]blockchain.BitcoinUnspentOutput, error) {
+	if len(addresses) == 0 {
+		return []blockchain.BitcoinUnspentOutput{}, nil
+	}
+	parsedAddresses := make([]btcutil.Address, 0, len(addresses))
+	for _, address := range addresses {
+		parsedAddress, err := btcutil.DecodeAddress(address, params)
+		if err != nil {
+			return nil, fmt.Errorf("decode address %s: %w", address, err)
+		}
+		parsedAddresses = append(parsedAddresses, parsedAddress)
+	}
+	utxos, err := client.ListUnspentMinMaxAddresses(MinConfirmationsForUtxos, MaxConfirmationsForUtxos, parsedAddresses)
+	if err != nil {
+		return nil, err
+	}
+	outputs := make([]blockchain.BitcoinUnspentOutput, 0, len(utxos))
+	for _, utxo := range utxos {
+		amount, amountErr := btcutil.NewAmount(utxo.Amount)
+		if amountErr != nil {
+			return nil, fmt.Errorf("read amount of output %s:%d: %w", utxo.TxID, utxo.Vout, amountErr)
+		}
+		outputs = append(outputs, blockchain.BitcoinUnspentOutput{
+			TxID:          utxo.TxID,
+			Vout:          utxo.Vout,
+			Address:       utxo.Address,
+			Amount:        entities.SatoshiToWei(uint64(amount.ToUnit(btcutil.AmountSatoshi))),
+			Confirmations: uint64(utxo.Confirmations),
+		})
+	}
+	return outputs, nil
+}
+
 func getWalletTransaction(hash string, client btcclient.RpcClient) (blockchain.BitcoinTransactionInformation, error) {
 	parsedHash, err := chainhash.NewHashFromStr(hash)
 	if err != nil {

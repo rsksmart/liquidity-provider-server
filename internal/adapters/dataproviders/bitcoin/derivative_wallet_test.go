@@ -212,6 +212,7 @@ func TestDerivativeWallet(t *testing.T) {
 	})
 
 	t.Run("GetTransaction", func(t *testing.T) { testGetTransaction(t, rskAccount, existingAddressInfo) })
+	t.Run("GetUnspentOutputs", func(t *testing.T) { testGetUnspentOutputs(t, rskAccount, existingAddressInfo) })
 
 	t.Run("GetBalance", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) { testGetBalance(t, rskAccount, existingAddressInfo) })
@@ -394,6 +395,45 @@ func testGetTransaction(t *testing.T, rskAccount *account.RskAccount, addressInf
 		_, err := wallet.GetTransaction(txID)
 
 		require.ErrorContains(t, err, "wallet returned transaction")
+	})
+}
+
+func testGetUnspentOutputs(t *testing.T, rskAccount *account.RskAccount, addressInfo *btcjson.GetAddressInfoResult) {
+	const txID = "2ba6da53badd14349c5d6379e88c345e88193598aad714815d4b57c691a9fbdf"
+	parsedAddress, parseErr := btcutil.DecodeAddress(testnetAddress, &chaincfg.TestNet3Params)
+	require.NoError(t, parseErr)
+
+	t.Run("Success", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Twice()
+		client.EXPECT().GetAddressInfo(btcAddress).Return(addressInfo, nil).Once()
+		client.EXPECT().ListUnspentMinMaxAddresses(1, 9999999, []btcutil.Address{parsedAddress}).
+			Return([]btcjson.ListUnspentResult{{TxID: txID, Vout: 1, Address: testnetAddress, Amount: 0.0002, Confirmations: 2}}, nil).
+			Once()
+		wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+		require.NoError(t, err)
+
+		outputs, err := wallet.GetUnspentOutputs([]string{testnetAddress})
+
+		require.NoError(t, err)
+		assert.Equal(t, []blockchain.BitcoinUnspentOutput{
+			{TxID: txID, Vout: 1, Address: testnetAddress, Amount: entities.NewWei(200000000000000), Confirmations: 2},
+		}, outputs)
+	})
+
+	t.Run("Returns an error when the wallet cannot be reloaded", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
+		client.EXPECT().GetAddressInfo(btcAddress).Return(addressInfo, nil).Once()
+		client.EXPECT().GetWalletInfo().Return(nil, assert.AnError).Once()
+		client.EXPECT().LoadWallet(bitcoin.DerivativeWalletId).Return(nil, assert.AnError).Once()
+		wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+		require.NoError(t, err)
+
+		outputs, err := wallet.GetUnspentOutputs([]string{testnetAddress})
+
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Nil(t, outputs)
 	})
 }
 

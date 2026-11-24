@@ -11,6 +11,7 @@ import (
 type WatcherRegistry struct {
 	PegInAddressRegistryWatcher        *watcher.PegInWatcher
 	PegInAddressRegistryMetricsWatcher *monitoring.PegInAddressRegistryMetricsWatcher
+	PeginDepositAddressWatcher         *watcher.PeginDepositAddressWatcher
 
 	QuoteCleanerWatcher       *watcher.QuoteCleanerWatcher
 	PegoutRskDepositWatcher   *watcher.PegoutRskDepositWatcher
@@ -52,6 +53,15 @@ func NewWatcherRegistry(
 	return &WatcherRegistry{
 		PegInAddressRegistryWatcher:        peginWatcher,
 		PegInAddressRegistryMetricsWatcher: monitoring.NewPegInAddressRegistryMetricsWatcher(appMetrics, messaging.EventBus),
+		PeginDepositAddressWatcher: watcher.NewPeginDepositAddressWatcher(
+			watcher.NewPeginDepositAddressWatcherUseCases(
+				useCaseRegistry.claimPegInUseCase,
+				useCaseRegistry.getWatchedRegisteredAddressesUseCase,
+			),
+			btcRegistry.MonitoringWallet,
+			messaging.Rpc,
+			tickers.PeginDepositWatcherTicker,
+		),
 		QuoteCleanerWatcher: watcher.NewQuoteCleanerWatcher(
 			useCaseRegistry.cleanExpiredQuotesUseCase,
 			tickers.QuoteCleanerTicker,

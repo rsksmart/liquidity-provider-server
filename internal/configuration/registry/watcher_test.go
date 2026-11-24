@@ -71,8 +71,10 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 // default Prometheus registerer, which rejects a second registration.
 func TestNewWatcherRegistry(t *testing.T) {
 	scanTicker, scanTickerStopped := stopReportingTicker()
+	depositTicker, depositTickerStopped := stopReportingTicker()
 	tickers := watcher.NewApplicationTickers()
 	tickers.PegInAddressRegistryWatcherTicker = scanTicker
+	tickers.PeginDepositWatcherTicker = depositTicker
 	watcherRegistry := buildWatcherRegistry(t, tickers)
 
 	t.Run("Watcher registry constructor should initialize every watcher", func(t *testing.T) {
@@ -87,6 +89,10 @@ func TestNewWatcherRegistry(t *testing.T) {
 	t.Run("PegIn address registry watcher should stop its ticker", func(t *testing.T) {
 		stopWatcher(t, watcherRegistry.PegInAddressRegistryWatcher)
 		require.True(t, stoppedWithin(scanTickerStopped, time.Second), "the scan loop did not stop its own ticker")
+	})
+	t.Run("PegIn deposit watcher should stop its ticker", func(t *testing.T) {
+		stopWatcher(t, watcherRegistry.PeginDepositAddressWatcher)
+		require.True(t, stoppedWithin(depositTickerStopped, time.Second), "the deposit loop did not stop its own ticker")
 	})
 }
 

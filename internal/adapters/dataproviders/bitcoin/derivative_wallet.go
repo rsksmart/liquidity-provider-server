@@ -305,6 +305,13 @@ func (wallet *DerivativeWallet) GetTransaction(hash string) (blockchain.BitcoinT
 	return getWalletTransaction(hash, wallet.conn.client)
 }
 
+func (wallet *DerivativeWallet) GetUnspentOutputs(addresses []string) ([]blockchain.BitcoinUnspentOutput, error) {
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return nil, err
+	}
+	return getUnspentOutputs(addresses, wallet.conn.NetworkParams, wallet.conn.client)
+}
+
 func (wallet *DerivativeWallet) Address() string {
 	address, err := wallet.rskAccount.BtcAddress()
 	if err != nil {
