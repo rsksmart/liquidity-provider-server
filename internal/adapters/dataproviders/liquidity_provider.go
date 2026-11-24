@@ -130,7 +130,7 @@ func (lp *LocalLiquidityProvider) HasPeginLiquidity(ctx context.Context, require
 		return fmt.Errorf(
 			"%w missing %s wei",
 			usecases.NoLiquidityError,
-			requiredLiquidity.Sub(requiredLiquidity, availableLiquidity).String(),
+			new(entities.Wei).Sub(requiredLiquidity, availableLiquidity).String(),
 		)
 	}
 }
