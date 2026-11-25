@@ -306,6 +306,9 @@ func (wallet *DerivativeWallet) GetTransaction(hash string) (blockchain.BitcoinT
 }
 
 func (wallet *DerivativeWallet) GetUnspentOutputs(addresses []string) ([]blockchain.BitcoinUnspentOutput, error) {
+	if len(addresses) == 0 {
+		return []blockchain.BitcoinUnspentOutput{}, nil
+	}
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return nil, err
 	}

@@ -250,9 +250,6 @@ func getTransactionsToAddress(address string, params *chaincfg.Params, client bt
 }
 
 func getUnspentOutputs(addresses []string, params *chaincfg.Params, client btcclient.RpcClient) ([]blockchain.BitcoinUnspentOutput, error) {
-	if len(addresses) == 0 {
-		return []blockchain.BitcoinUnspentOutput{}, nil
-	}
 	parsedAddresses := make([]btcutil.Address, 0, len(addresses))
 	for _, address := range addresses {
 		parsedAddress, err := btcutil.DecodeAddress(address, params)

@@ -112,6 +112,9 @@ func (wallet *WatchOnlyWallet) GetTransaction(hash string) (blockchain.BitcoinTr
 }
 
 func (wallet *WatchOnlyWallet) GetUnspentOutputs(addresses []string) ([]blockchain.BitcoinUnspentOutput, error) {
+	if len(addresses) == 0 {
+		return []blockchain.BitcoinUnspentOutput{}, nil
+	}
 	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return nil, err
 	}

@@ -435,6 +435,19 @@ func testGetUnspentOutputs(t *testing.T, rskAccount *account.RskAccount, address
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Nil(t, outputs)
 	})
+
+	t.Run("Returns no outputs without calling the node when no address is given", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().Return(&btcjson.GetWalletInfoResult{WalletName: bitcoin.DerivativeWalletId, Scanning: btcjson.ScanningOrFalse{Value: false}}, nil).Once()
+		client.EXPECT().GetAddressInfo(btcAddress).Return(addressInfo, nil).Once()
+		wallet, err := bitcoin.NewDerivativeWallet(bitcoin.NewWalletConnection(&chaincfg.TestNet3Params, client, bitcoin.DerivativeWalletId), rskAccount)
+		require.NoError(t, err)
+
+		outputs, err := wallet.GetUnspentOutputs(nil)
+
+		require.NoError(t, err)
+		assert.Equal(t, []blockchain.BitcoinUnspentOutput{}, outputs)
+	})
 }
 
 // nolint:funlen

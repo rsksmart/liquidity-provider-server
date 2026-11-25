@@ -364,13 +364,13 @@ func TestWatchOnlyWallet_GetUnspentOutputs(t *testing.T) {
 
 	t.Run("returns no outputs without calling the node when no address is given", func(t *testing.T) {
 		client := mocks.NewClientAdapterMock(t)
-		stubWatchOnlyWalletInfo(client)
+		client.EXPECT().GetWalletInfo().Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
 		outputs, outputsErr := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).GetUnspentOutputs(nil)
 		require.NoError(t, outputsErr)
 		assert.Equal(t, []blockchain.BitcoinUnspentOutput{}, outputs)
 	})
 
-	t.Run("rejects an address it cannot decode before calling the node", func(t *testing.T) {
+	t.Run("rejects an address it cannot decode before listing the outputs", func(t *testing.T) {
 		client := mocks.NewClientAdapterMock(t)
 		stubWatchOnlyWalletInfo(client)
 		outputs, outputsErr := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).
