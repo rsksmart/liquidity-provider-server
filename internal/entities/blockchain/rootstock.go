@@ -24,6 +24,7 @@ var (
 	InvalidAddressError   = errors.New("invalid rootstock address")
 	ContractPausedError   = errors.New("contract is paused")
 	TxFailedError         = errors.New("transaction failed")
+	ReceiptNotFoundError  = errors.New("transaction receipt not found")
 )
 
 type RskContracts struct {
@@ -111,6 +112,7 @@ type RootstockRpcServer interface {
 	GasPrice(ctx context.Context) (*entities.Wei, error)
 	GetHeight(ctx context.Context) (uint64, error)
 	GetTransactionReceipt(ctx context.Context, hash string) (TransactionReceipt, error)
+	FindTransactionReceipt(ctx context.Context, hash string) (TransactionReceipt, error)
 	GetBalance(ctx context.Context, address string) (*entities.Wei, error)
 	GetBlockByHash(ctx context.Context, hash string) (BlockInfo, error)
 	GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (BlockInfo, error)

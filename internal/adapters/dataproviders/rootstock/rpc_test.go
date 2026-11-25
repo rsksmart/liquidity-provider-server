@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -378,6 +379,146 @@ func TestRskjRpcServer_GetTransactionReceipt_ErrorHandling(t *testing.T) {
 	t.Run("Invalid tx hash", func(t *testing.T) {
 		receipt, err := rpc.GetTransactionReceipt(context.Background(), test.AnyString)
 		require.Error(t, err)
+		assert.Empty(t, receipt)
+	})
+}
+
+func newMinedReceipt() *types.Receipt {
+	return &types.Receipt{
+		GasUsed:           456,
+		CumulativeGasUsed: 123,
+		TxHash:            common.HexToHash(txHash),
+		BlockHash:         common.HexToHash(blockHash),
+		BlockNumber:       big.NewInt(500),
+	}
+}
+
+func TestRskjRpcServer_FindTransactionReceipt(t *testing.T) {
+	t.Run("should return the receipt of a mined transaction", func(t *testing.T) {
+		key, err := crypto.GenerateKey()
+		require.NoError(t, err)
+		to := common.HexToAddress(estimationAddress)
+		tx, err := types.SignTx(types.NewTx(&types.LegacyTx{
+			Nonce:    7,
+			GasPrice: big.NewInt(65826581),
+			Gas:      21000,
+			To:       &to,
+			Value:    big.NewInt(5000),
+		}), types.HomesteadSigner{}, key)
+		require.NoError(t, err)
+		client := mocks.NewRpcClientBindingMock(t)
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(newMinedReceipt(), nil).Once()
+		client.EXPECT().TransactionByHash(test.AnyCtx, common.HexToHash(txHash)).Return(tx, false, nil).Once()
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.DefaultRetryParams)
+
+		receipt, err := rpc.FindTransactionReceipt(context.Background(), txHash)
+
+		require.NoError(t, err)
+		assert.Equal(t, blockchain.TransactionReceipt{
+			TransactionHash:   txHash,
+			BlockHash:         common.HexToHash(blockHash).String(),
+			BlockNumber:       500,
+			From:              crypto.PubkeyToAddress(key.PublicKey).String(),
+			To:                to.String(),
+			CumulativeGasUsed: big.NewInt(123),
+			GasUsed:           big.NewInt(456),
+			Value:             entities.NewWei(5000),
+			GasPrice:          entities.NewWei(65826581),
+			Logs:              make([]blockchain.TransactionLog, 0),
+		}, receipt)
+	})
+	t.Run("should reject an invalid hash without calling the node", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.DefaultRetryParams)
+
+		receipt, err := rpc.FindTransactionReceipt(context.Background(), test.AnyString)
+
+		require.EqualError(t, err, "invalid transaction hash")
+		assert.Empty(t, receipt)
+	})
+}
+
+func TestRskjRpcServer_FindTransactionReceipt_NotFound(t *testing.T) {
+	t.Run("should return at once when the node has no receipt", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(nil, ethereum.NotFound).Once()
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.DefaultRetryParams)
+
+		receipt, err := rpc.FindTransactionReceipt(context.Background(), txHash)
+
+		require.ErrorIs(t, err, blockchain.ReceiptNotFoundError)
+		assert.Empty(t, receipt)
+	})
+	t.Run("should return at once when the node has no transaction", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(newMinedReceipt(), nil).Once()
+		client.EXPECT().TransactionByHash(test.AnyCtx, common.HexToHash(txHash)).Return(nil, false, ethereum.NotFound).Once()
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.DefaultRetryParams)
+
+		receipt, err := rpc.FindTransactionReceipt(context.Background(), txHash)
+
+		require.ErrorIs(t, err, blockchain.ReceiptNotFoundError)
+		assert.Empty(t, receipt)
+	})
+	t.Run("should stop retrying when the receipt is not found after another error", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(nil, assert.AnError).Once()
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(nil, ethereum.NotFound).Once()
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), rootstock.RetryParams{Retries: 3, Sleep: time.Millisecond})
+
+		receipt, err := rpc.FindTransactionReceipt(context.Background(), txHash)
+
+		require.ErrorIs(t, err, blockchain.ReceiptNotFoundError)
+		assert.Empty(t, receipt)
+	})
+}
+
+func TestRskjRpcServer_FindTransactionReceipt_RetriesOtherErrors(t *testing.T) {
+	retryParams := rootstock.RetryParams{Retries: 3, Sleep: time.Millisecond}
+	t.Run("should retry other errors reading the receipt", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(nil, assert.AnError).Times(3)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), retryParams)
+
+		receipt, err := rpc.FindTransactionReceipt(context.Background(), txHash)
+
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, receipt)
+	})
+	t.Run("should retry other errors reading the transaction", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(newMinedReceipt(), nil).Once()
+		client.EXPECT().TransactionByHash(test.AnyCtx, common.HexToHash(txHash)).Return(nil, false, assert.AnError).Times(3)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), retryParams)
+
+		receipt, err := rpc.FindTransactionReceipt(context.Background(), txHash)
+
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, receipt)
+	})
+}
+
+func TestRskjRpcServer_GetTransactionReceipt_RetriesNotFound(t *testing.T) {
+	retryParams := rootstock.RetryParams{Retries: 3, Sleep: time.Millisecond}
+	t.Run("should retry when the node has no receipt", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(nil, ethereum.NotFound).Times(3)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), retryParams)
+
+		receipt, err := rpc.GetTransactionReceipt(context.Background(), txHash)
+
+		require.ErrorIs(t, err, ethereum.NotFound)
+		assert.Empty(t, receipt)
+	})
+	t.Run("should retry when the node has no transaction", func(t *testing.T) {
+		client := mocks.NewRpcClientBindingMock(t)
+		client.EXPECT().TransactionReceipt(test.AnyCtx, common.HexToHash(txHash)).Return(newMinedReceipt(), nil).Once()
+		client.EXPECT().TransactionByHash(test.AnyCtx, common.HexToHash(txHash)).Return(nil, false, ethereum.NotFound).Times(3)
+		rpc := rootstock.NewRskjRpcServer(rootstock.NewRskClient(client), retryParams)
+
+		receipt, err := rpc.GetTransactionReceipt(context.Background(), txHash)
+
+		require.ErrorIs(t, err, ethereum.NotFound)
 		assert.Empty(t, receipt)
 	})
 }

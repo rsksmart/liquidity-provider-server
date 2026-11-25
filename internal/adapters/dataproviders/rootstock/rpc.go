@@ -99,12 +99,24 @@ func (rpc *rskjRpcServer) GetHeight(ctx context.Context) (uint64, error) {
 }
 
 func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string) (blockchain.TransactionReceipt, error) {
+	return rpc.transactionReceipt(ctx, hash, nil)
+}
+
+func (rpc *rskjRpcServer) FindTransactionReceipt(ctx context.Context, hash string) (blockchain.TransactionReceipt, error) {
+	receipt, err := rpc.transactionReceipt(ctx, hash, ethereum.NotFound)
+	if errors.Is(err, ethereum.NotFound) {
+		return blockchain.TransactionReceipt{}, blockchain.ReceiptNotFoundError
+	}
+	return receipt, err
+}
+
+func (rpc *rskjRpcServer) transactionReceipt(ctx context.Context, hash string, noRetryError error) (blockchain.TransactionReceipt, error) {
 	_, err := hex.DecodeString(strings.TrimPrefix(hash, "0x"))
 	if err != nil {
 		return blockchain.TransactionReceipt{}, errors.New("invalid transaction hash")
 	}
 
-	receipt, err := rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+	receipt, err := rskRetryExcept(rpc.retryParams.Retries, rpc.retryParams.Sleep, noRetryError,
 		func() (*types.Receipt, error) {
 			return rpc.client.TransactionReceipt(ctx, common.HexToHash(hash))
 		})
@@ -112,7 +124,7 @@ func (rpc *rskjRpcServer) GetTransactionReceipt(ctx context.Context, hash string
 		return blockchain.TransactionReceipt{}, err
 	}
 
-	tx, err := rskRetry(rpc.retryParams.Retries, rpc.retryParams.Sleep,
+	tx, err := rskRetryExcept(rpc.retryParams.Retries, rpc.retryParams.Sleep, noRetryError,
 		func() (*types.Transaction, error) {
 			transaction, _, rpcError := rpc.client.TransactionByHash(ctx, common.HexToHash(hash))
 			return transaction, rpcError
