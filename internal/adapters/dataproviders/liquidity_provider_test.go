@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -14,11 +15,13 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities/alerts"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/quote"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/utils"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
+	liquidityProviderUseCases "github.com/rsksmart/liquidity-provider-server/internal/usecases/liquidity_provider"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases/pegout"
 	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
@@ -332,11 +335,13 @@ func TestLocalLiquidityProvider_HasPeginLiquidity(t *testing.T) {
 		expectedError string
 	}{
 		{amount: entities.NewWei(170), expectedError: ""},
-		{amount: entities.NewWei(200), expectedError: "not enough liquidity"},
+		{amount: entities.NewWei(200), expectedError: "not enough liquidity missing 30 wei"},
 		{amount: entities.NewWei(50), expectedError: ""},
 	}
 	for _, tc := range testCases {
+		amountBefore := tc.amount.Copy()
 		err := lp.HasPeginLiquidity(context.Background(), tc.amount)
+		assert.Equal(t, amountBefore, tc.amount)
 		if tc.expectedError == "" {
 			require.NoError(t, err)
 		} else {
@@ -346,6 +351,59 @@ func TestLocalLiquidityProvider_HasPeginLiquidity(t *testing.T) {
 	}
 	peginContractMock.AssertExpectations(t)
 	rpcMock.AssertExpectations(t)
+	peginRepository.AssertExpectations(t)
+	pegoutRepository.AssertExpectations(t)
+	signer.AssertExpectations(t)
+}
+
+func TestLocalLiquidityProvider_HasPeginLiquidity_CheckLiquidityAlertsBothWhenBothShort(t *testing.T) {
+	const recipient = "recipient@test.com"
+	signer := new(mocks.TransactionSignerMock)
+	signer.On("Address").Return(common.HexToAddress(rskTestAddress)).Twice()
+	peginRepository := new(mocks.PeginQuoteRepositoryMock)
+	peginRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+		quote.PeginStateWaitingForDeposit,
+		quote.PeginStateWaitingForDepositConfirmations,
+	).Return([]quote.RetainedPeginQuote{{RequiredLiquidity: entities.NewWei(450)}}, nil).Once()
+	pegoutRepository := new(mocks.PegoutQuoteRepositoryMock)
+	pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+		quote.PegoutStateRefundPegOutSucceeded,
+	).Return([]quote.RetainedPegoutQuote{{RequiredLiquidity: entities.NewWei(80)}}, nil).Once()
+	pegoutRepository.On("GetRetainedQuoteByState", test.AnyCtx,
+		quote.PegoutStateClaimPending,
+		quote.PegoutStateClaimed,
+		quote.PegoutStateWaitingForDepositConfirmations,
+	).Return([]quote.RetainedPegoutQuote{}, nil).Once()
+	peginContractMock := new(mocks.PeginContractMock)
+	peginContractMock.EXPECT().GetBalance(rskTestAddress).Return(entities.NewWei(400), nil).Once()
+	rpcMock := new(mocks.RootstockRpcServerMock)
+	rpcMock.On("GetBalance", test.AnyCtx, rskTestAddress).Return(entities.NewWei(300), nil).Once()
+	btcWallet := new(mocks.BitcoinWalletMock)
+	btcWallet.On("GetBalance").Return(entities.NewWei(100), nil).Once()
+	bridge := new(mocks.BridgeMock)
+	bridge.On("GetMinimumLockTxValue").Return(entities.NewWei(200), nil).Once()
+	alertSender := new(mocks.AlertSenderMock)
+	alertSender.On("SendAlert", test.AnyCtx,
+		alerts.AlertSubjectPeginOutOfLiquidity,
+		fmt.Sprintf(liquidityProviderUseCases.MessageBody, liquidityProviderUseCases.PeginOperation),
+		[]string{recipient},
+	).Return(nil).Once()
+	alertSender.On("SendAlert", test.AnyCtx,
+		alerts.AlertSubjectPegoutOutOfLiquidity,
+		fmt.Sprintf(liquidityProviderUseCases.MessageBody, liquidityProviderUseCases.PegoutOperation),
+		[]string{recipient},
+	).Return(nil).Once()
+	lp := dataproviders.NewLocalLiquidityProvider(peginRepository, pegoutRepository, nil, blockchain.Rpc{Rsk: rpcMock}, signer, btcWallet, blockchain.RskContracts{PegIn: peginContractMock})
+	useCase := liquidityProviderUseCases.NewCheckLiquidityUseCase(lp, lp, blockchain.RskContracts{Bridge: bridge}, alertSender, recipient)
+
+	err := useCase.Run(context.Background())
+
+	require.NoError(t, err)
+	alertSender.AssertExpectations(t)
+	bridge.AssertExpectations(t)
+	btcWallet.AssertExpectations(t)
+	rpcMock.AssertExpectations(t)
+	peginContractMock.AssertExpectations(t)
 	peginRepository.AssertExpectations(t)
 	pegoutRepository.AssertExpectations(t)
 	signer.AssertExpectations(t)
