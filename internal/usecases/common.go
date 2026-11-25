@@ -87,6 +87,7 @@ const (
 	GetTrustedAccountId             UseCaseId = "GetTrustedAccountUseCase"
 	ClaimPegInId                    UseCaseId = "ClaimPegIn"
 	ResolvePegInId                  UseCaseId = "ResolvePegIn"
+	RecheckResolvedPegInsId         UseCaseId = "RecheckResolvedPegIns"
 )
 
 var (

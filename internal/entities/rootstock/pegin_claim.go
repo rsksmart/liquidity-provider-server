@@ -49,4 +49,5 @@ type PegInClaimRepository interface {
 	Get(ctx context.Context, rskAddress, depositTxID string) (*PegInClaim, error)
 	Update(ctx context.Context, claim PegInClaim) error
 	ListByState(ctx context.Context, states ...PegInClaimState) ([]PegInClaim, error)
+	ListByStateUpdatedSince(ctx context.Context, state PegInClaimState, since time.Time) ([]PegInClaim, error)
 }

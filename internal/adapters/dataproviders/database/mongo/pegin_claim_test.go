@@ -217,3 +217,40 @@ func TestPegInClaimMongoRepository_ListByState(t *testing.T) {
 		collection.AssertExpectations(t)
 	})
 }
+
+func TestPegInClaimMongoRepository_ListByStateUpdatedSince(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+	older := newTestPegInClaim()
+	older.State = rootstock.PegInClaimResolved
+	newer := older
+	newer.DepositTxID = "4b1f3c2e5d6a7980b1c2d3e4f5061728394a5b6c7d8e9f0a1b2c3d4e5f607182"
+	newer.CreatedAt = older.CreatedAt.Add(time.Minute)
+	since := older.UpdatedAt.Add(-time.Hour)
+	updatedSince := bson.M{"state": rootstock.PegInClaimResolved, "updated_at": bson.M{"$gte": since}}
+	oldestFirst := sortedBy(bson.D{{Key: "created_at", Value: 1}})
+
+	t.Run("lists the claims in the state updated since the time, oldest first", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+		collection.EXPECT().Find(mock.Anything, updatedSince, oldestFirst).
+			Return(mongoDb.NewCursorFromDocuments([]any{older, newer}, nil, nil)).Once()
+		repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+
+		defer assertDbInteractionLog(t, mongo.Read)()
+		result, err := repo.ListByStateUpdatedSince(context.Background(), rootstock.PegInClaimResolved, since)
+		require.NoError(t, err)
+		assert.Equal(t, []rootstock.PegInClaim{older, newer}, result)
+		collection.AssertExpectations(t)
+	})
+
+	t.Run("returns the Find error", func(t *testing.T) {
+		client, collection := getClientAndCollectionMocks(mongo.PegInClaimCollection)
+		collection.EXPECT().Find(mock.Anything, updatedSince, oldestFirst).
+			Return(nil, assert.AnError).Once()
+		repo := mongo.NewPegInClaimMongoRepository(mongo.NewConnection(client, time.Second))
+
+		result, err := repo.ListByStateUpdatedSince(context.Background(), rootstock.PegInClaimResolved, since)
+		require.ErrorIs(t, err, assert.AnError)
+		assert.Nil(t, result)
+		collection.AssertExpectations(t)
+	})
+}

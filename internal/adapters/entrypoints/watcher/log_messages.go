@@ -273,6 +273,7 @@ const (
 	LogPegInResolvePrefix         = "PegInResolveWatcher: "
 	LogPegInResolveShutdown       = LogPegInResolvePrefix + "shut down"
 	LogPegInResolveBtcHeightError = LogPegInResolvePrefix + "error getting Bitcoin chain height: %v"
+	LogPegInResolveRecheckError   = LogPegInResolvePrefix + "error rechecking the resolved PegIns: %v"
 	LogPegInResolveListError      = LogPegInResolvePrefix + "error listing the claimed PegIns: %v"
 )
 

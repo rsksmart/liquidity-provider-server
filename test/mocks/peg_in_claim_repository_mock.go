@@ -4,6 +4,7 @@ package mocks
 
 import (
 	context "context"
+	time "time"
 
 	rootstock "github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	mock "github.com/stretchr/testify/mock"
@@ -198,6 +199,66 @@ func (_c *PegInClaimRepositoryMock_ListByState_Call) Return(_a0 []rootstock.PegI
 }
 
 func (_c *PegInClaimRepositoryMock_ListByState_Call) RunAndReturn(run func(context.Context, ...rootstock.PegInClaimState) ([]rootstock.PegInClaim, error)) *PegInClaimRepositoryMock_ListByState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListByStateUpdatedSince provides a mock function with given fields: ctx, state, since
+func (_m *PegInClaimRepositoryMock) ListByStateUpdatedSince(ctx context.Context, state rootstock.PegInClaimState, since time.Time) ([]rootstock.PegInClaim, error) {
+	ret := _m.Called(ctx, state, since)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListByStateUpdatedSince")
+	}
+
+	var r0 []rootstock.PegInClaim
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, rootstock.PegInClaimState, time.Time) ([]rootstock.PegInClaim, error)); ok {
+		return rf(ctx, state, since)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, rootstock.PegInClaimState, time.Time) []rootstock.PegInClaim); ok {
+		r0 = rf(ctx, state, since)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]rootstock.PegInClaim)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, rootstock.PegInClaimState, time.Time) error); ok {
+		r1 = rf(ctx, state, since)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegInClaimRepositoryMock_ListByStateUpdatedSince_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListByStateUpdatedSince'
+type PegInClaimRepositoryMock_ListByStateUpdatedSince_Call struct {
+	*mock.Call
+}
+
+// ListByStateUpdatedSince is a helper method to define mock.On call
+//   - ctx context.Context
+//   - state rootstock.PegInClaimState
+//   - since time.Time
+func (_e *PegInClaimRepositoryMock_Expecter) ListByStateUpdatedSince(ctx interface{}, state interface{}, since interface{}) *PegInClaimRepositoryMock_ListByStateUpdatedSince_Call {
+	return &PegInClaimRepositoryMock_ListByStateUpdatedSince_Call{Call: _e.mock.On("ListByStateUpdatedSince", ctx, state, since)}
+}
+
+func (_c *PegInClaimRepositoryMock_ListByStateUpdatedSince_Call) Run(run func(ctx context.Context, state rootstock.PegInClaimState, since time.Time)) *PegInClaimRepositoryMock_ListByStateUpdatedSince_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(rootstock.PegInClaimState), args[2].(time.Time))
+	})
+	return _c
+}
+
+func (_c *PegInClaimRepositoryMock_ListByStateUpdatedSince_Call) Return(_a0 []rootstock.PegInClaim, _a1 error) *PegInClaimRepositoryMock_ListByStateUpdatedSince_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegInClaimRepositoryMock_ListByStateUpdatedSince_Call) RunAndReturn(run func(context.Context, rootstock.PegInClaimState, time.Time) ([]rootstock.PegInClaim, error)) *PegInClaimRepositoryMock_ListByStateUpdatedSince_Call {
 	_c.Call.Return(run)
 	return _c
 }

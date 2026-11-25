@@ -14,8 +14,13 @@ type ResolvePegInUseCase interface {
 	Run(ctx context.Context, claim rootstock.PegInClaim) error
 }
 
+type RecheckResolvedPegInsUseCase interface {
+	Run(ctx context.Context) error
+}
+
 type PegInResolveWatcher struct {
 	getWatchedUseCase  *w.GetWatchedPegInClaimsUseCase
+	recheckUseCase     RecheckResolvedPegInsUseCase
 	resolveUseCase     ResolvePegInUseCase
 	rpc                blockchain.Rpc
 	ticker             utils.Ticker
@@ -25,12 +30,14 @@ type PegInResolveWatcher struct {
 
 func NewPegInResolveWatcher(
 	getWatchedUseCase *w.GetWatchedPegInClaimsUseCase,
+	recheckUseCase RecheckResolvedPegInsUseCase,
 	resolveUseCase ResolvePegInUseCase,
 	rpc blockchain.Rpc,
 	ticker utils.Ticker,
 ) *PegInResolveWatcher {
 	return &PegInResolveWatcher{
 		getWatchedUseCase:  getWatchedUseCase,
+		recheckUseCase:     recheckUseCase,
 		resolveUseCase:     resolveUseCase,
 		rpc:                rpc,
 		ticker:             ticker,
@@ -69,6 +76,10 @@ func (watcher *PegInResolveWatcher) resolveOnNewBlock(ctx context.Context) {
 		return
 	}
 	if height.Uint64() <= watcher.checkedHeight {
+		return
+	}
+	if err = watcher.recheckUseCase.Run(ctx); err != nil {
+		log.Errorf(LogPegInResolveRecheckError, err)
 		return
 	}
 	claims, err := watcher.getWatchedUseCase.Run(ctx, rootstock.PegInClaimClaimed, rootstock.PegInClaimResolving)

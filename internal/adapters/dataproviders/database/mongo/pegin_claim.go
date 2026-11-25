@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -89,12 +90,24 @@ func (repo *peginClaimMongoRepository) ListByState(
 	ctx context.Context,
 	states ...rootstock.PegInClaimState,
 ) ([]rootstock.PegInClaim, error) {
+	return repo.listOldestFirst(ctx, bson.M{"state": bson.M{"$in": states}})
+}
+
+func (repo *peginClaimMongoRepository) ListByStateUpdatedSince(
+	ctx context.Context,
+	state rootstock.PegInClaimState,
+	since time.Time,
+) ([]rootstock.PegInClaim, error) {
+	return repo.listOldestFirst(ctx, bson.M{"state": state, "updated_at": bson.M{"$gte": since}})
+}
+
+func (repo *peginClaimMongoRepository) listOldestFirst(ctx context.Context, filter bson.M) ([]rootstock.PegInClaim, error) {
 	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
 	defer cancel()
 
 	cursor, err := repo.conn.Collection(PegInClaimCollection).Find(
 		dbCtx,
-		bson.M{"state": bson.M{"$in": states}},
+		filter,
 		options.Find().SetSort(bson.D{{Key: "created_at", Value: 1}}),
 	)
 	if err != nil {
