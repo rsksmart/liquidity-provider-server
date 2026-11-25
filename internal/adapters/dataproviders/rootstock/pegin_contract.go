@@ -22,7 +22,18 @@ const (
 	requestPegInLogName         = "RequestPegIn"
 	requestPegInGasLimitPercent = 120
 	pegInRequestedDataSize      = 96
+	resolvePegInLogName         = "ResolvePegIn"
+	resolvePegInGasLimit        = 2500000
+	resolvePegInErrorPrefix     = "resolve pegin error"
+	pegInResolvedDataSize       = 128
 )
+
+var resolvePegInRevertErrors = map[string]error{
+	"PegInAlreadyProcessed":  blockchain.PegInAlreadyProcessedError,
+	"BridgeValidationFailed": blockchain.WaitingForBridgeError,
+	"UnexpectedBridgeError":  blockchain.BridgeRejectedPegInError,
+	"EnforcedPause":          blockchain.ContractPausedError,
+}
 
 var requestPegInRevertErrors = map[string]error{
 	"PegInAlreadyProcessed":     blockchain.PegInAlreadyProcessedError,
@@ -337,4 +348,138 @@ func requestPegInReceiptForHash(tx *geth.Transaction) blockchain.TransactionRece
 		return blockchain.TransactionReceipt{}
 	}
 	return blockchain.TransactionReceipt{TransactionHash: tx.Hash().String()}
+}
+
+func (peginContract *peginContractImpl) SimulateResolvePegIn(params blockchain.ResolvePegInParams) error {
+	callData, err := peginContract.packResolvePegIn(params)
+	if err != nil {
+		return err
+	}
+	_, callErr := peginContract.client.CallContract(context.Background(), peginContract.resolvePegInCallMsg(callData), nil)
+	return peginContract.resolvePegInRevertError(callErr)
+}
+
+func (peginContract *peginContractImpl) ResolvePegIn(params blockchain.ResolvePegInParams) (blockchain.TransactionReceipt, error) {
+	callData, err := peginContract.packResolvePegIn(params)
+	if err != nil {
+		return blockchain.TransactionReceipt{}, err
+	}
+	opts := &bind.TransactOpts{
+		From:     peginContract.signer.Address(),
+		Signer:   peginContract.signer.Sign,
+		GasLimit: resolvePegInGasLimit,
+	}
+
+	var tx *geth.Transaction
+	receipt, err := awaitTx(peginContract.client, peginContract.miningTimeout, resolvePegInLogName, func() (*geth.Transaction, error) {
+		var txErr error
+		tx, txErr = bind.Transact(peginContract.contract, opts, callData)
+		return tx, txErr
+	})
+	if err != nil {
+		return requestPegInReceiptForHash(tx), fmt.Errorf("%s: %w", resolvePegInErrorPrefix, err)
+	}
+	if receipt == nil {
+		return requestPegInReceiptForHash(tx), fmt.Errorf("%s: incomplete receipt", resolvePegInErrorPrefix)
+	}
+	return peginContract.resolvePegInReceipt(tx, receipt, callData)
+}
+
+func (peginContract *peginContractImpl) resolvePegInReceipt(
+	tx *geth.Transaction,
+	receipt *geth.Receipt,
+	callData []byte,
+) (blockchain.TransactionReceipt, error) {
+	transactionReceipt, err := ParseReceipt(tx, receipt)
+	if err != nil {
+		return requestPegInReceiptForHash(tx), fmt.Errorf("%s: %w", resolvePegInErrorPrefix, err)
+	}
+	if receipt.Status == 0 {
+		_, callErr := peginContract.client.CallContract(context.Background(), peginContract.resolvePegInCallMsg(callData), receipt.BlockNumber)
+		revertErr := errors.Join(blockchain.TxFailedError, peginContract.resolvePegInRevertError(callErr))
+		return transactionReceipt, fmt.Errorf("resolve pegin transaction %s reverted: %w", transactionReceipt.TransactionHash, revertErr)
+	}
+	return transactionReceipt, nil
+}
+
+func (peginContract *peginContractImpl) PegInResolvedEvent(receipt blockchain.TransactionReceipt) (blockchain.PegInResolvedEvent, error) {
+	const eventName = commitFirst.PeginCommitFirstContractPegInResolvedEventName
+	eventId := peginContract.abis.PegInCommitFirst.Events[eventName].ID
+	eventLog, found := findEventLog(receipt.Logs, peginContract.address, eventId)
+	if !found {
+		return blockchain.PegInResolvedEvent{}, fmt.Errorf("%s event not found in transaction %s", eventName, receipt.TransactionHash)
+	}
+	if len(eventLog.Data) != pegInResolvedDataSize {
+		return blockchain.PegInResolvedEvent{}, fmt.Errorf(
+			"%s event in transaction %s has %d data bytes, expected %d",
+			eventName, receipt.TransactionHash, len(eventLog.Data), pegInResolvedDataSize,
+		)
+	}
+	topics := make([]common.Hash, len(eventLog.Topics))
+	for i, topic := range eventLog.Topics {
+		topics[i] = topic
+	}
+	event, err := peginContract.commitFirst.UnpackPegInResolvedEvent(&geth.Log{
+		Address: common.HexToAddress(eventLog.Address),
+		Topics:  topics,
+		Data:    eventLog.Data,
+	})
+	if err != nil {
+		return blockchain.PegInResolvedEvent{}, fmt.Errorf("%s event in transaction %s: %w", eventName, receipt.TransactionHash, err)
+	}
+	return blockchain.PegInResolvedEvent{
+		PegInID:       hex.EncodeToString(event.PegInId[:]),
+		Claimer:       event.Claimer.String(),
+		Registrant:    event.Registrant.String(),
+		Released:      entities.NewBigWei(event.Released),
+		ClaimerPayout: entities.NewBigWei(event.ClaimerPayout),
+		RegistrantFee: entities.NewBigWei(event.RegistrantFee),
+		UserPayout:    entities.NewBigWei(event.UserPayout),
+	}, nil
+}
+
+func (peginContract *peginContractImpl) packResolvePegIn(params blockchain.ResolvePegInParams) ([]byte, error) {
+	var rskAddress common.Address
+	if err := ParseAddress(&rskAddress, params.RskAddress); err != nil {
+		return nil, err
+	}
+	if params.BlockHeight == nil {
+		return nil, fmt.Errorf("%s: missing block height", resolvePegInErrorPrefix)
+	}
+	return peginContract.commitFirst.TryPackResolvePegIn(
+		rskAddress,
+		params.BtcRawTx,
+		params.PartialMerkleTree,
+		params.BlockHeight,
+	)
+}
+
+func (peginContract *peginContractImpl) resolvePegInCallMsg(callData []byte) ethereum.CallMsg {
+	destination := common.HexToAddress(peginContract.address)
+	return ethereum.CallMsg{
+		From: peginContract.signer.Address(),
+		To:   &destination,
+		Data: callData,
+	}
+}
+
+func (peginContract *peginContractImpl) resolvePegInRevertError(callErr error) error {
+	if callErr == nil {
+		return nil
+	}
+	var parseErr error
+	for _, contractAbi := range []*abi.ABI{peginContract.abis.PegInCommitFirst, peginContract.abis.Flyover} {
+		var parsedRevert *abi.Error
+		if parsedRevert, parseErr = ParseRevertReason(contractAbi, callErr); parsedRevert != nil {
+			return resolvePegInRevertNameError(parsedRevert.Name)
+		}
+	}
+	return fmt.Errorf("resolve pegin call error: %w", errors.Join(callErr, parseErr))
+}
+
+func resolvePegInRevertNameError(name string) error {
+	if mapped, found := resolvePegInRevertErrors[name]; found {
+		return mapped
+	}
+	return fmt.Errorf("resolve pegin reverted with: %s", name)
 }

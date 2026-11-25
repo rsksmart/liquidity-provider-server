@@ -292,6 +292,62 @@ func (_c *PeginContractMock_PegInRequestedEvent_Call) RunAndReturn(run func(bloc
 	return _c
 }
 
+// PegInResolvedEvent provides a mock function with given fields: receipt
+func (_m *PeginContractMock) PegInResolvedEvent(receipt blockchain.TransactionReceipt) (blockchain.PegInResolvedEvent, error) {
+	ret := _m.Called(receipt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PegInResolvedEvent")
+	}
+
+	var r0 blockchain.PegInResolvedEvent
+	var r1 error
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionReceipt) (blockchain.PegInResolvedEvent, error)); ok {
+		return rf(receipt)
+	}
+	if rf, ok := ret.Get(0).(func(blockchain.TransactionReceipt) blockchain.PegInResolvedEvent); ok {
+		r0 = rf(receipt)
+	} else {
+		r0 = ret.Get(0).(blockchain.PegInResolvedEvent)
+	}
+
+	if rf, ok := ret.Get(1).(func(blockchain.TransactionReceipt) error); ok {
+		r1 = rf(receipt)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginContractMock_PegInResolvedEvent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PegInResolvedEvent'
+type PeginContractMock_PegInResolvedEvent_Call struct {
+	*mock.Call
+}
+
+// PegInResolvedEvent is a helper method to define mock.On call
+//   - receipt blockchain.TransactionReceipt
+func (_e *PeginContractMock_Expecter) PegInResolvedEvent(receipt interface{}) *PeginContractMock_PegInResolvedEvent_Call {
+	return &PeginContractMock_PegInResolvedEvent_Call{Call: _e.mock.On("PegInResolvedEvent", receipt)}
+}
+
+func (_c *PeginContractMock_PegInResolvedEvent_Call) Run(run func(receipt blockchain.TransactionReceipt)) *PeginContractMock_PegInResolvedEvent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.TransactionReceipt))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_PegInResolvedEvent_Call) Return(_a0 blockchain.PegInResolvedEvent, _a1 error) *PeginContractMock_PegInResolvedEvent_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginContractMock_PegInResolvedEvent_Call) RunAndReturn(run func(blockchain.TransactionReceipt) (blockchain.PegInResolvedEvent, error)) *PeginContractMock_PegInResolvedEvent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RequestPegIn provides a mock function with given fields: txConfig, params
 func (_m *PeginContractMock) RequestPegIn(txConfig blockchain.TransactionConfig, params blockchain.RequestPegInParams) (blockchain.TransactionReceipt, error) {
 	ret := _m.Called(txConfig, params)
@@ -349,6 +405,62 @@ func (_c *PeginContractMock_RequestPegIn_Call) RunAndReturn(run func(blockchain.
 	return _c
 }
 
+// ResolvePegIn provides a mock function with given fields: params
+func (_m *PeginContractMock) ResolvePegIn(params blockchain.ResolvePegInParams) (blockchain.TransactionReceipt, error) {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolvePegIn")
+	}
+
+	var r0 blockchain.TransactionReceipt
+	var r1 error
+	if rf, ok := ret.Get(0).(func(blockchain.ResolvePegInParams) (blockchain.TransactionReceipt, error)); ok {
+		return rf(params)
+	}
+	if rf, ok := ret.Get(0).(func(blockchain.ResolvePegInParams) blockchain.TransactionReceipt); ok {
+		r0 = rf(params)
+	} else {
+		r0 = ret.Get(0).(blockchain.TransactionReceipt)
+	}
+
+	if rf, ok := ret.Get(1).(func(blockchain.ResolvePegInParams) error); ok {
+		r1 = rf(params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PeginContractMock_ResolvePegIn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolvePegIn'
+type PeginContractMock_ResolvePegIn_Call struct {
+	*mock.Call
+}
+
+// ResolvePegIn is a helper method to define mock.On call
+//   - params blockchain.ResolvePegInParams
+func (_e *PeginContractMock_Expecter) ResolvePegIn(params interface{}) *PeginContractMock_ResolvePegIn_Call {
+	return &PeginContractMock_ResolvePegIn_Call{Call: _e.mock.On("ResolvePegIn", params)}
+}
+
+func (_c *PeginContractMock_ResolvePegIn_Call) Run(run func(params blockchain.ResolvePegInParams)) *PeginContractMock_ResolvePegIn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.ResolvePegInParams))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_ResolvePegIn_Call) Return(_a0 blockchain.TransactionReceipt, _a1 error) *PeginContractMock_ResolvePegIn_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PeginContractMock_ResolvePegIn_Call) RunAndReturn(run func(blockchain.ResolvePegInParams) (blockchain.TransactionReceipt, error)) *PeginContractMock_ResolvePegIn_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SimulateRequestPegIn provides a mock function with given fields: txConfig, params
 func (_m *PeginContractMock) SimulateRequestPegIn(txConfig blockchain.TransactionConfig, params blockchain.RequestPegInParams) error {
 	ret := _m.Called(txConfig, params)
@@ -392,6 +504,52 @@ func (_c *PeginContractMock_SimulateRequestPegIn_Call) Return(_a0 error) *PeginC
 }
 
 func (_c *PeginContractMock_SimulateRequestPegIn_Call) RunAndReturn(run func(blockchain.TransactionConfig, blockchain.RequestPegInParams) error) *PeginContractMock_SimulateRequestPegIn_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SimulateResolvePegIn provides a mock function with given fields: params
+func (_m *PeginContractMock) SimulateResolvePegIn(params blockchain.ResolvePegInParams) error {
+	ret := _m.Called(params)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SimulateResolvePegIn")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(blockchain.ResolvePegInParams) error); ok {
+		r0 = rf(params)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// PeginContractMock_SimulateResolvePegIn_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SimulateResolvePegIn'
+type PeginContractMock_SimulateResolvePegIn_Call struct {
+	*mock.Call
+}
+
+// SimulateResolvePegIn is a helper method to define mock.On call
+//   - params blockchain.ResolvePegInParams
+func (_e *PeginContractMock_Expecter) SimulateResolvePegIn(params interface{}) *PeginContractMock_SimulateResolvePegIn_Call {
+	return &PeginContractMock_SimulateResolvePegIn_Call{Call: _e.mock.On("SimulateResolvePegIn", params)}
+}
+
+func (_c *PeginContractMock_SimulateResolvePegIn_Call) Run(run func(params blockchain.ResolvePegInParams)) *PeginContractMock_SimulateResolvePegIn_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(blockchain.ResolvePegInParams))
+	})
+	return _c
+}
+
+func (_c *PeginContractMock_SimulateResolvePegIn_Call) Return(_a0 error) *PeginContractMock_SimulateResolvePegIn_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *PeginContractMock_SimulateResolvePegIn_Call) RunAndReturn(run func(blockchain.ResolvePegInParams) error) *PeginContractMock_SimulateResolvePegIn_Call {
 	_c.Call.Return(run)
 	return _c
 }
