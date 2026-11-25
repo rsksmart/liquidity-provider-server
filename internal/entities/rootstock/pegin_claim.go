@@ -20,22 +20,27 @@ const (
 	PegInClaimClaimed          PegInClaimState = "claimed"
 	PegInClaimRaceLost         PegInClaimState = "race_lost"
 	PegInClaimRetryableFailure PegInClaimState = "retryable_failure"
+	PegInClaimResolved         PegInClaimState = "resolved"
+	PegInClaimResolveFailed    PegInClaimState = "resolve_failed"
 )
 
 type PegInClaim struct {
-	RskAddress  string          `json:"rskAddress" bson:"rsk_address"`
-	DepositTxID string          `json:"depositTxId" bson:"deposit_txid"`
-	BtcAddress  string          `json:"btcAddress" bson:"btc_address"`
-	PegInID     string          `json:"pegInId" bson:"peg_in_id"`
-	State       PegInClaimState `json:"state" bson:"state"`
-	TxHash      string          `json:"txHash" bson:"tx_hash"`
-	Amount      *entities.Wei   `json:"amount" bson:"amount"`
-	Fee         *entities.Wei   `json:"fee" bson:"fee"`
-	GasFee      *entities.Wei   `json:"gasFee" bson:"gas_fee"`
-	Value       *entities.Wei   `json:"value" bson:"value"`
-	CallSuccess bool            `json:"callSuccess" bson:"call_success"`
-	CreatedAt   time.Time       `json:"createdAt" bson:"created_at"`
-	UpdatedAt   time.Time       `json:"updatedAt" bson:"updated_at"`
+	RskAddress    string          `json:"rskAddress" bson:"rsk_address"`
+	DepositTxID   string          `json:"depositTxId" bson:"deposit_txid"`
+	BtcAddress    string          `json:"btcAddress" bson:"btc_address"`
+	PegInID       string          `json:"pegInId" bson:"peg_in_id"`
+	State         PegInClaimState `json:"state" bson:"state"`
+	TxHash        string          `json:"txHash" bson:"tx_hash"`
+	Amount        *entities.Wei   `json:"amount" bson:"amount"`
+	Fee           *entities.Wei   `json:"fee" bson:"fee"`
+	GasFee        *entities.Wei   `json:"gasFee" bson:"gas_fee"`
+	Value         *entities.Wei   `json:"value" bson:"value"`
+	CallSuccess   bool            `json:"callSuccess" bson:"call_success"`
+	ResolveTxHash string          `json:"resolveTxHash" bson:"resolve_tx_hash"`
+	ClaimerPayout *entities.Wei   `json:"claimerPayout" bson:"claimer_payout"`
+	RegistrantFee *entities.Wei   `json:"registrantFee" bson:"registrant_fee"`
+	CreatedAt     time.Time       `json:"createdAt" bson:"created_at"`
+	UpdatedAt     time.Time       `json:"updatedAt" bson:"updated_at"`
 }
 
 type PegInClaimRepository interface {

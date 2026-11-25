@@ -111,6 +111,28 @@ func TestPegInClaimRepository_UpdateReplacesTheStoredClaim(t *testing.T) {
 	assert.Equal(t, &claimed, result)
 }
 
+func TestPegInClaimRepository_UpdateStoresTheResolveResult(t *testing.T) {
+	ctx := context.Background()
+	repository := mongoAdapter.NewPegInClaimMongoRepository(conn)
+
+	claim := newIntegrationPegInClaim(ctx, t, rootstock.PegInClaimSubmitting)
+	require.NoError(t, repository.Add(ctx, claim))
+
+	resolved := claim
+	resolved.State = rootstock.PegInClaimResolved
+	resolved.TxHash = "0xclaimtx"
+	resolved.CallSuccess = true
+	resolved.ResolveTxHash = "0xresolvetx"
+	resolved.ClaimerPayout = entities.NewWei(4990000000000000)
+	resolved.RegistrantFee = entities.NewWei(10000000000000)
+	resolved.UpdatedAt = claim.UpdatedAt.Add(time.Minute)
+	require.NoError(t, repository.Update(ctx, resolved))
+
+	result, err := repository.Get(ctx, claim.RskAddress, claim.DepositTxID)
+	require.NoError(t, err)
+	assert.Equal(t, &resolved, result)
+}
+
 func TestPegInClaimRepository_UpdateFailsForAnUnknownClaim(t *testing.T) {
 	ctx := context.Background()
 	repository := mongoAdapter.NewPegInClaimMongoRepository(conn)

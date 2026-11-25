@@ -58,3 +58,27 @@ func LogPegInClaimUserPaymentFailed(rskAddress, depositTxID, txHash string) stri
 func LogPegInClaimEventUnreadable(depositTxID, txHash string, err error) string {
 	return fmt.Sprintf("PegIn claim of deposit %s in transaction %s was stored as claimed, but its PegInRequested event can't be read, so the user payment outcome is unknown: %v", depositTxID, txHash, err)
 }
+
+func LogPegInResolveWaitingForConfirmations(rskAddress, depositTxID string, confirmations, required uint64) string {
+	return fmt.Sprintf("PegIn deposit %s for %s has %d of the %d confirmations the bridge needs to resolve it", depositTxID, rskAddress, confirmations, required)
+}
+
+func LogPegInResolveNotResolvable(rskAddress, depositTxID string, reason error) string {
+	return fmt.Sprintf("PegIn deposit %s for %s can't be resolved yet: %v", depositTxID, rskAddress, reason)
+}
+
+func LogPegInAlreadyResolved(rskAddress, depositTxID string) string {
+	return fmt.Sprintf("PegIn deposit %s for %s was already resolved on chain", depositTxID, rskAddress)
+}
+
+func LogPegInResolved(rskAddress, depositTxID, txHash, pegInID string) string {
+	return fmt.Sprintf("Resolved PegIn deposit %s for %s in transaction %s, pegInId %s", depositTxID, rskAddress, txHash, pegInID)
+}
+
+func LogPegInResolveEventUnreadable(depositTxID, txHash string, err error) string {
+	return fmt.Sprintf("PegIn deposit %s resolved in transaction %s was stored as resolved, but its PegInResolved event can't be read, so the payouts are unknown: %v", depositTxID, txHash, err)
+}
+
+func LogPegInResolveIdMismatch(depositTxID, storedPegInID, eventPegInID string) string {
+	return fmt.Sprintf("PegIn claim of deposit %s stored pegInId %s but the PegInResolved event has %s", depositTxID, storedPegInID, eventPegInID)
+}
