@@ -21,17 +21,18 @@ type ClaimPegInUseCase interface {
 }
 
 type PeginDepositAddressWatcher struct {
-	watches            map[string]rootstock.PegInWatch
-	getWatchedUseCase  *w.GetWatchedRegisteredAddressesUseCase
-	claimUseCase       ClaimPegInUseCase
-	btcWallet          blockchain.BitcoinWallet
-	rpc                blockchain.Rpc
-	ticker             utils.Ticker
-	eventBus           entities.EventBus
-	importedEvents     <-chan entities.Event
-	watcherStopChannel chan bool
-	currentBlock       *big.Int
-	currentBlockMutex  sync.RWMutex
+	watches             map[string]rootstock.PegInWatch
+	getWatchedUseCase   *w.GetWatchedRegisteredAddressesUseCase
+	claimUseCase        ClaimPegInUseCase
+	btcWallet           blockchain.BitcoinWallet
+	rpc                 blockchain.Rpc
+	ticker              utils.Ticker
+	eventBus            entities.EventBus
+	importedEvents      <-chan entities.Event
+	hasUncheckedWatches bool
+	watcherStopChannel  chan bool
+	currentBlock        *big.Int
+	currentBlockMutex   sync.RWMutex
 }
 
 type PeginDepositAddressWatcherUseCases struct {
@@ -91,18 +92,12 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C():
-			watcher.currentBlockMutex.Lock()
-			if height, err := watcher.rpc.Btc.GetHeight(); err == nil && height.Cmp(watcher.currentBlock) > 0 {
-				if watcher.checkDeposits(context.Background()) {
-					watcher.currentBlock = height
-				}
-			} else if err != nil {
-				log.Errorf(LogPeginBtcChainHeight, err)
-			}
-			watcher.currentBlockMutex.Unlock()
-		case event := <-watcher.importedEvents:
-			if event != nil {
+			watcher.checkDepositsWhenDue(context.Background())
+		case event, open := <-watcher.importedEvents:
+			if open {
 				watcher.rememberImportedWatches(event)
+			} else {
+				watcher.importedEvents = nil
 			}
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
@@ -116,6 +111,23 @@ func (watcher *PeginDepositAddressWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- true
 	closeChannel <- true
 	log.Debug(LogPeginBtcShutdown)
+}
+
+func (watcher *PeginDepositAddressWatcher) checkDepositsWhenDue(ctx context.Context) {
+	watcher.currentBlockMutex.Lock()
+	defer watcher.currentBlockMutex.Unlock()
+	height, err := watcher.rpc.Btc.GetHeight()
+	if err != nil {
+		log.Errorf(LogPeginBtcChainHeight, err)
+		return
+	}
+	if !watcher.hasUncheckedWatches && height.Cmp(watcher.currentBlock) <= 0 {
+		return
+	}
+	if watcher.checkDeposits(ctx) {
+		watcher.currentBlock = height
+		watcher.hasUncheckedWatches = false
+	}
 }
 
 func (watcher *PeginDepositAddressWatcher) rememberWatch(watch rootstock.PegInWatch) {
@@ -133,6 +145,7 @@ func (watcher *PeginDepositAddressWatcher) rememberImportedWatches(event entitie
 	for _, watch := range imported.Watches {
 		watcher.rememberWatch(watch)
 	}
+	watcher.hasUncheckedWatches = true
 }
 
 type pegInDeposit struct {

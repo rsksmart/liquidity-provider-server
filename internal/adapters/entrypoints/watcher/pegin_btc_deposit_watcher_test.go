@@ -281,14 +281,18 @@ func (fixture *depositWatcherFixture) publish(t *testing.T, session *watcherSess
 	session.waitUntilIdle(idleBefore)
 }
 
+func importedEvent(watches ...rootstock.PegInWatch) blockchain.PegInAddressesImportedEvent {
+	return blockchain.PegInAddressesImportedEvent{
+		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressesImportedEventId),
+		Watches:   watches,
+	}
+}
+
 func TestPeginDepositAddressWatcher_WatchesAnAddressImportedWhileRunning(t *testing.T) {
 	fixture := newDepositWatcherFixture(t)
 	session := fixture.start(t, depositWatcherFirstWatch)
 	discovered := rootstock.PegInWatch{RskAddress: "0x1", BtcAddress: "2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF", State: rootstock.PegInWatchDiscovered}
-	fixture.publish(t, session, blockchain.PegInAddressesImportedEvent{
-		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressesImportedEventId),
-		Watches:   []rootstock.PegInWatch{depositWatcherSecondWatch, discovered},
-	})
+	fixture.publish(t, session, importedEvent(depositWatcherSecondWatch, discovered))
 	fixture.expectHeight(100)
 	fixture.expectOutputs(depositWatcherSortedAddresses, depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0))
 	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
@@ -297,29 +301,76 @@ func TestPeginDepositAddressWatcher_WatchesAnAddressImportedWhileRunning(t *test
 	session.stop()
 }
 
+func TestPeginDepositAddressWatcher_ChecksAnAddressImportedAfterTheBlockWasChecked(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress})
+	session.poll()
+
+	fixture.publish(t, session, importedEvent(depositWatcherSecondWatch))
+	fixture.expectHeight(100)
+	fixture.expectOutputs(depositWatcherSortedAddresses, depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0))
+	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
+	session.poll()
+
+	fixture.expectHeight(100)
+	session.poll()
+
+	session.stop()
+}
+
+func TestPeginDepositAddressWatcher_ChecksAnImportedAddressAgainWhenTheWalletCallFails(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress})
+	session.poll()
+
+	fixture.publish(t, session, importedEvent(depositWatcherSecondWatch))
+	fixture.expectHeight(100)
+	fixture.wallet.EXPECT().GetUnspentOutputs(depositWatcherSortedAddresses).Return(nil, assert.AnError).Once()
+	session.poll()
+
+	fixture.expectHeight(100)
+	fixture.expectOutputs(depositWatcherSortedAddresses, depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0))
+	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
+	session.poll()
+
+	session.stop()
+}
+
 func TestPeginDepositAddressWatcher_IgnoresAnEventOfAnotherType(t *testing.T) {
 	fixture := newDepositWatcherFixture(t)
 	session := fixture.start(t, depositWatcherFirstWatch)
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress})
+	session.poll()
+
 	assertLog := test.AssertLogContains(t, watcher.LogPeginBtcWrongEvent)
 	fixture.publish(t, session, blockchain.PegInAddressRegistryRebuildEvent{
 		BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressesImportedEventId),
 	})
 	assert.True(t, assertLog())
 	fixture.expectHeight(100)
-	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress})
-
 	session.poll()
+
 	session.stop()
 }
 
-func TestPeginDepositAddressWatcher_KeepsRunningWhenTheEventChannelIsClosed(t *testing.T) {
+func TestPeginDepositAddressWatcher_StopsReadingTheEventChannelOnceItIsClosed(t *testing.T) {
 	fixture := newDepositWatcherFixture(t)
 	session := fixture.start(t, depositWatcherFirstWatch)
 	assertNoLog := test.AssertNoLog(t)
 	idleBefore := fixture.ticker.selects.Load()
 	close(fixture.imported)
-	require.Eventually(t, func() bool { return fixture.ticker.selects.Load() > idleBefore+10 }, time.Second, time.Millisecond)
+	session.waitUntilIdle(idleBefore)
+	idleAfterClose := fixture.ticker.selects.Load()
+	assert.Never(t, func() bool { return fixture.ticker.selects.Load() > idleAfterClose }, 50*time.Millisecond, time.Millisecond)
 
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress})
+	session.poll()
 	session.stop()
 	assertNoLog()
 }
