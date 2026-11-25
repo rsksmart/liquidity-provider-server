@@ -27,6 +27,7 @@ const (
 	rootstockPeerCheckInterval          = 1 * time.Minute
 	peginAddressRegistryWatcherInterval = 1 * time.Minute
 	peginDepositWatcherInterval         = 1 * time.Minute
+	peginResolveWatcherInterval         = 1 * time.Minute
 )
 
 type Watcher interface {

@@ -85,6 +85,29 @@ func (repo *peginClaimMongoRepository) Update(ctx context.Context, claim rootsto
 	return nil
 }
 
+func (repo *peginClaimMongoRepository) ListByState(
+	ctx context.Context,
+	states ...rootstock.PegInClaimState,
+) ([]rootstock.PegInClaim, error) {
+	dbCtx, cancel := context.WithTimeout(ctx, repo.conn.timeout)
+	defer cancel()
+
+	cursor, err := repo.conn.Collection(PegInClaimCollection).Find(
+		dbCtx,
+		bson.M{"state": bson.M{"$in": states}},
+		options.Find().SetSort(bson.D{{Key: "created_at", Value: 1}}),
+	)
+	if err != nil {
+		return nil, err
+	}
+	claims := make([]rootstock.PegInClaim, 0)
+	if err = cursor.All(dbCtx, &claims); err != nil {
+		return nil, err
+	}
+	logDbInteraction(Read, claims)
+	return claims, nil
+}
+
 func pegInClaimIdentity(rskAddress, depositTxID string) bson.M {
 	return bson.M{
 		"rsk_address":  rskAddress,

@@ -130,6 +130,7 @@ packages:
       NodePeerCheckUseCase:
       RegisterPeginUseCase:
       ClaimPegInUseCase:
+      ResolvePegInUseCase:
   github.com/rsksmart/liquidity-provider-server/internal/adapters/entrypoints/watcher/monitoring:
     interfaces:
       GetAssetReportUseCase:

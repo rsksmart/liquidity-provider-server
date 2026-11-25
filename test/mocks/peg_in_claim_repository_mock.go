@@ -129,6 +129,79 @@ func (_c *PegInClaimRepositoryMock_Get_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// ListByState provides a mock function with given fields: ctx, states
+func (_m *PegInClaimRepositoryMock) ListByState(ctx context.Context, states ...rootstock.PegInClaimState) ([]rootstock.PegInClaim, error) {
+	_va := make([]interface{}, len(states))
+	for _i := range states {
+		_va[_i] = states[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListByState")
+	}
+
+	var r0 []rootstock.PegInClaim
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ...rootstock.PegInClaimState) ([]rootstock.PegInClaim, error)); ok {
+		return rf(ctx, states...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ...rootstock.PegInClaimState) []rootstock.PegInClaim); ok {
+		r0 = rf(ctx, states...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]rootstock.PegInClaim)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ...rootstock.PegInClaimState) error); ok {
+		r1 = rf(ctx, states...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// PegInClaimRepositoryMock_ListByState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListByState'
+type PegInClaimRepositoryMock_ListByState_Call struct {
+	*mock.Call
+}
+
+// ListByState is a helper method to define mock.On call
+//   - ctx context.Context
+//   - states ...rootstock.PegInClaimState
+func (_e *PegInClaimRepositoryMock_Expecter) ListByState(ctx interface{}, states ...interface{}) *PegInClaimRepositoryMock_ListByState_Call {
+	return &PegInClaimRepositoryMock_ListByState_Call{Call: _e.mock.On("ListByState",
+		append([]interface{}{ctx}, states...)...)}
+}
+
+func (_c *PegInClaimRepositoryMock_ListByState_Call) Run(run func(ctx context.Context, states ...rootstock.PegInClaimState)) *PegInClaimRepositoryMock_ListByState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]rootstock.PegInClaimState, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(rootstock.PegInClaimState)
+			}
+		}
+		run(args[0].(context.Context), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *PegInClaimRepositoryMock_ListByState_Call) Return(_a0 []rootstock.PegInClaim, _a1 error) *PegInClaimRepositoryMock_ListByState_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *PegInClaimRepositoryMock_ListByState_Call) RunAndReturn(run func(context.Context, ...rootstock.PegInClaimState) ([]rootstock.PegInClaim, error)) *PegInClaimRepositoryMock_ListByState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function with given fields: ctx, claim
 func (_m *PegInClaimRepositoryMock) Update(ctx context.Context, claim rootstock.PegInClaim) error {
 	ret := _m.Called(ctx, claim)

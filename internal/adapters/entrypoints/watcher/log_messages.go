@@ -268,3 +268,14 @@ func LogPegoutEscrowClaimError(requestHash string, err error) string {
 func LogPegoutEscrowReconcileError(err error) string {
 	return fmt.Sprintf(LogPegoutEscrowPrefix+"error reconciling pending claims: %v", err)
 }
+
+const (
+	LogPegInResolvePrefix         = "PegInResolveWatcher: "
+	LogPegInResolveShutdown       = LogPegInResolvePrefix + "shut down"
+	LogPegInResolveBtcHeightError = LogPegInResolvePrefix + "error getting Bitcoin chain height: %v"
+	LogPegInResolveListError      = LogPegInResolvePrefix + "error listing the claimed PegIns: %v"
+)
+
+func LogPegInResolveError(rskAddress, depositTxID string, err error) string {
+	return fmt.Sprintf(LogPegInResolvePrefix+"error resolving deposit %s to %s: %v", depositTxID, rskAddress, err)
+}
