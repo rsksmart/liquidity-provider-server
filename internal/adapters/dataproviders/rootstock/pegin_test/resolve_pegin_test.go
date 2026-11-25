@@ -66,7 +66,7 @@ func matchResolvePegInCallMsg(t *testing.T, from common.Address) any {
 	contract := common.HexToAddress(test.AnyRskAddress)
 	return mock.MatchedBy(func(msg ethereum.CallMsg) bool {
 		return msg.From == from && msg.To != nil && *msg.To == contract &&
-			bytes.Equal(msg.Data, expectedData) && msg.Value == nil
+			bytes.Equal(msg.Data, expectedData) && (msg.Value == nil || msg.Value.Sign() == 0)
 	})
 }
 
