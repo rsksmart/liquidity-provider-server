@@ -126,6 +126,23 @@ func TestPeginDepositAddressWatcher_Prepare(t *testing.T) {
 	})
 }
 
+func TestPeginDepositAddressWatcher_SubscribesBeforeLoadingTheImportedAddresses(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	var calls []string
+	fixture.eventBus.On("Subscribe", blockchain.PegInAddressesImportedEventId).
+		Run(func(mock.Arguments) { calls = append(calls, "subscribe") }).
+		Return((<-chan entities.Event)(fixture.imported)).
+		Once()
+	fixture.repository.EXPECT().List(mock.Anything).
+		Run(func(context.Context) { calls = append(calls, "list") }).
+		Return(nil, nil).
+		Once()
+
+	require.NoError(t, fixture.newWatcher().Prepare(context.Background()))
+
+	assert.Equal(t, []string{"subscribe", "list"}, calls)
+}
+
 func TestPeginDepositAddressWatcher_ClaimsTheDepositsOfTheImportedAddresses(t *testing.T) {
 	fixture := newDepositWatcherFixture(t)
 	discovered := rootstock.PegInWatch{RskAddress: "0x1", BtcAddress: "2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF", State: rootstock.PegInWatchDiscovered}
@@ -291,8 +308,7 @@ func importedEvent(watches ...rootstock.PegInWatch) blockchain.PegInAddressesImp
 func TestPeginDepositAddressWatcher_WatchesAnAddressImportedWhileRunning(t *testing.T) {
 	fixture := newDepositWatcherFixture(t)
 	session := fixture.start(t, depositWatcherFirstWatch)
-	discovered := rootstock.PegInWatch{RskAddress: "0x1", BtcAddress: "2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF", State: rootstock.PegInWatchDiscovered}
-	fixture.publish(t, session, importedEvent(depositWatcherSecondWatch, discovered))
+	fixture.publish(t, session, importedEvent(depositWatcherSecondWatch))
 	fixture.expectHeight(100)
 	fixture.expectOutputs(depositWatcherSortedAddresses, depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0))
 	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
@@ -315,6 +331,25 @@ func TestPeginDepositAddressWatcher_ChecksAnAddressImportedAfterTheBlockWasCheck
 	session.poll()
 
 	fixture.expectHeight(100)
+	session.poll()
+
+	session.stop()
+}
+
+func TestPeginDepositAddressWatcher_ChecksAnImportedAddressAfterTheHeightCannotBeRead(t *testing.T) {
+	fixture := newDepositWatcherFixture(t)
+	session := fixture.start(t, depositWatcherFirstWatch)
+	fixture.expectHeight(100)
+	fixture.expectOutputs([]string{depositWatcherFirstWatch.BtcAddress})
+	session.poll()
+
+	fixture.publish(t, session, importedEvent(depositWatcherSecondWatch))
+	fixture.btcRpc.EXPECT().GetHeight().Return(nil, assert.AnError).Once()
+	session.poll()
+
+	fixture.expectHeight(100)
+	fixture.expectOutputs(depositWatcherSortedAddresses, depositOutput(depositWatcherSecondWatch, depositWatcherSecondTxID, 0))
+	fixture.expectClaim(depositWatcherSecondWatch, depositWatcherSecondTxID)
 	session.poll()
 
 	session.stop()
