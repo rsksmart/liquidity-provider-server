@@ -125,6 +125,7 @@ type BitcoinWallet interface {
 	GetTransactions(address string) ([]BitcoinTransactionInformation, error)
 	// GetTransaction returns the requested wallet transaction. Conflicted confirmations (-1) map to 0.
 	GetTransaction(hash string) (BitcoinTransactionInformation, error)
+	GetUnspentOutputs(addresses []string) ([]BitcoinUnspentOutput, error)
 	Address() string
 	Unlock() error
 }
@@ -160,6 +161,14 @@ type BitcoinTransactionInformation struct {
 	Confirmations uint64
 	Outputs       map[string][]*entities.Wei
 	HasWitness    bool
+}
+
+type BitcoinUnspentOutput struct {
+	TxID          string
+	Vout          uint32
+	Address       string
+	Amount        *entities.Wei
+	Confirmations uint64
 }
 
 type BitcoinRescanResult struct {

@@ -111,6 +111,16 @@ func (wallet *WatchOnlyWallet) GetTransaction(hash string) (blockchain.BitcoinTr
 	return getWalletTransaction(hash, wallet.conn.client)
 }
 
+func (wallet *WatchOnlyWallet) GetUnspentOutputs(addresses []string) ([]blockchain.BitcoinUnspentOutput, error) {
+	if len(addresses) == 0 {
+		return []blockchain.BitcoinUnspentOutput{}, nil
+	}
+	if err := EnsureLoadedBtcWallet(wallet.conn); err != nil {
+		return nil, err
+	}
+	return getUnspentOutputs(addresses, wallet.conn.NetworkParams, wallet.conn.client)
+}
+
 func (wallet *WatchOnlyWallet) Address() string {
 	log.Warn("Trying to get main address from a watch-only wallet")
 	return ""

@@ -6,6 +6,7 @@ import (
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient"
+	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"github.com/rsksmart/liquidity-provider-server/internal/usecases"
@@ -19,6 +20,7 @@ type ImportRegisteredAddressesUseCase struct {
 	registry   blockchain.PegInAddressRegistryContract
 	btcNetwork blockchain.BitcoinNetwork
 	wallet     blockchain.BitcoinWallet
+	eventBus   entities.EventBus
 }
 
 func NewImportRegisteredAddressesUseCase(
@@ -26,12 +28,14 @@ func NewImportRegisteredAddressesUseCase(
 	registry blockchain.PegInAddressRegistryContract,
 	btcNetwork blockchain.BitcoinNetwork,
 	wallet blockchain.BitcoinWallet,
+	eventBus entities.EventBus,
 ) *ImportRegisteredAddressesUseCase {
 	return &ImportRegisteredAddressesUseCase{
 		repository: repository,
 		registry:   registry,
 		btcNetwork: btcNetwork,
 		wallet:     wallet,
+		eventBus:   eventBus,
 	}
 }
 
@@ -181,7 +185,9 @@ func (useCase *ImportRegisteredAddressesUseCase) rescan(
 	if _, err = useCase.wallet.RescanBlockchain(fromHeight); err != nil {
 		return useCase.recordRescanError(ctx, pending, fmt.Errorf("rescan PegIn addresses: %w", err))
 	}
-	return useCase.markImported(ctx, pending)
+	marked, err := useCase.markImported(ctx, pending)
+	useCase.publishImported(marked)
+	return marked, err
 }
 
 func (useCase *ImportRegisteredAddressesUseCase) markImported(
@@ -197,6 +203,21 @@ func (useCase *ImportRegisteredAddressesUseCase) markImported(
 		pending[index] = watch
 	}
 	return pending, nil
+}
+
+func (useCase *ImportRegisteredAddressesUseCase) publishImported(watches []rootstock.PegInWatch) {
+	imported := make([]rootstock.PegInWatch, 0)
+	for _, watch := range watches {
+		if watch.State == rootstock.PegInWatchImported {
+			imported = append(imported, watch)
+		}
+	}
+	if len(imported) > 0 {
+		useCase.eventBus.Publish(blockchain.PegInAddressesImportedEvent{
+			BaseEvent: entities.NewBaseEvent(blockchain.PegInAddressesImportedEventId),
+			Watches:   imported,
+		})
+	}
 }
 
 func (useCase *ImportRegisteredAddressesUseCase) recordRescanError(

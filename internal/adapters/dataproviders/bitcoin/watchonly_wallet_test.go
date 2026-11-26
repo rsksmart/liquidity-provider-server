@@ -333,6 +333,86 @@ func TestWatchOnlyWallet_GetTransaction(t *testing.T) {
 	})
 }
 
+// nolint:funlen
+func TestWatchOnlyWallet_GetUnspentOutputs(t *testing.T) {
+	const (
+		firstTxID  = "2ba6da53badd14349c5d6379e88c345e88193598aad714815d4b57c691a9fbdf"
+		secondTxID = "fda421ccdff7324a382067d1746f6a387132435de6af336a0ebbf3f720eaae4d"
+	)
+	firstAddress, err := btcutil.DecodeAddress(testnetAddress, &chaincfg.TestNet3Params)
+	require.NoError(t, err)
+	secondAddress, err := btcutil.DecodeAddress(btcAddress, &chaincfg.TestNet3Params)
+	require.NoError(t, err)
+
+	t.Run("lists the confirmed outputs of every address in one node call", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		stubWatchOnlyWalletInfo(client)
+		client.EXPECT().ListUnspentMinMaxAddresses(1, 9999999, []btcutil.Address{firstAddress, secondAddress}).
+			Return([]btcjson.ListUnspentResult{
+				{TxID: firstTxID, Vout: 2, Address: testnetAddress, Amount: 0.002531, Confirmations: 2439},
+				{TxID: secondTxID, Vout: 0, Address: btcAddress, Amount: 0.02, Confirmations: 1},
+			}, nil).
+			Once()
+		outputs, outputsErr := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).
+			GetUnspentOutputs([]string{testnetAddress, btcAddress})
+		require.NoError(t, outputsErr)
+		assert.Equal(t, []blockchain.BitcoinUnspentOutput{
+			{TxID: firstTxID, Vout: 2, Address: testnetAddress, Amount: entities.NewWei(2531000000000000), Confirmations: 2439},
+			{TxID: secondTxID, Vout: 0, Address: btcAddress, Amount: entities.NewWei(20000000000000000), Confirmations: 1},
+		}, outputs)
+	})
+
+	t.Run("returns no outputs without calling the node when no address is given", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		client.EXPECT().GetWalletInfo().Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Once()
+		outputs, outputsErr := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).GetUnspentOutputs(nil)
+		require.NoError(t, outputsErr)
+		assert.Equal(t, []blockchain.BitcoinUnspentOutput{}, outputs)
+	})
+
+	t.Run("rejects an address it cannot decode before listing the outputs", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		stubWatchOnlyWalletInfo(client)
+		outputs, outputsErr := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).
+			GetUnspentOutputs([]string{"invalidAddress"})
+		require.ErrorContains(t, outputsErr, "decode address invalidAddress")
+		assert.Nil(t, outputs)
+	})
+
+	t.Run("returns the node error", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		stubWatchOnlyWalletInfo(client)
+		client.EXPECT().ListUnspentMinMaxAddresses(1, 9999999, []btcutil.Address{firstAddress}).
+			Return(nil, assert.AnError).
+			Once()
+		outputs, outputsErr := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).
+			GetUnspentOutputs([]string{testnetAddress})
+		require.ErrorIs(t, outputsErr, assert.AnError)
+		assert.Nil(t, outputs)
+	})
+
+	t.Run("rejects an output amount it cannot read", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		stubWatchOnlyWalletInfo(client)
+		client.EXPECT().ListUnspentMinMaxAddresses(1, 9999999, []btcutil.Address{firstAddress}).
+			Return([]btcjson.ListUnspentResult{{TxID: firstTxID, Vout: 2, Address: testnetAddress, Amount: math.NaN()}}, nil).
+			Once()
+		outputs, outputsErr := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).
+			GetUnspentOutputs([]string{testnetAddress})
+		require.ErrorContains(t, outputsErr, "read amount of output "+firstTxID+":2")
+		assert.Nil(t, outputs)
+	})
+
+	t.Run("returns an error when the wallet cannot be reloaded", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		stubWatchOnlyWalletReloadFailure(client)
+		outputs, outputsErr := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).
+			GetUnspentOutputs([]string{testnetAddress})
+		require.ErrorIs(t, outputsErr, assert.AnError)
+		assert.Nil(t, outputs)
+	})
+}
+
 // TestWatchOnlyWallet_ImportAddress This test are reused from the bitcoind wallet tests suite since they share behavior
 func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 	t.Run("valid address", func(t *testing.T) {

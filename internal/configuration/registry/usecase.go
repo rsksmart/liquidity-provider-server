@@ -84,6 +84,7 @@ type UseCaseRegistry struct {
 	getWatchedRegisteredAddressesUseCase *watcher.GetWatchedRegisteredAddressesUseCase
 	catchUpRegisteredAddressesUseCase    *watcher.CatchUpRegisteredAddressesUseCase
 	importRegisteredAddressesUseCase     *watcher.ImportRegisteredAddressesUseCase
+	claimPegInUseCase                    *pegin.ClaimPegInUseCase
 }
 
 // NewUseCaseRegistry
@@ -134,6 +135,16 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts.PegInAddressRegistry,
 			messaging.Rpc.Btc,
 			btcRegistry.MonitoringWallet,
+			messaging.EventBus,
+		),
+		claimPegInUseCase: pegin.NewClaimPegInUseCase(
+			databaseRegistry.PegInClaimRepository,
+			rskRegistry.Contracts,
+			messaging.Rpc,
+			rskRegistry.Wallet,
+			crypto.Keccak256,
+			mutexes.PeginLiquidityMutex(),
+			mutexes.RskWalletMutex(),
 		),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
 			databaseRegistry.PeginRepository,

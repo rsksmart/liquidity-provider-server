@@ -55,6 +55,7 @@ func newPegInWatcherFixture(
 		ticker:     newSessionTicker(),
 	}
 	fixture.eventBus.Test(t)
+	fixture.eventBus.On("Publish", mock.AnythingOfType("blockchain.PegInAddressesImportedEvent")).Return().Maybe()
 	t.Cleanup(func() { fixture.eventBus.AssertExpectations(t) })
 	useCases := watcherAdapter.NewPegInWatcherUseCases(
 		watcher.NewGetWatchedRegisteredAddressesUseCase(fixture.repository),
@@ -68,7 +69,7 @@ func newPegInWatcherFixture(
 			pageSize,
 			finalityDepth,
 		),
-		watcher.NewImportRegisteredAddressesUseCase(fixture.repository, fixture.registry, fixture.btcNetwork, fixture.wallet),
+		watcher.NewImportRegisteredAddressesUseCase(fixture.repository, fixture.registry, fixture.btcNetwork, fixture.wallet, fixture.eventBus),
 	)
 	fixture.watcher = watcherAdapter.NewPegInWatcher(useCases, fixture.ticker)
 	return fixture
