@@ -14,20 +14,23 @@ import (
 const ResolvedPegInRecheckWindow = time.Hour
 
 type RecheckResolvedPegInsUseCase struct {
-	claims    rootstock.PegInClaimRepository
-	contracts blockchain.RskContracts
-	rpc       blockchain.Rpc
+	claims     rootstock.PegInClaimRepository
+	contracts  blockchain.RskContracts
+	rpc        blockchain.Rpc
+	miningWait time.Duration
 }
 
 func NewRecheckResolvedPegInsUseCase(
 	claims rootstock.PegInClaimRepository,
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
+	miningWait time.Duration,
 ) *RecheckResolvedPegInsUseCase {
 	return &RecheckResolvedPegInsUseCase{
-		claims:    claims,
-		contracts: contracts,
-		rpc:       rpc,
+		claims:     claims,
+		contracts:  contracts,
+		rpc:        rpc,
+		miningWait: miningWait,
 	}
 }
 
@@ -46,6 +49,9 @@ func (useCase *RecheckResolvedPegInsUseCase) Run(ctx context.Context) error {
 }
 
 func (useCase *RecheckResolvedPegInsUseCase) recheck(ctx context.Context, claim rootstock.PegInClaim) error {
+	if time.Since(claim.UpdatedAt) < useCase.miningWait {
+		return nil
+	}
 	params, err := resolvePegInParams(useCase.rpc.Btc, claim)
 	if err != nil {
 		return err

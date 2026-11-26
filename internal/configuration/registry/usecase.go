@@ -164,6 +164,7 @@ func NewUseCaseRegistry(
 			databaseRegistry.PegInClaimRepository,
 			rskRegistry.Contracts,
 			messaging.Rpc,
+			timeouts.MiningWait.Seconds(),
 		),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
 			databaseRegistry.PeginRepository,

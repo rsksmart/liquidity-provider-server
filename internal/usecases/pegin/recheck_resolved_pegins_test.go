@@ -37,6 +37,7 @@ func newRecheckResolvedFixtures(t *testing.T) *recheckResolvedFixtures {
 		f.claims,
 		blockchain.RskContracts{PegIn: f.pegIn},
 		blockchain.Rpc{Btc: f.btcRpc},
+		resolveMiningWait,
 	)
 	return f
 }
@@ -90,6 +91,27 @@ func TestRecheckResolvedPegInsUseCase_Run_LeavesAPegInThatIsStillResolvedOnChain
 	f.expectDryRunInputs()
 	f.expectDryRun(blockchain.PegInAlreadyProcessedError)
 	defer test.AssertNoLog(t)()
+
+	require.NoError(t, f.useCase.Run(context.Background()))
+}
+
+func TestRecheckResolvedPegInsUseCase_Run_LeavesAPegInResolvedWithinTheMiningWait(t *testing.T) {
+	f := newRecheckResolvedFixtures(t)
+	recent := resolvedPegIn()
+	recent.UpdatedAt = time.Now().UTC().Add(-(resolveMiningWait - time.Minute))
+	f.expectRecentlyResolved(recent)
+	defer test.AssertNoLog(t)()
+
+	require.NoError(t, f.useCase.Run(context.Background()))
+}
+
+func TestRecheckResolvedPegInsUseCase_Run_ChecksAPegInResolvedJustOverTheMiningWaitAgo(t *testing.T) {
+	f := newRecheckResolvedFixtures(t)
+	resolved := resolvedPegIn()
+	resolved.UpdatedAt = time.Now().UTC().Add(-(resolveMiningWait + time.Minute))
+	f.expectRecentlyResolved(resolved)
+	f.expectDryRunInputs()
+	f.expectDryRun(blockchain.PegInAlreadyProcessedError)
 
 	require.NoError(t, f.useCase.Run(context.Background()))
 }
