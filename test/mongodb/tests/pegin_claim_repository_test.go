@@ -161,7 +161,7 @@ func TestPegInClaimRepository_ListByStateReturnsOnlyTheClaimsInTheStates(t *test
 	result, err := repository.ListByState(ctx, rootstock.PegInClaimClaimed, rootstock.PegInClaimResolved)
 
 	require.NoError(t, err)
-	assert.Equal(t, []rootstock.PegInClaim{claimed, resolved}, claimsStoredByThisTest(result, stored))
+	assert.ElementsMatch(t, []rootstock.PegInClaim{claimed, resolved}, claimsStoredByThisTest(result, stored))
 }
 
 func TestPegInClaimRepository_ListByStateReturnsTheOldestClaimFirst(t *testing.T) {
