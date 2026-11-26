@@ -96,24 +96,24 @@ func bigIntToUint64(value *big.Int) uint64 {
 }
 
 func rskRetry[R any](retries uint, retrySleep time.Duration, call func() (R, error)) (R, error) {
-	return rskRetryExcept(retries, retrySleep, nil, call)
+	return rskRetryExcept(RetryParams{Retries: retries, Sleep: retrySleep}, nil, call)
 }
 
-func rskRetryExcept[R any](retries uint, retrySleep time.Duration, noRetryError error, call func() (R, error)) (R, error) {
+func rskRetryExcept[R any](params RetryParams, noRetryError error, call func() (R, error)) (R, error) {
 	var result R
 	var err error
 	var i uint
 
-	if retries == 0 {
+	if params.Retries == 0 {
 		return call()
 	}
 
-	for i = 0; i < retries; i++ {
+	for i = 0; i < params.Retries; i++ {
 		result, err = call()
 		if err == nil || errors.Is(err, noRetryError) {
 			return result, err
 		}
-		time.Sleep(retrySleep)
+		time.Sleep(params.Sleep)
 	}
 	return result, err
 }

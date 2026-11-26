@@ -116,7 +116,7 @@ func (rpc *rskjRpcServer) transactionReceipt(ctx context.Context, hash string, n
 		return blockchain.TransactionReceipt{}, errors.New("invalid transaction hash")
 	}
 
-	receipt, err := rskRetryExcept(rpc.retryParams.Retries, rpc.retryParams.Sleep, noRetryError,
+	receipt, err := rskRetryExcept(rpc.retryParams, noRetryError,
 		func() (*types.Receipt, error) {
 			return rpc.client.TransactionReceipt(ctx, common.HexToHash(hash))
 		})
@@ -124,7 +124,7 @@ func (rpc *rskjRpcServer) transactionReceipt(ctx context.Context, hash string, n
 		return blockchain.TransactionReceipt{}, err
 	}
 
-	tx, err := rskRetryExcept(rpc.retryParams.Retries, rpc.retryParams.Sleep, noRetryError,
+	tx, err := rskRetryExcept(rpc.retryParams, noRetryError,
 		func() (*types.Transaction, error) {
 			transaction, _, rpcError := rpc.client.TransactionByHash(ctx, common.HexToHash(hash))
 			return transaction, rpcError
