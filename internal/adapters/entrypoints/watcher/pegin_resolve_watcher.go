@@ -54,7 +54,7 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C():
-			watcher.resolveOnNewBlock(context.Background())
+			watcher.checkClaims(context.Background())
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
 			close(watcher.watcherStopChannel)
@@ -69,6 +69,14 @@ func (watcher *PegInResolveWatcher) Shutdown(closeChannel chan<- bool) {
 	log.Debug(LogPegInResolveShutdown)
 }
 
+func (watcher *PegInResolveWatcher) checkClaims(ctx context.Context) {
+	if err := watcher.recheckUseCase.Run(ctx); err != nil {
+		log.Errorf(LogPegInResolveRecheckError, err)
+		return
+	}
+	watcher.resolveOnNewBlock(ctx)
+}
+
 func (watcher *PegInResolveWatcher) resolveOnNewBlock(ctx context.Context) {
 	height, err := watcher.rpc.Btc.GetHeight()
 	if err != nil {
@@ -76,10 +84,6 @@ func (watcher *PegInResolveWatcher) resolveOnNewBlock(ctx context.Context) {
 		return
 	}
 	if height.Uint64() <= watcher.checkedHeight {
-		return
-	}
-	if err = watcher.recheckUseCase.Run(ctx); err != nil {
-		log.Errorf(LogPegInResolveRecheckError, err)
 		return
 	}
 	claims, err := watcher.getWatchedUseCase.Run(ctx, rootstock.PegInClaimClaimed, rootstock.PegInClaimResolving)

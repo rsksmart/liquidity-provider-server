@@ -211,6 +211,31 @@ func TestPegInClaimRepository_ListByStateUpdatedSinceIncludesAClaimUpdatedExactl
 	assert.Equal(t, []rootstock.PegInClaim{claim}, claimsStoredByThisTest(result, []rootstock.PegInClaim{claim}))
 }
 
+func TestPegInClaimsAreIndexedByStateAndUpdateTimeAgainstMongo(t *testing.T) {
+	ctx := context.Background()
+	collection := mongoClient.Database(mongoAdapter.DbName).Collection(mongoAdapter.PegInClaimCollection)
+
+	cursor, err := collection.Indexes().List(ctx)
+	require.NoError(t, err)
+	var indexes []struct {
+		Name string `bson:"name"`
+		Key  bson.D `bson:"key"`
+	}
+	require.NoError(t, cursor.All(ctx, &indexes))
+
+	for _, index := range indexes {
+		if index.Name == "state_1_updated_at_1" {
+			require.Len(t, index.Key, 2)
+			assert.Equal(t, "state", index.Key[0].Key)
+			assert.Equal(t, "updated_at", index.Key[1].Key)
+			assert.EqualValues(t, 1, index.Key[0].Value)
+			assert.EqualValues(t, 1, index.Key[1].Value)
+			return
+		}
+	}
+	require.Failf(t, "missing index", "state_1_updated_at_1 was not built on %s", collection.Name())
+}
+
 func claimsStoredByThisTest(listed, stored []rootstock.PegInClaim) []rootstock.PegInClaim {
 	own := make(map[string]bool, len(stored))
 	for _, claim := range stored {

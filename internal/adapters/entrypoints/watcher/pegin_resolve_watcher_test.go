@@ -98,7 +98,7 @@ func TestPegInResolveWatcher_ResolvesEveryClaimedOrResolvingPegInOnANewBlock(t *
 	session.stop()
 }
 
-func TestPegInResolveWatcher_ChecksOnlyWhenANewBlockArrives(t *testing.T) {
+func TestPegInResolveWatcher_ResolvesOnlyWhenANewBlockArrives(t *testing.T) {
 	fixture := newResolveWatcherFixture(t)
 	session := fixture.start(t)
 
@@ -108,9 +108,11 @@ func TestPegInResolveWatcher_ChecksOnlyWhenANewBlockArrives(t *testing.T) {
 	fixture.expectResolve(resolveWatcherFirstClaim, nil)
 	session.poll()
 
+	fixture.expectRecheck(nil)
 	fixture.expectHeight(100)
 	session.poll()
 
+	fixture.expectRecheck(nil)
 	fixture.expectHeight(99)
 	session.poll()
 
@@ -123,10 +125,11 @@ func TestPegInResolveWatcher_ChecksOnlyWhenANewBlockArrives(t *testing.T) {
 	session.stop()
 }
 
-func TestPegInResolveWatcher_SkipsTheTickWhenTheHeightCannotBeRead(t *testing.T) {
+func TestPegInResolveWatcher_SkipsTheResolvePassWhenTheHeightCannotBeRead(t *testing.T) {
 	fixture := newResolveWatcherFixture(t)
 	session := fixture.start(t)
 	assertLog := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegInResolveBtcHeightError, assert.AnError))
+	fixture.expectRecheck(nil)
 	fixture.btcRpc.EXPECT().GetHeight().Return(nil, assert.AnError).Once()
 
 	session.poll()
@@ -184,6 +187,7 @@ func TestPegInResolveWatcher_RetriesAFailedResolveOnTheNextBlock(t *testing.T) {
 	fixture.expectResolve(resolveWatcherFirstClaim, assert.AnError)
 	session.poll()
 
+	fixture.expectRecheck(nil)
 	fixture.expectHeight(100)
 	session.poll()
 
@@ -201,7 +205,6 @@ func TestPegInResolveWatcher_ChecksTheSameBlockAgainWhenTheRecheckFails(t *testi
 	session := fixture.start(t)
 	recheckErr := usecases.WrapUseCaseError(usecases.RecheckResolvedPegInsId, assert.AnError)
 	assertLog := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegInResolveRecheckError, recheckErr))
-	fixture.expectHeight(100)
 	fixture.expectRecheck(recheckErr)
 	session.poll()
 	assert.True(t, assertLog())
@@ -211,6 +214,25 @@ func TestPegInResolveWatcher_ChecksTheSameBlockAgainWhenTheRecheckFails(t *testi
 	fixture.expectUnresolved(resolveWatcherFirstClaim)
 	fixture.expectResolve(resolveWatcherFirstClaim, nil)
 	session.poll()
+
+	session.stop()
+}
+
+func TestPegInResolveWatcher_RechecksOnEveryTickWithoutANewBlock(t *testing.T) {
+	fixture := newResolveWatcherFixture(t)
+	session := fixture.start(t)
+	fixture.expectHeight(100)
+	fixture.expectRecheck(nil)
+	fixture.expectUnresolved()
+	session.poll()
+
+	for range 3 {
+		mock.InOrder(
+			fixture.expectRecheck(nil),
+			fixture.btcRpc.EXPECT().GetHeight().Return(big.NewInt(100), nil).Once(),
+		)
+		session.poll()
+	}
 
 	session.stop()
 }
