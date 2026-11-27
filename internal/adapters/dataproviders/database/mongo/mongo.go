@@ -69,6 +69,7 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 		{collection: PegInWatchCollection, fields: []string{"state"}},
 		{collection: PegInWatchCollection, fields: []string{"block_number", "log_index"}},
 		{collection: PegInClaimCollection, fields: []string{"state"}},
+		{collection: PegInClaimCollection, fields: []string{"state", "updated_at"}},
 		// agreement_timestamp is a Unix-seconds quote-creation time used by reports as a
 		// range filter — two quotes issued in the same second is a legitimate insert.
 		{collection: PeginQuoteCollection, fields: []string{"agreement_timestamp"}},

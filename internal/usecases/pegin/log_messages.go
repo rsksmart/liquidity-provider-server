@@ -90,3 +90,15 @@ func LogPegInResolveEventUnreadable(depositTxID, txHash string, err error) strin
 func LogPegInResolveIdMismatch(depositTxID, storedPegInID, eventPegInID string) string {
 	return fmt.Sprintf("PegIn claim of deposit %s stored pegInId %s but the PegInResolved event has %s", depositTxID, storedPegInID, eventPegInID)
 }
+
+func LogPegInResolveRecheckError(rskAddress, depositTxID string, err error) string {
+	return fmt.Sprintf("PegIn deposit %s for %s is recorded as resolved but couldn't be checked against the chain: %v", depositTxID, rskAddress, err)
+}
+
+func LogPegInResolveRecheckSkipped(rskAddress, depositTxID string, reason error) string {
+	return fmt.Sprintf("PegIn deposit %s for %s is recorded as resolved and can't be checked against the chain now: %v", depositTxID, rskAddress, reason)
+}
+
+func LogPegInResolveReopened(rskAddress, depositTxID, txHash string) string {
+	return fmt.Sprintf("PegIn deposit %s for %s was recorded as resolved but is unresolved on chain, likely after a reorg; it is resolving again; last resolve transaction: %s", depositTxID, rskAddress, txHash)
+}

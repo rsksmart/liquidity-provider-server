@@ -87,6 +87,7 @@ type UseCaseRegistry struct {
 	claimPegInUseCase                    *pegin.ClaimPegInUseCase
 	getWatchedPegInClaimsUseCase         *watcher.GetWatchedPegInClaimsUseCase
 	resolvePegInUseCase                  *pegin.ResolvePegInUseCase
+	recheckResolvedPegInsUseCase         *pegin.RecheckResolvedPegInsUseCase
 }
 
 // NewUseCaseRegistry
@@ -157,6 +158,12 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			messaging.Rpc,
 			mutexes.RskWalletMutex(),
+			timeouts.MiningWait.Seconds(),
+		),
+		recheckResolvedPegInsUseCase: pegin.NewRecheckResolvedPegInsUseCase(
+			databaseRegistry.PegInClaimRepository,
+			rskRegistry.Contracts,
+			messaging.Rpc,
 			timeouts.MiningWait.Seconds(),
 		),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(

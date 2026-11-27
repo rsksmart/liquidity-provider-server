@@ -62,7 +62,7 @@ func (useCase *ResolvePegInUseCase) prepareResolve(claim rootstock.PegInClaim) (
 	if err := useCase.checkBridgeDepth(claim); err != nil {
 		return blockchain.ResolvePegInParams{}, err
 	}
-	params, err := useCase.resolveParams(claim)
+	params, err := resolvePegInParams(useCase.rpc.Btc, claim)
 	if err != nil {
 		return blockchain.ResolvePegInParams{}, err
 	}
@@ -104,16 +104,16 @@ func (useCase *ResolvePegInUseCase) checkBridgeDepth(claim rootstock.PegInClaim)
 	return nil
 }
 
-func (useCase *ResolvePegInUseCase) resolveParams(claim rootstock.PegInClaim) (blockchain.ResolvePegInParams, error) {
-	rawTx, err := useCase.rpc.Btc.GetRawTransaction(claim.DepositTxID)
+func resolvePegInParams(btc blockchain.BitcoinNetwork, claim rootstock.PegInClaim) (blockchain.ResolvePegInParams, error) {
+	rawTx, err := btc.GetRawTransaction(claim.DepositTxID)
 	if err != nil {
 		return blockchain.ResolvePegInParams{}, err
 	}
-	partialMerkleTree, err := useCase.rpc.Btc.GetPartialMerkleTree(claim.DepositTxID)
+	partialMerkleTree, err := btc.GetPartialMerkleTree(claim.DepositTxID)
 	if err != nil {
 		return blockchain.ResolvePegInParams{}, err
 	}
-	block, err := useCase.rpc.Btc.GetTransactionBlockInfo(claim.DepositTxID)
+	block, err := btc.GetTransactionBlockInfo(claim.DepositTxID)
 	if err != nil {
 		return blockchain.ResolvePegInParams{}, err
 	}

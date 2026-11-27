@@ -66,6 +66,7 @@ func NewWatcherRegistry(
 		),
 		PegInResolveWatcher: watcher.NewPegInResolveWatcher(
 			useCaseRegistry.getWatchedPegInClaimsUseCase,
+			useCaseRegistry.recheckResolvedPegInsUseCase,
 			useCaseRegistry.resolvePegInUseCase,
 			messaging.Rpc,
 			tickers.PegInResolveWatcherTicker,

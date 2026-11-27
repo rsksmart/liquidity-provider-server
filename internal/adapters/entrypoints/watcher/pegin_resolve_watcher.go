@@ -14,8 +14,13 @@ type ResolvePegInUseCase interface {
 	Run(ctx context.Context, claim rootstock.PegInClaim) error
 }
 
+type RecheckResolvedPegInsUseCase interface {
+	Run(ctx context.Context) error
+}
+
 type PegInResolveWatcher struct {
 	getWatchedUseCase  *w.GetWatchedPegInClaimsUseCase
+	recheckUseCase     RecheckResolvedPegInsUseCase
 	resolveUseCase     ResolvePegInUseCase
 	rpc                blockchain.Rpc
 	ticker             utils.Ticker
@@ -25,12 +30,14 @@ type PegInResolveWatcher struct {
 
 func NewPegInResolveWatcher(
 	getWatchedUseCase *w.GetWatchedPegInClaimsUseCase,
+	recheckUseCase RecheckResolvedPegInsUseCase,
 	resolveUseCase ResolvePegInUseCase,
 	rpc blockchain.Rpc,
 	ticker utils.Ticker,
 ) *PegInResolveWatcher {
 	return &PegInResolveWatcher{
 		getWatchedUseCase:  getWatchedUseCase,
+		recheckUseCase:     recheckUseCase,
 		resolveUseCase:     resolveUseCase,
 		rpc:                rpc,
 		ticker:             ticker,
@@ -47,7 +54,7 @@ watcherLoop:
 	for {
 		select {
 		case <-watcher.ticker.C():
-			watcher.resolveOnNewBlock(context.Background())
+			watcher.checkClaims(context.Background())
 		case <-watcher.watcherStopChannel:
 			watcher.ticker.Stop()
 			close(watcher.watcherStopChannel)
@@ -60,6 +67,14 @@ func (watcher *PegInResolveWatcher) Shutdown(closeChannel chan<- bool) {
 	watcher.watcherStopChannel <- struct{}{}
 	closeChannel <- true
 	log.Debug(LogPegInResolveShutdown)
+}
+
+func (watcher *PegInResolveWatcher) checkClaims(ctx context.Context) {
+	if err := watcher.recheckUseCase.Run(ctx); err != nil {
+		log.Errorf(LogPegInResolveRecheckError, err)
+		return
+	}
+	watcher.resolveOnNewBlock(ctx)
 }
 
 func (watcher *PegInResolveWatcher) resolveOnNewBlock(ctx context.Context) {
