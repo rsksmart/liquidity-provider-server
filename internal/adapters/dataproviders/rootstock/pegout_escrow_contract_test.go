@@ -11,6 +11,7 @@ import (
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock"
 	escrowBindings "github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/rootstock/bindings/pegout_escrow"
 	"github.com/rsksmart/liquidity-provider-server/test"
+	"github.com/rsksmart/liquidity-provider-server/test/rootstocktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -28,19 +29,19 @@ func TestPegOutEscrowContractImpl_RestrictedUntil(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			contractMock := createBoundContractMock()
+			contractMock := rootstocktest.NewBoundContractMock()
 			binding := escrowBindings.NewPegOutEscrowContract()
-			escrow := rootstock.NewPegOutEscrowContractImpl(dummyClient, test.AnyAddress, contractMock.contract, nil, rootstock.RetryParams{}, time.Duration(1), binding, Abis)
-			contractMock.caller.EXPECT().CallContract(
+			escrow := rootstock.NewPegOutEscrowContractImpl(rootstocktest.DummyClient, test.AnyAddress, contractMock.Contract, nil, rootstock.RetryParams{}, time.Duration(1), binding, rootstocktest.Abis)
+			contractMock.Caller.EXPECT().CallContract(
 				mock.Anything,
-				matchCallData(binding.PackRestrictedUntil(common.HexToAddress(test.AnyRskAddress))),
+				rootstocktest.MatchCallData(binding.PackRestrictedUntil(common.HexToAddress(test.AnyRskAddress))),
 				mock.Anything,
 			).Return(c.returned, nil).Once()
 
 			result, err := escrow.RestrictedUntil(test.AnyRskAddress)
 			require.NoError(t, err)
 			assert.Equal(t, c.expected, result)
-			contractMock.caller.AssertExpectations(t)
+			contractMock.Caller.AssertExpectations(t)
 		})
 	}
 }
