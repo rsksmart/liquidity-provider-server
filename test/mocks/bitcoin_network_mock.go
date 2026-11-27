@@ -193,6 +193,62 @@ func (_c *BitcoinNetworkMock_EncodeAddress_Call) RunAndReturn(run func([]byte) (
 	return _c
 }
 
+// EncodeBase58CheckPayload provides a mock function with given fields: payload
+func (_m *BitcoinNetworkMock) EncodeBase58CheckPayload(payload []byte) (string, error) {
+	ret := _m.Called(payload)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EncodeBase58CheckPayload")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func([]byte) (string, error)); ok {
+		return rf(payload)
+	}
+	if rf, ok := ret.Get(0).(func([]byte) string); ok {
+		r0 = rf(payload)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = rf(payload)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// BitcoinNetworkMock_EncodeBase58CheckPayload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EncodeBase58CheckPayload'
+type BitcoinNetworkMock_EncodeBase58CheckPayload_Call struct {
+	*mock.Call
+}
+
+// EncodeBase58CheckPayload is a helper method to define mock.On call
+//   - payload []byte
+func (_e *BitcoinNetworkMock_Expecter) EncodeBase58CheckPayload(payload interface{}) *BitcoinNetworkMock_EncodeBase58CheckPayload_Call {
+	return &BitcoinNetworkMock_EncodeBase58CheckPayload_Call{Call: _e.mock.On("EncodeBase58CheckPayload", payload)}
+}
+
+func (_c *BitcoinNetworkMock_EncodeBase58CheckPayload_Call) Run(run func(payload []byte)) *BitcoinNetworkMock_EncodeBase58CheckPayload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]byte))
+	})
+	return _c
+}
+
+func (_c *BitcoinNetworkMock_EncodeBase58CheckPayload_Call) Return(_a0 string, _a1 error) *BitcoinNetworkMock_EncodeBase58CheckPayload_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *BitcoinNetworkMock_EncodeBase58CheckPayload_Call) RunAndReturn(run func([]byte) (string, error)) *BitcoinNetworkMock_EncodeBase58CheckPayload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetBlockHashAtHeight provides a mock function with given fields: height
 func (_m *BitcoinNetworkMock) GetBlockHashAtHeight(height int64) (string, error) {
 	ret := _m.Called(height)

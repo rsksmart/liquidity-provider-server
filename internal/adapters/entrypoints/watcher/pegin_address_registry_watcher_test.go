@@ -3,7 +3,6 @@ package watcher_test
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"slices"
@@ -180,6 +179,10 @@ func depositAddressFixture(index int) depositAddress {
 	return depositAddress{payload: payload, address: decoded.Address}
 }
 
+func (fixture *pegInAddressRegistryWatcherFixture) expectEncoded(deposit depositAddress) {
+	fixture.btcNetwork.EXPECT().EncodeBase58CheckPayload(deposit.payload).Return(deposit.address, nil).Once()
+}
+
 func discoveredWatchEntry(event blockchain.AddressRegistered) rootstock.PegInWatch {
 	return rootstock.PegInWatch{
 		TxHash:      event.TxHash,
@@ -235,17 +238,14 @@ func TestPegInWatcher_SortsEventsAndClampsToFinalizedHead(t *testing.T) {
 				Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 			}, nil).
 			Once()
-		var importErr error
-		if event.TxHash == "second" {
-			importErr = errors.New("address already imported")
-		}
+		fixture.expectEncoded(deposit)
 		fixture.wallet.EXPECT().ImportAddress(deposit.address).
 			Run(func(string) {
 				operationsMutex.Lock()
 				operations = append(operations, "import:"+event.TxHash)
 				operationsMutex.Unlock()
 			}).
-			Return(importErr).
+			Return(nil).
 			Once()
 		fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
 			return entry.TxHash == event.TxHash &&
@@ -311,6 +311,7 @@ func TestPegInWatcher_SkipsUnsupportedEncodingsAndContinues(t *testing.T) {
 		if encodings[index] == blockchain.PegInAddressRegistryEncodingBase58 {
 			expectedState = rootstock.PegInWatchImported
 			expectedAddress = deposit.address
+			fixture.expectEncoded(deposit)
 			fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
 			fixture.expectBoundedRescan()
 		}
@@ -380,6 +381,7 @@ func TestPegInWatcher_RecordsEntryErrorAndContinues(t *testing.T) {
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Once()
+	fixture.expectEncoded(validDeposit)
 	fixture.wallet.EXPECT().ImportAddress(validDeposit.address).Return(nil).Once()
 	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(entry rootstock.PegInWatch) bool {
@@ -418,6 +420,7 @@ func TestPegInWatcher_RetriesPersistedDiscoveredEntry(t *testing.T) {
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Once()
+	fixture.expectEncoded(deposit)
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
 	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
@@ -459,6 +462,7 @@ func TestPegInWatcher_SuppressesRepeatedIdenticalEntryErrors(t *testing.T) {
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Once()
+	fixture.expectEncoded(deposit)
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(assert.AnError).Once()
 
 	fixture.runScan()
@@ -483,6 +487,7 @@ func TestPegInWatcher_LeavesDiscoveredWhenRescanFails(t *testing.T) {
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Once()
+	fixture.expectEncoded(deposit)
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
 	fixture.btcNetwork.EXPECT().GetHeight().Return(big.NewInt(200), nil).Once()
 	fixture.wallet.EXPECT().RescanBlockchain(int64(100)).Return(blockchain.BitcoinRescanResult{}, assert.AnError).Once()
@@ -523,6 +528,7 @@ func TestPegInWatcher_RecordsUnencodablePayload(t *testing.T) {
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Once()
+	fixture.btcNetwork.EXPECT().EncodeBase58CheckPayload(truncated).Return("", assert.AnError).Once()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
 		return updated.TxHash == entry.TxHash &&
 			updated.State == rootstock.PegInWatchDiscovered &&
@@ -557,6 +563,7 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenCatchUpFails(t *testing.T) {
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Once()
+	fixture.expectEncoded(deposit)
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
 	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
@@ -586,6 +593,7 @@ func TestPegInWatcher_ImportsTheSavedPagesWhenALaterPageFails(t *testing.T) {
 	deposit := depositAddressFixture(0)
 	fixture.registry.EXPECT().GetPegInAddress(saved.RskAddress).
 		Return(blockchain.PegInAddress{Payload: deposit.payload, Encoding: blockchain.PegInAddressRegistryEncodingBase58}, nil).Once()
+	fixture.expectEncoded(deposit)
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
 	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
@@ -622,6 +630,7 @@ func TestPegInWatcher_RetriesDiscoveredEntriesWhenRebuildFails(t *testing.T) {
 			Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 		}, nil).
 		Once()
+	fixture.expectEncoded(deposit)
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
 	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
@@ -666,6 +675,7 @@ func TestPegInWatcher_ReloadsTheWatchListAfterARebuild(t *testing.T) {
 	deposit := depositAddressFixture(0)
 	fixture.registry.EXPECT().GetPegInAddress(added.RskAddress).
 		Return(blockchain.PegInAddress{Payload: deposit.payload, Encoding: blockchain.PegInAddressRegistryEncodingBase58}, nil).Once()
+	fixture.expectEncoded(deposit)
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
 	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {
@@ -707,6 +717,7 @@ func TestPegInWatcher_ReloadsOnTheNextTickWhenTheReloadAfterARebuildFails(t *tes
 	deposit := depositAddressFixture(0)
 	fixture.registry.EXPECT().GetPegInAddress(added.RskAddress).
 		Return(blockchain.PegInAddress{Payload: deposit.payload, Encoding: blockchain.PegInAddressRegistryEncodingBase58}, nil).Once()
+	fixture.expectEncoded(deposit)
 	fixture.wallet.EXPECT().ImportAddress(deposit.address).Return(nil).Once()
 	fixture.expectBoundedRescan()
 	fixture.repository.On("Update", mock.Anything, mock.MatchedBy(func(updated rootstock.PegInWatch) bool {

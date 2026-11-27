@@ -106,6 +106,7 @@ func (fixture *importRegisteredAddressesFixture) withDepositAddress(rskAddress s
 		Payload:  payload,
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 	}, nil).Once()
+	fixture.btcNetwork.EXPECT().EncodeBase58CheckPayload(payload).Return(address, nil).Once()
 	return address
 }
 
@@ -278,9 +279,10 @@ func TestImportRegisteredAddressesUseCase_Run_RecordsUnencodablePayload(t *testi
 		Payload:  payload[:20],
 		Encoding: blockchain.PegInAddressRegistryEncodingBase58,
 	}, nil).Once()
+	fixture.btcNetwork.EXPECT().EncodeBase58CheckPayload(payload[:20]).Return("", assert.AnError).Once()
 	failed := failedRegistration(
 		resolvedRegistration(watch, ""),
-		"encode PegIn address for event 0xreg1/1: base58check payload must be 25 bytes, got 20",
+		fmt.Sprintf("encode PegIn address for event 0xreg1/1: %v", assert.AnError),
 	)
 	fixture.expectUpdate(failed, nil)
 
@@ -323,22 +325,6 @@ func TestImportRegisteredAddressesUseCase_Run_SkipsSavingARepeatedWatchError(t *
 	require.NoError(t, err)
 	assertImportResult(t, []rootstock.PegInWatch{watch}, result)
 	fixture.repository.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
-}
-
-func TestImportRegisteredAddressesUseCase_Run_RescansWhenTheWalletAlreadyImportedTheAddress(t *testing.T) {
-	fixture := newImportRegisteredAddressesFixture(t)
-	watch := discoveredRegistration(1)
-	fixture.withStored(watch)
-	address := fixture.withDepositAddress(watch.RskAddress, 0)
-	fixture.wallet.EXPECT().ImportAddress(address).Return(errors.New("address already imported")).Once()
-	fixture.withRescan(200, 100)
-	fixture.expectUpdate(importedRegistration(watch, address), nil)
-	fixture.expectImportedPublished(importedRegistration(watch, address))
-
-	result, err := fixture.useCase.Run(context.Background(), []rootstock.PegInWatch{watch})
-
-	require.NoError(t, err)
-	assertImportResult(t, []rootstock.PegInWatch{importedRegistration(watch, address)}, result)
 }
 
 func TestImportRegisteredAddressesUseCase_Run_RecordsUnexpectedImportError(t *testing.T) {

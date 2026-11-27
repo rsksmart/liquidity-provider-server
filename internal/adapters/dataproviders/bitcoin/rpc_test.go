@@ -149,6 +149,22 @@ func TestBitcoindRpc_DecodeAddress(t *testing.T) {
 	}
 }
 
+func TestBitcoindRpc_EncodeBase58CheckPayload(t *testing.T) {
+	rpc := bitcoin.NewBitcoindRpc(bitcoin.NewConnection(&chaincfg.MainNetParams, &mocks.ClientAdapterMock{}))
+	t.Run("encodes every checksummed payload", func(t *testing.T) {
+		for _, c := range datasets.Base58Addresses {
+			address, err := rpc.EncodeBase58CheckPayload(base58CheckPayload(c.Expected))
+			require.NoError(t, err)
+			assert.Equal(t, c.Address, address)
+		}
+	})
+	t.Run("returns the payload error", func(t *testing.T) {
+		address, err := rpc.EncodeBase58CheckPayload(datasets.Base58Addresses[0].Expected)
+		require.ErrorContains(t, err, "base58check payload must be 25 bytes, got 21")
+		assert.Empty(t, address)
+	})
+}
+
 func TestBitcoindRpc_GetRawTransaction(t *testing.T) {
 	client := &mocks.ClientAdapterMock{}
 	txBytes, err := hex.DecodeString("0200000002ebf7c22a73f3baea460cad53a2788bd4f24020f6b374900a771d3422f128442e000000006a473044022062dae13ba281d0cf529b604bb59c1efcd7b83438af34d4a51acc6f31041be18c022044df281e688a52624f45f6c26662349d1f5efedd4d69530e65b7d7cec0d3792d0121038e509bc056004a5da7460b5acd5d4dcb2add41d53817180499e3814290ecc91efdffffffb5f09f38215b850f4ba644a7f7ab57efa8d10c5f4b5908e9aa980ff5ffa948f5000000006a47304402206538fc72b896e4c6e807a4daf56191f68dec307c3011d082e69eeb3d45d6d8c302205a329814ab87901ae56a82587e716fa2282ecc665ab203da14d93db71181ecd8012102498a833095175800f40b2c0ab23f108b47a319a94ccea826062bf66c827e91a9fdffffff0298740700000000001976a91473cce22e78ec61cd54a6438ca1210b88561ebcdd88ac20a10700000000001976a9142c81478132b5dda64ffc484a0d225096c4b22ad588acc3682700")
