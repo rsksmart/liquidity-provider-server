@@ -6,10 +6,8 @@ import (
 	context "context"
 	big "math/big"
 
-	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
-
 	entities "github.com/rsksmart/liquidity-provider-server/internal/entities"
-
+	blockchain "github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -139,6 +137,63 @@ func (_c *RootstockRpcServerMock_EstimateGas_Call) Return(_a0 *entities.Wei, _a1
 }
 
 func (_c *RootstockRpcServerMock_EstimateGas_Call) RunAndReturn(run func(context.Context, string, *entities.Wei, []byte) (*entities.Wei, error)) *RootstockRpcServerMock_EstimateGas_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindTransactionReceipt provides a mock function with given fields: ctx, hash
+func (_m *RootstockRpcServerMock) FindTransactionReceipt(ctx context.Context, hash string) (blockchain.TransactionReceipt, error) {
+	ret := _m.Called(ctx, hash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindTransactionReceipt")
+	}
+
+	var r0 blockchain.TransactionReceipt
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (blockchain.TransactionReceipt, error)); ok {
+		return rf(ctx, hash)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) blockchain.TransactionReceipt); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		r0 = ret.Get(0).(blockchain.TransactionReceipt)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, hash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RootstockRpcServerMock_FindTransactionReceipt_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindTransactionReceipt'
+type RootstockRpcServerMock_FindTransactionReceipt_Call struct {
+	*mock.Call
+}
+
+// FindTransactionReceipt is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hash string
+func (_e *RootstockRpcServerMock_Expecter) FindTransactionReceipt(ctx interface{}, hash interface{}) *RootstockRpcServerMock_FindTransactionReceipt_Call {
+	return &RootstockRpcServerMock_FindTransactionReceipt_Call{Call: _e.mock.On("FindTransactionReceipt", ctx, hash)}
+}
+
+func (_c *RootstockRpcServerMock_FindTransactionReceipt_Call) Run(run func(ctx context.Context, hash string)) *RootstockRpcServerMock_FindTransactionReceipt_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *RootstockRpcServerMock_FindTransactionReceipt_Call) Return(_a0 blockchain.TransactionReceipt, _a1 error) *RootstockRpcServerMock_FindTransactionReceipt_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *RootstockRpcServerMock_FindTransactionReceipt_Call) RunAndReturn(run func(context.Context, string) (blockchain.TransactionReceipt, error)) *RootstockRpcServerMock_FindTransactionReceipt_Call {
 	_c.Call.Return(run)
 	return _c
 }
