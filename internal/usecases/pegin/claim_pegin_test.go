@@ -128,6 +128,10 @@ type claimPegInFixtures struct {
 }
 
 func newClaimPegInFixtures() *claimPegInFixtures {
+	return newClaimPegInFixturesWithRetryInterval(time.Hour)
+}
+
+func newClaimPegInFixturesWithRetryInterval(belowMinimumRetryInterval time.Duration) *claimPegInFixtures {
 	f := &claimPegInFixtures{
 		claims:         &mocks.PegInClaimRepositoryMock{},
 		pegIn:          &mocks.PeginContractMock{},
@@ -147,6 +151,7 @@ func newClaimPegInFixtures() *claimPegInFixtures {
 		crypto.Keccak256,
 		f.liquidityMutex,
 		f.walletMutex,
+		belowMinimumRetryInterval,
 	)
 	return f
 }
@@ -474,6 +479,96 @@ func TestClaimPegInUseCase_Run_SkipsADepositBelowTheMinimum(t *testing.T) {
 
 	require.NoError(t, f.run())
 	f.configurations.AssertNotCalled(t, "CalculatePegInFee", mock.Anything)
+	f.assertExpectations(t)
+}
+
+const claimOtherDepositTxID = "5b4a3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b"
+
+func (f *claimPegInFixtures) expectBelowMinimumCheck() {
+	f.expectConfirmedDeposit(claimDepositAmount())
+	configuration := claimConfiguration()
+	configuration.MinAmount = new(entities.Wei).Add(claimDepositAmount(), entities.NewWei(1))
+	f.configurations.EXPECT().GetPegInConfiguration().Return(configuration, nil).Once()
+}
+
+func (f *claimPegInFixtures) expectClaimedAfterSubmission() (updated *rootstock.PegInClaim) {
+	f.expectSubmittedClaim()
+	f.expectSend(claimReceipt(), nil)
+	f.expectEvent(claimEvent(true, claimPegInID), nil)
+	return f.expectUpdate(nil)
+}
+
+func assertClaimed(t *testing.T, updated rootstock.PegInClaim) {
+	claimed := expectedClaim(rootstock.PegInClaimClaimed, updated)
+	claimed.TxHash = claimTxHash
+	claimed.CallSuccess = true
+	assert.Equal(t, claimed, updated)
+}
+
+func TestClaimPegInUseCase_Run_SkipsADepositBelowTheMinimumWithoutReadsUntilTheRetryInterval(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+	f := newClaimPegInFixturesWithRetryInterval(time.Hour)
+	f.expectBelowMinimumCheck()
+	require.NoError(t, f.run())
+
+	defer test.AssertLogContains(t, pegin.LogPegInClaimWaitingBelowMinimum(claimRskAddress, claimDepositTxID, time.Hour))()
+	require.NoError(t, f.run())
+	f.assertExpectations(t)
+}
+
+func TestClaimPegInUseCase_Run_ChecksADepositBelowTheMinimumAgainAfterTheRetryInterval(t *testing.T) {
+	f := newClaimPegInFixturesWithRetryInterval(0)
+	f.expectBelowMinimumCheck()
+	f.expectBelowMinimumCheck()
+
+	require.NoError(t, f.run())
+	require.NoError(t, f.run())
+	f.assertExpectations(t)
+}
+
+func TestClaimPegInUseCase_Run_ChecksADepositSkippedForAnotherReasonAgainOnTheNextRun(t *testing.T) {
+	f := newClaimPegInFixturesWithRetryInterval(time.Hour)
+	for range 2 {
+		f.expectNoStoredClaim()
+		f.expectDepositInfo(claimDepositAmount(), claimRequiredConfirmations-1)
+		f.expectConfirmationTier(claimDepositAmount())
+	}
+
+	require.NoError(t, f.run())
+	require.NoError(t, f.run())
+	f.assertExpectations(t)
+}
+
+func TestClaimPegInUseCase_Run_ClaimsADepositOnceTheMinimumDropsBelowItsAmount(t *testing.T) {
+	f := newClaimPegInFixturesWithRetryInterval(0)
+	f.expectBelowMinimumCheck()
+	require.NoError(t, f.run())
+
+	updated := f.expectClaimedAfterSubmission()
+	require.NoError(t, f.run())
+	assertClaimed(t, *updated)
+	f.assertExpectations(t)
+}
+
+func TestClaimPegInUseCase_Run_KeepsCheckingOtherDepositsWhileOneWaitsBelowTheMinimum(t *testing.T) {
+	f := newClaimPegInFixturesWithRetryInterval(time.Hour)
+	belowMinimum := new(entities.Wei).Sub(claimConfiguration().MinAmount, entities.NewWei(1))
+	f.claims.EXPECT().Get(mock.Anything, claimRskAddress, claimOtherDepositTxID).Return(nil, nil).Once()
+	f.btcRpc.On("GetTransactionInfo", claimOtherDepositTxID).Return(blockchain.BitcoinTransactionInformation{
+		Hash:          claimOtherDepositTxID,
+		Confirmations: claimRequiredConfirmations,
+		Outputs:       map[string][]*entities.Wei{claimBtcAddress: {belowMinimum}},
+	}, nil).Once()
+	f.expectConfirmationTier(belowMinimum)
+	f.pauseRegistry.EXPECT().PauseLevel().Return(blockchain.PauseLevelNone, nil).Once()
+	f.btcRpc.On("GetRawTransaction", claimOtherDepositTxID).Return(claimRawTx, nil).Once()
+	f.configurations.EXPECT().GetPegInConfiguration().Return(claimConfiguration(), nil).Once()
+	require.NoError(t, f.runFor(claimRskAddress, claimOtherDepositTxID))
+
+	updated := f.expectClaimedAfterSubmission()
+	require.NoError(t, f.run())
+	require.NoError(t, f.runFor(claimRskAddress, claimOtherDepositTxID))
+	assertClaimed(t, *updated)
 	f.assertExpectations(t)
 }
 

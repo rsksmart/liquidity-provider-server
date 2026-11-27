@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -19,6 +20,8 @@ var DepositOutputNotFoundError = errors.New("the deposit has no output paying th
 
 var errPegInClaimSkipped = errors.New("pegin claim skipped")
 
+var errPegInClaimBelowMinimum = fmt.Errorf("%w: deposit below the minimum", errPegInClaimSkipped)
+
 var skippedDryRunErrors = []error{
 	blockchain.PegInBelowMinimumError,
 	blockchain.DepositBelowBridgeMinimumError,
@@ -27,14 +30,22 @@ var skippedDryRunErrors = []error{
 	blockchain.ContractPausedError,
 }
 
+type pegInDeposit struct {
+	rskAddress  string
+	depositTxID string
+}
+
 type ClaimPegInUseCase struct {
-	claims              rootstock.PegInClaimRepository
-	contracts           blockchain.RskContracts
-	rpc                 blockchain.Rpc
-	rskWallet           blockchain.RootstockWallet
-	hashFunction        entities.HashFunction
-	peginLiquidityMutex sync.Locker
-	rskWalletMutex      sync.Locker
+	claims                    rootstock.PegInClaimRepository
+	contracts                 blockchain.RskContracts
+	rpc                       blockchain.Rpc
+	rskWallet                 blockchain.RootstockWallet
+	hashFunction              entities.HashFunction
+	peginLiquidityMutex       sync.Locker
+	rskWalletMutex            sync.Locker
+	belowMinimumRetryInterval time.Duration
+	belowMinimumRetryAt       map[pegInDeposit]time.Time
+	belowMinimumMutex         sync.Mutex
 }
 
 func NewClaimPegInUseCase(
@@ -45,15 +56,18 @@ func NewClaimPegInUseCase(
 	hashFunction entities.HashFunction,
 	peginLiquidityMutex sync.Locker,
 	rskWalletMutex sync.Locker,
+	belowMinimumRetryInterval time.Duration,
 ) *ClaimPegInUseCase {
 	return &ClaimPegInUseCase{
-		claims:              claims,
-		contracts:           contracts,
-		rpc:                 rpc,
-		rskWallet:           rskWallet,
-		hashFunction:        hashFunction,
-		peginLiquidityMutex: peginLiquidityMutex,
-		rskWalletMutex:      rskWalletMutex,
+		claims:                    claims,
+		contracts:                 contracts,
+		rpc:                       rpc,
+		rskWallet:                 rskWallet,
+		hashFunction:              hashFunction,
+		peginLiquidityMutex:       peginLiquidityMutex,
+		rskWalletMutex:            rskWalletMutex,
+		belowMinimumRetryInterval: belowMinimumRetryInterval,
+		belowMinimumRetryAt:       make(map[pegInDeposit]time.Time),
 	}
 }
 
@@ -90,8 +104,13 @@ func (request pegInClaimRequest) newClaim(state rootstock.PegInClaimState) roots
 }
 
 func (useCase *ClaimPegInUseCase) Run(ctx context.Context, watch rootstock.PegInWatch, depositTxID string) error {
+	if useCase.waitsBelowMinimum(watch.RskAddress, depositTxID) {
+		return nil
+	}
 	request, err := useCase.prepareClaim(ctx, watch, depositTxID)
-	if errors.Is(err, blockchain.PegInAlreadyProcessedError) {
+	if errors.Is(err, errPegInClaimBelowMinimum) {
+		useCase.retryBelowMinimumLater(watch.RskAddress, depositTxID)
+	} else if errors.Is(err, blockchain.PegInAlreadyProcessedError) {
 		err = useCase.addRaceLostClaim(ctx, request)
 	} else if err == nil {
 		err = useCase.submitClaim(ctx, request)
@@ -100,6 +119,28 @@ func (useCase *ClaimPegInUseCase) Run(ctx context.Context, watch rootstock.PegIn
 		return nil
 	}
 	return usecases.WrapUseCaseError(usecases.ClaimPegInId, err)
+}
+
+func (useCase *ClaimPegInUseCase) waitsBelowMinimum(rskAddress, depositTxID string) bool {
+	useCase.belowMinimumMutex.Lock()
+	defer useCase.belowMinimumMutex.Unlock()
+	retryAt := useCase.belowMinimumRetryAt[pegInDeposit{rskAddress: rskAddress, depositTxID: depositTxID}]
+	if time.Now().Before(retryAt) {
+		log.Debug(LogPegInClaimWaitingBelowMinimum(rskAddress, depositTxID, useCase.belowMinimumRetryInterval))
+		return true
+	}
+	return false
+}
+
+func (useCase *ClaimPegInUseCase) retryBelowMinimumLater(rskAddress, depositTxID string) {
+	useCase.belowMinimumMutex.Lock()
+	defer useCase.belowMinimumMutex.Unlock()
+	now := time.Now()
+	maps.DeleteFunc(useCase.belowMinimumRetryAt, func(_ pegInDeposit, retryAt time.Time) bool {
+		return !now.Before(retryAt)
+	})
+	deposit := pegInDeposit{rskAddress: rskAddress, depositTxID: depositTxID}
+	useCase.belowMinimumRetryAt[deposit] = now.Add(useCase.belowMinimumRetryInterval)
 }
 
 func (useCase *ClaimPegInUseCase) prepareClaim(
@@ -207,7 +248,7 @@ func (useCase *ClaimPegInUseCase) claimAmounts(
 	}
 	if amount.Cmp(configuration.MinAmount) < 0 {
 		log.Debug(LogPegInClaimBelowMinimum(rskAddress, depositTxID, amount, configuration.MinAmount))
-		return pegInClaimAmounts{}, errPegInClaimSkipped
+		return pegInClaimAmounts{}, errPegInClaimBelowMinimum
 	}
 	cappedAmount := amount
 	if amount.Cmp(configuration.MaxAmount) > 0 {
