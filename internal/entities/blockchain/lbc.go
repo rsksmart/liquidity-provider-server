@@ -41,6 +41,7 @@ var (
 	InsufficientConfirmationsError = errors.New("deposit without enough confirmations")
 	UnableToGetConfirmationsError  = errors.New("bridge unable to get the deposit confirmations")
 	IncorrectFrontingError         = errors.New("fronted value does not match the contract")
+	BridgeRejectedPegInError       = errors.New("bridge rejected the pegin")
 )
 
 type RequestPegInParams struct {
@@ -58,6 +59,23 @@ type PegInRequestedEvent struct {
 	Amount      *entities.Wei
 	NetToUser   *entities.Wei
 	CallSuccess bool
+}
+
+type ResolvePegInParams struct {
+	RskAddress        string
+	BtcRawTx          []byte
+	PartialMerkleTree []byte
+	BlockHeight       *big.Int
+}
+
+type PegInResolvedEvent struct {
+	PegInID       string
+	Claimer       string
+	Registrant    string
+	Released      *entities.Wei
+	ClaimerPayout *entities.Wei
+	RegistrantFee *entities.Wei
+	UserPayout    *entities.Wei
 }
 
 type ProviderRegistrationParams struct {
@@ -120,6 +138,9 @@ type PeginContract interface {
 	EstimateRequestPegInGas(txConfig TransactionConfig, params RequestPegInParams) (uint64, error)
 	RequestPegIn(txConfig TransactionConfig, params RequestPegInParams) (TransactionReceipt, error)
 	PegInRequestedEvent(receipt TransactionReceipt) (PegInRequestedEvent, error)
+	SimulateResolvePegIn(params ResolvePegInParams) error
+	ResolvePegIn(params ResolvePegInParams) (TransactionReceipt, error)
+	PegInResolvedEvent(receipt TransactionReceipt) (PegInResolvedEvent, error)
 }
 
 type PegoutContract interface {
