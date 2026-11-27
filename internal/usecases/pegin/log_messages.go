@@ -2,10 +2,15 @@ package pegin
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 )
+
+func LogPegInClaimWaitingBelowMinimum(rskAddress, depositTxID string, retryInterval time.Duration) string {
+	return fmt.Sprintf("Skipping PegIn deposit %s for %s: it was below the minimum at a check less than %v ago", depositTxID, rskAddress, retryInterval)
+}
 
 func LogPegInClaimAlreadyStored(rskAddress, depositTxID string, state rootstock.PegInClaimState) string {
 	return fmt.Sprintf("PegIn claim of deposit %s for %s is already %s", depositTxID, rskAddress, state)

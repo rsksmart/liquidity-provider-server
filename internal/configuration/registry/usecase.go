@@ -22,6 +22,8 @@ var signingHashFunction = crypto.Keccak256
 
 const nodePeerAlertCooldown = 30 * time.Minute
 
+const pegInBelowMinimumRetryInterval = time.Hour
+
 type UseCaseRegistry struct {
 	registerProviderUseCase              *liquidity_provider.RegistrationUseCase
 	cleanExpiredQuotesUseCase            *watcher.CleanExpiredQuotesUseCase
@@ -145,6 +147,7 @@ func NewUseCaseRegistry(
 			crypto.Keccak256,
 			mutexes.PeginLiquidityMutex(),
 			mutexes.RskWalletMutex(),
+			pegInBelowMinimumRetryInterval,
 		),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
 			databaseRegistry.PeginRepository,
