@@ -26,6 +26,8 @@ const (
 	resolveRegistrant            = "0x2A6F4b9eD52cb0D9C2eA1Fb3E6d8B61B43C0dB2e"
 	resolveRequiredConfirmations = uint64(100)
 	resolveBlockHeight           = int64(812345)
+	previousResolveTxHash        = "0x9e7c5a3f1d0b8e6c4a2f0d8b6e4c2a0f8d6b4e2c0a8f6d4b2e0c8a6f4d2b0e8c"
+	resolveMiningWait            = 5 * time.Minute
 )
 
 var resolvePartialMerkleTree = []byte{0x0a, 0x0b, 0x0c, 0x0d}
@@ -55,6 +57,13 @@ func claimedPegIn() rootstock.PegInClaim {
 func claimWithState(state rootstock.PegInClaimState) rootstock.PegInClaim {
 	claim := claimedPegIn()
 	claim.State = state
+	return claim
+}
+
+func resolvingPegIn(sentAgo time.Duration) rootstock.PegInClaim {
+	claim := claimWithState(rootstock.PegInClaimResolving)
+	claim.ResolveTxHash = previousResolveTxHash
+	claim.UpdatedAt = time.Now().UTC().Add(-sentAgo)
 	return claim
 }
 
@@ -120,6 +129,7 @@ func newResolvePegInFixtures() *resolvePegInFixtures {
 		blockchain.RskContracts{PegIn: f.pegIn, Bridge: f.bridge},
 		blockchain.Rpc{Btc: f.btcRpc},
 		f.walletMutex,
+		resolveMiningWait,
 	)
 	return f
 }
@@ -172,9 +182,10 @@ func (f *resolvePegInFixtures) expectDryRun(err error) {
 	f.pegIn.EXPECT().SimulateResolvePegIn(resolveParams()).Return(err).Once()
 }
 
-func (f *resolvePegInFixtures) expectPreparedResolve() {
+func (f *resolvePegInFixtures) expectPreparedResolve() *rootstock.PegInClaim {
 	f.expectResolveInputs()
 	f.expectDryRun(nil)
+	return f.expectUpdate(nil)
 }
 
 func (f *resolvePegInFixtures) expectSend(receipt blockchain.TransactionReceipt, err error) {
@@ -201,19 +212,33 @@ func assertClaimUpdatedNow(t *testing.T, updated rootstock.PegInClaim) {
 
 func TestResolvePegInUseCase_Run_ResolvesAClaimAtTheBridgeDepth(t *testing.T) {
 	f := newResolvePegInFixtures()
-	f.expectPreparedResolve()
+	resolving := f.expectPreparedResolve()
 	f.expectSend(resolveReceipt(), nil)
 	f.expectEvent(resolvedEvent(claimPegInID), nil)
 	updated := f.expectUpdate(nil)
 	defer test.AssertLogContains(t, pegin.LogPegInResolved(claimRskAddress, claimDepositTxID, resolveTxHash, claimPegInID))()
 
 	require.NoError(t, f.run())
+	assert.Equal(t, expectedClaimWithState(rootstock.PegInClaimResolving, *resolving), *resolving)
+	assertClaimUpdatedNow(t, *resolving)
 	assert.Equal(t, expectedResolvedClaim(*updated), *updated)
 	assertClaimUpdatedNow(t, *updated)
 	f.assertExpectations(t)
 }
 
-func TestResolvePegInUseCase_Run_RejectsAClaimThatIsNotClaimed(t *testing.T) {
+func TestResolvePegInUseCase_Run_DoesNotSendWhenTheResolvingStateCannotBeStored(t *testing.T) {
+	f := newResolvePegInFixtures()
+	f.expectResolveInputs()
+	f.expectDryRun(nil)
+	f.expectUpdate(assert.AnError)
+
+	err := f.run()
+	require.ErrorIs(t, err, assert.AnError)
+	require.ErrorContains(t, err, string(usecases.ResolvePegInId))
+	f.assertExpectations(t)
+}
+
+func TestResolvePegInUseCase_Run_RejectsAClaimThatIsNeitherClaimedNorResolving(t *testing.T) {
 	for _, state := range []rootstock.PegInClaimState{
 		rootstock.PegInClaimSubmitting,
 		rootstock.PegInClaimRaceLost,
@@ -326,27 +351,99 @@ func TestResolvePegInUseCase_Run_MarksABridgeRejectionAtMiningAsFailed(t *testin
 	f.assertExpectations(t)
 }
 
-func TestResolvePegInUseCase_Run_KeepsTheClaimWhenTheSendDoesNotSettleIt(t *testing.T) {
+func TestResolvePegInUseCase_Run_KeepsTheClaimResolvingWhenTheSendDoesNotSettleIt(t *testing.T) {
 	cases := []struct {
-		name    string
-		receipt blockchain.TransactionReceipt
-		sendErr error
+		name       string
+		receipt    blockchain.TransactionReceipt
+		sendErr    error
+		storedHash string
 	}{
-		{name: "not broadcast", receipt: blockchain.TransactionReceipt{}, sendErr: assert.AnError},
-		{name: "unknown outcome", receipt: blockchain.TransactionReceipt{TransactionHash: resolveTxHash}, sendErr: assert.AnError},
-		{name: "bridge not ready at mining", receipt: resolveReceipt(), sendErr: errors.Join(blockchain.TxFailedError, blockchain.WaitingForBridgeError)},
-		{name: "paused at mining", receipt: resolveReceipt(), sendErr: errors.Join(blockchain.TxFailedError, blockchain.ContractPausedError)},
+		{name: "not broadcast", receipt: blockchain.TransactionReceipt{}, sendErr: assert.AnError, storedHash: ""},
+		{name: "unknown outcome", receipt: blockchain.TransactionReceipt{TransactionHash: resolveTxHash}, sendErr: assert.AnError, storedHash: resolveTxHash},
+		{name: "bridge not ready at mining", receipt: resolveReceipt(), sendErr: errors.Join(blockchain.TxFailedError, blockchain.WaitingForBridgeError), storedHash: resolveTxHash},
+		{name: "paused at mining", receipt: resolveReceipt(), sendErr: errors.Join(blockchain.TxFailedError, blockchain.ContractPausedError), storedHash: resolveTxHash},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			f := newResolvePegInFixtures()
 			f.expectPreparedResolve()
 			f.expectSend(testCase.receipt, testCase.sendErr)
+			updated := f.expectUpdate(nil)
+			defer test.AssertNoLog(t)()
 
 			err := f.run()
 			require.ErrorIs(t, err, testCase.sendErr)
 			require.ErrorContains(t, err, string(usecases.ResolvePegInId))
 			require.NotErrorIs(t, err, usecases.NonRecoverableError)
+			expected := expectedClaimWithState(rootstock.PegInClaimResolving, *updated)
+			expected.ResolveTxHash = testCase.storedHash
+			assert.Equal(t, expected, *updated)
+			assertClaimUpdatedNow(t, *updated)
+			f.assertExpectations(t)
+		})
+	}
+}
+
+func TestResolvePegInUseCase_Run_WaitsTheMiningWaitBeforeCheckingAResolvingClaim(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+	f := newResolvePegInFixtures()
+	defer test.AssertLogContains(t, pegin.LogPegInResolvePending(claimRskAddress, claimDepositTxID, previousResolveTxHash))()
+
+	require.NoError(t, f.useCase.Run(context.Background(), resolvingPegIn(resolveMiningWait-time.Minute)))
+	f.assertExpectations(t)
+}
+
+func TestResolvePegInUseCase_Run_RecordsAResolvingClaimThatWasSettledMeanwhile(t *testing.T) {
+	f := newResolvePegInFixtures()
+	f.expectResolveInputs()
+	f.expectDryRun(blockchain.PegInAlreadyProcessedError)
+	updated := f.expectUpdate(nil)
+	defer test.AssertLogContains(t, pegin.LogPegInAlreadyResolved(claimRskAddress, claimDepositTxID))()
+
+	require.NoError(t, f.useCase.Run(context.Background(), resolvingPegIn(resolveMiningWait+time.Minute)))
+	assert.Equal(t, expectedClaimWithState(rootstock.PegInClaimResolved, *updated), *updated)
+	assertClaimUpdatedNow(t, *updated)
+	f.assertExpectations(t)
+}
+
+func TestResolvePegInUseCase_Run_ResendsAResolveThatWasNotMinedInTheWait(t *testing.T) {
+	f := newResolvePegInFixtures()
+	resolving := f.expectPreparedResolve()
+	f.expectSend(resolveReceipt(), nil)
+	f.expectEvent(resolvedEvent(claimPegInID), nil)
+	updated := f.expectUpdate(nil)
+	defer test.AssertLogContains(t, pegin.LogPegInResolveResent(claimRskAddress, claimDepositTxID, previousResolveTxHash))()
+
+	require.NoError(t, f.useCase.Run(context.Background(), resolvingPegIn(resolveMiningWait+time.Minute)))
+	expectedResolving := expectedClaimWithState(rootstock.PegInClaimResolving, *resolving)
+	expectedResolving.ResolveTxHash = previousResolveTxHash
+	assert.Equal(t, expectedResolving, *resolving)
+	assertClaimUpdatedNow(t, *resolving)
+	assert.Equal(t, expectedResolvedClaim(*updated), *updated)
+	f.assertExpectations(t)
+}
+
+func TestResolvePegInUseCase_Run_StoresTheLastBroadcastHashWhenAResendDoesNotSettle(t *testing.T) {
+	cases := []struct {
+		name       string
+		receipt    blockchain.TransactionReceipt
+		storedHash string
+	}{
+		{name: "not broadcast", receipt: blockchain.TransactionReceipt{}, storedHash: previousResolveTxHash},
+		{name: "broadcast", receipt: blockchain.TransactionReceipt{TransactionHash: resolveTxHash}, storedHash: resolveTxHash},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			f := newResolvePegInFixtures()
+			f.expectPreparedResolve()
+			f.expectSend(testCase.receipt, assert.AnError)
+			updated := f.expectUpdate(nil)
+
+			err := f.useCase.Run(context.Background(), resolvingPegIn(resolveMiningWait+time.Minute))
+			require.ErrorIs(t, err, assert.AnError)
+			expected := expectedClaimWithState(rootstock.PegInClaimResolving, *updated)
+			expected.ResolveTxHash = testCase.storedHash
+			assert.Equal(t, expected, *updated)
 			f.assertExpectations(t)
 		})
 	}
@@ -395,9 +492,9 @@ func TestResolvePegInUseCase_Run_HoldsTheWalletMutexOnlyForTheSend(t *testing.T)
 		}).Once()
 	f.expectEvent(resolvedEvent(claimPegInID), nil)
 	f.claims.EXPECT().Update(mock.Anything, mock.Anything).RunAndReturn(func(context.Context, rootstock.PegInClaim) error {
-		assertMutexFree(t, f.walletMutex, "the wallet mutex is released before the claim update")
+		assertMutexFree(t, f.walletMutex, "the claim updates run without the wallet mutex")
 		return nil
-	}).Once()
+	}).Twice()
 
 	require.NoError(t, f.run())
 	f.assertExpectations(t)
@@ -444,6 +541,13 @@ func TestResolvePegInUseCase_Run_ReturnsTheUpdateError(t *testing.T) {
 				f.expectPreparedResolve()
 				f.expectSend(resolveReceipt(), nil)
 				f.expectEvent(resolvedEvent(claimPegInID), nil)
+			},
+		},
+		{
+			name: "after a send with an unknown outcome",
+			expect: func(f *resolvePegInFixtures) {
+				f.expectPreparedResolve()
+				f.expectSend(resolveReceipt(), blockchain.TxFailedError)
 			},
 		},
 		{

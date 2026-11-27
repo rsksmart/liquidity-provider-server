@@ -59,12 +59,20 @@ func LogPegInClaimEventUnreadable(depositTxID, txHash string, err error) string 
 	return fmt.Sprintf("PegIn claim of deposit %s in transaction %s was stored as claimed, but its PegInRequested event can't be read, so the user payment outcome is unknown: %v", depositTxID, txHash, err)
 }
 
+func LogPegInResolvePending(rskAddress, depositTxID, txHash string) string {
+	return fmt.Sprintf("PegIn deposit %s for %s has an unfinished resolve and is checked again once the mining wait since its last update is over; last resolve transaction: %s", depositTxID, rskAddress, txHash)
+}
+
 func LogPegInResolveWaitingForConfirmations(rskAddress, depositTxID string, confirmations, required uint64) string {
 	return fmt.Sprintf("PegIn deposit %s for %s has %d of the %d confirmations the bridge needs to resolve it", depositTxID, rskAddress, confirmations, required)
 }
 
 func LogPegInResolveNotResolvable(rskAddress, depositTxID string, reason error) string {
 	return fmt.Sprintf("PegIn deposit %s for %s can't be resolved yet: %v", depositTxID, rskAddress, reason)
+}
+
+func LogPegInResolveResent(rskAddress, depositTxID, previousTxHash string) string {
+	return fmt.Sprintf("PegIn deposit %s for %s is still unresolved on chain after the mining wait of its last resolve, sending it again; last resolve transaction: %s", depositTxID, rskAddress, previousTxHash)
 }
 
 func LogPegInAlreadyResolved(rskAddress, depositTxID string) string {

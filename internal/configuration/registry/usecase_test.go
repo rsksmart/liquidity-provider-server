@@ -60,7 +60,7 @@ func TestNewUseCaseRegistry(t *testing.T) {
 		lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
 		require.NoError(t, err)
 		mutexes := environment.NewApplicationMutexes()
-		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+		useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes, environment.DefaultTimeouts())
 		require.NotNil(t, useCaseRegistry)
 		value := reflect.ValueOf(useCaseRegistry).Elem()
 		for i := 0; i < value.NumField(); i++ {

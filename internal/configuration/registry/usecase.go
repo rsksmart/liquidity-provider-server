@@ -99,6 +99,7 @@ func NewUseCaseRegistry(
 	lpRegistry *LiquidityProvider,
 	messaging *Messaging,
 	mutexes entities.ApplicationMutexes,
+	timeouts environment.ApplicationTimeouts,
 ) *UseCaseRegistry {
 	env.ColdWallet.FillWithDefaults()
 	peginEnv := env.Pegin.FillWithDefaults()
@@ -156,6 +157,7 @@ func NewUseCaseRegistry(
 			rskRegistry.Contracts,
 			messaging.Rpc,
 			mutexes.RskWalletMutex(),
+			timeouts.MiningWait.Seconds(),
 		),
 		cleanExpiredQuotesUseCase: watcher.NewCleanExpiredQuotesUseCase(
 			databaseRegistry.PeginRepository,

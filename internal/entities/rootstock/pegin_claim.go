@@ -20,6 +20,7 @@ const (
 	PegInClaimClaimed          PegInClaimState = "claimed"
 	PegInClaimRaceLost         PegInClaimState = "race_lost"
 	PegInClaimRetryableFailure PegInClaimState = "retryable_failure"
+	PegInClaimResolving        PegInClaimState = "resolving"
 	PegInClaimResolved         PegInClaimState = "resolved"
 	PegInClaimResolveFailed    PegInClaimState = "resolve_failed"
 )

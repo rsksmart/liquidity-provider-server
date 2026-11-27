@@ -26,7 +26,7 @@ var (
 	resolveWatcherSecondClaim = rootstock.PegInClaim{
 		RskAddress:  "0x8dccd82443b80ddde3690af86746bfd9d766f8d2",
 		DepositTxID: "fda421ccdff7324a382067d1746f6a387132435de6af336a0ebbf3f720eaae4d",
-		State:       rootstock.PegInClaimClaimed,
+		State:       rootstock.PegInClaimResolving,
 	}
 )
 
@@ -62,8 +62,8 @@ func (fixture *resolveWatcherFixture) expectHeight(height int64) {
 	fixture.btcRpc.EXPECT().GetHeight().Return(big.NewInt(height), nil).Once()
 }
 
-func (fixture *resolveWatcherFixture) expectClaimed(claims ...rootstock.PegInClaim) {
-	fixture.repository.EXPECT().ListByState(mock.Anything, rootstock.PegInClaimClaimed).Return(claims, nil).Once()
+func (fixture *resolveWatcherFixture) expectUnresolved(claims ...rootstock.PegInClaim) {
+	fixture.repository.EXPECT().ListByState(mock.Anything, rootstock.PegInClaimClaimed, rootstock.PegInClaimResolving).Return(claims, nil).Once()
 }
 
 func (fixture *resolveWatcherFixture) expectResolve(claim rootstock.PegInClaim, err error) {
@@ -76,11 +76,11 @@ func TestPegInResolveWatcher_Shutdown(t *testing.T) {
 	})
 }
 
-func TestPegInResolveWatcher_ResolvesEveryClaimedPegInOnANewBlock(t *testing.T) {
+func TestPegInResolveWatcher_ResolvesEveryClaimedOrResolvingPegInOnANewBlock(t *testing.T) {
 	fixture := newResolveWatcherFixture(t)
 	session := fixture.start(t)
 	fixture.expectHeight(100)
-	fixture.expectClaimed(resolveWatcherFirstClaim, resolveWatcherSecondClaim)
+	fixture.expectUnresolved(resolveWatcherFirstClaim, resolveWatcherSecondClaim)
 	fixture.expectResolve(resolveWatcherFirstClaim, nil)
 	fixture.expectResolve(resolveWatcherSecondClaim, nil)
 
@@ -93,7 +93,7 @@ func TestPegInResolveWatcher_ChecksOnlyWhenANewBlockArrives(t *testing.T) {
 	session := fixture.start(t)
 
 	fixture.expectHeight(100)
-	fixture.expectClaimed(resolveWatcherFirstClaim)
+	fixture.expectUnresolved(resolveWatcherFirstClaim)
 	fixture.expectResolve(resolveWatcherFirstClaim, nil)
 	session.poll()
 
@@ -104,7 +104,7 @@ func TestPegInResolveWatcher_ChecksOnlyWhenANewBlockArrives(t *testing.T) {
 	session.poll()
 
 	fixture.expectHeight(101)
-	fixture.expectClaimed(resolveWatcherFirstClaim)
+	fixture.expectUnresolved(resolveWatcherFirstClaim)
 	fixture.expectResolve(resolveWatcherFirstClaim, nil)
 	session.poll()
 
@@ -129,12 +129,12 @@ func TestPegInResolveWatcher_ListsTheSameBlockAgainWhenTheListingFails(t *testin
 	listErr := usecases.WrapUseCaseError(usecases.GetWatchedPegInClaimsId, assert.AnError)
 	assertLog := test.AssertLogContains(t, fmt.Sprintf(watcher.LogPegInResolveListError, listErr))
 	fixture.expectHeight(100)
-	fixture.repository.EXPECT().ListByState(mock.Anything, rootstock.PegInClaimClaimed).Return(nil, assert.AnError).Once()
+	fixture.repository.EXPECT().ListByState(mock.Anything, rootstock.PegInClaimClaimed, rootstock.PegInClaimResolving).Return(nil, assert.AnError).Once()
 	session.poll()
 	assert.True(t, assertLog())
 
 	fixture.expectHeight(100)
-	fixture.expectClaimed(resolveWatcherFirstClaim)
+	fixture.expectUnresolved(resolveWatcherFirstClaim)
 	fixture.expectResolve(resolveWatcherFirstClaim, nil)
 	session.poll()
 
@@ -150,7 +150,7 @@ func TestPegInResolveWatcher_KeepsResolvingTheOtherClaimsWhenOneFails(t *testing
 		assert.AnError,
 	))
 	fixture.expectHeight(100)
-	fixture.expectClaimed(resolveWatcherFirstClaim, resolveWatcherSecondClaim)
+	fixture.expectUnresolved(resolveWatcherFirstClaim, resolveWatcherSecondClaim)
 	fixture.expectResolve(resolveWatcherFirstClaim, assert.AnError)
 	fixture.expectResolve(resolveWatcherSecondClaim, nil)
 
@@ -164,7 +164,7 @@ func TestPegInResolveWatcher_RetriesAFailedResolveOnTheNextBlock(t *testing.T) {
 	fixture := newResolveWatcherFixture(t)
 	session := fixture.start(t)
 	fixture.expectHeight(100)
-	fixture.expectClaimed(resolveWatcherFirstClaim)
+	fixture.expectUnresolved(resolveWatcherFirstClaim)
 	fixture.expectResolve(resolveWatcherFirstClaim, assert.AnError)
 	session.poll()
 
@@ -172,7 +172,7 @@ func TestPegInResolveWatcher_RetriesAFailedResolveOnTheNextBlock(t *testing.T) {
 	session.poll()
 
 	fixture.expectHeight(101)
-	fixture.expectClaimed(resolveWatcherFirstClaim)
+	fixture.expectUnresolved(resolveWatcherFirstClaim)
 	fixture.expectResolve(resolveWatcherFirstClaim, nil)
 	session.poll()
 

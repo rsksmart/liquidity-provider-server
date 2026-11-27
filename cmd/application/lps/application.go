@@ -81,7 +81,7 @@ func NewApplication(initCtx context.Context, env environment.Environment, timeou
 	}
 	mutexes := environment.NewApplicationMutexes()
 
-	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	useCaseRegistry := registry.NewUseCaseRegistry(env, rootstockRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes, timeouts)
 	watcherRegistry := registry.NewWatcherRegistry(env, useCaseRegistry, rootstockRegistry, btcRegistry, lpRegistry, messagingRegistry, dbRegistry, watcher.NewApplicationTickers(), timeouts)
 	return &Application{
 		env: env, timeouts: timeouts,

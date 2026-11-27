@@ -1,6 +1,7 @@
 package pegin
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ type ResolvePegInUseCase struct {
 	contracts      blockchain.RskContracts
 	rpc            blockchain.Rpc
 	rskWalletMutex sync.Locker
+	miningWait     time.Duration
 }
 
 func NewResolvePegInUseCase(
@@ -29,12 +31,14 @@ func NewResolvePegInUseCase(
 	contracts blockchain.RskContracts,
 	rpc blockchain.Rpc,
 	rskWalletMutex sync.Locker,
+	miningWait time.Duration,
 ) *ResolvePegInUseCase {
 	return &ResolvePegInUseCase{
 		claims:         claims,
 		contracts:      contracts,
 		rpc:            rpc,
 		rskWalletMutex: rskWalletMutex,
+		miningWait:     miningWait,
 	}
 }
 
@@ -52,11 +56,8 @@ func (useCase *ResolvePegInUseCase) Run(ctx context.Context, claim rootstock.Peg
 }
 
 func (useCase *ResolvePegInUseCase) prepareResolve(claim rootstock.PegInClaim) (blockchain.ResolvePegInParams, error) {
-	if claim.State != rootstock.PegInClaimClaimed {
-		return blockchain.ResolvePegInParams{}, fmt.Errorf(
-			"%w: deposit %s for %s is %s",
-			PegInClaimNotResolvableError, claim.DepositTxID, claim.RskAddress, claim.State,
-		)
+	if err := useCase.checkResolvable(claim); err != nil {
+		return blockchain.ResolvePegInParams{}, err
 	}
 	if err := useCase.checkBridgeDepth(claim); err != nil {
 		return blockchain.ResolvePegInParams{}, err
@@ -66,6 +67,28 @@ func (useCase *ResolvePegInUseCase) prepareResolve(claim rootstock.PegInClaim) (
 		return blockchain.ResolvePegInParams{}, err
 	}
 	return params, useCase.dryRun(claim, params)
+}
+
+func (useCase *ResolvePegInUseCase) checkResolvable(claim rootstock.PegInClaim) error {
+	switch claim.State {
+	case rootstock.PegInClaimClaimed:
+		return nil
+	case rootstock.PegInClaimResolving:
+		return useCase.checkMiningWait(claim)
+	default:
+		return fmt.Errorf(
+			"%w: deposit %s for %s is %s",
+			PegInClaimNotResolvableError, claim.DepositTxID, claim.RskAddress, claim.State,
+		)
+	}
+}
+
+func (useCase *ResolvePegInUseCase) checkMiningWait(claim rootstock.PegInClaim) error {
+	if time.Since(claim.UpdatedAt) < useCase.miningWait {
+		log.Debug(LogPegInResolvePending(claim.RskAddress, claim.DepositTxID, claim.ResolveTxHash))
+		return errPegInResolveSkipped
+	}
+	return nil
 }
 
 func (useCase *ResolvePegInUseCase) checkBridgeDepth(claim rootstock.PegInClaim) error {
@@ -116,6 +139,15 @@ func (useCase *ResolvePegInUseCase) submitResolve(
 	claim rootstock.PegInClaim,
 	params blockchain.ResolvePegInParams,
 ) error {
+	resending := claim.State == rootstock.PegInClaimResolving
+	claim.State = rootstock.PegInClaimResolving
+	claim.UpdatedAt = time.Now().UTC()
+	if err := useCase.claims.Update(ctx, claim); err != nil {
+		return err
+	}
+	if resending {
+		log.Info(LogPegInResolveResent(claim.RskAddress, claim.DepositTxID, claim.ResolveTxHash))
+	}
 	useCase.rskWalletMutex.Lock()
 	receipt, sendErr := useCase.contracts.PegIn.ResolvePegIn(params)
 	useCase.rskWalletMutex.Unlock()
@@ -139,10 +171,11 @@ func (useCase *ResolvePegInUseCase) updateResolvedClaim(
 		claim.RegistrantFee = event.RegistrantFee
 	case errors.Is(resolveErr, blockchain.PegInAlreadyProcessedError):
 		claim.State = rootstock.PegInClaimResolved
+		claim.ResolveTxHash = ""
 	case errors.Is(resolveErr, blockchain.BridgeRejectedPegInError):
 		claim.State = rootstock.PegInClaimResolveFailed
 	default:
-		return resolveErr
+		claim.ResolveTxHash = cmp.Or(receipt.TransactionHash, claim.ResolveTxHash)
 	}
 	claim.UpdatedAt = time.Now().UTC()
 	if err := useCase.claims.Update(ctx, claim); err != nil {
@@ -151,6 +184,8 @@ func (useCase *ResolvePegInUseCase) updateResolvedClaim(
 	switch {
 	case claim.State == rootstock.PegInClaimResolveFailed:
 		return errors.Join(resolveErr, usecases.NonRecoverableError)
+	case claim.State == rootstock.PegInClaimResolving:
+		return resolveErr
 	case resolveErr == nil:
 		useCase.logResolved(claim, event, eventErr)
 	default:

@@ -71,7 +71,7 @@ func (watcher *PegInResolveWatcher) resolveOnNewBlock(ctx context.Context) {
 	if height.Uint64() <= watcher.checkedHeight {
 		return
 	}
-	claims, err := watcher.getWatchedUseCase.Run(ctx, rootstock.PegInClaimClaimed)
+	claims, err := watcher.getWatchedUseCase.Run(ctx, rootstock.PegInClaimClaimed, rootstock.PegInClaimResolving)
 	if err != nil {
 		log.Errorf(LogPegInResolveListError, err)
 		return

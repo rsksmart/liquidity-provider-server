@@ -59,7 +59,7 @@ func buildWatcherRegistry(t *testing.T, tickers *watcher.ApplicationTickers) *re
 	lpRegistry, err := registry.NewLiquidityProviderRegistry(dbRegistry, rskRegistry, btcRegistry, messagingRegistry, walletFactoryMock)
 	require.NoError(t, err)
 	mutexes := environment.NewApplicationMutexes()
-	useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes)
+	useCaseRegistry := registry.NewUseCaseRegistry(env, rskRegistry, btcRegistry, dbRegistry, lpRegistry, messagingRegistry, mutexes, environment.DefaultTimeouts())
 
 	return registry.NewWatcherRegistry(
 		env, useCaseRegistry, rskRegistry, btcRegistry, lpRegistry, messagingRegistry, dbRegistry,
