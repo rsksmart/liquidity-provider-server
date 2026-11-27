@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin"
-	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/btcclient"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
@@ -112,14 +110,14 @@ func (useCase *ImportRegisteredAddressesUseCase) importAddress(
 		)
 		return *watch, false, nil
 	}
-	if watch.BtcAddress, err = bitcoin.EncodeAddressBase58(pegInAddress.Payload); err != nil {
+	if watch.BtcAddress, err = useCase.btcNetwork.EncodeBase58CheckPayload(pegInAddress.Payload); err != nil {
 		return *watch, false, useCase.persistError(
 			ctx,
 			watch,
 			fmt.Errorf("encode PegIn address for event %s/%d: %w", watch.TxHash, watch.LogIndex, err),
 		)
 	}
-	if err = useCase.wallet.ImportAddress(watch.BtcAddress); err != nil && !btcclient.IsAddressAlreadyImported(err) {
+	if err = useCase.wallet.ImportAddress(watch.BtcAddress); err != nil {
 		return *watch, false, useCase.persistError(
 			ctx,
 			watch,

@@ -82,6 +82,13 @@ func (wallet *WatchOnlyWallet) ImportAddress(address string) error {
 	if err = EnsureLoadedBtcWallet(wallet.conn); err != nil {
 		return err
 	}
+	addressInfo, err := wallet.conn.client.GetAddressInfo(address)
+	if err != nil {
+		return err
+	}
+	if addressInfo.IsWatchOnly {
+		return nil
+	}
 	return wallet.conn.client.ImportAddressRescan(address, "", false)
 }
 

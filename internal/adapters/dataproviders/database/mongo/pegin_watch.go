@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -18,6 +19,11 @@ const (
 
 type peginWatchMongoRepository struct {
 	conn *Connection
+}
+
+type verifiedRegistrations struct {
+	Watches    []rootstock.PegInWatch
+	Checkpoint rootstock.PegInWatchCheckpoint
 }
 
 func NewPegInWatchMongoRepository(conn *Connection) rootstock.PegInWatchRepository {
@@ -42,7 +48,11 @@ func (repo *peginWatchMongoRepository) Upsert(
 	if mongoDb.IsDuplicateKeyError(err) {
 		return nil
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	logDbInteraction(Upsert, watch)
+	return nil
 }
 
 func (repo *peginWatchMongoRepository) Get(
@@ -62,6 +72,7 @@ func (repo *peginWatchMongoRepository) Get(
 	if err != nil {
 		return nil, err
 	}
+	logDbInteraction(Read, watch)
 	return &watch, nil
 }
 
@@ -85,6 +96,7 @@ func (repo *peginWatchMongoRepository) List(
 	if err = cursor.All(dbCtx, &watches); err != nil {
 		return nil, err
 	}
+	logDbInteraction(Read, len(watches))
 	return watches, nil
 }
 
@@ -106,6 +118,7 @@ func (repo *peginWatchMongoRepository) Update(
 	if result.MatchedCount != 1 {
 		return errors.New("pegin watch not found")
 	}
+	logDbInteraction(Update, watch)
 	return nil
 }
 
@@ -125,6 +138,7 @@ func (repo *peginWatchMongoRepository) GetCheckpoint(
 	if err != nil {
 		return rootstock.PegInWatchCheckpoint{}, false, err
 	}
+	logDbInteraction(Read, checkpoint)
 	return checkpoint, true, nil
 }
 
@@ -166,7 +180,11 @@ func (repo *peginWatchMongoRepository) SaveVerifiedRegistrations(
 		)
 		return nil, checkpointErr
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	logDbInteraction(Upsert, verifiedRegistrations{Watches: watches, Checkpoint: checkpoint})
+	return nil
 }
 
 func (repo *peginWatchMongoRepository) GetRootAt(ctx context.Context, block uint64) ([32]byte, error) {
@@ -187,6 +205,7 @@ func (repo *peginWatchMongoRepository) GetRootAt(ctx context.Context, block uint
 	if err != nil {
 		return [32]byte{}, err
 	}
+	logDbInteraction(Read, watch)
 	return watch.RegistrationRoot, nil
 }
 
@@ -209,14 +228,17 @@ func (repo *peginWatchMongoRepository) ReplaceVerifiedRegistrations(
 		return err
 	}
 
+	var deletedCount int64
 	_, err = session.WithTransaction(dbCtx, func(sessionContext context.Context) (any, error) {
-		if _, bulkErr := repo.conn.Collection(PegInWatchCollection).BulkWrite(
+		bulkResult, bulkErr := repo.conn.Collection(PegInWatchCollection).BulkWrite(
 			sessionContext,
 			replaceRegistrationModels(fromBlock, watches),
 			options.BulkWrite().SetOrdered(true),
-		); bulkErr != nil {
+		)
+		if bulkErr != nil {
 			return nil, bulkErr
 		}
+		deletedCount = bulkResult.DeletedCount
 		_, checkpointErr := repo.conn.Collection(PegInWatchCheckpointCollection).UpdateOne(
 			sessionContext,
 			bson.M{"_id": peginWatchCheckpointId},
@@ -225,7 +247,12 @@ func (repo *peginWatchMongoRepository) ReplaceVerifiedRegistrations(
 		)
 		return nil, checkpointErr
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	logDbInteraction(Delete, fmt.Sprintf("removed %d registrations at or after block %d", deletedCount, fromBlock))
+	logDbInteraction(Upsert, verifiedRegistrations{Watches: watches, Checkpoint: checkpoint})
+	return nil
 }
 
 func replaceRegistrationModels(fromBlock uint64, watches []rootstock.PegInWatch) []mongoDb.WriteModel {

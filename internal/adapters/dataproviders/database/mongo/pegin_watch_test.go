@@ -2,12 +2,15 @@ package mongo_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/database/mongo"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/rootstock"
+	"github.com/rsksmart/liquidity-provider-server/test"
 	"github.com/rsksmart/liquidity-provider-server/test/mocks"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -18,6 +21,7 @@ import (
 
 //nolint:funlen // One fixture shared across the round-trip scenarios keeps the event identity identical in each.
 func TestPegInWatchMongoRepository(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	entry := rootstock.PegInWatch{
 		TxHash:      "0x1234",
@@ -40,7 +44,9 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 		).Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		require.NoError(t, repo.Upsert(context.Background(), entry))
+		assert.Contains(t, logs.String(), dbLogLine(mongo.Upsert, entry))
 		collection.AssertExpectations(t)
 	})
 
@@ -50,7 +56,9 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(nil, mongoDb.WriteException{WriteErrors: []mongoDb.WriteError{{Code: 11000}}}).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		require.NoError(t, repo.Upsert(context.Background(), entry))
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 
@@ -60,7 +68,9 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(nil, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		require.ErrorIs(t, repo.Upsert(context.Background(), entry), assert.AnError)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 
@@ -70,9 +80,11 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(entry, nil, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.NoError(t, err)
 		assert.Equal(t, &entry, result)
+		assert.Contains(t, logs.String(), dbLogLine(mongo.Read, entry))
 		collection.AssertExpectations(t)
 	})
 
@@ -82,9 +94,11 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInWatch{}, mongoDb.ErrNoDocuments, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.NoError(t, err)
 		assert.Nil(t, result)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 
@@ -94,9 +108,11 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(rootstock.PegInWatch{}, assert.AnError, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		result, err := repo.Get(context.Background(), entry.RskAddress)
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Nil(t, result)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 
@@ -111,9 +127,11 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 		).Return(mongoDb.NewCursorFromDocuments([]any{entry, second}, nil, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		result, err := repo.List(context.Background())
 		require.NoError(t, err)
 		assert.Equal(t, []rootstock.PegInWatch{entry, second}, result)
+		assert.Contains(t, logs.String(), dbLogLine(mongo.Read, 2))
 		collection.AssertExpectations(t)
 	})
 
@@ -126,9 +144,11 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 		).Return(nil, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		result, err := repo.List(context.Background())
 		require.ErrorIs(t, err, assert.AnError)
 		assert.Nil(t, result)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 
@@ -140,7 +160,9 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(&mongoDb.UpdateResult{MatchedCount: 1, ModifiedCount: 1}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		require.NoError(t, repo.Update(context.Background(), imported))
+		assert.Contains(t, logs.String(), dbLogLine(mongo.Update, imported))
 		collection.AssertExpectations(t)
 	})
 
@@ -152,7 +174,9 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(&mongoDb.UpdateResult{MatchedCount: 0}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		require.ErrorContains(t, repo.Update(context.Background(), imported), "pegin watch not found")
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 
@@ -164,7 +188,9 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 			Return(nil, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		require.ErrorIs(t, repo.Update(context.Background(), imported), assert.AnError)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 
@@ -188,6 +214,7 @@ func TestPegInWatchMongoRepository(t *testing.T) {
 }
 
 func TestPegInWatchMongoRepository_GetCheckpoint(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	checkpointIdentity := bson.M{"_id": "verified"}
 	t.Run("returns none when no checkpoint is stored", func(t *testing.T) {
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCheckpointCollection)
@@ -195,11 +222,13 @@ func TestPegInWatchMongoRepository_GetCheckpoint(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, mongoDb.ErrNoDocuments, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		checkpoint, found, err := repo.GetCheckpoint(context.Background())
 
 		require.NoError(t, err)
 		assert.False(t, found)
 		assert.Equal(t, rootstock.PegInWatchCheckpoint{}, checkpoint)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 	t.Run("returns the stored checkpoint", func(t *testing.T) {
@@ -213,11 +242,13 @@ func TestPegInWatchMongoRepository_GetCheckpoint(t *testing.T) {
 			)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		checkpoint, found, err := repo.GetCheckpoint(context.Background())
 
 		require.NoError(t, err)
 		assert.True(t, found)
 		assert.Equal(t, stored, checkpoint)
+		assert.Contains(t, logs.String(), dbLogLine(mongo.Read, stored))
 		collection.AssertExpectations(t)
 	})
 	t.Run("returns the read error", func(t *testing.T) {
@@ -226,11 +257,13 @@ func TestPegInWatchMongoRepository_GetCheckpoint(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, assert.AnError, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		checkpoint, found, err := repo.GetCheckpoint(context.Background())
 
 		require.ErrorIs(t, err, assert.AnError)
 		assert.False(t, found)
 		assert.Equal(t, rootstock.PegInWatchCheckpoint{}, checkpoint)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 }
@@ -335,7 +368,9 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrations(t *testing.T) {
 		).Return(&mongoDb.UpdateResult{UpsertedCount: 1}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		require.NoError(t, repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{first, second}, checkpoint))
+		assert.Contains(t, logs.String(), registrationsLogLine([]rootstock.PegInWatch{first, second}, checkpoint))
 		saveMocks.assertExpectations(t)
 	})
 	t.Run("writes only the checkpoint when there are no new watches", func(t *testing.T) {
@@ -345,7 +380,9 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrations(t *testing.T) {
 			Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		require.NoError(t, repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{}, checkpoint))
+		assert.Contains(t, logs.String(), registrationsLogLine([]rootstock.PegInWatch{}, checkpoint))
 		saveMocks.assertExpectations(t)
 	})
 }
@@ -361,9 +398,11 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrationsErrors(t *testing.T)
 			Return(nil, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		err := repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{first, second}, checkpoint)
 
 		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, logs.String())
 		saveMocks.assertExpectations(t)
 	})
 	t.Run("returns the checkpoint write error", func(t *testing.T) {
@@ -375,9 +414,11 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrationsErrors(t *testing.T)
 			Return(nil, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		err := repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{first}, checkpoint)
 
 		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, logs.String())
 		saveMocks.assertExpectations(t)
 	})
 	t.Run("returns the session error without writing", func(t *testing.T) {
@@ -385,9 +426,11 @@ func TestPegInWatchMongoRepository_SaveVerifiedRegistrationsErrors(t *testing.T)
 		saveMocks.client.On("StartSession").Return(saveMocks.session, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		err := repo.SaveVerifiedRegistrations(context.Background(), []rootstock.PegInWatch{first}, checkpoint)
 
 		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, logs.String())
 		saveMocks.assertExpectations(t)
 	})
 }
@@ -405,6 +448,7 @@ func withUpdateUpsert() interface{} {
 }
 
 func TestPegInWatchMongoRepository_GetRootAt(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	atOrBelow := bson.M{"block_number": bson.M{"$lte": uint64(150)}}
 	newestFirst := mock.MatchedBy(func(opt options.Lister[options.FindOneOptions]) bool {
 		resolved := &options.FindOneOptions{}
@@ -416,19 +460,18 @@ func TestPegInWatchMongoRepository_GetRootAt(t *testing.T) {
 		return assert.ObjectsAreEqual(bson.D{{Key: "block_number", Value: -1}, {Key: "log_index", Value: -1}}, resolved.Sort)
 	})
 	t.Run("returns the root of the last row at or below the block", func(t *testing.T) {
+		lastRow := rootstock.PegInWatch{RskAddress: "0xaaaa", BlockNumber: 149, RegistrationRoot: [32]byte{4, 5}}
 		client, collection := getClientAndCollectionMocks(mongo.PegInWatchCollection)
 		collection.EXPECT().FindOne(mock.Anything, atOrBelow, newestFirst).
-			Return(mongoDb.NewSingleResultFromDocument(
-				rootstock.PegInWatch{RskAddress: "0xaaaa", BlockNumber: 149, RegistrationRoot: [32]byte{4, 5}},
-				nil,
-				nil,
-			)).Once()
+			Return(mongoDb.NewSingleResultFromDocument(lastRow, nil, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		root, err := repo.GetRootAt(context.Background(), 150)
 
 		require.NoError(t, err)
 		assert.Equal(t, [32]byte{4, 5}, root)
+		assert.Contains(t, logs.String(), dbLogLine(mongo.Read, lastRow))
 		collection.AssertExpectations(t)
 	})
 	t.Run("returns the zero root when no row is at or below the block", func(t *testing.T) {
@@ -437,10 +480,12 @@ func TestPegInWatchMongoRepository_GetRootAt(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, mongoDb.ErrNoDocuments, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		root, err := repo.GetRootAt(context.Background(), 150)
 
 		require.NoError(t, err)
 		assert.Equal(t, [32]byte{}, root)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 	t.Run("returns the read error", func(t *testing.T) {
@@ -449,9 +494,11 @@ func TestPegInWatchMongoRepository_GetRootAt(t *testing.T) {
 			Return(mongoDb.NewSingleResultFromDocument(bson.M{}, assert.AnError, nil)).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(client, time.Second))
+		logs := captureDbLog()
 		_, err := repo.GetRootAt(context.Background(), 150)
 
 		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, logs.String())
 		collection.AssertExpectations(t)
 	})
 }
@@ -520,6 +567,7 @@ func orderedBulkWrite() interface{} {
 }
 
 func TestPegInWatchMongoRepository_ReplaceVerifiedRegistrations(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
 	first, second, checkpoint := verifiedRegistrationsFixture()
 	checkpointIdentity := bson.M{"_id": "verified"}
 
@@ -532,19 +580,25 @@ func TestPegInWatchMongoRepository_ReplaceVerifiedRegistrations(t *testing.T) {
 			Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		require.NoError(t, repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{first, second}, checkpoint))
+		assert.Contains(t, logs.String(), dbLogLine(mongo.Delete, "removed 0 registrations at or after block 10"))
+		assert.Contains(t, logs.String(), registrationsLogLine([]rootstock.PegInWatch{first, second}, checkpoint))
 		saveMocks.assertExpectations(t)
 	})
 	t.Run("removes every row from the block when the chain has none there", func(t *testing.T) {
 		saveMocks := newCheckpointSaveMocks()
 		saveMocks.expectTransaction(t, nil)
 		saveMocks.watches.EXPECT().BulkWrite(mock.Anything, replacedModels(t, 10), orderedBulkWrite()).
-			Return(&mongoDb.BulkWriteResult{}, nil).Once()
+			Return(&mongoDb.BulkWriteResult{DeletedCount: 2}, nil).Once()
 		saveMocks.checkpoints.EXPECT().UpdateOne(mock.Anything, checkpointIdentity, bson.M{"$set": checkpoint}, withUpdateUpsert()).
 			Return(&mongoDb.UpdateResult{ModifiedCount: 1}, nil).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		require.NoError(t, repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{}, checkpoint))
+		assert.Contains(t, logs.String(), dbLogLine(mongo.Delete, "removed 2 registrations at or after block 10"))
+		assert.Contains(t, logs.String(), registrationsLogLine([]rootstock.PegInWatch{}, checkpoint))
 		saveMocks.assertExpectations(t)
 	})
 }
@@ -559,9 +613,11 @@ func TestPegInWatchMongoRepository_ReplaceVerifiedRegistrationsErrors(t *testing
 		saveMocks.watches.EXPECT().BulkWrite(mock.Anything, mock.Anything, orderedBulkWrite()).Return(nil, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		err := repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{first}, checkpoint)
 
 		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, logs.String())
 		saveMocks.assertExpectations(t)
 	})
 	t.Run("returns the checkpoint write error", func(t *testing.T) {
@@ -572,9 +628,11 @@ func TestPegInWatchMongoRepository_ReplaceVerifiedRegistrationsErrors(t *testing
 			Return(nil, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		err := repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{first}, checkpoint)
 
 		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, logs.String())
 		saveMocks.assertExpectations(t)
 	})
 	t.Run("returns the session error without writing", func(t *testing.T) {
@@ -582,9 +640,25 @@ func TestPegInWatchMongoRepository_ReplaceVerifiedRegistrationsErrors(t *testing
 		saveMocks.client.On("StartSession").Return(saveMocks.session, assert.AnError).Once()
 
 		repo := mongo.NewPegInWatchMongoRepository(mongo.NewConnection(saveMocks.client, time.Second))
+		logs := captureDbLog()
 		err := repo.ReplaceVerifiedRegistrations(context.Background(), 10, []rootstock.PegInWatch{first}, checkpoint)
 
 		require.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, logs.String())
 		saveMocks.assertExpectations(t)
 	})
+}
+
+func captureDbLog() *test.ThreadSafeBuffer {
+	buffer := new(test.ThreadSafeBuffer)
+	log.SetOutput(buffer)
+	return buffer
+}
+
+func dbLogLine(interaction mongo.DbInteraction, value any) string {
+	return fmt.Sprintf("%s interaction with db: %+v", interaction, value)
+}
+
+func registrationsLogLine(watches []rootstock.PegInWatch, checkpoint rootstock.PegInWatchCheckpoint) string {
+	return fmt.Sprintf("%s interaction with db: {Watches:%+v Checkpoint:%+v}", mongo.Upsert, watches, checkpoint)
 }

@@ -417,6 +417,7 @@ func TestWatchOnlyWallet_GetUnspentOutputs(t *testing.T) {
 func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 	t.Run("valid address", func(t *testing.T) {
 		client := &mocks.ClientAdapterMock{}
+		client.On("GetAddressInfo", testnetAddress).Return(&btcjson.GetAddressInfoResult{}, nil).Once()
 		client.On("ImportAddressRescan", testnetAddress, "", false).Return(nil).Once()
 		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
 		err := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).ImportAddress(testnetAddress)
@@ -424,6 +425,7 @@ func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 		client.AssertExpectations(t)
 
 		client = &mocks.ClientAdapterMock{}
+		client.On("GetAddressInfo", mainnetAddress).Return(&btcjson.GetAddressInfoResult{}, nil).Once()
 		client.On("ImportAddressRescan", mainnetAddress, "", false).Return(nil).Once()
 		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
 		err = newWatchOnlyWalletForTest(t, client, &chaincfg.MainNetParams).ImportAddress(mainnetAddress)
@@ -442,6 +444,7 @@ func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 	t.Run("returns the node error after a valid address is decoded", func(t *testing.T) {
 		client := &mocks.ClientAdapterMock{}
 		client.On("GetWalletInfo").Return(&btcjson.GetWalletInfoResult{PrivateKeysEnabled: false}, nil).Twice()
+		client.On("GetAddressInfo", testnetAddress).Return(&btcjson.GetAddressInfoResult{}, nil).Once()
 		client.On("ImportAddressRescan", testnetAddress, "", false).Return(assert.AnError).Once()
 		err := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).ImportAddress(testnetAddress)
 		require.Error(t, err)
@@ -453,6 +456,23 @@ func TestWatchOnlyWallet_ImportAddress(t *testing.T) {
 		err := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).ImportAddress(testnetAddress)
 		require.Error(t, err)
 		client.AssertNotCalled(t, "ImportAddressRescan", mock.Anything, mock.Anything, mock.Anything)
+	})
+}
+
+func TestWatchOnlyWallet_ImportAddress_ReadsTheAddressInfoFirst(t *testing.T) {
+	t.Run("skips the import when the wallet already watches the address", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		stubWatchOnlyWalletInfo(client)
+		client.EXPECT().GetAddressInfo(testnetAddress).Return(&btcjson.GetAddressInfoResult{IsWatchOnly: true}, nil).Once()
+		err := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).ImportAddress(testnetAddress)
+		require.NoError(t, err)
+	})
+	t.Run("returns the address info error without importing", func(t *testing.T) {
+		client := mocks.NewClientAdapterMock(t)
+		stubWatchOnlyWalletInfo(client)
+		client.EXPECT().GetAddressInfo(testnetAddress).Return(nil, assert.AnError).Once()
+		err := newWatchOnlyWalletForTest(t, client, &chaincfg.TestNet3Params).ImportAddress(testnetAddress)
+		require.ErrorIs(t, err, assert.AnError)
 	})
 }
 

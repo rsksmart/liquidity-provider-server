@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/rsksmart/liquidity-provider-server/internal/adapters/dataproviders/bitcoin/mempool_space"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities"
 	"github.com/rsksmart/liquidity-provider-server/internal/entities/blockchain"
@@ -92,6 +93,31 @@ func TestMempoolSpaceApi_DecodeAddress(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, c.Expected, decoded)
 	}
+}
+
+func TestMempoolSpaceApi_EncodeBase58CheckPayload(t *testing.T) {
+	t.Run("encodes every checksummed payload", func(t *testing.T) {
+		api := mempool_space.NewMempoolSpaceApi(&mocks.HttpClientMock{}, &chaincfg.MainNetParams, mainnetUrl)
+		for _, c := range datasets.Base58Addresses {
+			payload := append(bytes.Clone(c.Expected), chainhash.DoubleHashB(c.Expected)[:4]...)
+			address, err := api.EncodeBase58CheckPayload(payload)
+			require.NoError(t, err)
+			assert.Equal(t, c.Address, address)
+		}
+	})
+	t.Run("returns the payload error", func(t *testing.T) {
+		api := mempool_space.NewMempoolSpaceApi(&mocks.HttpClientMock{}, &chaincfg.MainNetParams, mainnetUrl)
+		address, err := api.EncodeBase58CheckPayload(datasets.Base58Addresses[0].Expected)
+		require.ErrorContains(t, err, "base58check payload must be 25 bytes, got 21")
+		assert.Empty(t, address)
+	})
+	t.Run("returns an error on an unsupported network", func(t *testing.T) {
+		api := mempool_space.NewMempoolSpaceApi(&mocks.HttpClientMock{}, &chaincfg.RegressionNetParams, regtestUrl)
+		expected := datasets.Base58Addresses[0].Expected
+		address, err := api.EncodeBase58CheckPayload(append(bytes.Clone(expected), chainhash.DoubleHashB(expected)[:4]...))
+		require.ErrorContains(t, err, "unsupported network")
+		assert.Empty(t, address)
+	})
 }
 
 // nolint:funlen
