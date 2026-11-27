@@ -43,6 +43,7 @@ const (
 	GetWatchedPeginQuoteId          UseCaseId = "GetWatchedPeginQuote"
 	GetWatchedPegoutQuoteId         UseCaseId = "GetWatchedPegoutQuote"
 	GetWatchedRegisteredAddressesId UseCaseId = "GetWatchedRegisteredAddresses"
+	GetWatchedPegInClaimsId         UseCaseId = "GetWatchedPegInClaims"
 	CatchUpRegisteredAddressesId    UseCaseId = "CatchUpRegisteredAddresses"
 	ImportRegisteredAddressesId     UseCaseId = "ImportRegisteredAddresses"
 	ExpiredPeginQuoteId             UseCaseId = "ExpiredPeginQuote"

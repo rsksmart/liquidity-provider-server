@@ -146,3 +146,51 @@ func TestPegInClaimRepository_GetReturnsNilForAnUnknownClaim(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
+
+func TestPegInClaimRepository_ListByStateReturnsOnlyTheClaimsInTheStates(t *testing.T) {
+	ctx := context.Background()
+	repository := mongoAdapter.NewPegInClaimMongoRepository(conn)
+	claimed := newIntegrationPegInClaim(ctx, t, rootstock.PegInClaimClaimed)
+	resolved := newIntegrationPegInClaim(ctx, t, rootstock.PegInClaimResolved)
+	submitting := newIntegrationPegInClaim(ctx, t, rootstock.PegInClaimSubmitting)
+	stored := []rootstock.PegInClaim{claimed, resolved, submitting}
+	for _, claim := range stored {
+		require.NoError(t, repository.Add(ctx, claim))
+	}
+
+	result, err := repository.ListByState(ctx, rootstock.PegInClaimClaimed, rootstock.PegInClaimResolved)
+
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []rootstock.PegInClaim{claimed, resolved}, claimsStoredByThisTest(result, stored))
+}
+
+func TestPegInClaimRepository_ListByStateReturnsTheOldestClaimFirst(t *testing.T) {
+	ctx := context.Background()
+	repository := mongoAdapter.NewPegInClaimMongoRepository(conn)
+	newer := newIntegrationPegInClaim(ctx, t, rootstock.PegInClaimClaimed)
+	older := newIntegrationPegInClaim(ctx, t, rootstock.PegInClaimClaimed)
+	older.CreatedAt = newer.CreatedAt.Add(-time.Hour)
+	stored := []rootstock.PegInClaim{newer, older}
+	for _, claim := range stored {
+		require.NoError(t, repository.Add(ctx, claim))
+	}
+
+	result, err := repository.ListByState(ctx, rootstock.PegInClaimClaimed)
+
+	require.NoError(t, err)
+	assert.Equal(t, []rootstock.PegInClaim{older, newer}, claimsStoredByThisTest(result, stored))
+}
+
+func claimsStoredByThisTest(listed, stored []rootstock.PegInClaim) []rootstock.PegInClaim {
+	own := make(map[string]bool, len(stored))
+	for _, claim := range stored {
+		own[claim.RskAddress] = true
+	}
+	result := make([]rootstock.PegInClaim, 0, len(stored))
+	for _, claim := range listed {
+		if own[claim.RskAddress] {
+			result = append(result, claim)
+		}
+	}
+	return result
+}

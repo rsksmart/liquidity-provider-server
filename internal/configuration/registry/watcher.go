@@ -12,6 +12,7 @@ type WatcherRegistry struct {
 	PegInAddressRegistryWatcher        *watcher.PegInWatcher
 	PegInAddressRegistryMetricsWatcher *monitoring.PegInAddressRegistryMetricsWatcher
 	PeginDepositAddressWatcher         *watcher.PeginDepositAddressWatcher
+	PegInResolveWatcher                *watcher.PegInResolveWatcher
 
 	QuoteCleanerWatcher       *watcher.QuoteCleanerWatcher
 	PegoutRskDepositWatcher   *watcher.PegoutRskDepositWatcher
@@ -62,6 +63,12 @@ func NewWatcherRegistry(
 			messaging.Rpc,
 			messaging.EventBus,
 			tickers.PeginDepositWatcherTicker,
+		),
+		PegInResolveWatcher: watcher.NewPegInResolveWatcher(
+			useCaseRegistry.getWatchedPegInClaimsUseCase,
+			useCaseRegistry.resolvePegInUseCase,
+			messaging.Rpc,
+			tickers.PegInResolveWatcherTicker,
 		),
 		QuoteCleanerWatcher: watcher.NewQuoteCleanerWatcher(
 			useCaseRegistry.cleanExpiredQuotesUseCase,
